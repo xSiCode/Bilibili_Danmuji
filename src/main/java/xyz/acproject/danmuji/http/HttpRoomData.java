@@ -16,6 +16,7 @@ import xyz.acproject.danmuji.entity.server_data.Conf;
 import xyz.acproject.danmuji.entity.user_data.UserNav;
 import xyz.acproject.danmuji.entity.view.RoomGift;
 import xyz.acproject.danmuji.tools.CurrencyTools;
+import xyz.acproject.danmuji.tools.file.LogFileTools;
 import xyz.acproject.danmuji.utils.JodaTimeUtils;
 import xyz.acproject.danmuji.utils.OkHttp3Utils;
 import xyz.acproject.danmuji.utils.UrlUtils;
@@ -368,6 +369,225 @@ public class HttpRoomData {
 			LOGGER.error("获取关注数失败，请重试" + jsonObject.getString("message"));
 		}
 		return followersNum;
+	}
+
+
+	/**
+	 * 获取用户关注列表(followings)
+	 */
+	public static JSONObject httpGetFollowings(long vmid, int page, int pageSize) {
+		String data = null;
+		JSONObject jsonObject = null;
+		Map<String, String> headers = null;
+		Map<String, String> datas = null;
+		headers = new HashMap<>(3);
+		headers.put("referer", "https://space.bilibili.com/" + vmid + "/");
+		headers.put("user-agent",
+				"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36");
+		if (StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
+			headers.put("cookie", PublicDataConf.USERCOOKIE);
+		}
+		datas = new HashMap<>(3);
+		datas.put("vmid", String.valueOf(vmid));
+		datas.put("pn", String.valueOf(page));
+		datas.put("ps", String.valueOf(pageSize));
+		try {
+			data = OkHttp3Utils.getHttp3Utils()
+					.httpGet("https://api.bilibili.com/x/relation/followings", headers, datas).body().string();
+		} catch (Exception e) {
+			LOGGER.error(e);
+			data = null;
+		}
+		if (data == null)
+			return null;
+		jsonObject = JSONObject.parseObject(data);
+		return jsonObject;
+	}
+
+	/**
+	 * 获取用户粉丝列表(followers)
+	 */
+	public static JSONObject httpGetFollowers(long vmid, int page, int pageSize) {
+		String data = null;
+		JSONObject jsonObject = null;
+		Map<String, String> headers = null;
+		Map<String, String> datas = null;
+		headers = new HashMap<>(3);
+		headers.put("referer", "https://space.bilibili.com/" + vmid + "/");
+		headers.put("user-agent",
+				"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36");
+		if (StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
+			headers.put("cookie", PublicDataConf.USERCOOKIE);
+		}
+		datas = new HashMap<>(3);
+		datas.put("vmid", String.valueOf(vmid));
+		datas.put("pn", String.valueOf(page));
+		datas.put("ps", String.valueOf(pageSize));
+		try {
+			data = OkHttp3Utils.getHttp3Utils()
+					.httpGet("https://api.bilibili.com/x/relation/followers", headers, datas).body().string();
+		} catch (Exception e) {
+			LOGGER.error(e);
+			data = null;
+		}
+		if (data == null)
+			return null;
+		jsonObject = JSONObject.parseObject(data);
+		return jsonObject;
+	}
+
+	/**
+	 * 处理用户关注列表：判断可见性，输出结果，如果可见且有关注数据则写入文件
+	 */
+	public static long processFollowings(long vmid, String uname) {
+		JSONObject firstPage = httpGetFollowings(vmid, 1, 50);
+		JSONObject output = new JSONObject(true);
+		output.put("print_time", JodaTimeUtils.getCurrentDateTimeString());
+		output.put("viewer_uid", vmid);
+		output.put("viewer_name", uname);
+
+		if (firstPage == null) {
+			LOGGER.info("[" + uname + "] 关注：请求失败");
+			output.put("type", "关注：请求失败");
+			LogFileTools.getlogFileTools().logFollowingsFile(output.toJSONString());
+			return -1;
+		}
+		short code = firstPage.getShort("code");
+		if (code == 22115) {
+			LOGGER.info("[" + uname + "] 关注：不可见");
+			output.put("type", "关注：不可见");
+			LogFileTools.getlogFileTools().logFollowingsFile(output.toJSONString());
+			return -1;
+		}
+		if (code != 0) {
+			LOGGER.info("[" + uname + "] 关注：请求失败(" + firstPage.getString("message") + ")");
+			output.put("type", "关注：请求失败");
+			LogFileTools.getlogFileTools().logFollowingsFile(output.toJSONString());
+			return -1;
+		}
+		JSONObject data = firstPage.getJSONObject("data");
+		if (data == null) {
+			LOGGER.info("[" + uname + "] 关注：0 null");
+			output.put("type", "关注：0");
+			LogFileTools.getlogFileTools().logFollowingsFile(output.toJSONString());
+			return 0;
+		}
+		long total = data.getLongValue("total");
+		LOGGER.info("[" + uname + "] 关注：" + total);
+		if (total == 0) {
+			output.put("type", "关注：0");
+			LogFileTools.getlogFileTools().logFollowingsFile(output.toJSONString());
+			return 0;
+		}
+
+		output.put("type", "followings");
+		output.put("total", total);
+
+		JSONArray followingsList = new JSONArray();
+		int totalPages = (int) Math.ceil((float) total / 50F);
+		for (int p = 1; p <= totalPages; p++) {
+			JSONObject pageData;
+			if (p == 1) {
+				pageData = firstPage;
+			} else {
+				pageData = httpGetFollowings(vmid, p, 50);
+				if (pageData == null || pageData.getShort("code") != 0) {
+					continue;
+				}
+			}
+			JSONArray list = pageData.getJSONObject("data").getJSONArray("list");
+			if (list == null || list.isEmpty()) {
+				continue;
+			}
+			for (Object obj : list) {
+				JSONObject user = (JSONObject) obj;
+				JSONObject item = new JSONObject(true);
+				item.put("uid", user.getLong("mid"));
+				item.put("name", user.getString("uname"));
+				followingsList.add(item);
+			}
+		}
+		output.put("followings_list", followingsList);
+		LogFileTools.getlogFileTools().logFollowingsFile(output.toJSONString());
+		return total;
+	}
+
+	/**
+	 * 处理用户粉丝列表：判断可见性，输出结果，如果可见且有粉丝数据则写入文件
+	 */
+	public static long processFollowers(long vmid, String uname) {
+		JSONObject firstPage = httpGetFollowers(vmid, 1, 50);
+		JSONObject output = new JSONObject(true);
+		output.put("print_time", JodaTimeUtils.getCurrentDateTimeString());
+		output.put("viewer_uid", vmid);
+		output.put("viewer_name", uname);
+
+		if (firstPage == null) {
+			LOGGER.info("[" + uname + "] 粉丝：请求失败");
+			output.put("type", "粉丝：请求失败");
+			LogFileTools.getlogFileTools().logFollowersFile(output.toJSONString());
+			return -1;
+		}
+		short code = firstPage.getShort("code");
+		if (code == 22115) {
+			LOGGER.info("[" + uname + "] 粉丝：不可见");
+			output.put("type", "粉丝：不可见");
+			LogFileTools.getlogFileTools().logFollowersFile(output.toJSONString());
+			return -1;
+		}
+		if (code != 0) {
+			LOGGER.info("[" + uname + "] 粉丝：请求失败(" + firstPage.getString("message") + ")");
+			output.put("type", "粉丝：请求失败");
+			LogFileTools.getlogFileTools().logFollowersFile(output.toJSONString());
+			return -1;
+		}
+		JSONObject data = firstPage.getJSONObject("data");
+		if (data == null) {
+			LOGGER.info("[" + uname + "] 粉丝：0");
+			output.put("type", "粉丝：0");
+			LogFileTools.getlogFileTools().logFollowersFile(output.toJSONString());
+			return 0;
+		}
+		long total = data.getLongValue("total");
+		LOGGER.info("[" + uname + "] 粉丝：" + total);
+		if (total == 0) {
+			output.put("followings", "[" + uname + "] 粉丝：0 total");
+			output.put("type", "粉丝：0");
+			LogFileTools.getlogFileTools().logFollowersFile(output.toJSONString());
+			return 0;
+		}
+
+
+		output.put("type", "followers");
+		output.put("total", total);
+
+		JSONArray followersList = new JSONArray();
+		int totalPages = (int) Math.ceil((float) total / 50F);
+		for (int p = 1; p <= totalPages; p++) {
+			JSONObject pageData;
+			if (p == 1) {
+				pageData = firstPage;
+			} else {
+				pageData = httpGetFollowers(vmid, p, 50);
+				if (pageData == null || pageData.getShort("code") != 0) {
+					continue;
+				}
+			}
+			JSONArray list = pageData.getJSONObject("data").getJSONArray("list");
+			if (list == null || list.isEmpty()) {
+				continue;
+			}
+			for (Object obj : list) {
+				JSONObject user = (JSONObject) obj;
+				JSONObject item = new JSONObject(true);
+				item.put("uid", user.getLong("mid"));
+				item.put("name", user.getString("uname"));
+				followersList.add(item);
+			}
+		}
+		output.put("followers_list", followersList);
+		LogFileTools.getlogFileTools().logFollowersFile(output.toJSONString());
+		return total;
 	}
 
 	public static Map<Long, String> httpGetGuardList() {
