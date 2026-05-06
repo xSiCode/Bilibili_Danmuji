@@ -9,7 +9,7 @@
 
 ```bash
 $ java -version
-java version "1.8.0_121"
+java version "11.0.16"
 ```
 
 ## 项目操作基于WebUI 即是浏览器网页操作

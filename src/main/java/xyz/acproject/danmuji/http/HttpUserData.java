@@ -875,7 +875,30 @@ public class HttpUserData {
         } catch (Exception e) {
             LOGGER.error("获取用户空间信息失败:{}", e.getMessage());
         }
-        // 2. 用户卡片接口（粉丝数、关注数）
+        // 2. 检查关注列表/粉丝列表是否可见（通过API请求判断）
+        try {
+            String followData = OkHttp3Utils.getHttp3Utils()
+                    .httpGet("https://api.bilibili.com/x/relation/followings?vmid=" + uid + "&pn=1&ps=1", headers, null)
+                    .body().string();
+            if (followData != null) {
+                JSONObject foJo = JSONObject.parseObject(followData);
+                result.put("follow_list_visible", foJo.getShort("code") == 0);
+            }
+        } catch (Exception e) {
+            result.put("follow_list_visible", false);
+        }
+        try {
+            String fansData = OkHttp3Utils.getHttp3Utils()
+                    .httpGet("https://api.bilibili.com/x/relation/followers?vmid=" + uid + "&pn=1&ps=1", headers, null)
+                    .body().string();
+            if (fansData != null) {
+                JSONObject faJo = JSONObject.parseObject(fansData);
+                result.put("fans_list_visible", faJo.getShort("code") == 0);
+            }
+        } catch (Exception e) {
+            result.put("fans_list_visible", false);
+        }
+        // 3. 用户卡片接口（粉丝数、关注数）
         headers.put("referer", "https://space.bilibili.com/" + uid);
         try {
             String data = OkHttp3Utils.getHttp3Utils()
