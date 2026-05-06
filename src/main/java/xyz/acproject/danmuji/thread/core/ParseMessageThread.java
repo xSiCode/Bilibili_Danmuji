@@ -1105,60 +1105,68 @@ public class ParseMessageThread extends Thread {
                                         try {
                                             JSONObject card = HttpUserData.httpGetUserCardInfo(_uid);
                                             if (card != null) {
-
-                                                if (card.containsKey("fans")) {
-                                                    SelfTools.appendAt(stringBuilder, 100, "粉丝:"+card.getLong("fans"));
-                                                }
-                                                if (card.containsKey("attention")) {
-                                                    SelfTools.appendAt(stringBuilder, 110, ", 关注:"+card.getLong("attention")) ;
-                                                }
-                                                if (card.containsKey("archive_count")) {
-                                                    SelfTools.appendAt(stringBuilder, 120, ", 视频:"+card.getLong("archive_count")) ;
-                                                }
-                                                if (card.containsKey("article_count")) {
-                                                    SelfTools.appendAt(stringBuilder, 130, ", 专栏:"+card.getLong("article_count")) ;
-                                                }
-
+                                                long attention =-1L;
+                                                long fans =-1L;
+                                                long archiveCount =-1L;
                                                 if (card.containsKey("follow_list_visible")) {
-                                                    stringBuilder.append(", 关见:").append(card.getBoolean("follow_list_visible"));
+                                                    stringBuilder.append("关见:").append(card.getBoolean("follow_list_visible"));
                                                 }
                                                 if (card.containsKey("fans_list_visible")) {
-                                                    stringBuilder.append(", 粉见:").append(card.getBoolean("fans_list_visible"));
+                                                    stringBuilder.append(" , 粉见:").append(card.getBoolean("fans_list_visible"));
                                                 }
 
-                                                if (card.containsKey("relation_status")) {
-                                                    String rel;
-                                                    switch (card.getInteger("relation_status")) {
-                                                        case 2: rel = "主播已关注"; break;
-                                                        case 3: rel = "观众已关注主播"; break;
-                                                        case 4: rel = "互相关注"; break;
-                                                        case 5: rel = "特别关注"; break;
-                                                        default: rel = "无关系"; break;
-                                                    }
-                                                    stringBuilder.append(", 关系:").append(rel).append("\t");
+                                                if (card.containsKey("attention")) {
+                                                    attention = card.getLong("attention");
+                                                    SelfTools.appendAt(stringBuilder, 110, " , 关注:"+attention) ;
                                                 }
+
+                                                if (card.containsKey("fans")) {
+                                                    fans = card.getLong("fans");
+                                                    SelfTools.appendAt(stringBuilder, 100, " , 粉丝:"+fans);
+                                                }
+
+                                                if (card.containsKey("archive_count")) {
+                                                    archiveCount = card.getLong("archive_count");
+                                                    SelfTools.appendAt(stringBuilder, 120, " , 视频:"+archiveCount) ;
+                                                }
+
+                                                if(attention!=-1L && fans!=-1L){
+                                                    if (fans > 10_0000){
+                                                        stringBuilder.append(" , 大博主：").append(fans/10_0000);
+                                                    }else if (fans > 10000 && attention<200 || archiveCount > 100){
+                                                        stringBuilder.append(" , 博主：").append(fans/10000);
+                                                    }else if (fans < 100 && attention > 3000){
+                                                        stringBuilder.append(" , 人机");
+                                                    }
+                                                }
+
                                                 if (card.containsKey("level")) {
-                                                    stringBuilder.append(", 等级:").append(card.getInteger("level"));
+                                                    Integer level = card.getInteger("level");
+                                                    stringBuilder.append(" , LV:").append(level);
+                                                    if (level < 2) {
+                                                        stringBuilder.append(" , 人机");
+                                                    }
+
                                                 }
                                                 if (card.containsKey("official_title") && StringUtils.isNotBlank(card.getString("official_title"))) {
-                                                    stringBuilder.append(", 认证:").append(card.getString("official_title"));
+                                                    stringBuilder.append(" , 认证:").append(card.getString("official_title"));
                                                 }
                                                 if (card.containsKey("vip_label") && StringUtils.isNotBlank(card.getString("vip_label"))) {
-                                                    stringBuilder.append(", 会员:").append(card.getString("vip_label"));
+                                                    stringBuilder.append(" , 会员:").append(card.getString("vip_label"));
                                                 }
                                                 if (card.containsKey("live_room_id")) {
-                                                    stringBuilder.append(", 直播间:").append(card.get("live_room_id"));
+                                                    stringBuilder.append(" , 直播间:").append(card.get("live_room_id"));
                                                 }
                                                 if (card.containsKey("sex")) {
-                                                    stringBuilder.append(", 性别:").append(card.getString("sex"));
+                                                    stringBuilder.append(" , 性别:").append(card.getString("sex"));
                                                 }
 
-                                                if (card.containsKey("following")) {
-                                                    stringBuilder.append(", 主播已关注:").append(card.getBoolean("following"));
-                                                }
+//                                                if (card.containsKey("following")) {
+//                                                    stringBuilder.append(", 主播已关注:").append(card.getBoolean("following"));
+//                                                }
 
                                                 if (card.containsKey("sign")) {
-                                                    stringBuilder.append(", 签名:").append(card.getString("sign"));
+                                                    stringBuilder.append(" , 签名:").append(card.getString("sign"));
                                                 }
                                             }
                                         } catch (Exception e) {
@@ -1185,7 +1193,7 @@ public class ParseMessageThread extends Thread {
                                         new Thread(() -> {
                                             HttpRoomData.processFollowings(_follow_uid, _follow_uname);
                                         }).start();
-                                        new Thread(() -> {
+                                        new Thread(() -> {   // 不打印粉丝列表，因为获取不到
                                             HttpRoomData.processFollowers(_follow_uid, _follow_uname);
                                         }).start();
                                     }

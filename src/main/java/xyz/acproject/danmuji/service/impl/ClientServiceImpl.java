@@ -125,50 +125,6 @@ public class ClientServiceImpl implements ClientService {
             CurrencyTools.handleLotteryInfoWebByTx(PublicDataConf.ROOMID, lotteryInfoWeb);
         }
 
-//        //检查天选
-//        CheckTx checkTx = null;
-//        // 登录发现天选屏蔽礼物
-//        if (PublicDataConf.centerSetConf != null && PublicDataConf.centerSetConf.getThank_gift().is_tx_shield()) {
-//            if (StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
-//               checkTx = HttpRoomData.httpGetCheckTX();
-//                if (checkTx != null) {
-//                    if (StringUtils.isNotBlank(checkTx.getGift_name())) {
-//                        if (checkTx.getTime() > 0) {
-//                            threadComponent.startGiftShieldThread(checkTx.getGift_name(), checkTx.getTime());
-//                        }
-//                    }
-//                }
-//            }
-//        }
-//
-//        // 登录发现天选屏蔽关注
-//        if (PublicDataConf.centerSetConf != null && PublicDataConf.centerSetConf.getFollow().is_tx_shield()) {
-//            if (StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
-//                if(checkTx==null) {
-//                    checkTx = HttpRoomData.httpGetCheckTX();
-//                }
-//                if (checkTx != null) {
-//                    if (checkTx.getTime() > 0) {
-//                        // do something
-//                        threadComponent.startFollowShieldThread(checkTx.getTime());
-//                    }
-//                }
-//            }
-//        }
-//        // 登录发现天选屏蔽欢迎
-//        if (PublicDataConf.centerSetConf != null && PublicDataConf.centerSetConf.getWelcome().is_tx_shield()) {
-//            if (StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
-//                if(checkTx==null) {
-//                   checkTx = HttpRoomData.httpGetCheckTX();
-//                }
-//                if (checkTx != null) {
-//                    if (checkTx.getTime() > 0) {
-//                        // do something
-//                        threadComponent.startWelcomeShieldThread(checkTx.getTime());
-//                    }
-//                }
-//            }
-//        }
         //舰长本地存储处理
         if (StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
             if (PublicDataConf.centerSetConf != null
