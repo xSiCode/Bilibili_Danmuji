@@ -39,6 +39,9 @@ import xyz.acproject.danmuji.utils.JodaTimeUtils;
 import xyz.acproject.danmuji.utils.SelfTools;
 import xyz.acproject.danmuji.utils.SpringUtils;
 
+import java.awt.*;
+import java.io.IOException;
+import java.net.URI;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -1093,11 +1096,12 @@ public class ParseMessageThread extends Thread {
                                     if (getCenterSetConf().is_watcher_log()) {
                                         final long _uid = interact.getUid();
                                         final String _uname = interact.getUname();
+                                        String url = "https://space.bilibili.com/";
                                         final MedalInfo _medal = interact.getFans_medal();
                                         stringBuilder.append(JodaTimeUtils.formatDateTime(System.currentTimeMillis()));
 
                                         SelfTools.appendAt(stringBuilder, 20, _uname);
-                                        SelfTools.appendAt(stringBuilder, 50, "https://space.bilibili.com/"+_uid);
+                                        SelfTools.appendAt(stringBuilder, 50, url+_uid);
                                         SelfTools.appendAt(stringBuilder, 95, "\t");
 
 
@@ -1108,8 +1112,14 @@ public class ParseMessageThread extends Thread {
                                                 long attention =-1L;
                                                 long fans =-1L;
                                                 long archiveCount =-1L;
+                                                String midStr ="";
+
                                                 if (card.containsKey("follow_list_visible")) {
-                                                    stringBuilder.append("关见:").append(card.getBoolean("follow_list_visible"));
+                                                    Boolean followListVisible = card.getBoolean("follow_list_visible");
+                                                    stringBuilder.append("关见:").append(followListVisible);
+                                                    if (!followListVisible && midStr.isEmpty()) {
+                                                        midStr = ""+_uid+"?关注不可见" ; // 不可见时打开链接
+                                                    }
                                                 }
                                                 if (card.containsKey("fans_list_visible")) {
                                                     stringBuilder.append(" , 粉见:").append(card.getBoolean("fans_list_visible"));
@@ -1135,39 +1145,52 @@ public class ParseMessageThread extends Thread {
                                                         stringBuilder.append(" , 大博主：").append(fans/10_0000);
                                                     }else if (fans > 10000 && attention<200 || archiveCount > 100){
                                                         stringBuilder.append(" , 博主：").append(fans/10000);
-                                                    }else if (fans < 100 && attention > 3000){
+                                                    }else if (fans < 100 && attention > 3000  && midStr.isEmpty()){
                                                         stringBuilder.append(" , 人机");
+                                                        midStr = ""+_uid+"?疑似人机"; // 人机时打开链接
                                                     }
                                                 }
 
                                                 if (card.containsKey("level")) {
                                                     Integer level = card.getInteger("level");
                                                     stringBuilder.append(" , LV:").append(level);
-                                                    if (level < 2) {
-                                                        stringBuilder.append(" , 人机");
+                                                    if (level < 2 && midStr.isEmpty()) {
+                                                        stringBuilder.append(" , 新号");
+                                                        midStr = ""+_uid+"?LV="+level; // 新号时打开链接
                                                     }
-
+                                                } else {
+                                                    stringBuilder.append(" , LV:无");
+                                                    midStr = ""+_uid+"?LV:无"; // 新号时打开链接
                                                 }
+
+
+
                                                 if (card.containsKey("official_title") && StringUtils.isNotBlank(card.getString("official_title"))) {
                                                     stringBuilder.append(" , 认证:").append(card.getString("official_title"));
                                                 }
                                                 if (card.containsKey("vip_label") && StringUtils.isNotBlank(card.getString("vip_label"))) {
                                                     stringBuilder.append(" , 会员:").append(card.getString("vip_label"));
                                                 }
-                                                if (card.containsKey("live_room_id")) {
-                                                    stringBuilder.append(" , 直播间:").append(card.get("live_room_id"));
-                                                }
                                                 if (card.containsKey("sex")) {
                                                     stringBuilder.append(" , 性别:").append(card.getString("sex"));
                                                 }
 
-//                                                if (card.containsKey("following")) {
-//                                                    stringBuilder.append(", 主播已关注:").append(card.getBoolean("following"));
-//                                                }
-
                                                 if (card.containsKey("sign")) {
                                                     stringBuilder.append(" , 签名:").append(card.getString("sign"));
                                                 }
+
+                                                if (!midStr.isEmpty()){
+                                                    try {
+                                                        // Windows 专用命令：start 后面跟 url 会用默认浏览器打开
+                                                        // 注意：在 cmd 中执行 start 命令通常需要加 "" 作为窗口标题占位符
+                                                        Runtime.getRuntime().exec(new String[]{"cmd", "/c", "start", "", url+midStr});
+                                                        System.out.println("命令已发送，浏览器应该正在启动...");
+                                                        midStr = "";
+                                                    } catch (IOException e) {
+                                                        throw new RuntimeException(e);
+                                                    }
+                                                }
+
                                             }
                                         } catch (Exception e) {
                                         }

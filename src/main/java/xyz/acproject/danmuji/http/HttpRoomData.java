@@ -515,6 +515,9 @@ public class HttpRoomData {
 		}
 		output.put("followings_list", followingsList);
 		LogFileTools.getlogFileTools().logFollowingsFile(output.toJSONString());
+
+
+
 		return total;
 	}
 
