@@ -419,6 +419,11 @@ public class HttpRoomData {
 		if (StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
 			headers.put("cookie", PublicDataConf.USERCOOKIE);
 		}
+//		if (PublicDataConf.COOKIE != null && StringUtils.isNotBlank(PublicDataConf.COOKIE.getBili_jct())) {
+//			headers.put("csrf_token", PublicDataConf.COOKIE.getBili_jct());
+//			headers.put("csrf", PublicDataConf.COOKIE.getBili_jct());
+//		}
+
 		datas = new HashMap<>(3);
 		datas.put("vmid", String.valueOf(vmid));
 		datas.put("pn", String.valueOf(page));
@@ -485,6 +490,7 @@ public class HttpRoomData {
 
 		JSONArray followingsList = new JSONArray();
 		int totalPages = (int) Math.ceil((float) total / 50F);
+		totalPages = Math.min(totalPages, 5);
 		for (int p = 1; p <= totalPages; p++) {
 			JSONObject pageData;
 			if (p == 1) {
@@ -563,6 +569,7 @@ public class HttpRoomData {
 
 		JSONArray followersList = new JSONArray();
 		int totalPages = (int) Math.ceil((float) total / 50F);
+		totalPages = Math.min(totalPages, 5);
 		for (int p = 1; p <= totalPages; p++) {
 			JSONObject pageData;
 			if (p == 1) {

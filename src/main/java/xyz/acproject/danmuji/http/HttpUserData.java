@@ -839,10 +839,8 @@ public class HttpUserData {
                     JSONObject spaceData = jsonObject.getJSONObject("data");
                     result.put("name", spaceData.getString("name"));
                     result.put("sex", spaceData.getString("sex"));
-                    result.put("face", spaceData.getString("face"));
                     result.put("sign", spaceData.getString("sign"));
                     result.put("level", spaceData.getInteger("level"));
-                    result.put("top_photo", spaceData.getString("top_photo"));
                     // 认证信息
                     JSONObject official = spaceData.getJSONObject("official");
                     if (official != null) {
