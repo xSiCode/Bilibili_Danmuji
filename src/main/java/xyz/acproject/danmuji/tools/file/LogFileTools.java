@@ -106,4 +106,64 @@ public class LogFileTools {
 //			}
 		}
 	}
+
+	public void logWatcherFile(String msg) {
+		OutputStreamWriter os = null;
+		BufferedWriter bw = null;
+		PrintWriter pw = null;
+		String path = System.getProperty("user.dir");
+		FileTools fileTools = new FileTools();
+		StringBuilder stringBuilder = new StringBuilder();
+		try {
+			path = URLDecoder.decode(fileTools.getBaseJarPath().toString(), "utf-8");
+		} catch (Exception e1) {
+			e1.printStackTrace();
+		}
+		try {
+			path = path + "/Danmuji_log/";
+			File file = new File(path);
+			if (file.exists() == false)
+				file.mkdirs();
+			stringBuilder.append(JodaTimeUtils.getCurrentDateString());
+			stringBuilder.append("(");
+			stringBuilder.append(PublicDataConf.ROOMID);
+			stringBuilder.append(")");
+			stringBuilder.append("viewers");
+			file = new File(path + stringBuilder.toString() + ".txt");
+			stringBuilder.delete(0, stringBuilder.length());
+			if (file.exists() == false)
+				try {
+					file.createNewFile();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			os = new OutputStreamWriter(new FileOutputStream(file, true), "utf-8");
+			bw = new BufferedWriter(os);
+			pw = new PrintWriter(bw);
+			pw.println(msg);
+			os.flush();
+			bw.flush();
+			pw.flush();
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			if (os != null) {
+				try {
+					os.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+			if (bw != null) {
+				try {
+					bw.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+			if (pw != null) {
+				pw.close();
+			}
+		}
+	}
 }

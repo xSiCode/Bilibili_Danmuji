@@ -41,6 +41,7 @@ public class ThreadComponentImpl implements ThreadComponent {
 		closeAdvertThread();
 		closeSendBarrageThread();
 		closeLogThread();
+			closeWatcherLogThread();
 		closeGiftShieldThread();
 		closeFollowShieldThread();
 		closeWelcomeShieldThread();
@@ -57,6 +58,7 @@ public class ThreadComponentImpl implements ThreadComponent {
 		closeAdvertThread();
 		closeSendBarrageThread();
 		closeLogThread();
+		closeWatcherLogThread();
 		closeGiftShieldThread();
 		closeFollowShieldThread();
 		closeWelcomeShieldThread();
@@ -131,6 +133,20 @@ public class ThreadComponentImpl implements ThreadComponent {
 		PublicDataConf.logThread.FLAG = false;
 		PublicDataConf.logThread.start();
 		if (PublicDataConf.logThread != null && !PublicDataConf.logThread.getState().toString().equals("TERMINATED")) {
+			return true;
+		}
+		return false;
+	}
+
+	@Override
+	public boolean startWatcherLogThread() {
+		if (PublicDataConf.watcherLogThread != null) {
+			return false;
+		}
+		PublicDataConf.watcherLogThread = new WatcherLogThread();
+		PublicDataConf.watcherLogThread.FLAG = false;
+		PublicDataConf.watcherLogThread.start();
+		if (PublicDataConf.watcherLogThread != null && !PublicDataConf.watcherLogThread.getState().toString().equals("TERMINATED")) {
 			return true;
 		}
 		return false;
@@ -556,6 +572,15 @@ public class ThreadComponentImpl implements ThreadComponent {
 			PublicDataConf.logThread.FLAG = true;
 			PublicDataConf.logThread.interrupt();
 			PublicDataConf.logThread = null;
+		}
+	}
+
+	@Override
+	public void closeWatcherLogThread() {
+		if (PublicDataConf.watcherLogThread != null) {
+			PublicDataConf.watcherLogThread.FLAG = true;
+			PublicDataConf.watcherLogThread.interrupt();
+			PublicDataConf.watcherLogThread = null;
 		}
 	}
 

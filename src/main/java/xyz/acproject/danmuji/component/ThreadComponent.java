@@ -84,8 +84,14 @@ public interface ThreadComponent {
 	// 关闭用户心跳线程
 	void closeSmallHeartThread();
 
+	// 开启观众日志线程
+	boolean startWatcherLogThread();
+
 	// 关闭日志线程
 	void closeLogThread();
+
+	// 关闭观众日志线程
+	void closeWatcherLogThread();
 
 	void closeAdvertThread();
 

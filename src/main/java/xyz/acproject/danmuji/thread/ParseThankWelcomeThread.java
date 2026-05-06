@@ -19,6 +19,7 @@ import java.util.Vector;
 @Setter
 public class ParseThankWelcomeThread extends Thread{
     public volatile boolean FLAG = false;
+    public volatile boolean COOLDOWN = false;
     private String thankWelcomeString = "欢迎%uNames%进入直播间~";
     private Short num = 1;
     private Long delaytime = 3000L;
@@ -71,6 +72,13 @@ public class ParseThankWelcomeThread extends Thread{
                     }
                     interacts.clear();
                     PublicDataConf.interactWelcome.clear();
+                    // 间隔欢迎：欢迎完成后进入冷却期，冷却期内进入的观众直接丢弃
+                    COOLDOWN = true;
+                    try {
+                        Thread.sleep(getDelaytime());
+                    } catch (InterruptedException e) {
+                    }
+                    COOLDOWN = false;
                     break;
                 }
             }
