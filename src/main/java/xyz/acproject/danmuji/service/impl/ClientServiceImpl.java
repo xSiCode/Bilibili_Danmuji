@@ -75,7 +75,6 @@ public class ClientServiceImpl implements ClientService {
         //公共信息处理
         PublicDataConf.AUID = roomInit.getUid();
         PublicDataConf.FANSNUM = HttpRoomData.httpGetFollowersNum();
-
         PublicDataConf.URL = CurrencyTools.GetWsUrl(conf.getHost_list());
         PublicDataConf.ANCHOR_NAME = room.getUname();
         PublicDataConf.lIVE_STATUS = roomInit.getLive_status();
@@ -219,7 +218,6 @@ public class ClientServiceImpl implements ClientService {
             }
             PublicDataConf.AUID = roomInit.getUid();
             PublicDataConf.FANSNUM = HttpRoomData.httpGetFollowersNum();
-
             PublicDataConf.URL = CurrencyTools.GetWsUrl(conf.getHost_list());
 
             PublicDataConf.ANCHOR_NAME = room.getUname();

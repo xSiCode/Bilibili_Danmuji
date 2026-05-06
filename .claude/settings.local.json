@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew compileJava)",
+      "Bash(python -c \"print\\('found'\\)\")",
+      "Bash(python -c ' *)",
+      "Bash(python refactor_http.py)",
+      "Bash(git checkout *)",
+      "Bash(python fix_http.py)",
+      "Bash(iconv -f GBK -t UTF-8)",
+      "Bash(python fix_fields.py)"
+    ]
+  }
+}

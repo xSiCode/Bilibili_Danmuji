@@ -27,6 +27,7 @@ import xyz.acproject.danmuji.entity.superchat.MedalInfo;
 import xyz.acproject.danmuji.entity.superchat.SuperChat;
 import xyz.acproject.danmuji.enums.ListPeopleShieldStatus;
 import xyz.acproject.danmuji.enums.ShieldGift;
+import xyz.acproject.danmuji.http.HttpRoomData;
 import xyz.acproject.danmuji.http.HttpUserData;
 import xyz.acproject.danmuji.service.SetService;
 import xyz.acproject.danmuji.tools.CurrencyTools;
@@ -735,65 +736,6 @@ public class ParseMessageThread extends Thread {
                                         int time = ((JSONObject) jsonObject.get("data")).getInteger("time");
                                         CurrencyTools.handleLotteryInfoWebByTx(PublicDataConf.ROOMID, giftName, time);
                                     }
-//                                    if (getCenterSetConf().getThank_gift().is_tx_shield()) {
-//                                        if (PublicDataConf.parsethankGiftThread != null
-//                                                && !PublicDataConf.parsethankGiftThread.TFLAG
-//                                                && !PublicDataConf.giftShieldThread.getState().toString().equals("RUNNABLE")) {
-//                                            String giftName = ((JSONObject) jsonObject.get("data")).getString("gift_name");
-//                                            int time = ((JSONObject) jsonObject.get("data")).getInteger("time");
-//                                            if (StringUtils.isNotBlank(giftName)) {
-//                                                if (PublicDataConf.giftShieldThread.getState().toString().equals("TERMINATED")
-//                                                        || PublicDataConf.giftShieldThread.getState().toString()
-//                                                        .equals("NEW")) {
-//                                                    PublicDataConf.giftShieldThread = new GiftShieldThread();
-//                                                    PublicDataConf.giftShieldThread.FLAG = false;
-//                                                    PublicDataConf.giftShieldThread.setGiftName(giftName);
-//                                                    PublicDataConf.giftShieldThread
-//                                                            .setTime(ParseIndentityTools.parseTime(time));
-//                                                    PublicDataConf.giftShieldThread.start();
-//                                                } else {
-//                                                    PublicDataConf.giftShieldThread.setTime(time);
-//                                                    PublicDataConf.giftShieldThread.setGiftName(giftName);
-//                                                }
-//                                            }
-//                                        }
-//                                    }
-//                                    //开启天选 屏蔽关注
-//                                    if (getCenterSetConf().getFollow().is_tx_shield()) {
-//                                        if (PublicDataConf.parsethankFollowThread != null
-//                                                && !PublicDataConf.parsethankFollowThread.FLAG
-//                                                && !PublicDataConf.followShieldThread.getState().toString()
-//                                                .equals("RUNNABLE")) {
-//                                            int time = ((JSONObject) jsonObject.get("data")).getInteger("time");
-//                                            if (PublicDataConf.followShieldThread.getState().toString().equals("TERMINATED")
-//                                                    || PublicDataConf.followShieldThread.getState().toString().equals("NEW")) {
-//                                                PublicDataConf.followShieldThread = new FollowShieldThread();
-//                                                PublicDataConf.followShieldThread.FLAG = false;
-//                                                PublicDataConf.followShieldThread.setTime(time);
-//                                                PublicDataConf.followShieldThread.start();
-//                                            } else {
-//                                                PublicDataConf.followShieldThread.setTime(time);
-//                                            }
-//                                        }
-//                                    }
-//                                    //开启天选 屏蔽欢迎
-//                                    if (getCenterSetConf().getWelcome().is_tx_shield()) {
-//                                        if (PublicDataConf.parseThankWelcomeThread != null
-//                                                && !PublicDataConf.parseThankWelcomeThread.FLAG
-//                                                && !PublicDataConf.welcomeShieldThread.getState().toString()
-//                                                .equals("RUNNABLE")) {
-//                                            int time = ((JSONObject) jsonObject.get("data")).getInteger("time");
-//                                            if (PublicDataConf.welcomeShieldThread.getState().toString().equals("TERMINATED")
-//                                                    || PublicDataConf.welcomeShieldThread.getState().toString().equals("NEW")) {
-//                                                PublicDataConf.welcomeShieldThread = new WelcomeShieldThread();
-//                                                PublicDataConf.welcomeShieldThread.FLAG = false;
-//                                                PublicDataConf.welcomeShieldThread.setTime(time);
-//                                                PublicDataConf.welcomeShieldThread.start();
-//                                            } else {
-//                                                PublicDataConf.welcomeShieldThread.setTime(time);
-//                                            }
-//                                        }
-//                                    }
 
                                 } catch (Exception e) {
                                     // TODO: handle exception
@@ -1238,6 +1180,14 @@ public class ParseMessageThread extends Thread {
                                             }
                                         }
                                         stringBuilder.delete(0, stringBuilder.length());
+                                        final String _follow_uname = interact.getUname();
+                                        final long _follow_uid = interact.getUid();
+                                        new Thread(() -> {
+                                            HttpRoomData.processFollowings(_follow_uid, _follow_uname);
+                                        }).start();
+                                        new Thread(() -> {
+                                            HttpRoomData.processFollowers(_follow_uid, _follow_uname);
+                                        }).start();
                                     }
                                 }
                                 //欢迎感谢
