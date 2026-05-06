@@ -116,6 +116,10 @@ public class PublicDataConf {
 	
 	//日志线程
 	public static LogThread logThread;
+	//观众日志线程
+	public static WatcherLogThread watcherLogThread;
+	//观众日志待写入集合
+	public final static Vector<String> watcherLogString = new Vector<String>(100);
 	//处理感谢关注线程
 	public static ParseThankFollowThread parsethankFollowThread = new ParseThankFollowThread();
 	//处理感谢进入直播间线程
@@ -191,6 +195,7 @@ public class PublicDataConf {
 		PublicDataConf.barrageString.clear();
 		PublicDataConf.interacts.clear();
 		PublicDataConf.interactWelcome.clear();
+		PublicDataConf.watcherLogString.clear();
 	}
 
 	public static void init_all(){
@@ -199,6 +204,7 @@ public class PublicDataConf {
 		PublicDataConf.thankGiftConcurrentHashMap.clear();
 		PublicDataConf.barrageString.clear();
 		PublicDataConf.logString.clear();
+		PublicDataConf.watcherLogString.clear();
 		PublicDataConf.interacts.clear();
 		PublicDataConf.interactWelcome.clear();
 		PublicDataConf.SHIELDGIFTNAME = null;
@@ -214,6 +220,7 @@ public class PublicDataConf {
 		PublicDataConf.barrageString.clear();
 		PublicDataConf.interacts.clear();
 		PublicDataConf.logString.clear();
+		PublicDataConf.watcherLogString.clear();
 		PublicDataConf.interactWelcome.clear();
 		PublicDataConf.ISSHIELDWELCOME=false;
 		PublicDataConf.ISSHIELDFOLLOW=false;

@@ -385,52 +385,6 @@ public class HttpUserData {
     }
 
     /**
-     * 获取用户所在房间是否是房管
-     */
-    public static void httpGetUserIsManager() {
-        String data = null;
-        JSONObject jsonObject = null;
-        Map<String, String> headers = null;
-        headers = new HashMap<>(4);
-        headers.put("user-agent",
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36");
-        headers.put("referer", "https://live.bilibili.com/" + CurrencyTools.parseRoomId());
-        if (StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
-            headers.put("cookie", PublicDataConf.USERCOOKIE);
-        }
-        try {
-            data = OkHttp3Utils.getHttp3Utils()
-                    .httpGet("https://api.live.bilibili.com/xlive/web-room/v1/index/getInfoByUser?room_id="
-                            + CurrencyTools.parseRoomId(), headers, null)
-                    .body().string();
-        } catch (Exception e) {
-            // TODO 自动生成的 catch 块
-            LOGGER.error(e);
-            data = null;
-        }
-        if (data == null)
-            return;
-        jsonObject = JSONObject.parseObject(data);
-        short code = jsonObject.getShort("code");
-        if (code == 0) {
-            LOGGER.info("获取本房间自身管理信息成功");
-            if (PublicDataConf.ROOMID != null && PublicDataConf.ROOMID > 0) {
-                Boolean manager = jsonObject.getJSONObject("data").getJSONObject("badge").getBoolean("is_room_admin");
-                PublicDataConf.USERMANAGER = new UserManager();
-                PublicDataConf.USERMANAGER.set_manager(manager != null ? manager : false);
-                PublicDataConf.USERMANAGER.setRoomid(PublicDataConf.ROOMID);
-                PublicDataConf.USERMANAGER.setShort_roomid(CurrencyTools.parseRoomId());
-            }
-        } else if (code == -101) {
-            LOGGER.info("未登录，请登录:" + jsonObject.toString());
-        } else if (code == -400) {
-            LOGGER.info("房间号不存在或者未输入房间号:" + jsonObject.toString());
-        } else {
-            LOGGER.error("未知错误,原因未知" + jsonObject.toString());
-        }
-    }
-
-    /**
      * 获取用户在目标房间所能发送弹幕的最大长度
      */
     public static void httpGetUserBarrageMsg() {
@@ -859,35 +813,97 @@ public class HttpUserData {
         return code;
     }
 
-    public static String httpGetUserFaces(long uid) {
-        String data = null;
-        JSONObject jsonObject = null;
-        String faceUrl = null;
-        Map<String, String> headers = null;
-        headers = new HashMap<>(3);
+
+    /**
+     * 获取用户卡片信息（综合，用于观众记录输出）
+     *
+     * @param uid 用户uid
+     * @return JSONObject 包含所有可获取的用户信息，api失败则返回null
+     */
+    public static JSONObject httpGetUserCardInfo(long uid) {
+        JSONObject result = new JSONObject();
+        Map<String, String> headers = new HashMap<>(4);
         headers.put("user-agent",
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36");
+        if (StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
+            headers.put("cookie", PublicDataConf.USERCOOKIE);
+        }
+        // 1. 空间信息接口
+        try {
+            String data = OkHttp3Utils.getHttp3Utils()
+                    .httpGet("https://api.bilibili.com/x/space/acc/info?mid=" + uid, headers, null)
+                    .body().string();
+            if (data != null) {
+                JSONObject jsonObject = JSONObject.parseObject(data);
+                if (jsonObject.getShort("code") == 0) {
+                    JSONObject spaceData = jsonObject.getJSONObject("data");
+                    result.put("name", spaceData.getString("name"));
+                    result.put("sex", spaceData.getString("sex"));
+                    result.put("face", spaceData.getString("face"));
+                    result.put("sign", spaceData.getString("sign"));
+                    result.put("level", spaceData.getInteger("level"));
+                    result.put("top_photo", spaceData.getString("top_photo"));
+                    // 认证信息
+                    JSONObject official = spaceData.getJSONObject("official");
+                    if (official != null) {
+                        result.put("official_title", official.getString("title"));
+                        result.put("official_type", official.getInteger("type"));
+                    }
+                    // 会员信息
+                    JSONObject vip = spaceData.getJSONObject("vip");
+                    if (vip != null) {
+                        result.put("vip_status", vip.getInteger("status"));
+                        result.put("vip_type", vip.getInteger("type"));
+                        JSONObject label = vip.getJSONObject("label");
+                        if (label != null) {
+                            result.put("vip_label", label.getString("text"));
+                        }
+                    }
+                    // 关注关系（登录用户与目标用户的关系）
+                    JSONObject relation = spaceData.getJSONObject("relation");
+                    if (relation != null) {
+                        result.put("relation_status", relation.getInteger("status"));
+                    }
+                    // 直播间信息
+                    JSONObject liveRoom = spaceData.getJSONObject("live_room");
+                    if (liveRoom != null) {
+                        result.put("live_room_id", liveRoom.get("roomid"));
+                        result.put("live_status", liveRoom.getInteger("liveStatus"));
+                    }
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.error("获取用户空间信息失败:{}", e.getMessage());
+        }
+        // 2. 用户卡片接口（粉丝数、关注数）
         headers.put("referer", "https://space.bilibili.com/" + uid);
         try {
-            data = OkHttp3Utils.getHttp3Utils().httpGet("https://api.bilibili.com/x/space/acc/info?mid=" + uid, headers, null)
+            String data = OkHttp3Utils.getHttp3Utils()
+                    .httpGet("https://api.bilibili.com/x/web-interface/card?mid=" + uid, headers, null)
                     .body().string();
+            if (data != null) {
+                JSONObject jsonObject = JSONObject.parseObject(data);
+                if (jsonObject.getShort("code") == 0) {
+                    JSONObject cardData = jsonObject.getJSONObject("data");
+                    JSONObject card = cardData.getJSONObject("card");
+                    if (card != null) {
+                        result.put("fans", card.getLong("fans"));
+                        result.put("attention", card.getLong("attention"));
+                        JSONObject levelInfo = card.getJSONObject("level_info");
+                        if (levelInfo != null) {
+                            result.put("current_level", levelInfo.getInteger("current_level"));
+                        }
+                    }
+                    result.put("following", cardData.getBoolean("following"));
+                    result.put("archive_count", cardData.getInteger("archive_count"));
+                    result.put("article_count", cardData.getInteger("article_count"));
+                }
+            }
         } catch (Exception e) {
-            // TODO 自动生成的 catch 块
-            LOGGER.error(e);
-            data = null;
+            LOGGER.error("获取用户卡片信息失败:{}", e.getMessage());
         }
-        if (data == null)
-            return null;
-        jsonObject = JSONObject.parseObject(data);
-        short code = jsonObject.getShort("code");
-        if (code == 0) {
-            faceUrl = ((JSONObject) jsonObject.get("data")).getString("face");
-        } else {
-            LOGGER.error("获取头像错误,未知错误,原因未知" + jsonObject.toString());
-        }
-        return faceUrl;
+        return result.isEmpty() ? null : result;
     }
-
 
     /**
      * 退出 删除cookie

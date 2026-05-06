@@ -73,6 +73,9 @@ public class CenterSetConf implements Serializable {
     //是否开启日志线程
     @JSONField(name = "is_log")
     private boolean is_log = false;
+    //是否开启观众记录
+    @JSONField(name = "is_watcher_log")
+    private boolean is_watcher_log = false;
     //是否控制台打印
     @JSONField(name = "is_cmd")
     private boolean is_cmd = true;

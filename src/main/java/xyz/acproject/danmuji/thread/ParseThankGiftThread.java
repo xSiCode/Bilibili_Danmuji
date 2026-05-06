@@ -33,6 +33,7 @@ public class ParseThankGiftThread extends Thread {
 //	@SuppressWarnings("unused")
 //	private static Logger LOGGER = LogManager.getLogger(ParseThankGiftThread.class);
 	public volatile boolean TFLAG = false;
+	public volatile boolean COOLDOWN = false;
 	private Long delaytime = 3000L;
 	private Long timestamp;
 	private String thankGiftString = "感谢%uName%大佬%Type%的%GiftName% x%Num%";
@@ -220,6 +221,13 @@ public class ParseThankGiftThread extends Thread {
 //						iterator.remove();
 //					}
 					PublicDataConf.thankGiftConcurrentHashMap.clear();
+					// 间隔感谢：感谢完成后进入冷却期，冷却期内的礼物直接丢弃
+					COOLDOWN = true;
+					try {
+						Thread.sleep(getDelaytime());
+					} catch (InterruptedException e) {
+					}
+					COOLDOWN = false;
 					break;
 				}
 			}

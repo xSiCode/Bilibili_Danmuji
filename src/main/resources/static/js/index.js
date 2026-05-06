@@ -225,12 +225,7 @@ $(document).on('click', '#gift-shield-btn', function () {
 
 
 });
-$(document).on('click', '#replys-btn', function () {
-    if (!$(".replys-mask").is(":visible")) {
-        $(".replys-mask").show();
-    }
-
-});
+// 原replys-btn弹窗按钮已移除，改为内联显示
 $(document).on('click', '.btn-close', function () {
     if ($(".shieldgifts-mask").is(":visible")) {
         $(".shieldgifts-mask").hide();
@@ -247,21 +242,7 @@ $(document).on('click', '.btn-close-wel', function () {
         $("#wel-model").modal('hide');
     // }
 });
-$(document).on('click', '.btn-closer', function () {
-    let is_hide = true;
-    /*    if ($(".replys-mask").is(":visible")) {*/
-    /*  $(".replys-ul").children("li").each(function (i, v) {
-          if ($(".reply_keywords").eq(i).val() === "" || $(".reply_rs").eq(i).val() === "") {
-              alert("关键字和回复语句都不能为空！！！");
-              is_hide = false;
-          }
-          if (!is_hide) return false;
-      });*/
-    if (!is_hide) return;
-    /*    $(".replys-mask").hide();*/
-    $('#reply-model').modal('hide');
-    /*    }*/
-});
+// 原btn-closer模态关闭按钮已移除，改为内联显示
 $(document).on('click', '.btn-block', function () {
     const uid = $(".block-input").attr("uid");
     const time = $(".block-input").val();
@@ -747,6 +728,7 @@ const method = {
         set.is_welcome_all = $(".is_welcome_all").is(':checked');
         set.is_follow_dm = $(".is_follow").is(':checked');
         set.log = $(".is_log").is(':checked');
+        set.is_watcher_log = $(".is_watcher_log").is(':checked');
         set.is_online = $(".is_online").is(':checked');
         /* 管理登录 */
         set.is_manager_login = $(".is_manager_login").is(':checked');
@@ -1054,6 +1036,7 @@ const method = {
             $(".is_welcome_all").prop('checked', set.is_welcome_all);
             $(".is_follow").prop('checked', set.is_follow_dm);
             $(".is_log").prop('checked', set.log);
+            $(".is_watcher_log").prop('checked', set.is_watcher_log);
             $(".is_test_mode").prop('checked', set.test_mode);
             /* 登录暗号                                      */
             $(".is_manager_login").prop('checked', set.is_manager_login);
@@ -1304,7 +1287,6 @@ const method = {
                 $(".replys_is_open_self").attr("disabled", true);
                 $(".replys_time").attr("disabled", true);
                 $(".replys_list_people_shield_status").attr("disabled", true);
-                $("#replys-btn").attr("disabled", true);
                 $(".is_clockin").attr("disabled", true);
                 $(".clockin_time").attr("disabled", true);
                 $(".clockin_barrage").attr("disabled", true);

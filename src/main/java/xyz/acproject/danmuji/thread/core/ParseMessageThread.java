@@ -35,6 +35,7 @@ import xyz.acproject.danmuji.tools.ParseSetStatusTools;
 import xyz.acproject.danmuji.tools.ShieldGiftTools;
 import xyz.acproject.danmuji.tools.file.GuardFileTools;
 import xyz.acproject.danmuji.utils.JodaTimeUtils;
+import xyz.acproject.danmuji.utils.SelfTools;
 import xyz.acproject.danmuji.utils.SpringUtils;
 
 import java.util.*;
@@ -1098,32 +1099,104 @@ public class ParseMessageThread extends Thread {
                                     }
                                 }
                             }
-                            //欢迎进入直播间
-                            if (getCenterSetConf().is_welcome_all()) {
-                                msg_type = JSONObject.parseObject(jsonObject.getString("data")).getShort("msg_type");
-                                if (msg_type == 1) {
+                            //欢迎进入直播间 + 观众记录
+                            {
+                                short _local_msg_type = JSONObject.parseObject(jsonObject.getString("data")).getShort("msg_type");
+                                if (_local_msg_type == 1) {
                                     interact = JSONObject.parseObject(jsonObject.getString("data"), Interact.class);
-                                    stringBuilder.append(JodaTimeUtils.formatDateTime(System.currentTimeMillis())).append(":新的访客:")
-                                            .append(interact.getUname()).append(" 进入了直播间");
-                                    //控制台打印
-                                    if (getCenterSetConf().is_cmd()) {
-                                        System.out.println(stringBuilder.toString());
-                                    }
-                                    //日志
-                                    if (PublicDataConf.logThread != null && !PublicDataConf.logThread.FLAG) {
-                                        PublicDataConf.logString.add(stringBuilder.toString());
-                                        synchronized (PublicDataConf.logThread) {
-                                            PublicDataConf.logThread.notify();
+                                    if (getCenterSetConf().is_welcome_all()) {
+                                        stringBuilder.append(JodaTimeUtils.formatDateTime(System.currentTimeMillis())).append(":新的访客:")
+                                                .append(interact.getUname()).append(" 进入了直播间");
+                                        if (getCenterSetConf().is_cmd()) {
+                                            System.out.println(stringBuilder.toString());
                                         }
+                                        if (PublicDataConf.logThread != null && !PublicDataConf.logThread.FLAG) {
+                                            PublicDataConf.logString.add(stringBuilder.toString());
+                                            synchronized (PublicDataConf.logThread) {
+                                                PublicDataConf.logThread.notify();
+                                            }
+                                        }
+                                        try {
+                                            danmuWebsocket.sendMessage(WsPackage.toJson("welcome", (short) 0, interact));
+                                        } catch (Exception e) {
+                                            e.printStackTrace();
+                                        }
+                                        stringBuilder.delete(0, stringBuilder.length());
                                     }
-                                    //前端显示
-                                    try {
-                                        danmuWebsocket.sendMessage(WsPackage.toJson("welcome", (short) 0, interact));
-                                    } catch (Exception e) {
-                                        // TODO 自动生成的 catch 块
-                                        e.printStackTrace();
+                                    if (getCenterSetConf().is_watcher_log()) {
+                                        final long _uid = interact.getUid();
+                                        final String _uname = interact.getUname();
+                                        final MedalInfo _medal = interact.getFans_medal();
+                                        stringBuilder.append(JodaTimeUtils.formatDateTime(System.currentTimeMillis()))
+                                                .append(", ").append(_uname)
+                                                .append(", ").append(_uid)
+                                                .append(", https://space.bilibili.com/").append(_uid);
+                                        if (_medal != null) {
+                                            stringBuilder.append(", 勋章:").append(_medal.getMedal_name())
+                                                    .append(" Lv.").append(_medal.getMedal_level());
+                                            if (_medal.getGuard_level() != null && _medal.getGuard_level() > 0) {
+                                                stringBuilder.append(", 舰长:")
+                                                        .append(ParseIndentityTools.parseGuard(_medal.getGuard_level()));
+                                            }
+                                        }
+                                        try {
+                                            JSONObject card = HttpUserData.httpGetUserCardInfo(_uid);
+                                            if (card != null) {
+                                                if (card.containsKey("sex")) {
+                                                    stringBuilder.append(", 性别:").append(card.getString("sex"));
+                                                }
+                                                if (card.containsKey("level")) {
+                                                    stringBuilder.append(", 等级:").append(card.getInteger("level"));
+                                                }
+                                                if (card.containsKey("fans")) {
+                                                    stringBuilder.append(", 粉丝:").append(card.getLong("fans"));
+                                                }
+                                                if (card.containsKey("attention")) {
+                                                    stringBuilder.append(", 关注:").append(card.getLong("attention"));
+                                                }
+                                                if (card.containsKey("official_title") && StringUtils.isNotBlank(card.getString("official_title"))) {
+                                                    stringBuilder.append(", 认证:").append(card.getString("official_title"));
+                                                }
+                                                if (card.containsKey("vip_label") && StringUtils.isNotBlank(card.getString("vip_label"))) {
+                                                    stringBuilder.append(", 会员:").append(card.getString("vip_label"));
+                                                }
+                                                if (card.containsKey("live_room_id")) {
+                                                    stringBuilder.append(", 直播间:").append(card.get("live_room_id"));
+                                                }
+                                                if (card.containsKey("archive_count")) {
+                                                    stringBuilder.append(", 视频数:").append(card.getInteger("archive_count"));
+                                                }
+                                                if (card.containsKey("article_count")) {
+                                                    stringBuilder.append(", 专栏数:").append(card.getInteger("article_count"));
+                                                }
+                                                if (card.containsKey("following")) {
+                                                    stringBuilder.append(", 主播已关注:").append(card.getBoolean("following"));
+                                                }
+                                                if (card.containsKey("relation_status")) {
+                                                    String rel;
+                                                    switch (card.getInteger("relation_status")) {
+                                                        case 2: rel = "主播已关注"; break;
+                                                        case 3: rel = "观众已关注主播"; break;
+                                                        case 4: rel = "互相关注"; break;
+                                                        case 5: rel = "特别关注"; break;
+                                                        default: rel = "无关系"; break;
+                                                    }
+                                                    stringBuilder.append(", 关系:").append(rel);
+                                                }
+                                                if (card.containsKey("sign")) {
+                                                    stringBuilder.append(", 签名:").append(card.getString("sign"));
+                                                }
+                                            }
+                                        } catch (Exception e) {
+                                        }
+                                        if (PublicDataConf.watcherLogThread != null && !PublicDataConf.watcherLogThread.FLAG) {
+                                            PublicDataConf.watcherLogString.add(stringBuilder.toString());
+                                            synchronized (PublicDataConf.watcherLogThread) {
+                                                PublicDataConf.watcherLogThread.notify();
+                                            }
+                                        }
+                                        stringBuilder.delete(0, stringBuilder.length());
                                     }
-                                    stringBuilder.delete(0, stringBuilder.length());
                                 }
                             }
                             //欢迎感谢
@@ -1227,28 +1300,104 @@ public class ParseMessageThread extends Thread {
                                         }
                                     }
                                 }
-                                //欢迎进入直播间
-                                if (getCenterSetConf().is_welcome_all()) {
-                                    if (msg_type == 1) {
+                                //欢迎进入直播间 + 观众记录
+                                if (msg_type == 1) {
+                                    if (getCenterSetConf().is_welcome_all()) {
                                         stringBuilder.append(JodaTimeUtils.formatDateTime(System.currentTimeMillis())).append(":新的访客:")
                                                 .append(interact.getUname()).append(" 进入了直播间");
-                                        //控制台打印
                                         if (getCenterSetConf().is_cmd()) {
                                             System.out.println(stringBuilder.toString());
                                         }
-                                        //日志
                                         if (PublicDataConf.logThread != null && !PublicDataConf.logThread.FLAG) {
                                             PublicDataConf.logString.add(stringBuilder.toString());
                                             synchronized (PublicDataConf.logThread) {
                                                 PublicDataConf.logThread.notify();
                                             }
                                         }
-                                        //前端显示
                                         try {
                                             danmuWebsocket.sendMessage(WsPackage.toJson("welcome", (short) 0, interact));
                                         } catch (Exception e) {
-                                            // TODO 自动生成的 catch 块
                                             e.printStackTrace();
+                                        }
+                                        stringBuilder.delete(0, stringBuilder.length());
+                                    }
+                                    if (getCenterSetConf().is_watcher_log()) {
+                                        final long _uid = interact.getUid();
+                                        final String _uname = interact.getUname();
+                                        final MedalInfo _medal = interact.getFans_medal();
+                                        stringBuilder.append(JodaTimeUtils.formatDateTime(System.currentTimeMillis()));
+
+                                        SelfTools.appendAt(stringBuilder, 20, _uname);
+                                        SelfTools.appendAt(stringBuilder, 50, "https://space.bilibili.com/"+_uid);
+                                        SelfTools.appendAt(stringBuilder, 95, "\t");
+
+                                        if (_medal != null) {
+                                            stringBuilder.append(", 勋章:").append(_medal.getMedal_name())
+                                                    .append(" Lv.").append(_medal.getMedal_level());
+                                            if (_medal.getGuard_level() != null && _medal.getGuard_level() > 0) {
+                                                stringBuilder.append(", 舰长:")
+                                                        .append(ParseIndentityTools.parseGuard(_medal.getGuard_level()));
+                                            }
+                                        }
+
+                                        try {
+                                            JSONObject card = HttpUserData.httpGetUserCardInfo(_uid);
+                                            if (card != null) {
+
+                                                if (card.containsKey("fans")) {
+                                                    stringBuilder.append(", 粉丝:").append(card.getLong("fans")).append("\t");
+                                                }
+                                                if (card.containsKey("attention")) {
+                                                    stringBuilder.append(", 关注:").append(card.getLong("attention")).append("\t");
+                                                }
+                                                if (card.containsKey("archive_count")) {
+                                                    stringBuilder.append(", 视频数:").append(card.getInteger("archive_count")).append("\t");
+                                                }
+                                                if (card.containsKey("article_count")) {
+                                                    stringBuilder.append(", 专栏数:").append(card.getInteger("article_count")).append("\t");
+                                                }
+                                                if (card.containsKey("relation_status")) {
+                                                    String rel;
+                                                    switch (card.getInteger("relation_status")) {
+                                                        case 2: rel = "主播已关注"; break;
+                                                        case 3: rel = "观众已关注主播"; break;
+                                                        case 4: rel = "互相关注"; break;
+                                                        case 5: rel = "特别关注"; break;
+                                                        default: rel = "无关系"; break;
+                                                    }
+                                                    stringBuilder.append(", 关系:").append(rel).append("\t");
+                                                }
+                                                if (card.containsKey("level")) {
+                                                    stringBuilder.append(", 等级:").append(card.getInteger("level"));
+                                                }
+                                                if (card.containsKey("official_title") && StringUtils.isNotBlank(card.getString("official_title"))) {
+                                                    stringBuilder.append(", 认证:").append(card.getString("official_title"));
+                                                }
+                                                if (card.containsKey("vip_label") && StringUtils.isNotBlank(card.getString("vip_label"))) {
+                                                    stringBuilder.append(", 会员:").append(card.getString("vip_label"));
+                                                }
+                                                if (card.containsKey("live_room_id")) {
+                                                    stringBuilder.append(", 直播间:").append(card.get("live_room_id"));
+                                                }
+                                                if (card.containsKey("sex")) {
+                                                    stringBuilder.append(", 性别:").append(card.getString("sex"));
+                                                }
+
+                                                if (card.containsKey("following")) {
+                                                    stringBuilder.append(", 主播已关注:").append(card.getBoolean("following"));
+                                                }
+
+                                                if (card.containsKey("sign")) {
+                                                    stringBuilder.append(", 签名:").append(card.getString("sign"));
+                                                }
+                                            }
+                                        } catch (Exception e) {
+                                        }
+                                        if (PublicDataConf.watcherLogThread != null && !PublicDataConf.watcherLogThread.FLAG) {
+                                            PublicDataConf.watcherLogString.add(stringBuilder.toString());
+                                            synchronized (PublicDataConf.watcherLogThread) {
+                                                PublicDataConf.watcherLogThread.notify();
+                                            }
                                         }
                                         stringBuilder.delete(0, stringBuilder.length());
                                     }
@@ -1655,6 +1804,9 @@ public class ParseMessageThread extends Thread {
             gift = null;
         }
         Vector<Gift> gifts = null;
+        if (PublicDataConf.parsethankGiftThread != null && PublicDataConf.parsethankGiftThread.COOLDOWN) {
+            return;
+        }
         if (gift != null && StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
             if (PublicDataConf.sendBarrageThread != null && PublicDataConf.parsethankGiftThread != null) {
                 if (!PublicDataConf.sendBarrageThread.FLAG && !PublicDataConf.parsethankGiftThread.TFLAG) {
@@ -1721,6 +1873,9 @@ public class ParseMessageThread extends Thread {
         //黑名单处理
         if (!blackParseComponent.interact_parse(interact)) {
             interact = null;
+        }
+        if (PublicDataConf.parsethankFollowThread != null && PublicDataConf.parsethankFollowThread.COOLDOWN) {
+            return;
         }
         if (interact != null && StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
             if (PublicDataConf.sendBarrageThread != null && PublicDataConf.parsethankFollowThread != null) {
@@ -1803,6 +1958,9 @@ public class ParseMessageThread extends Thread {
                     }
                 default:
                     break;
+            }
+            if (PublicDataConf.parseThankWelcomeThread != null && PublicDataConf.parseThankWelcomeThread.COOLDOWN) {
+                return;
             }
             if (PublicDataConf.sendBarrageThread != null && PublicDataConf.parseThankWelcomeThread != null) {
                 if (!PublicDataConf.sendBarrageThread.FLAG && !PublicDataConf.parseThankWelcomeThread.FLAG) {

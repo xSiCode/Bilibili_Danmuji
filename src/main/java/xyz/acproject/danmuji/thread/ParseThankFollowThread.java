@@ -21,6 +21,7 @@ import java.util.Vector;
 public class ParseThankFollowThread extends Thread {
 //	private Logger LOGGER = LogManager.getLogger(ParseThankFollowThread.class);
 	public volatile boolean FLAG = false;
+	public volatile boolean COOLDOWN = false;
 	private String thankFollowString = "感谢 %uNames% 的关注";
 	private Short num = 1;
 	private Long delaytime = 3000L;
@@ -72,6 +73,13 @@ public class ParseThankFollowThread extends Thread {
 					}
 					interacts.clear();
 					PublicDataConf.interacts.clear();
+					// 间隔感谢：感谢完成后进入冷却期，冷却期内的关注直接丢弃
+					COOLDOWN = true;
+					try {
+						Thread.sleep(getDelaytime());
+					} catch (InterruptedException e) {
+					}
+					COOLDOWN = false;
 					break;
 				}
 			}
