@@ -1673,7 +1673,7 @@ const method = {
             url: '../block',
             data: {
                 uid: uid,
-                time, time
+                time: time
             },
             async: false,
             cache: false,

@@ -76,6 +76,7 @@ public class WebController {
         model.addAttribute("ROOMID", PublicDataConf.ROOMID);
         model.addAttribute("HROOMID", PublicDataConf.centerSetConf.getRoomid());
         model.addAttribute("POPU", PublicDataConf.ROOM_POPULARITY);
+        model.addAttribute("ROOM_WATCHER", PublicDataConf.ROOM_WATCHER);
         model.addAttribute("MANAGER", PublicDataConf.USERMANAGER != null ? PublicDataConf.USERMANAGER.is_manager() : false);
         if (PublicDataConf.USER != null) {
             model.addAttribute("USER", PublicDataConf.USER);

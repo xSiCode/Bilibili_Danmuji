@@ -50,6 +50,8 @@ public class AdvertThread extends Thread {
                             PublicDataConf.barrageString.offer(string);
                         }
                     }
+                    // 发完一轮后等待一个间隔再开始下一轮，避免末条和首条紧连
+                    threadSleep();
                 } else {
                     // 随机发
                     threadSleep();
@@ -64,18 +66,13 @@ public class AdvertThread extends Thread {
                             PublicDataConf.barrageString.offer(getAdvertBarrage());
                         }
                     }
-
                 }
 
             } else {
                 threadSleep();
                 if (PublicDataConf.sendBarrageThread != null && !PublicDataConf.sendBarrageThread.FLAG) {
-                    PublicDataConf.barrageString.add(getAdvertBarrage());
-                    synchronized (PublicDataConf.sendBarrageThread) {
-                        PublicDataConf.sendBarrageThread.notify();
-                    }
+                    PublicDataConf.barrageString.offer(getAdvertBarrage());
                 }
-
             }
             try {
                 Thread.sleep(10);
