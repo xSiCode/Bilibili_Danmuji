@@ -29,9 +29,8 @@ public class SendBarrageThread extends Thread {
             if (PublicDataConf.webSocketProxy != null && !PublicDataConf.webSocketProxy.isOpen()) {
                 return;
             }
-            if (null != PublicDataConf.barrageString && !PublicDataConf.barrageString.isEmpty()
-                    && StringUtils.isNotBlank(PublicDataConf.barrageString.get(0))) {
-                barrageStr = PublicDataConf.barrageString.get(0);
+            barrageStr = PublicDataConf.barrageString.poll();
+            if (barrageStr != null && StringUtils.isNotBlank(barrageStr)) {
                 int strLength = barrageStr.length();
                 int maxLength = 20;
                 if (PublicDataConf.USERBARRAGEMESSAGE != null) {
@@ -72,22 +71,15 @@ public class SendBarrageThread extends Thread {
                         LOGGER.info(barrageStr);
                     }
                 }
-                PublicDataConf.barrageString.remove(0);
                 try {
                     Thread.sleep(1455);
                 } catch (InterruptedException e) {
-                    // TODO 自动生成的 catch 块
-//					LOGGER.info("发送弹幕线程关闭:" + e);
                 }
 
             } else {
-                synchronized (PublicDataConf.sendBarrageThread) {
-                    try {
-                        PublicDataConf.sendBarrageThread.wait();
-                    } catch (InterruptedException e) {
-                        // TODO 自动生成的 catch 块
-//						LOGGER.info("发送弹幕线程关闭:" + e);
-                    }
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
                 }
             }
         }

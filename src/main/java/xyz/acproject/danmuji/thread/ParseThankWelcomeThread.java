@@ -29,7 +29,7 @@ public class ParseThankWelcomeThread extends Thread{
         super.run();
         String thankWelcomeStr = null;
         StringBuilder stringBuilder = new StringBuilder(300);
-        Vector<Interact> interacts = new Vector<Interact>();
+        java.util.List<Interact> interacts = new java.util.ArrayList<Interact>();
         synchronized (timestamp) {
             while (!FLAG) {
                 if (FLAG) {
@@ -47,8 +47,8 @@ public class ParseThankWelcomeThread extends Thread{
                 if (nowTime - getTimestamp() < getDelaytime()) {
                 } else {
                     //do something
-                    if(PublicDataConf.interactWelcome.size()>0) {
-                        interacts.addAll(PublicDataConf.interactWelcome);
+                    PublicDataConf.interactWelcome.drainTo(interacts);
+                    if(interacts.size()>0) {
                         for (int i = 0; i < interacts.size(); i += getNum()) {
                             for (int j = i; j < i + getNum(); j++) {
                                 if (j >= interacts.size()) {
@@ -62,16 +62,12 @@ public class ParseThankWelcomeThread extends Thread{
                             stringBuilder.delete(0, stringBuilder.length());
                             if (PublicDataConf.sendBarrageThread != null
                                     && !PublicDataConf.sendBarrageThread.FLAG) {
-                                PublicDataConf.barrageString.add(thankWelcomeStr);
-                                synchronized (PublicDataConf.sendBarrageThread) {
-                                    PublicDataConf.sendBarrageThread.notify();
-                                }
+                                PublicDataConf.barrageString.offer(thankWelcomeStr);
                             }
                             thankWelcomeStr = null;
                         }
                     }
                     interacts.clear();
-                    PublicDataConf.interactWelcome.clear();
                     // 间隔欢迎：欢迎完成后进入冷却期，冷却期内进入的观众直接丢弃
                     COOLDOWN = true;
                     try {

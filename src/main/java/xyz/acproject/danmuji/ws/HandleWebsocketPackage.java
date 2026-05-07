@@ -85,11 +85,8 @@ public class HandleWebsocketPackage {
 			} else if (data_ver == 0) {
 				try {
 					resultStr = new String(bs, "utf-8");
-					PublicDataConf.resultStrs.add(resultStr);
 					if (PublicDataConf.parseMessageThread != null && !PublicDataConf.parseMessageThread.FLAG) {
-						synchronized (PublicDataConf.parseMessageThread) {
-							PublicDataConf.parseMessageThread.notify();
-						}
+						PublicDataConf.resultStrs.offer(resultStr);
 					}
 				} catch (Exception e) {
 					// TODO 自动生成的 catch 块
@@ -167,11 +164,8 @@ public class HandleWebsocketPackage {
 			} else if (data_ver == 0) {
 				try {
 					resultStr = new String(bs, "utf-8");
-					PublicDataConf.resultStrs.add(resultStr);
 					if (PublicDataConf.parseMessageThread != null && !PublicDataConf.parseMessageThread.FLAG) {
-						synchronized (PublicDataConf.parseMessageThread) {
-							PublicDataConf.parseMessageThread.notify();
-						}
+						PublicDataConf.resultStrs.offer(resultStr);
 					}
 				} catch (Exception e) {
 					// TODO 自动生成的 catch 块

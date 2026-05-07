@@ -103,10 +103,7 @@ public class ParseThankGiftThread extends Thread {
 									thankGiftStr = StringUtils.replace(thankGiftStr, "%Type%", gift.getAction());
 									if (PublicDataConf.sendBarrageThread != null
 											&& !PublicDataConf.sendBarrageThread.FLAG) {
-										PublicDataConf.barrageString.add(thankGiftStr);
-										synchronized (PublicDataConf.sendBarrageThread) {
-											PublicDataConf.sendBarrageThread.notify();
-										}
+										PublicDataConf.barrageString.offer(thankGiftStr);
 									}
 								}
 							}
@@ -134,10 +131,7 @@ public class ParseThankGiftThread extends Thread {
 									stringBuilder.delete(0, stringBuilder.length());
 									if (PublicDataConf.sendBarrageThread != null
 											&& !PublicDataConf.sendBarrageThread.FLAG) {
-										PublicDataConf.barrageString.add(thankGiftStr);
-										synchronized (PublicDataConf.sendBarrageThread) {
-											PublicDataConf.sendBarrageThread.notify();
-										}
+										PublicDataConf.barrageString.offer(thankGiftStr);
 									}
 									thankGiftStr = null;
 								}
@@ -170,11 +164,8 @@ public class ParseThankGiftThread extends Thread {
 									if (PublicDataConf.sendBarrageThread != null
 											&& !PublicDataConf.sendBarrageThread.FLAG) {
 										PublicDataConf.barrageString
-												.add(somePeoplesHandle(PublicDataConf.thankGiftConcurrentHashMap,
+												.offer(somePeoplesHandle(PublicDataConf.thankGiftConcurrentHashMap,
 														getNum(), handleThankStr(getThankGiftString())));
-										synchronized (PublicDataConf.sendBarrageThread) {
-											PublicDataConf.sendBarrageThread.notify();
-										}
 									}
 								}
 							} else {
@@ -204,10 +195,7 @@ public class ParseThankGiftThread extends Thread {
 										stringBuilder.delete(0, stringBuilder.length());
 										if (PublicDataConf.sendBarrageThread != null
 												&& !PublicDataConf.sendBarrageThread.FLAG) {
-											PublicDataConf.barrageString.add(thankGiftStr);
-											synchronized (PublicDataConf.sendBarrageThread) {
-												PublicDataConf.sendBarrageThread.notify();
-											}
+											PublicDataConf.barrageString.offer(thankGiftStr);
 										}
 										thankGiftStr = null;
 									}

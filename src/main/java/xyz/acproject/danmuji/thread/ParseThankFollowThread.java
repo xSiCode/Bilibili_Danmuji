@@ -30,7 +30,7 @@ public class ParseThankFollowThread extends Thread {
 	public void run() {
 		String thankFollowStr = null;
 		StringBuilder stringBuilder = new StringBuilder(300);
-		Vector<Interact> interacts = new Vector<Interact>();
+		java.util.List<Interact> interacts = new java.util.ArrayList<Interact>();
 		synchronized (timestamp) {
 			while (!FLAG) {
 				if (FLAG) {
@@ -48,8 +48,8 @@ public class ParseThankFollowThread extends Thread {
 				if (nowTime - getTimestamp() < getDelaytime()) {
 				} else {
 					//do something
-					if(PublicDataConf.interacts.size()>0) {
-						interacts.addAll(PublicDataConf.interacts);
+					PublicDataConf.interacts.drainTo(interacts);
+					if(interacts.size()>0) {
 						for (int i = 0; i < interacts.size(); i += getNum()) {
 							for (int j = i; j < i + getNum(); j++) {
 								if (j >= interacts.size()) {
@@ -63,16 +63,12 @@ public class ParseThankFollowThread extends Thread {
 							stringBuilder.delete(0, stringBuilder.length());
 							if (PublicDataConf.sendBarrageThread != null
 									&& !PublicDataConf.sendBarrageThread.FLAG) {
-								PublicDataConf.barrageString.add(thankFollowStr);
-								synchronized (PublicDataConf.sendBarrageThread) {
-									PublicDataConf.sendBarrageThread.notify();
-								}
+								PublicDataConf.barrageString.offer(thankFollowStr);
 							}
 							thankFollowStr = null;
 						}
 					}
 					interacts.clear();
-					PublicDataConf.interacts.clear();
 					// 间隔感谢：感谢完成后进入冷却期，冷却期内的关注直接丢弃
 					COOLDOWN = true;
 					try {

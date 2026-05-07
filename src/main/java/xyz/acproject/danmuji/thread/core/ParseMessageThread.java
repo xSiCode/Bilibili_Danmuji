@@ -108,37 +108,21 @@ public class ParseMessageThread extends Thread {
                     LOGGER.info("数据解析线程手动中止");
                     return;
                 }
-                if (null != PublicDataConf.resultStrs && !PublicDataConf.resultStrs.isEmpty()
-                        && StringUtils.isNotBlank(PublicDataConf.resultStrs.get(0))) {
-                    message = PublicDataConf.resultStrs.get(0);
-                    PublicDataConf.resultStrs.remove(0); // 立即消费，加速队列排出
+                try {
+                    message = PublicDataConf.resultStrs.poll(500, TimeUnit.MILLISECONDS);
+                } catch (InterruptedException e) {
+                    continue;
+                }
+                if (message != null && StringUtils.isNotBlank(message)) {
                     try {
                         jsonObject = JSONObject.parseObject(message);
                     } catch (Exception e) {
-                        // TODO: handle exception
                         LOGGER.info("抛出解析异常:" + e);
-                        //					LOGGER.info(message);
-                        synchronized (PublicDataConf.parseMessageThread) {
-                            try {
-                                PublicDataConf.parseMessageThread.wait();
-                            } catch (InterruptedException e1) {
-                                // TODO 自动生成的 catch 块
-                                LOGGER.info("处理弹幕包信息线程关闭:" + e1);
-                                //e.printStackTrace();
-                            }
-                        }
+                        continue;
                     }
                     cmd = jsonObject.getString("cmd");
                     if (StringUtils.isBlank(cmd)) {
-                        synchronized (PublicDataConf.parseMessageThread) {
-                            try {
-                                PublicDataConf.parseMessageThread.wait();
-                            } catch (InterruptedException e1) {
-                                // TODO 自动生成的 catch 块
-                                LOGGER.info("处理弹幕包信息线程关闭:" + e1);
-                                //							e.printStackTrace();
-                            }
-                        }
+                        continue;
                     }
                     cmd = parseCmd(cmd);
                     switch (cmd) {
@@ -252,24 +236,16 @@ public class ParseMessageThread extends Thread {
                                     }
                                     //日志处理
                                     if (PublicDataConf.logThread != null && !PublicDataConf.logThread.FLAG) {
-                                        PublicDataConf.logString.add(stringBuilder.toString());
-                                        synchronized (PublicDataConf.logThread) {
-                                            PublicDataConf.logThread.notify();
-                                        }
+                                        PublicDataConf.logString.offer(stringBuilder.toString());
                                     }
                                 } else {
                                     //弹幕关闭
                                 }
                                 //自动回复姬处理
                                 if (PublicDataConf.autoReplyThread != null && !PublicDataConf.autoReplyThread.FLAG) {
-                                    if (!PublicDataConf.autoReplyThread.getState().toString().equals("TIMED_WAITING")) {
-                                        if (parseAutoReplySetting(barrage)) {
-                                            PublicDataConf.replys.add(
-                                                    AutoReply.getAutoReply(barrage.getUid(), barrage.getUname(), barrage.getMsg()));
-                                            synchronized (PublicDataConf.autoReplyThread) {
-                                                PublicDataConf.autoReplyThread.notify();
-                                            }
-                                        }
+                                    if (parseAutoReplySetting(barrage)) {
+                                        PublicDataConf.replys.offer(
+                                                AutoReply.getAutoReply(barrage.getUid(), barrage.getUname(), barrage.getMsg()));
                                     }
                                 }
                                 stringBuilder.delete(0, stringBuilder.length());
@@ -313,10 +289,7 @@ public class ParseMessageThread extends Thread {
                                         e.printStackTrace();
                                     }
                                     if (PublicDataConf.logThread != null && !PublicDataConf.logThread.FLAG) {
-                                        PublicDataConf.logString.add(stringBuilder.toString());
-                                        synchronized (PublicDataConf.logThread) {
-                                            PublicDataConf.logThread.notify();
-                                        }
+                                        PublicDataConf.logString.offer(stringBuilder.toString());
                                     }
                                     stringBuilder.delete(0, stringBuilder.length());
                                 }
@@ -377,10 +350,7 @@ public class ParseMessageThread extends Thread {
                                     e.printStackTrace();
                                 }
                                 if (PublicDataConf.logThread != null && !PublicDataConf.logThread.FLAG) {
-                                    PublicDataConf.logString.add(stringBuilder.toString());
-                                    synchronized (PublicDataConf.logThread) {
-                                        PublicDataConf.logThread.notify();
-                                    }
+                                    PublicDataConf.logString.offer(stringBuilder.toString());
                                 }
                                 stringBuilder.delete(0, stringBuilder.length());
                             }
@@ -448,10 +418,7 @@ public class ParseMessageThread extends Thread {
                                     if (!PublicDataConf.centerSetConf.isTest_mode()) {
                                         if (StringUtils.isNotBlank(getCenterSetConf().getThank_gift().getReport_barrage().trim())) {
                                             if (HttpUserData.httpPostSendMsg(guard.getUid(), report) == 0) {
-                                                PublicDataConf.barrageString.add(getCenterSetConf().getThank_gift().getReport_barrage());
-                                                synchronized (PublicDataConf.sendBarrageThread) {
-                                                    PublicDataConf.sendBarrageThread.notify();
-                                                }
+                                                PublicDataConf.barrageString.offer(getCenterSetConf().getThank_gift().getReport_barrage());
                                             }
                                         } else {
                                             HttpUserData.httpPostSendMsg(guard.getUid(), report);
@@ -504,10 +471,7 @@ public class ParseMessageThread extends Thread {
                                     e.printStackTrace();
                                 }
                                 if (PublicDataConf.logThread != null && !PublicDataConf.logThread.FLAG) {
-                                    PublicDataConf.logString.add(stringBuilder.toString());
-                                    synchronized (PublicDataConf.logThread) {
-                                        PublicDataConf.logThread.notify();
-                                    }
+                                    PublicDataConf.logString.offer(stringBuilder.toString());
                                 }
 
                                 stringBuilder.delete(0, stringBuilder.length());
@@ -581,10 +545,7 @@ public class ParseMessageThread extends Thread {
                                     e.printStackTrace();
                                 }
                                 if (PublicDataConf.logThread != null && !PublicDataConf.logThread.FLAG) {
-                                    PublicDataConf.logString.add(stringBuilder.toString());
-                                    synchronized (PublicDataConf.logThread) {
-                                        PublicDataConf.logThread.notify();
-                                    }
+                                    PublicDataConf.logString.offer(stringBuilder.toString());
                                 }
                                 stringBuilder.delete(0, stringBuilder.length());
                             }
@@ -622,10 +583,7 @@ public class ParseMessageThread extends Thread {
                                     e.printStackTrace();
                                 }
                                 if (PublicDataConf.logThread != null && !PublicDataConf.logThread.FLAG) {
-                                    PublicDataConf.logString.add(stringBuilder.toString());
-                                    synchronized (PublicDataConf.logThread) {
-                                        PublicDataConf.logThread.notify();
-                                    }
+                                    PublicDataConf.logString.offer(stringBuilder.toString());
                                 }
                                 stringBuilder.delete(0, stringBuilder.length());
                             }
@@ -667,10 +625,7 @@ public class ParseMessageThread extends Thread {
                                     e.printStackTrace();
                                 }
                                 if (PublicDataConf.logThread != null && !PublicDataConf.logThread.FLAG) {
-                                    PublicDataConf.logString.add(stringBuilder.toString());
-                                    synchronized (PublicDataConf.logThread) {
-                                        PublicDataConf.logThread.notify();
-                                    }
+                                    PublicDataConf.logString.offer(stringBuilder.toString());
                                 }
                                 stringBuilder.delete(0, stringBuilder.length());
                             }
@@ -1056,10 +1011,7 @@ public class ParseMessageThread extends Thread {
                                         }
                                         //日志
                                         if (PublicDataConf.logThread != null && !PublicDataConf.logThread.FLAG) {
-                                            PublicDataConf.logString.add(stringBuilder.toString());
-                                            synchronized (PublicDataConf.logThread) {
-                                                PublicDataConf.logThread.notify();
-                                            }
+                                            PublicDataConf.logString.offer(stringBuilder.toString());
                                         }
                                         //前端弹幕发送
                                         try {
@@ -1096,10 +1048,7 @@ public class ParseMessageThread extends Thread {
                                             System.out.println(stringBuilder.toString());
                                         }
                                         if (PublicDataConf.logThread != null && !PublicDataConf.logThread.FLAG) {
-                                            PublicDataConf.logString.add(stringBuilder.toString());
-                                            synchronized (PublicDataConf.logThread) {
-                                                PublicDataConf.logThread.notify();
-                                            }
+                                            PublicDataConf.logString.offer(stringBuilder.toString());
                                         }
                                         try {
                                             danmuWebsocket.sendMessage(WsPackage.toJson("welcome", (short) 0, interact));
@@ -1117,7 +1066,7 @@ public class ParseMessageThread extends Thread {
 
                                         SelfTools.appendAt(stringBuilder, 20, _uname);
                                         SelfTools.appendAt(stringBuilder, 50, url+_uid);
-                                        SelfTools.appendAt(stringBuilder, 95, "\t");
+                                        SelfTools.appendAt(stringBuilder, 100, "\t");
 
                                         if (_medal != null) {
                                             stringBuilder.append(", 勋章:").append(_medal.getMedal_name())
@@ -1129,10 +1078,7 @@ public class ParseMessageThread extends Thread {
                                         }
 
                                         if (PublicDataConf.watcherLogThread != null && !PublicDataConf.watcherLogThread.FLAG) {
-                                            PublicDataConf.watcherLogString.add(stringBuilder.toString());
-                                            synchronized (PublicDataConf.watcherLogThread) {
-                                                PublicDataConf.watcherLogThread.notify();
-                                            }
+                                            PublicDataConf.watcherLogString.offer(stringBuilder.toString());
                                         }
                                         stringBuilder.delete(0, stringBuilder.length());
 
@@ -1143,11 +1089,9 @@ public class ParseMessageThread extends Thread {
                                             try {
                                                 JSONObject card = HttpUserData.httpGetUserCardInfo(_uid);
                                                 if (card != null) {
-                                                    StringBuilder detailSb = new StringBuilder(300);
+                                                    StringBuilder detailSb = new StringBuilder(200);
                                                     detailSb.append(JodaTimeUtils.formatDateTime(System.currentTimeMillis()));
-                                                    SelfTools.appendAt(detailSb, 20, _uname);
-                                                    SelfTools.appendAt(detailSb, 50, "[详情]");
-                                                    SelfTools.appendAt(detailSb, 95, "\t");
+                                                    SelfTools.appendAt(detailSb, 20, "[详情]");
 
                                                     if (card.containsKey("follow_list_visible")) {
                                                         detailSb.append("关见:").append(card.getBoolean("follow_list_visible"));
@@ -1156,13 +1100,13 @@ public class ParseMessageThread extends Thread {
                                                         detailSb.append(" , 粉见:").append(card.getBoolean("fans_list_visible"));
                                                     }
                                                     if (card.containsKey("attention")) {
-                                                        SelfTools.appendAt(detailSb, 110, " , 关注:" + card.getLong("attention"));
+                                                        SelfTools.appendAt(detailSb, 50, " , 关注:" + card.getLong("attention"));
                                                     }
                                                     if (card.containsKey("fans")) {
-                                                        SelfTools.appendAt(detailSb, 100, " , 粉丝:" + card.getLong("fans"));
+                                                        SelfTools.appendAt(detailSb, 60, " , 粉丝:" + card.getLong("fans"));
                                                     }
                                                     if (card.containsKey("archive_count")) {
-                                                        SelfTools.appendAt(detailSb, 120, " , 视频:" + card.getLong("archive_count"));
+                                                        SelfTools.appendAt(detailSb, 70, " , 视频:" + card.getLong("archive_count"));
                                                     }
 
                                                     long attention = card.containsKey("attention") ? card.getLong("attention") : -1L;
@@ -1199,10 +1143,7 @@ public class ParseMessageThread extends Thread {
                                                     }
 
                                                     if (PublicDataConf.watcherLogThread != null && !PublicDataConf.watcherLogThread.FLAG) {
-                                                        PublicDataConf.watcherLogString.add(detailSb.toString());
-                                                        synchronized (PublicDataConf.watcherLogThread) {
-                                                            PublicDataConf.watcherLogThread.notify();
-                                                        }
+                                                        PublicDataConf.watcherLogString.offer(detailSb.toString());
                                                     }
                                                 }
                                             } catch (Exception e) {
@@ -1321,10 +1262,7 @@ public class ParseMessageThread extends Thread {
                                     e.printStackTrace();
                                 }
                                 if (PublicDataConf.logThread != null && !PublicDataConf.logThread.FLAG) {
-                                    PublicDataConf.logString.add(stringBuilder.toString());
-                                    synchronized (PublicDataConf.logThread) {
-                                        PublicDataConf.logThread.notify();
-                                    }
+                                    PublicDataConf.logString.offer(stringBuilder.toString());
                                 }
                                 stringBuilder.delete(0, stringBuilder.length());
                             }
@@ -1480,16 +1418,6 @@ public class ParseMessageThread extends Thread {
                         default:
 //                            LOGGER.info("其他未处理消息:" + message);
                             break;
-                    }
-                } else {
-                    synchronized (PublicDataConf.parseMessageThread) {
-                        try {
-                            PublicDataConf.parseMessageThread.wait();
-                        } catch (InterruptedException e) {
-                            // TODO 自动生成的 catch 块
-                            //						LOGGER.info("处理弹幕包信息线程关闭:" + e);
-                            //						e.printStackTrace();
-                        }
                     }
                 }
             } catch (Exception e) {
@@ -1689,7 +1617,7 @@ public class ParseMessageThread extends Thread {
         if (interact != null && StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
             if (PublicDataConf.sendBarrageThread != null && PublicDataConf.parsethankFollowThread != null) {
                 if (!PublicDataConf.sendBarrageThread.FLAG && !PublicDataConf.parsethankFollowThread.FLAG) {
-                    PublicDataConf.interacts.add(interact);
+                    PublicDataConf.interacts.offer(interact);
                     DelayFollowTimeSetting();
                 }
             }
@@ -1773,7 +1701,7 @@ public class ParseMessageThread extends Thread {
             }
             if (PublicDataConf.sendBarrageThread != null && PublicDataConf.parseThankWelcomeThread != null) {
                 if (!PublicDataConf.sendBarrageThread.FLAG && !PublicDataConf.parseThankWelcomeThread.FLAG) {
-                    PublicDataConf.interactWelcome.add(interact);
+                    PublicDataConf.interactWelcome.offer(interact);
                     DelayWelcomeTimeSetting();
                 }
             }

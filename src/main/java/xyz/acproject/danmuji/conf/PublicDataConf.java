@@ -24,6 +24,7 @@ import xyz.acproject.danmuji.thread.online.UserOnlineHeartThread;
 import java.util.Map;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.LinkedBlockingQueue;
 
 /**
  * @ClassName PublicDataConf
@@ -100,26 +101,26 @@ public class PublicDataConf {
 	//处理信息分类线程
 	public static ParseMessageThread parseMessageThread;
 	//处理弹幕包集合
-	public final static Vector<String> resultStrs = new Vector<String>(100);
+	public final static LinkedBlockingQueue<String> resultStrs = new LinkedBlockingQueue<String>(5000);
 	//礼物感谢集
 	public final static Map<String,Vector<Gift>> thankGiftConcurrentHashMap = new ConcurrentHashMap<String,Vector<Gift>>(3000);
 	//待发弹幕集
-	public final static Vector<String> barrageString = new Vector<String>();
+	public final static LinkedBlockingQueue<String> barrageString = new LinkedBlockingQueue<String>(500);
 	//log日志待写入集合
-	public final static Vector<String> logString = new Vector<String>(100);
+	public final static LinkedBlockingQueue<String> logString = new LinkedBlockingQueue<String>(500);
 	//待发送感谢关注集合
-	public final static Vector<Interact> interacts = new Vector<Interact>(200);
+	public final static LinkedBlockingQueue<Interact> interacts = new LinkedBlockingQueue<Interact>(500);
 	//待发送欢迎进入直播间集合
-	public final static Vector<Interact> interactWelcome = new Vector<Interact>(400);
+	public final static LinkedBlockingQueue<Interact> interactWelcome = new LinkedBlockingQueue<Interact>(500);
 	//自动回复处理弹幕
-	public final static Vector<AutoReply> replys = new Vector<AutoReply>();
+	public final static LinkedBlockingQueue<AutoReply> replys = new LinkedBlockingQueue<AutoReply>(200);
 	
 	//日志线程
 	public static LogThread logThread;
 	//观众日志线程
 	public static WatcherLogThread watcherLogThread;
 	//观众日志待写入集合
-	public final static Vector<String> watcherLogString = new Vector<String>(100);
+	public final static LinkedBlockingQueue<String> watcherLogString = new LinkedBlockingQueue<String>(500);
 	//处理感谢关注线程
 	public static ParseThankFollowThread parsethankFollowThread = new ParseThankFollowThread();
 	//处理感谢进入直播间线程

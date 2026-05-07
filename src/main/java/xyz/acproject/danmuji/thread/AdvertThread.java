@@ -47,10 +47,7 @@ public class AdvertThread extends Thread {
                     for (String string : strings) {
                         threadSleep();
                         if (PublicDataConf.sendBarrageThread != null && !PublicDataConf.sendBarrageThread.FLAG) {
-                            PublicDataConf.barrageString.add(string);
-                            synchronized (PublicDataConf.sendBarrageThread) {
-                                PublicDataConf.sendBarrageThread.notify();
-                            }
+                            PublicDataConf.barrageString.offer(string);
                         }
                     }
                 } else {
@@ -60,17 +57,11 @@ public class AdvertThread extends Thread {
                     if (strLength > 1) {
                         int randomNum = (int) Math.ceil(Math.random() * strLength);
                         if (PublicDataConf.sendBarrageThread != null && !PublicDataConf.sendBarrageThread.FLAG) {
-                            PublicDataConf.barrageString.add(strings[randomNum - 1]);
-                            synchronized (PublicDataConf.sendBarrageThread) {
-                                PublicDataConf.sendBarrageThread.notify();
-                            }
+                            PublicDataConf.barrageString.offer(strings[randomNum - 1]);
                         }
                     } else {
                         if (PublicDataConf.sendBarrageThread != null && !PublicDataConf.sendBarrageThread.FLAG) {
-                            PublicDataConf.barrageString.add(getAdvertBarrage());
-                            synchronized (PublicDataConf.sendBarrageThread) {
-                                PublicDataConf.sendBarrageThread.notify();
-                            }
+                            PublicDataConf.barrageString.offer(getAdvertBarrage());
                         }
                     }
 
