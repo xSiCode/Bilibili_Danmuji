@@ -28,18 +28,13 @@ public class LogThread extends Thread{
 			if(PublicDataConf.webSocketProxy!=null&&!PublicDataConf.webSocketProxy.isOpen()) {
 				return;
 			}
-			if(null!=PublicDataConf.logString&&!PublicDataConf.logString.isEmpty()&&StringUtils.isNotBlank(PublicDataConf.logString.get(0))) {
-				logString = PublicDataConf.logString.get(0);
+			logString = PublicDataConf.logString.poll();
+			if(logString != null && StringUtils.isNotBlank(logString)) {
 				LogFileTools.getlogFileTools().logFile(logString);
-				PublicDataConf.logString.remove(0);
-			}else {
-				synchronized (PublicDataConf.logThread) {
-					try {
-						PublicDataConf.logThread.wait();
-					} catch (InterruptedException e) {
-						// TODO 自动生成的 catch 块
-//						LOGGER.info("日志线程关闭:" + e);
-					}
+			} else {
+				try {
+					Thread.sleep(500);
+				} catch (InterruptedException e) {
 				}
 			}
 			try {

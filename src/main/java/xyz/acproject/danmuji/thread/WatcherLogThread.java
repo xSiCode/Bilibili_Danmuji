@@ -18,17 +18,13 @@ public class WatcherLogThread extends Thread {
 			if (PublicDataConf.webSocketProxy != null && !PublicDataConf.webSocketProxy.isOpen()) {
 				return;
 			}
-			if (null != PublicDataConf.watcherLogString && !PublicDataConf.watcherLogString.isEmpty()
-					&& StringUtils.isNotBlank(PublicDataConf.watcherLogString.get(0))) {
-				logString = PublicDataConf.watcherLogString.get(0);
+			logString = PublicDataConf.watcherLogString.poll();
+			if (logString != null && StringUtils.isNotBlank(logString)) {
 				LogFileTools.getlogFileTools().logWatcherFile(logString);
-				PublicDataConf.watcherLogString.remove(0);
 			} else {
-				synchronized (PublicDataConf.watcherLogThread) {
-					try {
-						PublicDataConf.watcherLogThread.wait();
-					} catch (InterruptedException e) {
-					}
+				try {
+					Thread.sleep(500);
+				} catch (InterruptedException e) {
 				}
 			}
 			try {

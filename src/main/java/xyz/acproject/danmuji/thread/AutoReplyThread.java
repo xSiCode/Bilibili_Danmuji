@@ -22,6 +22,8 @@ import java.math.BigDecimal;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.TimeZone;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
@@ -35,6 +37,43 @@ import java.util.stream.Collectors;
 @Setter
 public class AutoReplyThread extends Thread {
 
+    // API 结果缓存，避免每次自动回复匹配都发起 HTTP 请求
+    private static final ConcurrentHashMap<String, CachedEntry> apiCache = new ConcurrentHashMap<>();
+
+    private static class CachedEntry {
+        final Object value;
+        final long expireTime;
+        CachedEntry(Object value, long expireTime) {
+            this.value = value;
+            this.expireTime = expireTime;
+        }
+        boolean isExpired() {
+            return System.currentTimeMillis() > expireTime;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> T getOrLoad(String key, long ttlMs, Supplier<T> loader) {
+        CachedEntry entry = apiCache.get(key);
+        if (entry != null && !entry.isExpired()) {
+            return (T) entry.value;
+        }
+        T value = loader.get();
+        if (value != null) {
+            apiCache.put(key, new CachedEntry(value, System.currentTimeMillis() + ttlMs));
+        }
+        return value;
+    }
+
+    private PredatorResult getCachedApexPredator(String platform, String type) {
+        return getOrLoad("apex_pred_" + platform + "_" + type, 600_000L,
+                () -> getCachedApexPredator(platform, type));
+    }
+
+    private ApexMessage getCachedApexMessage() {
+        return getOrLoad("apex_msg", 600_000L,
+                () -> apiService.getApexMessage());
+    }
 
     public volatile boolean FLAG = false;
 
@@ -63,8 +102,8 @@ public class AutoReplyThread extends Thread {
             if (PublicDataConf.webSocketProxy != null && !PublicDataConf.webSocketProxy.isOpen()) {
                 return;
             }
-            if (!CollectionUtils.isEmpty(PublicDataConf.replys)) {
-                AutoReply autoReply = PublicDataConf.replys.get(0);
+            AutoReply autoReply = PublicDataConf.replys.poll();
+            if (autoReply != null) {
                 for (AutoReplySet autoReplySet : getAutoReplySets()) {
                     //优先级屏蔽词
                     if (!CollectionUtils.isEmpty(autoReplySet.getShields())) {
@@ -156,24 +195,17 @@ public class AutoReplyThread extends Thread {
                 hourString = null;
                 hourReplace = null;
                 hour = 1;
-                PublicDataConf.replys.remove(0);
                 if (is_send) {
                     try {
                         Thread.sleep(new BigDecimal(getTime()).multiply(new BigDecimal("1000")).longValue());
                     } catch (Exception e) {
-                        // TODO 自动生成的 catch 块
-//					e.printStackTrace();
                     }
                 }
                 is_send = false;
             } else {
-                synchronized (PublicDataConf.autoReplyThread) {
-                    try {
-                        PublicDataConf.autoReplyThread.wait();
-                    } catch (Exception e) {
-                        // TODO 自动生成的 catch 块
-//						e.printStackTrace();
-                    }
+                try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
                 }
             }
         }
@@ -204,19 +236,21 @@ public class AutoReplyThread extends Thread {
         } else {
             replyString =JodaTimeUtils.format(new Date(),TimeZone.getTimeZone("GMT+08:00"),"yyyy-MM-dd HH:mm:ss");
         }
-        // 替换%LIVETIME%
+        // 替换%LIVETIME%（缓存5分钟，房间信息不会频繁变化）
         if (!replyString.equals("%LIVETIME%")) {
             if (PublicDataConf.lIVE_STATUS == 1) {
+                Long liveTime = getOrLoad("roomInit_" + PublicDataConf.ROOMID, 300_000L,
+                        () -> HttpRoomData.httpGetRoomInit(PublicDataConf.ROOMID).getLive_time());
                 replyString = StringUtils.replace(replyString, "%LIVETIME%",
-                        CurrencyTools.getGapTime(System.currentTimeMillis()
-                                - HttpRoomData.httpGetRoomInit(PublicDataConf.ROOMID).getLive_time() * 1000));
+                        CurrencyTools.getGapTime(System.currentTimeMillis() - liveTime * 1000));
             } else {
                 replyString = StringUtils.replace(replyString, "%LIVETIME%", "0");
             }
         } else {
             if (PublicDataConf.lIVE_STATUS == 1) {
-                replyString = CurrencyTools.getGapTime(System.currentTimeMillis()
-                        - HttpRoomData.httpGetRoomInit(PublicDataConf.ROOMID).getLive_time() * 1000);
+                Long liveTime = getOrLoad("roomInit_" + PublicDataConf.ROOMID, 300_000L,
+                        () -> HttpRoomData.httpGetRoomInit(PublicDataConf.ROOMID).getLive_time());
+                replyString = CurrencyTools.getGapTime(System.currentTimeMillis() - liveTime * 1000);
             } else {
                 replyString = "0";
             }
@@ -422,8 +456,10 @@ public class AutoReplyThread extends Thread {
                 } else {
                     day = 0;
                 }
-                weatherV2 = apiService.getWeatherV2(city, day);
-//                weather = HttpOtherData.httpPostWeather(city, day);
+                final String weatherCity = city;
+                final Short weatherDay = day;
+                weatherV2 = getOrLoad("weather_" + weatherCity + "_" + weatherDay, 600_000L,
+                        () -> apiService.getWeatherV2(weatherCity, weatherDay));
                 if (null != weatherV2) {
                     if (replyString.contains("%WEATHER%") && !StringUtils.containsAny(replyString, AutoParamSetConf.weather_v2_params)) {
                         if (day == 0) {
@@ -604,7 +640,7 @@ public class AutoReplyThread extends Thread {
             PredatorResult predatorResult=null;
             //pc大逃杀猎杀低分
             if (replyString.contains("%PC_RP_DFEN%")) {
-                predatorResult = apiService.getApexPredator("","0");
+                predatorResult = getCachedApexPredator("","0");
                 if(predatorResult!=null&&predatorResult.getVal()!=null){
                     replyString = StringUtils.replace(replyString, "%PC_RP_DFEN%", String.valueOf(predatorResult.getVal()));
                 }else{
@@ -613,7 +649,7 @@ public class AutoReplyThread extends Thread {
             }
             //pc大逃杀猎杀大师总数
             if (replyString.contains("%PC_RP_MTOTAL%")) {
-                predatorResult = apiService.getApexPredator("","0");
+                predatorResult = getCachedApexPredator("","0");
                 if(predatorResult!=null&&predatorResult.getTotalMastersAndPreds()!=null) {
                     replyString = StringUtils.replace(replyString, "%PC_RP_MTOTAL%", String.valueOf(predatorResult.getTotalMastersAndPreds()));
                 }else{
@@ -622,7 +658,7 @@ public class AutoReplyThread extends Thread {
             }
             //pc竞技场猎杀大师低分
             if (replyString.contains("%PC_AP_DFEN%")) {
-                predatorResult = apiService.getApexPredator("","1");
+                predatorResult = getCachedApexPredator("","1");
                 if(predatorResult!=null&&predatorResult.getVal()!=null) {
                     replyString = StringUtils.replace(replyString, "%PC_AP_DFEN%", String.valueOf(predatorResult.getVal()));
                 }else{
@@ -631,7 +667,7 @@ public class AutoReplyThread extends Thread {
             }
             //pc竞技场猎杀大师总数
             if (replyString.contains("%PC_AP_MTOTAL%")) {
-                predatorResult = apiService.getApexPredator("","1");
+                predatorResult = getCachedApexPredator("","1");
                 if(predatorResult!=null&&predatorResult.getTotalMastersAndPreds()!=null) {
                     replyString = StringUtils.replace(replyString, "%PC_AP_MTOTAL%", String.valueOf(predatorResult.getTotalMastersAndPreds()));
                 }else{
@@ -640,7 +676,7 @@ public class AutoReplyThread extends Thread {
             }
             //ps4大逃杀猎杀低分
             if (replyString.contains("%PS4_RP_DFEN%")) {
-                predatorResult = apiService.getApexPredator("ps4","2");
+                predatorResult = getCachedApexPredator("ps4","2");
                 if(predatorResult!=null&&predatorResult.getVal()!=null) {
                     replyString = StringUtils.replace(replyString, "%PS4_RP_DFEN%", String.valueOf(predatorResult.getVal()));
                 }else{
@@ -649,7 +685,7 @@ public class AutoReplyThread extends Thread {
             }
             //ps4大逃杀猎杀大师总数
             if (replyString.contains("%PS4_RP_MTOTAL%")) {
-                predatorResult = apiService.getApexPredator("ps4","2");
+                predatorResult = getCachedApexPredator("ps4","2");
                 if(predatorResult!=null&&predatorResult.getTotalMastersAndPreds()!=null) {
                     replyString = StringUtils.replace(replyString, "%PS4_RP_MTOTAL%", String.valueOf(predatorResult.getTotalMastersAndPreds()));
                 }else{
@@ -658,7 +694,7 @@ public class AutoReplyThread extends Thread {
             }
             //ps4竞技场猎杀大师低分
             if (replyString.contains("%PS4_AP_DFEN%")) {
-                predatorResult = apiService.getApexPredator("ps4","3");
+                predatorResult = getCachedApexPredator("ps4","3");
                 if(predatorResult!=null&&predatorResult.getVal()!=null){
                     replyString = StringUtils.replace(replyString, "%PS4_AP_DFEN%", String.valueOf(predatorResult.getVal()));
                 }else{
@@ -667,7 +703,7 @@ public class AutoReplyThread extends Thread {
             }
             //ps4竞技场猎杀大师总数
             if (replyString.contains("%PS4_AP_MTOTAL%")) {
-                predatorResult = apiService.getApexPredator("ps4","3");
+                predatorResult = getCachedApexPredator("ps4","3");
                 if(predatorResult!=null&&predatorResult.getTotalMastersAndPreds()!=null) {
                     replyString = StringUtils.replace(replyString, "%PS4_AP_MTOTAL%", String.valueOf(predatorResult.getTotalMastersAndPreds()));
                 }else{
@@ -677,7 +713,7 @@ public class AutoReplyThread extends Thread {
         }
         //apex 综合 v1
         if (StringUtils.containsAny(replyString, AutoParamSetConf.apex_params)) {
-            ApexMessage apexMessage = apiService.getApexMessage();
+            ApexMessage apexMessage = getCachedApexMessage();
             if(apexMessage!=null){
                 //如轮换
                 if (replyString.contains("%MAKER_DAY1%")&&StringUtils.isNotBlank(apexMessage.getMaker_day1())) {
@@ -807,11 +843,8 @@ public class AutoReplyThread extends Thread {
         }
         if (StringUtils.isNotBlank(replyString)) {
             if (PublicDataConf.sendBarrageThread != null && !PublicDataConf.sendBarrageThread.FLAG) {
-                PublicDataConf.barrageString.add(replyString);
+                PublicDataConf.barrageString.offer(replyString);
                 is_send = true;
-                synchronized (PublicDataConf.sendBarrageThread) {
-                    PublicDataConf.sendBarrageThread.notify();
-                }
             }
         }
         return is_send;
