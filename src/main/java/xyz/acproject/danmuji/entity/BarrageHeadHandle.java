@@ -56,15 +56,6 @@ public class BarrageHeadHandle implements Serializable,Cloneable {
 		return new BarrageHeadHandle();
 	}
 
-//单例模式
-//    public static BarrageHeadHandle getBarrageHeadHandle() {
-//        if (barrageHeadHandle == null) {
-//            synchronized (BarrageHeadHandle.class) {
-//                barrageHeadHandle = new BarrageHeadHandle();
-//            }
-//        }
-//        return barrageHeadHandle;
-//    }
 
 	public static BarrageHeadHandle getBarrageHeadHandle(int packageLength, char packageHeadLength, char packageVersion, int packageType, int packageOther) {
 		try {
@@ -81,20 +72,6 @@ public class BarrageHeadHandle implements Serializable,Cloneable {
 		}
 		return new BarrageHeadHandle(packageLength,packageHeadLength,packageVersion,packageType,packageOther);
 	}
-
-	//    public static BarrageHeadHandle getBarrageHeadHandle(int packageLength, char packageHeadLength, char packageVersion, int packageType, int packageOther) {
-//        if (barrageHeadHandle == null) {
-//            synchronized (BarrageHeadHandle.class) {
-//                barrageHeadHandle = new BarrageHeadHandle();
-//            }
-//        }
-//        barrageHeadHandle.setPackageHeadLength(packageHeadLength);
-//        barrageHeadHandle.setPackageLength(packageLength);
-//        barrageHeadHandle.setPackageOther(packageOther);
-//        barrageHeadHandle.setPackageType(packageType);
-//        barrageHeadHandle.setPackageVersion(packageVersion);
-//        return barrageHeadHandle;
-//    }
 	public int getPackageLength() {
 		return packageLength;
 	}

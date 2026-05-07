@@ -57,28 +57,4 @@ public class ThankFollowSetConf extends ThankLiveSetConf implements Serializable
 		}
 	}
 
-	public boolean is_followThank(short live_status){
-		if(StringUtils.isBlank(PublicDataConf.USERCOOKIE)){
-			return false;
-		}
-		//是否开启仅在直播中运行
-		if(is_live_open()) {
-			//没在直播
-			if(live_status!=1){
-				return false;
-			}else{
-				if(is_open()) {
-					return true;
-				}else{
-					return false;
-				}
-			}
-		}else{
-			if(is_open()) {
-				return true;
-			}else{
-				return false;
-			}
-		}
-	}
 }

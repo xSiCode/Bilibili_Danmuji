@@ -258,18 +258,6 @@ public class SetServiceImpl implements SetService {
                 centerSetConf.getAdvert().start(threadComponent);
                 // autoreplythread
                 centerSetConf.getReply().start(threadComponent);
-                // useronlinethread && smallHeartThread 移除在线心跳 接口已经不可用
-//                if (centerSetConf.is_online()) {
-//                    threadComponent.startUserOnlineThread();
-//                    if (centerSetConf.is_sh() && PublicDataConf.lIVE_STATUS == 1) {
-//                        threadComponent.startSmallHeartThread();
-//                    } else {
-//                        threadComponent.closeSmallHeartThread();
-//                    }
-//                } else {
-//                    threadComponent.closeSmallHeartThread();
-//                    threadComponent.closeUserOnlineThread();
-//                }
                 // sendbarragethread
                 if (PublicDataConf.advertThread == null
                         && !PublicDataConf.centerSetConf.getFollow().is_followThank()

@@ -60,27 +60,4 @@ public class ThankWelcomeSetConf extends ThankLiveSetConf implements Serializabl
         }
     }
 
-    public boolean is_welcomeThank(short live_status){
-        if(StringUtils.isBlank(PublicDataConf.USERCOOKIE)){
-            return false;
-        }
-        if(is_live_open()) {
-            //没在直播
-            if(live_status!=1){
-                return false;
-            }else{
-                if(is_open()) {
-                    return true;
-                }else{
-                    return false;
-                }
-            }
-        }else{
-            if(is_open()) {
-                return true;
-            }else{
-                return false;
-            }
-        }
-    }
 }

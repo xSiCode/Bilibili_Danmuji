@@ -6,14 +6,11 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.util.CollectionUtils;
 import xyz.acproject.danmuji.conf.PublicDataConf;
 import xyz.acproject.danmuji.conf.set.AutoReplySet;
-import xyz.acproject.danmuji.entity.apex.ApexMessage;
-import xyz.acproject.danmuji.entity.apex.PredatorResult;
 import xyz.acproject.danmuji.entity.auto_reply.AutoReply;
 import xyz.acproject.danmuji.http.HttpRoomData;
 import xyz.acproject.danmuji.http.HttpUserData;
 import xyz.acproject.danmuji.tools.CurrencyTools;
 import xyz.acproject.danmuji.utils.JodaTimeUtils;
-import xyz.acproject.danmuji.utils.SpringUtils;
 
 import java.math.BigDecimal;
 import java.util.Date;

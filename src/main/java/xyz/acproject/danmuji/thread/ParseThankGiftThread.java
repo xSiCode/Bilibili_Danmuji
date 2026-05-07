@@ -135,22 +135,7 @@ public class ParseThankGiftThread extends Thread {
 									}
 									thankGiftStr = null;
 								}
-								// 已删除传统没有手动选择几种的写法 即全部打印
-//								thankGiftStr = getThankGiftString().replaceAll("%uName%", entry.getKey());
-//								for (Iterator<Gift> iterator = gifts.iterator(); iterator.hasNext();) {
-//									Gift gift = iterator.next();
-//									stringBuilder.append(gift.getNum()).append("个").append(gift.getGiftName())
-//											.append(",");
-//								}
-//								stringBuilder.delete(stringBuilder.length() - 1, stringBuilder.length());
-//								thankGiftStr = thankGiftStr.replaceAll("%Gifts%", stringBuilder.toString());
-//								if (PublicDataConf.sendBarrageThread != null
-//										&& !PublicDataConf.sendBarrageThread.FLAG) {
-//									PublicDataConf.barrageString.add(thankGiftStr);
-//									synchronized (PublicDataConf.sendBarrageThread) {
-//										PublicDataConf.sendBarrageThread.notify();
-//									}
-//								}
+
 								stringBuilder.delete(0, stringBuilder.length());
 							}
 						}
@@ -204,10 +189,7 @@ public class ParseThankGiftThread extends Thread {
 							}
 						}
 					}
-//					for (Iterator<Entry<String, Vector<Gift>>> iterator = PublicDataConf.thankGiftConcurrentHashMap.entrySet()
-//							.iterator(); iterator.hasNext();) {
-//						iterator.remove();
-//					}
+
 					PublicDataConf.thankGiftConcurrentHashMap.clear();
 					// 间隔感谢：感谢完成后进入冷却期，冷却期内的礼物直接丢弃
 					COOLDOWN = true;

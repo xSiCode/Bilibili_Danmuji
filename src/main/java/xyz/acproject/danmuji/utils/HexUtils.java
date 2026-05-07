@@ -51,42 +51,6 @@ public class HexUtils {
     }
 
 
-    public static byte getHex(int index) {
-        return HEX[index];
-    }
-
-
-    public static String toHexString(char c) {
-        // 2 bytes / 4 hex digits
-        StringBuilder sb = new StringBuilder(4);
-
-        sb.append(hex[(c & 0xf000) >> 12]);
-        sb.append(hex[(c & 0x0f00) >> 8]);
-
-        sb.append(hex[(c & 0xf0) >> 4]);
-        sb.append(hex[(c & 0x0f)]);
-
-        return sb.toString();
-    }
-
-
-    public static String toHexString(byte[] bytes) {
-        if (null == bytes) {
-            return null;
-        }
-
-        StringBuilder sb = new StringBuilder(bytes.length << 1);
-
-        for (byte aByte : bytes) {
-            sb.append(hex[(aByte & 0xf0) >> 4])
-                    .append(hex[(aByte & 0x0f)])
-            ;
-        }
-
-        return sb.toString();
-    }
-
-
     public static byte[] fromHexString(String input) {
         if (input == null) {
             return null;

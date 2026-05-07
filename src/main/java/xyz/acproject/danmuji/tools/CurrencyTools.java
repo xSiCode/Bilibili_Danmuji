@@ -382,25 +382,6 @@ public class CurrencyTools {
         return false;
     }
 
-    public static String parseBuvidCookie(String cookie) {
-        String key = null;
-        String value = null;
-        cookie = cookie.trim();
-        String[] a = cookie.split(";");
-        for (String string : a) {
-            if (string.contains("=")) {
-                String[] maps = string.split("=");
-                key = maps[0];
-                value = maps.length >= 2 ? maps[1] : "";
-                LOGGER.info("key:{},value:{}", key, value);
-                if(StringUtils.equals(key,"buvid3")) {
-                    return value;
-                }
-            }
-        }
-        return "";
-    }
-
 
     public synchronized static void autoSendGift() {
         //PublicDataConf.centerSetConf.getAuto_gift().is_open()
@@ -538,10 +519,6 @@ public class CurrencyTools {
             return true;
         }
         return false;
-    }
-
-    public static String dateToCron(Date date) {
-        return JodaTimeUtils.format(date, "ss mm HH * * ?");
     }
 
     public static String dateStringToCron(String dateStr) {

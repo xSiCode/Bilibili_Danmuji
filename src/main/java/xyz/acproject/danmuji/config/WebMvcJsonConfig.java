@@ -20,12 +20,6 @@ import java.util.List;
  */
 @Configuration
 public class WebMvcJsonConfig {
-//    private static final ThreadLocal<SimpleDateFormat> THREAD_LOCAL = new ThreadLocal<SimpleDateFormat>() {
-//        @Override
-//        protected SimpleDateFormat initialValue() {
-//            return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-//        }
-//    };
     //fastjson配置方法 由于科学计算法bug 暂时弃用
     @Bean
     FastJsonHttpMessageConverter fastJsonHttpMessageConverter(){
@@ -56,14 +50,4 @@ public class WebMvcJsonConfig {
         converter.setSupportedMediaTypes(mediaTypeList);
         return converter;
     }
-//    //jackson的
-//    @Bean
-//    MappingJackson2HttpMessageConverter mappingJackson2HttpMessageConverter(){
-//        MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter();
-//        ObjectMapper mapper = new ObjectMapper();
-//        mapper.setDateFormat(THREAD_LOCAL.get());
-//        mapper.enable(JsonGenerator.Feature.WRITE_BIGDECIMAL_AS_PLAIN);
-//        converter.setObjectMapper(mapper);
-//        return converter;
-//    }
 }
