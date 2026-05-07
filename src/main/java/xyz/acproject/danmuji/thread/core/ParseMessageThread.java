@@ -1147,7 +1147,7 @@ public class ParseMessageThread extends Thread {
                                                         stringBuilder.append(" , 博主：").append(fans/10000);
                                                     }else if (fans < 100 && attention > 3000  && midStr.isEmpty()){
                                                         stringBuilder.append(" , 人机");
-                                                        midStr = ""+_uid+"?疑似人机"; // 人机时打开链接
+                                                        midStr = _uid+"?疑似人机"; // 人机时打开链接
                                                     }
                                                 }
 
@@ -1156,11 +1156,11 @@ public class ParseMessageThread extends Thread {
                                                     stringBuilder.append(" , LV:").append(level);
                                                     if (level < 2 && midStr.isEmpty()) {
                                                         stringBuilder.append(" , 新号");
-                                                        midStr = ""+_uid+"?LV="+level; // 新号时打开链接
+                                                        midStr = _uid+"?LV="+level; // 新号时打开链接
                                                     }
                                                 } else {
                                                     stringBuilder.append(" , LV:无");
-                                                    midStr = ""+_uid+"?LV:无"; // 新号时打开链接
+                                                    midStr = _uid+"?LV=无"; // 新号时打开链接
                                                 }
 
 
@@ -1216,9 +1216,9 @@ public class ParseMessageThread extends Thread {
                                         new Thread(() -> {
                                             HttpRoomData.processFollowings(_follow_uid, _follow_uname);
                                         }).start();
-                                        new Thread(() -> {   // 不打印粉丝列表，因为获取不到
-                                            HttpRoomData.processFollowers(_follow_uid, _follow_uname);
-                                        }).start();
+//                                        new Thread(() -> {   // 不打印粉丝列表，因为获取不到
+//                                            HttpRoomData.processFollowers(_follow_uid, _follow_uname);
+//                                        }).start();
                                     }
                                 }
                                 //欢迎感谢
