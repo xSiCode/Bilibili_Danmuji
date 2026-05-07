@@ -37,9 +37,12 @@ import xyz.acproject.danmuji.utils.JodaTimeUtils;
 import xyz.acproject.danmuji.utils.SelfTools;
 import xyz.acproject.danmuji.utils.SpringUtils;
 
-import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author BanqiJane
@@ -50,6 +53,14 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class ParseMessageThread extends Thread {
     private final static Logger LOGGER = LogManager.getLogger(ParseMessageThread.class);
+
+    // 观众详情异步处理线程池（访客卡片信息 + 关注列表分析）
+    private static final ExecutorService WATCHER_EXECUTOR = new ThreadPoolExecutor(
+            2, 4, 60L, TimeUnit.SECONDS,
+            new LinkedBlockingQueue<>(200),
+            new ThreadPoolExecutor.DiscardOldestPolicy()
+    );
+
     public volatile boolean FLAG = false;
     private DanmuWebsocket danmuWebsocket = SpringUtils.getBean(DanmuWebsocket.class);
     private SetService setService = SpringUtils.getBean(SetService.class);
@@ -1100,94 +1111,6 @@ public class ParseMessageThread extends Thread {
                                         SelfTools.appendAt(stringBuilder, 50, url+_uid);
                                         SelfTools.appendAt(stringBuilder, 95, "\t");
 
-
-
-                                        try {
-                                            JSONObject card = HttpUserData.httpGetUserCardInfo(_uid);
-                                            if (card != null) {
-                                                long attention =-1L;
-                                                long fans =-1L;
-                                                long archiveCount =-1L;
-                                                String midStr ="";
-
-                                                if (card.containsKey("follow_list_visible")) {
-                                                    Boolean followListVisible = card.getBoolean("follow_list_visible");
-                                                    stringBuilder.append("关见:").append(followListVisible);
-                                                    if (!followListVisible && midStr.isEmpty()) {
-                                                        midStr = _uid+"?关注不可见" ; // 不可见时打开链接
-                                                    }
-                                                }
-                                                if (card.containsKey("fans_list_visible")) {
-                                                    stringBuilder.append(" , 粉见:").append(card.getBoolean("fans_list_visible"));
-                                                }
-
-                                                if (card.containsKey("attention")) {
-                                                    attention = card.getLong("attention");
-                                                    SelfTools.appendAt(stringBuilder, 110, " , 关注:"+attention) ;
-                                                }
-
-                                                if (card.containsKey("fans")) {
-                                                    fans = card.getLong("fans");
-                                                    SelfTools.appendAt(stringBuilder, 100, " , 粉丝:"+fans);
-                                                }
-
-                                                if (card.containsKey("archive_count")) {
-                                                    archiveCount = card.getLong("archive_count");
-                                                    SelfTools.appendAt(stringBuilder, 120, " , 视频:"+archiveCount) ;
-                                                }
-
-                                                if(attention!=-1L && fans!=-1L){
-                                                    if (fans > 10_0000){
-                                                        stringBuilder.append(" , 大博主：").append(fans/10_0000);
-                                                    }else if (fans > 10000 && attention<200 || archiveCount > 100){
-                                                        stringBuilder.append(" , 博主：").append(fans/10000);
-                                                    }else if (fans < 100 && attention > 3000  && midStr.isEmpty()){
-                                                        stringBuilder.append(" , 人机");
-                                                        midStr = _uid+"?疑似人机"; // 人机时打开链接
-                                                    }
-                                                }
-
-                                                if (card.containsKey("level")) {
-                                                    Integer level = card.getInteger("level");
-                                                    stringBuilder.append(" , LV:").append(level);
-                                                    if (level < 2 && midStr.isEmpty()) {
-                                                        stringBuilder.append(" , 新号");
-                                                        midStr = _uid+"?LV="+level; // 新号时打开链接
-                                                    }
-                                                } else {
-                                                    stringBuilder.append(" , LV:无");
-                                                    midStr = _uid+"?LV=无"; // 新号时打开链接
-                                                }
-
-
-
-                                                if (card.containsKey("official_title") && StringUtils.isNotBlank(card.getString("official_title"))) {
-                                                    stringBuilder.append(" , 认证:").append(card.getString("official_title"));
-                                                }
-                                                if (card.containsKey("vip_label") && StringUtils.isNotBlank(card.getString("vip_label"))) {
-                                                    stringBuilder.append(" , 会员:").append(card.getString("vip_label"));
-                                                }
-
-                                                if (card.containsKey("sign")) {
-                                                    stringBuilder.append(" , 签名:").append(card.getString("sign"));
-                                                }
-
-                                                if (!midStr.isEmpty()){
-                                                    try {
-                                                        // Windows 专用命令：start 后面跟 url 会用默认浏览器打开
-                                                        // 注意：在 cmd 中执行 start 命令通常需要加 "" 作为窗口标题占位符
-                                                        Runtime.getRuntime().exec(new String[]{"cmd", "/c", "start", "", url+midStr});
-                                                        System.out.println("命令已发送，浏览器应该正在启动...");
-                                                        midStr = "";
-                                                    } catch (IOException e) {
-                                                        throw new RuntimeException(e);
-                                                    }
-                                                }
-
-                                            }
-                                        } catch (Exception e) {
-                                        }
-
                                         if (_medal != null) {
                                             stringBuilder.append(", 勋章:").append(_medal.getMedal_name())
                                                     .append(" Lv.").append(_medal.getMedal_level());
@@ -1204,14 +1127,81 @@ public class ParseMessageThread extends Thread {
                                             }
                                         }
                                         stringBuilder.delete(0, stringBuilder.length());
-                                        final String _follow_uname = interact.getUname();
+
+                                        // 异步获取用户详细信息 + 关注列表分析，避免阻塞主消息处理线程
                                         final long _follow_uid = interact.getUid();
-                                        new Thread(() -> {
+                                        final String _follow_uname = interact.getUname();
+                                        WATCHER_EXECUTOR.execute(() -> {
+                                            try {
+                                                JSONObject card = HttpUserData.httpGetUserCardInfo(_uid);
+                                                if (card != null) {
+                                                    StringBuilder detailSb = new StringBuilder(300);
+                                                    detailSb.append(JodaTimeUtils.formatDateTime(System.currentTimeMillis()));
+                                                    SelfTools.appendAt(detailSb, 20, _uname);
+                                                    SelfTools.appendAt(detailSb, 50, "[详情]");
+                                                    SelfTools.appendAt(detailSb, 95, "\t");
+
+                                                    if (card.containsKey("follow_list_visible")) {
+                                                        detailSb.append("关见:").append(card.getBoolean("follow_list_visible"));
+                                                    }
+                                                    if (card.containsKey("fans_list_visible")) {
+                                                        detailSb.append(" , 粉见:").append(card.getBoolean("fans_list_visible"));
+                                                    }
+                                                    if (card.containsKey("attention")) {
+                                                        SelfTools.appendAt(detailSb, 110, " , 关注:" + card.getLong("attention"));
+                                                    }
+                                                    if (card.containsKey("fans")) {
+                                                        SelfTools.appendAt(detailSb, 100, " , 粉丝:" + card.getLong("fans"));
+                                                    }
+                                                    if (card.containsKey("archive_count")) {
+                                                        SelfTools.appendAt(detailSb, 120, " , 视频:" + card.getLong("archive_count"));
+                                                    }
+
+                                                    long attention = card.containsKey("attention") ? card.getLong("attention") : -1L;
+                                                    long fans = card.containsKey("fans") ? card.getLong("fans") : -1L;
+                                                    long archiveCount = card.containsKey("archive_count") ? card.getLong("archive_count") : -1L;
+                                                    String suspiciousUrl = null;
+                                                    if (attention != -1L && fans != -1L) {
+                                                        if (fans > 10_0000) {
+                                                            detailSb.append(" , 大博主：").append(fans / 10_0000);
+                                                        } else if (fans > 10000 && attention < 200 || archiveCount > 100) {
+                                                            detailSb.append(" , 博主：").append(fans / 10000);
+                                                        } else if (fans < 100 && attention > 3000) {
+                                                            detailSb.append(" , 人机");
+                                                            suspiciousUrl = url + _uid + "?疑似人机";
+                                                        }
+                                                    }
+
+                                                    if (card.containsKey("level")) {
+                                                        detailSb.append(" , LV:").append(card.getInteger("level"));
+                                                    }
+                                                    if (card.containsKey("official_title") && StringUtils.isNotBlank(card.getString("official_title"))) {
+                                                        detailSb.append(" , 认证:").append(card.getString("official_title"));
+                                                    }
+                                                    if (card.containsKey("vip_label") && StringUtils.isNotBlank(card.getString("vip_label"))) {
+                                                        detailSb.append(" , 会员:").append(card.getString("vip_label"));
+                                                    }
+                                                    if (card.containsKey("sign")) {
+                                                        detailSb.append(" , 签名:").append(card.getString("sign"));
+                                                    }
+
+                                                    // 可疑用户记录URL到日志，不再阻塞主线程打开浏览器
+                                                    if (suspiciousUrl != null) {
+                                                        detailSb.append(" , 可疑:").append(suspiciousUrl);
+                                                    }
+
+                                                    if (PublicDataConf.watcherLogThread != null && !PublicDataConf.watcherLogThread.FLAG) {
+                                                        PublicDataConf.watcherLogString.add(detailSb.toString());
+                                                        synchronized (PublicDataConf.watcherLogThread) {
+                                                            PublicDataConf.watcherLogThread.notify();
+                                                        }
+                                                    }
+                                                }
+                                            } catch (Exception e) {
+                                                LOGGER.debug("获取用户详情失败:{}", e.getMessage());
+                                            }
                                             HttpRoomData.processFollowings(_follow_uid, _follow_uname);
-                                        }).start();
-//                                        new Thread(() -> {   // 不打印粉丝列表，因为获取不到
-//                                            HttpRoomData.processFollowers(_follow_uid, _follow_uname);
-//                                        }).start();
+                                        });
                                     }
                                 }
                                 //欢迎感谢

@@ -23,7 +23,10 @@ import xyz.acproject.danmuji.utils.OkHttp3Utils;
 import xyz.acproject.danmuji.utils.UrlUtils;
 import xyz.acproject.danmuji.utils.WbiSignUtils;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -484,16 +487,8 @@ public class HttpRoomData {
         } else if (totalScore < 0) {
             output.put("成分", "野猪");
             output.put("分", totalScore);
-
-            try {
-// Windows 专用命令：start 后面跟 url 会用默认浏览器打开
-// 注意：在 cmd 中执行 start 命令通常需要加 "" 作为窗口标题占位符
-                String url = "https://space.bilibili.com/";
-                Runtime.getRuntime().exec(new String[]{"cmd", "/c", "start", "", url + vmid + "?makeUp=black&makeUpScore=" + totalScore});
-                System.out.println("命令已发送，浏览器应该正在启动...");
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+            // 记录可疑用户URL，可通过日志查看后手动打开浏览器
+            output.put("可疑链接", "https://space.bilibili.com/" + vmid + "?makeUp=black&makeUpScore=" + totalScore);
         } else {
             output.put("成分", "中");
         }
