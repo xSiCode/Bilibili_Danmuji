@@ -54,12 +54,11 @@ public class DanmuWebsocket {
 	}
 
 	public void sendMessage(String message) throws IOException {
-		// 主动调用房间连接后才可接受房间内消息
+		// 使用异步发送，避免慢客户端阻塞主消息处理线程
 		for(DanmuWebsocket danmuWebsocket:webSocketServers) {
-			synchronized (danmuWebsocket.session) {
-				danmuWebsocket.session.getBasicRemote().sendText(message);
+			if (danmuWebsocket.session.isOpen()) {
+				danmuWebsocket.session.getAsyncRemote().sendText(message);
 			}
-			
 		}
 	}
 	
