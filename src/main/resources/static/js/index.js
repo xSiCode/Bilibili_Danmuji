@@ -560,6 +560,15 @@ $(document).on('click', '.pn-next', function () {
         method.renderPNTable();
     }
 });
+// 正白负黑姬表头排序
+$(document).on('click', '.pn-sortable', function () {
+    method._syncPNPage();
+    var col = $(this).data('col');
+    method._togglePNSort(col);
+    method._applyPNSort();
+    pnData.page = 1;
+    method.renderPNTable();
+});
 const danmuku = {
     // 0弹幕 1礼物 2消息
     type: function (t) {
@@ -715,6 +724,13 @@ const pnData = {
     list: [],
     page: 1,
     pageSize: 10,
+    // 排序状态：最近点击的列排在数组最前面，优先级最高
+    // [{col:'score', dir:'asc'}, {col:'uid', dir:'asc'}, {col:'name', dir:'asc'}]
+    sortState: [
+        {col: 'score', dir: 'asc'},
+        {col: 'uid', dir: 'asc'},
+        {col: 'name', dir: 'asc'}
+    ],
 }
 const method = {
     saveSet: function () {
@@ -1728,6 +1744,8 @@ const method = {
     renderPNTable: function () {
         var tbody = $(".pn-tbody");
         tbody.empty();
+        method._applyPNSort();
+        method._updatePNSortIcons();
         var start = (pnData.page - 1) * pnData.pageSize;
         var end = Math.min(start + pnData.pageSize, pnData.list.length);
         var pageItems = pnData.list.slice(start, end);
@@ -1748,6 +1766,7 @@ const method = {
     },
     savePNList: function () {
         method._syncPNPage();
+        method._applyPNSort();
         // deduplicate by uid, latest wins
         var seen = {};
         var list = [];
@@ -1786,6 +1805,63 @@ const method = {
         pnData.list.unshift({ uid: '', name: '', score: 0 });
         pnData.page = 1;
         method.renderPNTable();
+    },
+    // 切换排序列的升降状态：无→升→降→移除
+    _togglePNSort: function (col) {
+        var existing = null;
+        for (var i = 0; i < pnData.sortState.length; i++) {
+            if (pnData.sortState[i].col === col) {
+                existing = pnData.sortState[i];
+                pnData.sortState.splice(i, 1);
+                break;
+            }
+        }
+        if (existing === null) {
+            pnData.sortState.unshift({col: col, dir: 'asc'});
+        } else if (existing.dir === 'asc') {
+            pnData.sortState.unshift({col: col, dir: 'desc'});
+        }
+        // else: was 'desc', removed → no sort on this column, don't re-add
+    },
+    // 根据 sortState 对 pnData.list 进行稳定多列排序
+    _applyPNSort: function () {
+        if (pnData.sortState.length === 0) return;
+        pnData.list.sort(function (a, b) {
+            for (var i = 0; i < pnData.sortState.length; i++) {
+                var col = pnData.sortState[i].col;
+                var dir = pnData.sortState[i].dir;
+                var va, vb;
+                if (col === 'score') {
+                    va = parseInt(a.score) || 0;
+                    vb = parseInt(b.score) || 0;
+                } else if (col === 'uid') {
+                    va = parseInt(a.uid) || 0;
+                    vb = parseInt(b.uid) || 0;
+                } else {
+                    va = (a.name || '').toLowerCase();
+                    vb = (b.name || '').toLowerCase();
+                }
+                if (va < vb) return dir === 'asc' ? -1 : 1;
+                if (va > vb) return dir === 'asc' ? 1 : -1;
+            }
+            return 0;
+        });
+    },
+    // 更新表头排序图标
+    _updatePNSortIcons: function () {
+        $('.pn-sortable .pn-sort-icon').text('');
+        for (var i = 0; i < pnData.sortState.length; i++) {
+            var col = pnData.sortState[i].col;
+            var dir = pnData.sortState[i].dir;
+            var icon = dir === 'asc' ? ' ▲' : ' ▼';
+            var $th = $('.pn-sortable[data-col="' + col + '"]');
+            var $icon = $th.find('.pn-sort-icon');
+            if (i === 0) {
+                $icon.text(icon);
+            }
+            // 用不同透明度表示优先级：第一优先不透明，后续半透明
+            $icon.css('opacity', 1 - i * 0.35);
+        }
     },
 };
 

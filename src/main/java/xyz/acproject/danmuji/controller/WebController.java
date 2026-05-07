@@ -379,7 +379,7 @@ public class WebController {
     @ResponseBody
     @GetMapping(value = "/checkupdate")
     public Response<?> checkUpdate(HttpServletRequest req) {
-        String edition = PublicDataConf.centerSetConf.getPrivacy().is_open()?PublicDataConf.VERSION :HttpOtherData.httpGetNewEditionV2ByGitHub();
+        String edition = PublicDataConf.centerSetConf.getPrivacy().is_open()?PublicDataConf.VERSION : HttpOtherData.httpGetNewEditionV2ByGitHub();
         EditionResult editionResult = new EditionResult();
         editionResult.setEdition(edition);
         if (StringUtils.isNotBlank(edition)) {
