@@ -29,6 +29,7 @@ import xyz.acproject.danmuji.service.DanmujiInitService;
 import xyz.acproject.danmuji.service.SetService;
 import xyz.acproject.danmuji.tools.CurrencyTools;
 import xyz.acproject.danmuji.tools.ParseSetStatusTools;
+import xyz.acproject.danmuji.tools.file.FileTools;
 import xyz.acproject.danmuji.tools.file.JsonFileTools;
 import xyz.acproject.danmuji.utils.FastJsonUtils;
 import xyz.acproject.danmuji.utils.QrcodeUtils;
@@ -40,7 +41,9 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.*;
 import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -509,6 +512,73 @@ public class WebController {
             return Response.success(1, req);
         }
         return Response.success(0, req);
+    }
+
+    @ResponseBody
+    @GetMapping(value = "/getPositiveWhiteNegativeBlack")
+    public Response<?> getPositiveWhiteNegativeBlack(HttpServletRequest req) {
+        try {
+            FileTools fileTools = new FileTools();
+            File file = new File(fileTools.getBaseJarPath(), "positiveWhite_negativeBlack_user.json");
+            if (!file.exists()) {
+                JSONObject empty = new JSONObject();
+                empty.put("type", "positiveWhite_negativeBlack_user");
+                empty.put("followings_list", new com.alibaba.fastjson.JSONArray());
+                return Response.success(empty, req);
+            }
+            StringBuilder sb = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    sb.append(line);
+                }
+            }
+            JSONObject jsonObject = JSONObject.parseObject(sb.toString());
+            return Response.success(jsonObject, req);
+        } catch (Exception e) {
+            LOGGER.error("getPositiveWhiteNegativeBlack error", e);
+            return Response.success(null, req);
+        }
+    }
+
+    @ResponseBody
+    @PostMapping(value = "/savePositiveWhiteNegativeBlack")
+    public Response<?> savePositiveWhiteNegativeBlack(@RequestParam("data") String data, HttpServletRequest req) {
+        try {
+            FileTools fileTools = new FileTools();
+            File file = new File(fileTools.getBaseJarPath(), "positiveWhite_negativeBlack_user.json");
+            JSONObject inputData = JSONObject.parseObject(data);
+            com.alibaba.fastjson.JSONArray inputList = inputData.getJSONArray("followings_list");
+
+            JSONObject result = new JSONObject();
+            result.put("type", "positiveWhite_negativeBlack_user");
+            com.alibaba.fastjson.JSONArray resultList = new com.alibaba.fastjson.JSONArray();
+            Set<Long> seenUids = new HashSet<>();
+
+            // reverse order: later entries override earlier ones with same uid
+            for (int i = inputList.size() - 1; i >= 0; i--) {
+                com.alibaba.fastjson.JSONObject entry = inputList.getJSONObject(i);
+                Long uid = entry.getLong("uid");
+                if (uid != null && !seenUids.contains(uid)) {
+                    seenUids.add(uid);
+                    resultList.add(0, entry);
+                }
+            }
+
+            result.put("followings_list", resultList);
+
+            if (!file.getParentFile().exists()) {
+                file.getParentFile().mkdirs();
+            }
+            try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"))) {
+                writer.write(com.alibaba.fastjson.JSON.toJSONString(result, true));
+            }
+
+            return Response.success(0, req);
+        } catch (Exception e) {
+            LOGGER.error("savePositiveWhiteNegativeBlack error", e);
+            return Response.success(1, req);
+        }
     }
 
     @Autowired

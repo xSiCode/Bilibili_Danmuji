@@ -34,6 +34,7 @@ $(function () {
         method.importDfFile();
     });
     publicData.set = method.initSet(method.getSet());
+    method.loadPNList();
     $('.thankgift_thank_status')
         .change(
             function () {
@@ -524,6 +525,41 @@ $(document).on('click', '.black_flag_parent', function () {
         $(".black_flag_child").prop('checked', true);
     }
 });
+$(document).on('click', '.pn-add-btn', function () {
+    method.addPNRow();
+});
+$(document).on('click', '.pn-save-btn', function () {
+    method.savePNList();
+});
+$(document).on('click', '.pn-delete-btn', function () {
+    method._syncPNPage();
+    var rowIdx = $(this).closest('tr').index();
+    var listIdx = (pnData.page - 1) * pnData.pageSize + rowIdx;
+    if (listIdx < pnData.list.length) {
+        pnData.list.splice(listIdx, 1);
+    }
+    // adjust page if we deleted the last item on the last page
+    var totalPages = Math.max(1, Math.ceil(pnData.list.length / pnData.pageSize));
+    if (pnData.page > totalPages) {
+        pnData.page = totalPages;
+    }
+    method.renderPNTable();
+});
+$(document).on('click', '.pn-prev', function () {
+    if (pnData.page > 1) {
+        method._syncPNPage();
+        pnData.page--;
+        method.renderPNTable();
+    }
+});
+$(document).on('click', '.pn-next', function () {
+    var totalPages = Math.max(1, Math.ceil(pnData.list.length / pnData.pageSize));
+    if (pnData.page < totalPages) {
+        method._syncPNPage();
+        pnData.page++;
+        method.renderPNTable();
+    }
+});
 const danmuku = {
     // 0弹幕 1礼物 2消息
     type: function (t) {
@@ -674,6 +710,11 @@ const danmuku = {
 }
 const publicData = {
     set: {},
+}
+const pnData = {
+    list: [],
+    page: 1,
+    pageSize: 10,
 }
 const method = {
     saveSet: function () {
@@ -1645,6 +1686,106 @@ const method = {
             }
         });
         return code;
+    },
+    loadPNList: function () {
+        $.ajax({
+            url: '../getPositiveWhiteNegativeBlack',
+            async: false,
+            cache: false,
+            type: 'GET',
+            dataType: 'json',
+            success: function (data) {
+                if (data.code == "200" && data.result && data.result.followings_list) {
+                    pnData.list = data.result.followings_list;
+                } else {
+                    pnData.list = [];
+                }
+            }
+        });
+        pnData.page = 1;
+        method.renderPNTable();
+    },
+    _syncPNPage: function () {
+        // sync current page DOM inputs back to pnData.list
+        var start = (pnData.page - 1) * pnData.pageSize;
+        $(".pn-tbody tr").each(function (i) {
+            var idx = start + i;
+            if (idx >= pnData.list.length) return;
+            var uidVal = $(this).find(".pn-uid").val();
+            if (uidVal !== undefined && uidVal.trim() !== '') {
+                pnData.list[idx].uid = parseInt(uidVal);
+            }
+            var nameVal = $(this).find(".pn-name").val();
+            if (nameVal !== undefined) {
+                pnData.list[idx].name = nameVal.trim();
+            }
+            var scoreVal = $(this).find(".pn-score").val();
+            if (scoreVal !== undefined && scoreVal.trim() !== '') {
+                pnData.list[idx].score = parseInt(scoreVal);
+            }
+        });
+    },
+    renderPNTable: function () {
+        var tbody = $(".pn-tbody");
+        tbody.empty();
+        var start = (pnData.page - 1) * pnData.pageSize;
+        var end = Math.min(start + pnData.pageSize, pnData.list.length);
+        var pageItems = pnData.list.slice(start, end);
+        for (var i = 0; i < pageItems.length; i++) {
+            var item = pageItems[i];
+            var row = '<tr data-uid="' + (item.uid || '') + '">' +
+                '<td><input class="form-control form-control-sm pn-uid" type="number" value="' + (item.uid || '') + '" style="min-width:120px"></td>' +
+                '<td><input class="form-control form-control-sm pn-name" type="text" value="' + (item.name || '') + '" style="min-width:120px"></td>' +
+                '<td><input class="form-control form-control-sm pn-score" type="number" value="' + (item.score || 0) + '" style="min-width:80px"></td>' +
+                '<td><button class="btn btn-sm btn-danger pn-delete-btn">删除</button></td>' +
+                '</tr>';
+            tbody.append(row);
+        }
+        var totalPages = Math.max(1, Math.ceil(pnData.list.length / pnData.pageSize));
+        $(".pn-page-info").text("第" + pnData.page + "页/共" + totalPages + "页");
+        $(".pn-prev").prop('disabled', pnData.page <= 1);
+        $(".pn-next").prop('disabled', pnData.page >= totalPages);
+    },
+    savePNList: function () {
+        method._syncPNPage();
+        // deduplicate by uid, latest wins
+        var seen = {};
+        var list = [];
+        for (var i = pnData.list.length - 1; i >= 0; i--) {
+            var entry = pnData.list[i];
+            var key = entry.uid;
+            if (key != null && key !== '' && !seen.hasOwnProperty(key)) {
+                seen[key] = true;
+                list.unshift(entry);
+            }
+        }
+        pnData.list = list;
+        var payload = { type: "positiveWhite_negativeBlack_user", followings_list: list };
+        var result = 0;
+        $.ajax({
+            url: '../savePositiveWhiteNegativeBlack',
+            async: false,
+            cache: false,
+            type: 'POST',
+            data: { data: JSON.stringify(payload) },
+            dataType: 'json',
+            success: function (data) {
+                if (data.code == "200") {
+                    result = data.result;
+                }
+            }
+        });
+        if (result === 0) {
+            showMessage("正白负黑列表保存成功!", "success", 3);
+        } else {
+            showMessage("正白负黑列表保存失败!", "danger", 3);
+        }
+        method.renderPNTable();
+    },
+    addPNRow: function () {
+        pnData.list.unshift({ uid: '', name: '', score: 0 });
+        pnData.page = 1;
+        method.renderPNTable();
     },
 };
 
