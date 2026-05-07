@@ -308,29 +308,16 @@ $(document)
 						data-bs-html='true' data-original-title='是否开启'>
 						<input type='checkbox' class='reply_oc live-save'
 						data-bs-toggle='tooltip' tabindex="0" data-bs-placement='top' title='是否精确匹配<br/>更多信息点进去编辑查看'
-						data-bs-html='true' data-original-title='是否精确匹配'> 
-				
-						<span tabindex="0" placeholder='关键字'
-						data-bs-toggle='tooltip' data-bs-placement='top' title='外部不能编辑:多个关键字,以中文逗号隔开<br/>更多信息点编辑进去查看或编辑'
-						data-bs-html='true' data-original-title='关键字'>
-							<textarea class='small-input reply_keywords live-save' placeholder='关键字'
-					data-bs-toggle='tooltip' data-bs-placement='top' title='不能编辑:多个关键字,以中文逗号隔开'
-					data-bs-html='true' data-original-title='关键字' readonly='readonly' style='height: 2rem' disabled></textarea>
-						</span>
-						<span tabindex="0" placeholder='屏蔽词'
-						data-bs-toggle='tooltip'  data-bs-placement='top' title='外部不能编辑:多个屏蔽词,以中文逗号隔开<br/>更多信息点编辑进去查看或编辑'
-						data-bs-html='true' data-original-title='关键字'>
+						data-bs-html='true' data-original-title='是否精确匹配'>
+						<textarea class='small-input reply_keywords live-save' placeholder='关键字'
+						data-bs-toggle='tooltip' data-bs-placement='top' title='不能编辑:多个关键字,以中文逗号隔开'
+						data-bs-html='true' data-original-title='关键字' readonly='readonly' style='height: 2rem' disabled></textarea>
 						<textarea class='small-input reply_shields live-save' placeholder='屏蔽词'
-					data-bs-toggle='tooltip' data-bs-placement='top' title='不能编辑:多个屏蔽词,以中文逗号隔开'
-					data-bs-html='true' data-original-title='关键字' readonly='readonly' style='height: 2rem' disabled></textarea>
-						</span>
-						<span placeholder='回复语句'
-						data-bs-toggle='tooltip'  data-bs-placement='top' title='外部不能编辑:回复语句,提供%AT%参数,以打印:@提问问题人名称<br/>更多信息点编辑进去查看或编辑'
-						data-bs-html='true' data-original-title='回复语句'>
-		      	<textarea class='big-input reply_rs live-save' placeholder='回复语句'
-					data-bs-toggle='tooltip' data-bs-placement='top' title='不能编辑:回复语句,提供%AT%参数,以打印:@提问问题人名称'
-					data-bs-html='true' data-original-title='回复语句' readonly='readonly' style='height: 2rem' disabled></textarea>
-						</span>
+						data-bs-toggle='tooltip' data-bs-placement='top' title='不能编辑:多个屏蔽词,以中文逗号隔开'
+						data-bs-html='true' data-original-title='关键字' readonly='readonly' style='height: 2rem' disabled></textarea>
+						<textarea class='big-input reply_rs live-save' placeholder='回复语句'
+						data-bs-toggle='tooltip' data-bs-placement='top' title='不能编辑:回复语句,提供%AT%参数,以打印:@提问问题人名称'
+						data-bs-html='true' data-original-title='回复语句' readonly='readonly' style='height: 2rem' disabled></textarea>
 						<span class='reply-btns'>
 						<button type='button' class='btn btn-success btn-sm reply_edit'  data-bs-toggle='modal' data-bs-target='#reply-model-edit'>编辑</button>
 						<button type='button' class='btn btn-danger btn-sm reply_delete live-save'>删除</button>
@@ -1752,10 +1739,10 @@ const method = {
         for (var i = 0; i < pageItems.length; i++) {
             var item = pageItems[i];
             var row = '<tr data-uid="' + (item.uid || '') + '">' +
-                '<td><input class="form-control form-control-sm pn-uid" type="number" value="' + (item.uid || '') + '" style="min-width:120px"></td>' +
-                '<td><input class="form-control form-control-sm pn-name" type="text" value="' + (item.name || '') + '" style="min-width:120px"></td>' +
-                '<td><input class="form-control form-control-sm pn-score" type="number" value="' + (item.score || 0) + '" style="min-width:80px"></td>' +
-                '<td><button class="btn btn-sm btn-danger pn-delete-btn">删除</button></td>' +
+                '<td class="pn-col-uid"><input class="form-control form-control-sm pn-uid" type="number" value="' + (item.uid || '') + '"></td>' +
+                '<td class="pn-col-name"><input class="form-control form-control-sm pn-name" type="text" value="' + (item.name || '') + '"></td>' +
+                '<td class="pn-col-score"><input class="form-control form-control-sm pn-score" type="number" value="' + (item.score || 0) + '"></td>' +
+                '<td class="pn-col-action"><button class="btn btn-sm btn-danger pn-delete-btn">删除</button></td>' +
                 '</tr>';
             tbody.append(row);
         }

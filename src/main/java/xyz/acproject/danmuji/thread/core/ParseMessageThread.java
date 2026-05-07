@@ -1478,31 +1478,7 @@ public class ParseMessageThread extends Thread {
     public void DelayGiftTimeSetting() {
         synchronized (PublicDataConf.parsethankGiftThread) {
             if (PublicDataConf.parsethankGiftThread != null) {
-                threadComponent.startParseThankGiftThread(getCenterSetConf().getThank_gift(), getThankGiftRuleSets());
-//				if (PublicDataConf.parsethankGiftThread.getState().toString().equals("TERMINATED")
-//						|| PublicDataConf.parsethankGiftThread.getState().toString().equals("NEW")) {
-//					PublicDataConf.parsethankGiftThread = new ParseThankGiftThread();
-//					PublicDataConf.parsethankGiftThread
-//							.setDelaytime((long) (1000 * getThankGiftSetConf().getDelaytime()));
-//					PublicDataConf.parsethankGiftThread.start();
-//					PublicDataConf.parsethankGiftThread.setTimestamp(System.currentTimeMillis());
-//					PublicDataConf.parsethankGiftThread.setThankGiftString(getThankGiftSetConf().getThank());
-//					PublicDataConf.parsethankGiftThread.setThankGiftStatus(
-//							ParseSetStatusTools.getThankGiftStatus(getThankGiftSetConf().getThank_status()));
-//					PublicDataConf.parsethankGiftThread
-//							.setThankGiftRuleSets(getThankGiftRuleSets());
-//					PublicDataConf.parsethankGiftThread.setNum(getThankGiftSetConf().getNum());
-//					PublicDataConf.parsethankGiftThread.setIs_num(getThankGiftSetConf().is_num());
-//				} else {
-//					PublicDataConf.parsethankGiftThread.setTimestamp(System.currentTimeMillis());
-//					PublicDataConf.parsethankGiftThread.setThankGiftString(getThankGiftSetConf().getThank());
-//					PublicDataConf.parsethankGiftThread.setThankGiftStatus(
-//							ParseSetStatusTools.getThankGiftStatus(getThankGiftSetConf().getThank_status()));
-//					PublicDataConf.parsethankGiftThread
-//							.setThankGiftRuleSets(getThankGiftRuleSets());
-//					PublicDataConf.parsethankGiftThread.setNum(getThankGiftSetConf().getNum());
-//					PublicDataConf.parsethankGiftThread.setIs_num(getThankGiftSetConf().is_num());
-//				}
+                threadComponent.startParseThankGiftThread(getCenterSetConf().getThank_gift(), getThankGiftRuleSets()) ;
             }
         }
     }
@@ -1514,11 +1490,6 @@ public class ParseMessageThread extends Thread {
                 return;
             }
         }
-        //天选礼物屏蔽
-//        if (StringUtils.isNotBlank(PublicDataConf.SHIELDGIFTNAME)) {
-//            if (gift.getGiftName().equals(PublicDataConf.SHIELDGIFTNAME)) {
-//                gift = null;
-//            }
         if (getCenterSetConf().getThank_gift().boolTxShield(CacheConf.existTx(PublicDataConf.ROOMID))) {
             if (StringUtils.equals(gift.getGiftName(), CacheConf.getTx(PublicDataConf.ROOMID))) {
                 gift = null;
@@ -1596,20 +1567,6 @@ public class ParseMessageThread extends Thread {
         synchronized (PublicDataConf.parsethankFollowThread) {
             if (PublicDataConf.parsethankFollowThread != null) {
                 threadComponent.startParseThankFollowThread(getCenterSetConf().getFollow());
-//				if (PublicDataConf.parsethankFollowThread.getState().toString().equals("TERMINATED")
-//						|| PublicDataConf.parsethankFollowThread.getState().toString().equals("NEW")) {
-//					PublicDataConf.parsethankFollowThread = new ParseThankFollowThread();
-//					PublicDataConf.parsethankFollowThread
-//							.setDelaytime((long) (1000 * getThankFollowSetConf().getDelaytime()));
-//					PublicDataConf.parsethankFollowThread.start();
-//					PublicDataConf.parsethankFollowThread.setTimestamp(System.currentTimeMillis());
-//					PublicDataConf.parsethankFollowThread.setThankFollowString(getThankFollowSetConf().getFollows());
-//					PublicDataConf.parsethankFollowThread.setNum(getThankFollowSetConf().getNum());
-//				} else {
-//					PublicDataConf.parsethankFollowThread.setTimestamp(System.currentTimeMillis());
-//					PublicDataConf.parsethankFollowThread.setThankFollowString(getThankFollowSetConf().getFollows());
-//					PublicDataConf.parsethankFollowThread.setNum(getThankFollowSetConf().getNum());
-//				}
             }
         }
     }
@@ -1644,20 +1601,6 @@ public class ParseMessageThread extends Thread {
         synchronized (PublicDataConf.parseThankWelcomeThread) {
             if (PublicDataConf.parseThankWelcomeThread != null) {
                 threadComponent.startParseThankWelcomeThread(getCenterSetConf().getWelcome());
-//				if (PublicDataConf.parsethankFollowThread.getState().toString().equals("TERMINATED")
-//						|| PublicDataConf.parsethankFollowThread.getState().toString().equals("NEW")) {
-//					PublicDataConf.parsethankFollowThread = new ParseThankFollowThread();
-//					PublicDataConf.parsethankFollowThread
-//							.setDelaytime((long) (1000 * getThankFollowSetConf().getDelaytime()));
-//					PublicDataConf.parsethankFollowThread.start();
-//					PublicDataConf.parsethankFollowThread.setTimestamp(System.currentTimeMillis());
-//					PublicDataConf.parsethankFollowThread.setThankFollowString(getThankFollowSetConf().getFollows());
-//					PublicDataConf.parsethankFollowThread.setNum(getThankFollowSetConf().getNum());
-//				} else {
-//					PublicDataConf.parsethankFollowThread.setTimestamp(System.currentTimeMillis());
-//					PublicDataConf.parsethankFollowThread.setThankFollowString(getThankFollowSetConf().getFollows());
-//					PublicDataConf.parsethankFollowThread.setNum(getThankFollowSetConf().getNum());
-//				}
             }
         }
     }
@@ -1760,168 +1703,6 @@ public class ParseMessageThread extends Thread {
         if (cmd.startsWith("GUARD_BUY")) {
             return "GUARD_BUY";
         }
-//		if(cmd.startsWith("SUPER_CHAT_MESSAGE")) {
-//			return "SUPER_CHAT_MESSAGE";
-//		}
-//		if(cmd.startsWith("WELCOME")) {
-//			return "WELCOME";
-//		}
-//		if(cmd.startsWith("WELCOME_GUARD")) {
-//			return "WELCOME_GUARD";
-//		}
-//		if(cmd.startsWith("ROOM_RANK")) {
-//			return "ROOM_RANK";
-//		}
-//		if(cmd.startsWith("ROOM_REAL_TIME_MESSAGE_UPDATE")) {
-//			return "ROOM_REAL_TIME_MESSAGE_UPDATE";
-//		}
-//		if(cmd.startsWith("WARNING")) {
-//			return "WARNING";
-//		}
-//		if(cmd.startsWith("LIVE")) {
-//			return "LIVE";
-//		}
-//		if(cmd.startsWith("PREPARING")) {
-//			return "PREPARING";
-//		}
-
-//		if(cmd.startsWith("SPECIAL_GIFT")) {
-//			return "SPECIAL_GIFT";
-//		}
-//		if(cmd.startsWith("USER_TOAST_MSG")) {
-//			return "USER_TOAST_MSG";
-//		}
-//		if(cmd.startsWith("NOTICE_MSG")) {
-//			return "NOTICE_MSG";
-//		}
-//		if(cmd.startsWith("ANCHOR_LOT_START")) {
-//			return "ANCHOR_LOT_START";
-//		}
-//		if(cmd.startsWith("ANCHOR_LOT_END")) {
-//			return "ANCHOR_LOT_END";
-//		}
-
-//		
-//		if(cmd.startsWith("COMBO_SEND")) {
-//			return "COMBO_SEND";
-//		}
-//		if(cmd.startsWith("GUARD_LOTTERY_START")) {
-//			return "GUARD_LOTTERY_START";
-//		}
-//		if(cmd.startsWith("SUPER_CHAT_MESSAGE_JPN")) {
-//			return "SUPER_CHAT_MESSAGE_JPN";
-//		}
-//		if(cmd.startsWith("SUPER_CHAT_MESSAGE_DELETE")) {
-//			return "SUPER_CHAT_MESSAGE_DELETE";
-//		}
-//		if(cmd.startsWith("ENTRY_EFFECT")) {
-//			return "ENTRY_EFFECT";
-//		}
-//		if(cmd.startsWith("ACTIVITY_BANNER_UPDATE_V2")) {
-//			return "ACTIVITY_BANNER_UPDATE_V2";
-//		}
-//		if(cmd.startsWith("ROOM_CHANGE")) {
-//			return "ROOM_CHANGE";
-//		}
-//		if(cmd.startsWith("new_anchor_reward")) {
-//			return "new_anchor_reward";
-//		}
-//		if(cmd.startsWith("HOUR_RANK_AWARDS")) {
-//			return "HOUR_RANK_AWARDS";
-//		}
-//		if(cmd.startsWith("WISH_BOTTLE")) {
-//			return "WISH_BOTTLE";
-//		}
-//		if(cmd.startsWith("RAFFLE_START")) {
-//			return "RAFFLE_START";
-//		}
-//		if(cmd.startsWith("RAFFLE_END")) {
-//			return "RAFFLE_END";
-//		}
-//		if(cmd.startsWith("ANCHOR_LOT_AWARD")) {
-//			return "ANCHOR_LOT_AWARD";
-//		}
-//		if(cmd.startsWith("ANCHOR_NORMAL_NOTIFY")) {
-//			return "ANCHOR_NORMAL_NOTIFY";
-//		}
-//		if(cmd.startsWith("WEEK_STAR_CLOCK")) {
-//			return "WEEK_STAR_CLOCK";
-//		}
-//		if(cmd.startsWith("ROOM_BOX_MASTER")) {
-//			return "ROOM_BOX_MASTER";
-//		}
-//		if(cmd.startsWith("ROOM_SKIN_MSG")) {
-//			return "ROOM_SKIN_MSG";
-//		}
-//		if(cmd.startsWith("SYS_GIFT")) {
-//			return "SYS_GIFT";
-//		}
-//		if(cmd.startsWith("ACTIVITY_MATCH_GIFT")) {
-//			return "ACTIVITY_MATCH_GIFT";
-//		}
-//		if(cmd.startsWith("PK_BATTLE_ENTRANCE")) {
-//			return "PK_BATTLE_ENTRANCE";
-//		}
-//		if(cmd.startsWith("PK_START")) {
-//			return "PK_START";
-//		}	
-//		if(cmd.startsWith("PK_PRE")) {
-//			return "PK_PRE";
-//		}
-//		if(cmd.startsWith("PK_MATCH")) {
-//			return "PK_MATCH";
-//		}
-//		if(cmd.startsWith("PK_CLICK_AGAIN")) {
-//			return "PK_CLICK_AGAIN";
-//		}
-//		if(cmd.startsWith("PK_MIC_END")) {
-//			return "PK_MIC_END";
-//		}
-//		if(cmd.startsWith("PK_PROCESS")) {
-//			return "PK_PROCESS";
-//		}
-//		if(cmd.startsWith("PK_SETTLE")) {
-//			return "PK_SETTLE";
-//		}
-//		if(cmd.startsWith("PK_END")) {
-//			return "PK_END";
-//		}
-//		if(cmd.startsWith("SYS_MSG")) {
-//			return "SYS_MSG";
-//		}
-//		if(cmd.startsWith("GUARD_MSG")) {
-//			return "GUARD_MSG";
-//		}
-//		if(cmd.startsWith("HOT_ROOM_NOTIFY")) {
-//			return "HOT_ROOM_NOTIFY";
-//		}
-//		if(cmd.startsWith("room_admin_entrance")) {
-//			return "room_admin_entrance";
-//		}
-//		if(cmd.startsWith("ROOM_ADMINS")) {
-//			return "ROOM_ADMINS";
-//		}
-//		if(cmd.startsWith("ROOM_SHIELD")) {
-//			return "ROOM_SHIELD";
-//		}
-//		if(cmd.startsWith("ROOM_SILENT_ON")) {
-//			return "ROOM_SILENT_ON";
-//		}
-//		if(cmd.startsWith("ROOM_SILENT_OFF")) {
-//			return "ROOM_SILENT_OFF";
-//		}
-//		if(cmd.startsWith("ANCHOR_LOT_CHECKSTATUS")) {
-//			return "ANCHOR_LOT_CHECKSTATUS";
-//		}
-//		if(cmd.startsWith("VOICE_JOIN_ROOM_COUNT_INFO")) {
-//			return "VOICE_JOIN_ROOM_COUNT_INFO";
-//		}
-//		if(cmd.startsWith("VOICE_JOIN_LIST")) {
-//			return "VOICE_JOIN_LIST";
-//		}
-//		if(cmd.startsWith("")) {
-//			return "";
-//		}
 
         return cmd;
     }

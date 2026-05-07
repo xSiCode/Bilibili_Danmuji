@@ -152,31 +152,6 @@ public class ThreadComponentImpl implements ThreadComponent {
 		return false;
 	}
 
-//	@Override
-//	public boolean startAdvertThread(CenterSetConf centerSetConf) {
-//		// TODO 自动生成的方法存根
-//		if (PublicDataConf.advertThread != null || StringUtils.isBlank(PublicDataConf.USERCOOKIE)) {
-//			PublicDataConf.advertThread
-//					.setAdvertStatus(ParseSetStatusTools.getAdvertStatus(centerSetConf.getAdvert().getStatus()));
-//			PublicDataConf.advertThread.setTime(centerSetConf.getAdvert().getTime());
-//			PublicDataConf.advertThread.setAdvertBarrage(centerSetConf.getAdvert().getAdverts());
-//			return false;
-//		}
-//		PublicDataConf.advertThread = new AdvertThread();
-//		PublicDataConf.advertThread.FLAG = false;
-//		PublicDataConf.advertThread
-//				.setAdvertStatus(ParseSetStatusTools.getAdvertStatus(centerSetConf.getAdvert().getStatus()));
-//		PublicDataConf.advertThread.setTime(centerSetConf.getAdvert().getTime());
-//		PublicDataConf.advertThread.setAdvertBarrage(centerSetConf.getAdvert().getAdverts());
-//		PublicDataConf.advertThread.start();
-//		startSendBarrageThread();
-//		if (PublicDataConf.advertThread != null
-//				&& !PublicDataConf.advertThread.getState().toString().equals("TERMINATED")) {
-//			return true;
-//		}
-//		return false;
-//	}
-
 	@Override
 	public boolean startAdvertThread(AdvertSetConf advertSetConf) {
 		// TODO 自动生成的方法存根
@@ -273,104 +248,6 @@ public class ThreadComponentImpl implements ThreadComponent {
 		PublicDataConf.sendBarrageThread.start();
 		if (PublicDataConf.sendBarrageThread != null
 				&& !PublicDataConf.sendBarrageThread.getState().toString().equals("TERMINATED")) {
-			return true;
-		}
-		return false;
-	}
-
-	@Override
-	public boolean startUserOnlineThread() {
-		// TODO 自动生成的方法存根
-		if (PublicDataConf.heartBeatThread != null || PublicDataConf.heartBeatsThread != null
-				|| PublicDataConf.userOnlineHeartThread != null) {
-			return false;
-		}
-		PublicDataConf.heartBeatThread = new HeartBeatThread();
-		PublicDataConf.heartBeatThread.FLAG = false;
-		PublicDataConf.heartBeatThread.start();
-
-		PublicDataConf.heartBeatsThread = new HeartBeatsThread();
-		PublicDataConf.heartBeatsThread.FLAG = false;
-		PublicDataConf.heartBeatsThread.start();
-
-		PublicDataConf.userOnlineHeartThread = new UserOnlineHeartThread();
-		PublicDataConf.userOnlineHeartThread.FLAG = false;
-		PublicDataConf.userOnlineHeartThread.start();
-
-		if (PublicDataConf.heartBeatThread != null && PublicDataConf.heartBeatsThread != null
-				&& PublicDataConf.userOnlineHeartThread != null
-				&& !PublicDataConf.heartBeatThread.getState().toString().equals("TERMINATED")
-				&& !PublicDataConf.heartBeatsThread.getState().toString().equals("TERMINATED")
-				&& !PublicDataConf.userOnlineHeartThread.getState().toString().equals("TERMINATED")) {
-			return true;
-		} else {
-			closeUserOnlineThread();
-		}
-		return false;
-	}
-
-	@Override
-	public boolean startSmallHeartThread() {
-		// TODO 自动生成的方法存根
-		if (PublicDataConf.smallHeartThread != null
-				&& !PublicDataConf.smallHeartThread.getState().toString().equals("TERMINATED")) {
-			return false;
-		}
-		if(null==PublicDataConf.userOnlineHeartThread) {
-			return false;
-		}
-		if(PublicDataConf.centerSetConf.getPrivacy().is_open()) {
-			PublicDataConf.SMALLHEART_ADRESS = PublicDataConf.centerSetConf.getPrivacy().getSmall_heart_url();
-		}else{
-			PublicDataConf.SMALLHEART_ADRESS = HttpOtherData.httpPostEncsUrl();
-		}
-		PublicDataConf.smallHeartThread = new SmallHeartThread();
-		PublicDataConf.smallHeartThread.FLAG = false;
-		PublicDataConf.smallHeartThread.start();
-		if (PublicDataConf.smallHeartThread != null
-				&& !PublicDataConf.smallHeartThread.getState().toString().equals("TERMINATED")) {
-			return true;
-		}
-		return false;
-	}
-
-	@Override
-	public boolean startGiftShieldThread(String giftName, int time) {
-		// TODO 自动生成的方法存根
-		if (PublicDataConf.parsethankGiftThread.getState().toString().equals("TERMINATED")
-				|| PublicDataConf.parsethankGiftThread.getState().toString().equals("NEW")) {
-			PublicDataConf.giftShieldThread = new GiftShieldThread();
-			PublicDataConf.giftShieldThread.FLAG = false;
-			PublicDataConf.giftShieldThread.setGiftName(giftName);
-			PublicDataConf.giftShieldThread.setTime(time);
-			PublicDataConf.giftShieldThread.start();
-			return true;
-		}
-		return false;
-	}
-
-	@Override
-	public boolean startFollowShieldThread(int time) {
-		// TODO 自动生成的方法存根
-		if (PublicDataConf.parsethankFollowThread.getState().toString().equals("TERMINATED")
-				|| PublicDataConf.parsethankFollowThread.getState().toString().equals("NEW")) {
-			PublicDataConf.followShieldThread = new FollowShieldThread();
-			PublicDataConf.followShieldThread.FLAG = false;
-			PublicDataConf.followShieldThread.setTime(time);
-			PublicDataConf.followShieldThread.start();
-			return true;
-		}
-		return false;
-	}
-
-	@Override
-	public boolean startWelcomeShieldThread(int time) {
-		if (PublicDataConf.parseThankWelcomeThread.getState().toString().equals("TERMINATED")
-				|| PublicDataConf.parseThankWelcomeThread.getState().toString().equals("NEW")) {
-			PublicDataConf.welcomeShieldThread = new WelcomeShieldThread();
-			PublicDataConf.welcomeShieldThread.FLAG = false;
-			PublicDataConf.welcomeShieldThread.setTime(time);
-			PublicDataConf.welcomeShieldThread.start();
 			return true;
 		}
 		return false;

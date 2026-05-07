@@ -28,9 +28,7 @@ public interface ThreadComponent {
 
 	// 开启日志线程
 	boolean startLogThread();
-
-	// 开启公告线程 need login
-//	boolean startAdvertThread(CenterSetConf centerSetConf);
+ 
 
 	// 开启公告线程 need login
 	boolean startAdvertThread(AdvertSetConf advertSetConf);
@@ -41,21 +39,6 @@ public interface ThreadComponent {
 	// 开启发送弹幕线程 need login
 	boolean startSendBarrageThread();
 
-	// 开启用户在线线程 need login
-	boolean startUserOnlineThread();
-	
-	// 开启用户小心心线程
-	boolean startSmallHeartThread();
-
-	// 开启礼物屏蔽线程
-	boolean startGiftShieldThread(String giftName, int time);
-
-	// 开启关注屏蔽线程
-	boolean startFollowShieldThread(int time);
-
-	//开启天选欢迎屏蔽线程
-
-	boolean startWelcomeShieldThread(int time);
 
 	// 开启public的礼物感谢线程
 	void startParseThankGiftThread(ThankGiftSetConf thankGiftSetConf, HashSet<ThankGiftRuleSet> thankGiftRuleSets);
