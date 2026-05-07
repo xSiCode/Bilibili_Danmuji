@@ -1541,8 +1541,16 @@ public class ParseMessageThread extends Thread {
             gift = null;
         }
         Vector<Gift> gifts = null;
+        // 冷却期内直接丢弃礼物
         if (PublicDataConf.parsethankGiftThread != null && PublicDataConf.parsethankGiftThread.COOLDOWN) {
             return;
+        }
+        // 等待期内（线程存活且未终止）直接丢弃礼物，不重置计时器，确保间隔到期后才发感谢
+        if (PublicDataConf.parsethankGiftThread != null) {
+            String state = PublicDataConf.parsethankGiftThread.getState().toString();
+            if (!"TERMINATED".equals(state) && !"NEW".equals(state)) {
+                return;
+            }
         }
         if (gift != null && StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
             if (PublicDataConf.sendBarrageThread != null && PublicDataConf.parsethankGiftThread != null) {
@@ -1611,8 +1619,16 @@ public class ParseMessageThread extends Thread {
         if (!blackParseComponent.interact_parse(interact)) {
             interact = null;
         }
+        // 冷却期内直接丢弃
         if (PublicDataConf.parsethankFollowThread != null && PublicDataConf.parsethankFollowThread.COOLDOWN) {
             return;
+        }
+        // 等待期内丢弃，不重置计时器
+        if (PublicDataConf.parsethankFollowThread != null) {
+            String state = PublicDataConf.parsethankFollowThread.getState().toString();
+            if (!"TERMINATED".equals(state) && !"NEW".equals(state)) {
+                return;
+            }
         }
         if (interact != null && StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
             if (PublicDataConf.sendBarrageThread != null && PublicDataConf.parsethankFollowThread != null) {
@@ -1696,8 +1712,16 @@ public class ParseMessageThread extends Thread {
                 default:
                     break;
             }
+            // 冷却期内直接丢弃
             if (PublicDataConf.parseThankWelcomeThread != null && PublicDataConf.parseThankWelcomeThread.COOLDOWN) {
                 return;
+            }
+            // 等待期内丢弃，不重置计时器
+            if (PublicDataConf.parseThankWelcomeThread != null) {
+                String state = PublicDataConf.parseThankWelcomeThread.getState().toString();
+                if (!"TERMINATED".equals(state) && !"NEW".equals(state)) {
+                    return;
+                }
             }
             if (PublicDataConf.sendBarrageThread != null && PublicDataConf.parseThankWelcomeThread != null) {
                 if (!PublicDataConf.sendBarrageThread.FLAG && !PublicDataConf.parseThankWelcomeThread.FLAG) {
