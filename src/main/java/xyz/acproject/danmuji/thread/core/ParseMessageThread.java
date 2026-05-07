@@ -61,6 +61,13 @@ public class ParseMessageThread extends Thread {
             new ThreadPoolExecutor.DiscardOldestPolicy()
     );
 
+    // 消息处理线程池（弹幕/礼物/上舰等高频消息的格式化+推送）
+    private static final ExecutorService MESSAGE_EXECUTOR = new ThreadPoolExecutor(
+            4, 8, 60L, TimeUnit.SECONDS,
+            new LinkedBlockingQueue<>(1000),
+            new ThreadPoolExecutor.CallerRunsPolicy()
+    );
+
     public volatile boolean FLAG = false;
     private DanmuWebsocket danmuWebsocket = SpringUtils.getBean(DanmuWebsocket.class);
     private SetService setService = SpringUtils.getBean(SetService.class);
@@ -104,6 +111,7 @@ public class ParseMessageThread extends Thread {
                 if (null != PublicDataConf.resultStrs && !PublicDataConf.resultStrs.isEmpty()
                         && StringUtils.isNotBlank(PublicDataConf.resultStrs.get(0))) {
                     message = PublicDataConf.resultStrs.get(0);
+                    PublicDataConf.resultStrs.remove(0); // 立即消费，加速队列排出
                     try {
                         jsonObject = JSONObject.parseObject(message);
                     } catch (Exception e) {
@@ -1473,7 +1481,6 @@ public class ParseMessageThread extends Thread {
 //                            LOGGER.info("其他未处理消息:" + message);
                             break;
                     }
-                    PublicDataConf.resultStrs.remove(0);
                 } else {
                     synchronized (PublicDataConf.parseMessageThread) {
                         try {

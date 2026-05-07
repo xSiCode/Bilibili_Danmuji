@@ -33,6 +33,7 @@ public class OkHttp3Utils {
 
 	private OkHttp3Utils() {
 		OkHttpClient.Builder builder = new OkHttpClient.Builder();
+		builder.connectionPool(new ConnectionPool(30, 5, TimeUnit.MINUTES));
 		builder.readTimeout(READ_TIMEOUT, TimeUnit.SECONDS);
 		builder.connectTimeout(CONNECT_TIMEOUT, TimeUnit.SECONDS);
 		builder.writeTimeout(WRITE_TIMEOUT, TimeUnit.SECONDS);
