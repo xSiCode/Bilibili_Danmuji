@@ -40,7 +40,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class HttpRoomData {
     private static Logger LOGGER = LogManager.getLogger(HttpRoomData.class);
-
+    private static Map<Long, Integer> pnScoreMap = loadPositiveWhiteNegativeBlackScores();
     /**
      * 获取连接目标房间websocket端口 接口
      *
@@ -81,6 +81,9 @@ public class HttpRoomData {
         } else {
             LOGGER.error("未知错误,原因:" + jsonObject.getString("message"));
         }
+
+        pnScoreMap = loadPositiveWhiteNegativeBlackScores();
+
         return conf;
     }
 
@@ -376,60 +379,58 @@ public class HttpRoomData {
     public static long processFollowings(long vmid, String uname) {
         JSONObject firstPage = httpGetFollowings(vmid, 1, 50);
         JSONObject output = new JSONObject(true);
-        output.put("time", JodaTimeUtils.getCurrentDateTimeString());// print time
-        output.put("vid", vmid); //viewer id
-        output.put("vname", uname);
+        output.put("时", JodaTimeUtils.getCurrentDateTimeString());// print time
+        output.put("号", vmid); //viewer id
+        output.put("名", uname);
 
         if (firstPage == null) {
             LOGGER.info("[" + uname + "] 关注：请求失败");
-            output.put("type", "关注：请求失败");
-            output.put("makeup", "zero");
+            output.put("类型", "firstPage == null");
+            output.put("成分", "未知");
             LogFileTools.getlogFileTools().logFollowingsFile(output.toJSONString());
             return -1;
         }
         short code = firstPage.getShort("code");
         if (code == 22115) {
             LOGGER.info("[" + uname + "] 关注：不可见");
-            output.put("type", "关注：不可见");
-            output.put("makeup", "zero");
+            output.put("类型", "code == 22115");
+            output.put("成分", "未知");
             LogFileTools.getlogFileTools().logFollowingsFile(output.toJSONString());
             return -1;
         }
         if (code != 0) {
             LOGGER.info("[" + uname + "] 关注：请求失败(" + firstPage.getString("message") + ")");
-            output.put("type", "关注：请求失败");
-            output.put("makeup", "zero");
+            output.put("类型", "code != 0");
+            output.put("成分", "未知");
             LogFileTools.getlogFileTools().logFollowingsFile(output.toJSONString());
             return -1;
         }
         JSONObject data = firstPage.getJSONObject("data");
         if (data == null) {
             LOGGER.info("[" + uname + "] 关注：0 null");
-            output.put("type", "关注：0");
-            output.put("makeup", "zero");
+            output.put("类型", "data == null");
+            output.put("成分", "未知");
             LogFileTools.getlogFileTools().logFollowingsFile(output.toJSONString());
             return 0;
         }
         long total = data.getLongValue("total");
         LOGGER.info("[" + uname + "] 关注：" + total);
         if (total == 0) {
-            output.put("type", "关注：0");
-            output.put("makeup", "zero");
+            output.put("类型", "total == 0");
+            output.put("成分", "未知");
             LogFileTools.getlogFileTools().logFollowingsFile(output.toJSONString());
             return 0;
         }
 
-        output.put("type", "followings");
-        output.put("total", total);
+        output.put("类型", "关注");
+        output.put("关注数", total);
 
-        Map<Long, Integer> pnScoreMap = loadPositiveWhiteNegativeBlackScores();
         int totalScore = 0;
         int tempScore = 0;
         JSONArray followingsList = new JSONArray();
         JSONArray matchedList = new JSONArray();
 
-
-        String url = "https://space.bilibili.com/";
+        // 当前观众就在黑白名单里
         if (pnScoreMap.containsKey(vmid)) {
             tempScore = pnScoreMap.get(vmid);
             matchedList.add( tempScore );
@@ -465,10 +466,8 @@ public class HttpRoomData {
                         totalScore += tempScore;
 
                         JSONObject match = new JSONObject(true);
-                        match.put("id", mid);
-                        match.put("name", followedName);
-                        match.put("score", tempScore);
-                        match.put("link", mid);
+                        match.put("人", followedName);
+                        match.put("分", tempScore);
                         matchedList.add(match);
                     }
                 }
@@ -478,24 +477,25 @@ public class HttpRoomData {
 
 
         // output.put("followings_list", followingsList); 不需要输出关注的人数，太多了，只要正白负黑名单负即可
-        output.put("matched_black_list", matchedList);
+        output.put("匹配", matchedList);
         if (totalScore > 0) {
-            output.put("makeup", "white");
-            output.put("score", totalScore);
+            output.put("成分", "人");
+            output.put("分", totalScore);
         } else if (totalScore < 0) {
-            output.put("makeup", "black");
-            output.put("score", totalScore);
+            output.put("成分", "野猪");
+            output.put("分", totalScore);
 
             try {
 // Windows 专用命令：start 后面跟 url 会用默认浏览器打开
 // 注意：在 cmd 中执行 start 命令通常需要加 "" 作为窗口标题占位符
+                String url = "https://space.bilibili.com/";
                 Runtime.getRuntime().exec(new String[]{"cmd", "/c", "start", "", url + vmid + "?makeUp=black&makeUpScore=" + totalScore});
                 System.out.println("命令已发送，浏览器应该正在启动...");
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         } else {
-            output.put("makeup", "zero");
+            output.put("成分", "中");
         }
         LogFileTools.getlogFileTools().logFollowingsFile(output.toJSONString());
 

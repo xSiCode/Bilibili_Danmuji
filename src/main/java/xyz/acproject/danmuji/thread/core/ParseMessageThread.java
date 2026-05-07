@@ -2,11 +2,9 @@ package xyz.acproject.danmuji.thread.core;
 
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
-import com.google.protobuf.util.JsonFormat;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.beans.BeanUtils;
 import org.springframework.util.CollectionUtils;
 import xyz.acproject.danmuji.component.ThreadComponent;
 import xyz.acproject.danmuji.component.black.BlackParseComponent;
@@ -39,9 +37,7 @@ import xyz.acproject.danmuji.utils.JodaTimeUtils;
 import xyz.acproject.danmuji.utils.SelfTools;
 import xyz.acproject.danmuji.utils.SpringUtils;
 
-import java.awt.*;
 import java.io.IOException;
-import java.net.URI;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -222,7 +218,7 @@ public class ParseMessageThread extends Thread {
 
 
                                     stringBuilder.append(barrage.getUname());
-                                    stringBuilder.append(" 它说:");
+                                    stringBuilder.append(" : ");
                                     stringBuilder.append(barrage.getMsg());
                                     //控制台打印
                                     if (getCenterSetConf().is_cmd()) {
@@ -1034,7 +1030,7 @@ public class ParseMessageThread extends Thread {
                                 if (getCenterSetConf().is_follow_dm()) {
                                     if (msg_type == 2) {
                                         stringBuilder.append(JodaTimeUtils.formatDateTime(System.currentTimeMillis())).append(":新的关注:")
-                                                .append(interact.getUname()).append(" 关注了直播间");
+                                                .append(interact.getUname());
                                         //控制台打印
                                         if (getCenterSetConf().is_cmd()) {
                                             System.out.println(stringBuilder.toString());
@@ -1075,8 +1071,8 @@ public class ParseMessageThread extends Thread {
                                 //欢迎进入直播间 + 观众记录
                                 if (msg_type == 1) {
                                     if (getCenterSetConf().is_welcome_all()) {
-                                        stringBuilder.append(JodaTimeUtils.formatDateTime(System.currentTimeMillis())).append(":新的访客:")
-                                                .append(interact.getUname()).append(" 进入了直播间");
+                                        stringBuilder.append(JodaTimeUtils.formatDateTime(System.currentTimeMillis())).append(":新的访客: ")
+                                                .append(interact.getUname());
                                         if (getCenterSetConf().is_cmd()) {
                                             System.out.println(stringBuilder.toString());
                                         }
@@ -1118,7 +1114,7 @@ public class ParseMessageThread extends Thread {
                                                     Boolean followListVisible = card.getBoolean("follow_list_visible");
                                                     stringBuilder.append("关见:").append(followListVisible);
                                                     if (!followListVisible && midStr.isEmpty()) {
-                                                        midStr = ""+_uid+"?关注不可见" ; // 不可见时打开链接
+                                                        midStr = _uid+"?关注不可见" ; // 不可见时打开链接
                                                     }
                                                 }
                                                 if (card.containsKey("fans_list_visible")) {
@@ -1170,9 +1166,6 @@ public class ParseMessageThread extends Thread {
                                                 }
                                                 if (card.containsKey("vip_label") && StringUtils.isNotBlank(card.getString("vip_label"))) {
                                                     stringBuilder.append(" , 会员:").append(card.getString("vip_label"));
-                                                }
-                                                if (card.containsKey("sex")) {
-                                                    stringBuilder.append(" , 性别:").append(card.getString("sex"));
                                                 }
 
                                                 if (card.containsKey("sign")) {
