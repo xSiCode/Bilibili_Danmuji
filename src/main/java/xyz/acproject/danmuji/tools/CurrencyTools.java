@@ -141,46 +141,6 @@ public class CurrencyTools {
 
     }
 
-    /**
-     * 获取天气接口用
-     *
-     * @return
-     */
-    public static String getWeatherDay() {
-        int week = Calendar.getInstance().get(Calendar.DAY_OF_WEEK) - 1;
-        int day = Calendar.getInstance().get(Calendar.DAY_OF_MONTH);
-        String weekString = "一";
-        StringBuilder weatherDay = new StringBuilder();
-        switch (week) {
-            case 1:
-                weekString = "一";
-                break;
-            case 2:
-                weekString = "二";
-                break;
-            case 3:
-                weekString = "三";
-                break;
-            case 4:
-                weekString = "四";
-                break;
-            case 5:
-                weekString = "五";
-                break;
-            case 6:
-                weekString = "六";
-                break;
-            case 0:
-                weekString = "天";
-                break;
-            default:
-                weekString = "一";
-                break;
-        }
-        return weatherDay.append(day).append("日星期").append(weekString).toString();
-    }
-
-
     public static List<UserMedal> getAllUserMedals() {
         List<UserMedal> userMedals = HttpUserData.httpGetMedalList();
         return userMedals;
