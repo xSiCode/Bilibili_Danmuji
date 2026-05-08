@@ -2,6 +2,7 @@ package xyz.acproject.danmuji.thread.core;
 
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.google.protobuf.util.JsonFormat;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -37,6 +38,7 @@ import xyz.acproject.danmuji.utils.JodaTimeUtils;
 import xyz.acproject.danmuji.utils.SelfTools;
 import xyz.acproject.danmuji.utils.SpringUtils;
 
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -125,6 +127,7 @@ public class ParseMessageThread extends Thread {
                         continue;
                     }
                     cmd = parseCmd(cmd);
+                    LOGGER.info("cmd switch out: " + cmd);
                     switch (cmd) {
                         // 弹幕
                         case "DANMU_MSG":
@@ -201,10 +204,13 @@ public class ParseMessageThread extends Thread {
                                         hbarrage.setManager((short) 0);
                                     }
                                     if (getCenterSetConf().is_barrage_medal()) {
-                                        // 勋章+勋章等级
+                                        // 勋章+勋章等级              [乡邻 23]
                                         if (StringUtils.isNotBlank(barrage.getMedal_name())) {
-                                            stringBuilder.append("[").append(barrage.getMedal_name()).append(" ")
-                                                    .append(barrage.getMedal_level()).append("]");
+                                            stringBuilder.append("[")
+                                                    .append(barrage.getMedal_name()).append(" ")
+                                                    .append(barrage.getMedal_level())
+
+                                                    .append("]");
                                         }
                                     } else {
                                         hbarrage.setMedal_level(null);
@@ -213,15 +219,20 @@ public class ParseMessageThread extends Thread {
                                         hbarrage.setMedal_anchor(null);
                                     }
                                     if (getCenterSetConf().is_barrage_ul()) {
-                                        // ul等级
-                                        stringBuilder.append("[").append("UL").append(barrage.getUlevel()).append("]");
+                                        // ul等级     哔站  [UL14]
+                                        stringBuilder.append("[")
+                                                .append("UL").append(barrage.getUlevel())
+                                                .append(" rank").append(barrage.getUlevel_rank())
+                                                .append("]");
                                     } else {
                                         hbarrage.setUlevel(null);
                                     }
 
-
+                                    stringBuilder.append(" 会员: ").append(barrage.getUidentity());
+                                    stringBuilder.append("  phone：").append(barrage.getIphone());
+                                    stringBuilder.append(barrage.getUid()).append("  ");
                                     stringBuilder.append(barrage.getUname());
-                                    stringBuilder.append(" : ");
+                                    stringBuilder.append("        say: ");
                                     stringBuilder.append(barrage.getMsg());
                                     //控制台打印
                                     if (getCenterSetConf().is_cmd()) {
@@ -931,7 +942,7 @@ public class ParseMessageThread extends Thread {
                         case "WARNING":
                             //					LOGGER.info("房间警告消息:::" + message);
                             break;
-                        // 直播开启
+                        // 直播开启------------
                         case "LIVE":
                             PublicDataConf.lIVE_STATUS = 1;
                             //					room_id = jsonObject.getLong("roomid");
@@ -939,25 +950,25 @@ public class ParseMessageThread extends Thread {
                             // 仅在直播有效 广告线程 改为配置文件
                             setService.holdSet(getCenterSetConf());
                             PublicDataConf.IS_ROOM_POPULARITY = true;
-                            //					LOGGER.info("直播开启:::" + message);
+                            LOGGER.info("直播开启:::" + message);
                             break;
 
                         // 直播超管被切断
                         case "CUT_OFF":
-                            //					LOGGER.info("很不幸，本房间直播被切断:::" + message);
+                            LOGGER.info("很不幸，本房间直播被切断:::" + message);
                             break;
 
                         // 本房间已被封禁
                         case "ROOM_LOCK":
-                            //					LOGGER.info("很不幸，本房间已被封禁:::" + message);
+                            LOGGER.info("很不幸，本房间已被封禁:::" + message);
                             break;
 
-                        // 直播准备中(或者是关闭直播)
+                        // 直播准备中(或者是关闭直播)   直播关闭
                         case "PREPARING":
                             PublicDataConf.lIVE_STATUS = 0;
                             setService.holdSet(getCenterSetConf());
                             PublicDataConf.IS_ROOM_POPULARITY = false;
-                            //					LOGGER.info("直播准备中(或者是关闭直播):::" + message);
+                            LOGGER.info("直播准备中(或者是关闭直播):::" + message);
                             break;
 
                         // 勋章亲密度达到上每日上限通知
@@ -967,11 +978,11 @@ public class ParseMessageThread extends Thread {
 
 
                         case "INTERACT_WORD_V2":
-//                            LOGGER.info("INTERACT_WORD_V2:" + message);
+                           // LOGGER.info(":" + getCenterSetConf().toJson());
                             try {
                                 String pbBase64 = jsonObject.getJSONObject("data").getString("pb");
                                 INTERACTWORDV2.InteractWordV2 interactWordV2 = INTERACTWORDV2.InteractWordV2.parseFrom(Base64.getDecoder().decode(pbBase64));
-//                                LOGGER.info("INTERACT_WORD_V2_PARSE:" + JsonFormat.printer().print(interactWordV2));
+                                LOGGER.info("INTERACT_WORD_V2_PARSE:" + JsonFormat.printer().print(interactWordV2));
                                 msg_type =(short) interactWordV2.getMsgType();
                                 interact = new Interact();
                                 interact.setUid(interactWordV2.getUid());
@@ -984,7 +995,7 @@ public class ParseMessageThread extends Thread {
                                 interact.setTimestamp(interactWordV2.getTimestamp());
                                 interact.setScore(interactWordV2.getScore());
                                 if(interactWordV2.hasFansMedal()) {
-//                                    LOGGER.info("INTERACT_WORD_V2_PARSE_FANS:" + JsonFormat.printer().print(interactWordV2));
+                                    LOGGER.info("INTERACT_WORD_V2_PARSE_FANS:" + JsonFormat.printer().print(interactWordV2));
                                     MedalInfo medalInfo = new MedalInfo();
                                     medalInfo.setIcon_id(interactWordV2.getFansMedal().getIconId());
                                     medalInfo.setTarget_id(interactWordV2.getFansMedal().getTargetId());
@@ -998,7 +1009,6 @@ public class ParseMessageThread extends Thread {
                                     medalInfo.setGuard_level((short) interactWordV2.getFansMedal().getGuardLevel());
                                     interact.setFans_medal(medalInfo);
                                 }
-
                                 // 关注
                                 //控制台打印处理
                                 if (getCenterSetConf().is_follow_dm()) {
@@ -1062,11 +1072,10 @@ public class ParseMessageThread extends Thread {
                                         final String _uname = interact.getUname();
                                         String url = "https://space.bilibili.com/";
                                         final MedalInfo _medal = interact.getFans_medal();
-                                        stringBuilder.append(JodaTimeUtils.formatDateTime(System.currentTimeMillis()));
+                                        stringBuilder.append(new SimpleDateFormat("HH:mm:ss").format(System.currentTimeMillis())                                                )
+                                                .append("  ").append(_uname);
 
-                                        SelfTools.appendAt(stringBuilder, 20, _uname);
-                                        SelfTools.appendAt(stringBuilder, 50, url+_uid);
-                                        SelfTools.appendAt(stringBuilder, 100, "\t");
+                                        SelfTools.appendAt(stringBuilder,40, url+_uid);
 
                                         if (_medal != null) {
                                             stringBuilder.append(", 勋章:").append(_medal.getMedal_name())
@@ -1077,36 +1086,38 @@ public class ParseMessageThread extends Thread {
                                             }
                                         }
 
-                                        if (PublicDataConf.watcherLogThread != null && !PublicDataConf.watcherLogThread.FLAG) {
-                                            PublicDataConf.watcherLogString.offer(stringBuilder.toString());
-                                        }
+                                        // 暂存基本信息，等异步获取详情后合并为一行写入
+                                        final String _basicInfo = stringBuilder.toString();
                                         stringBuilder.delete(0, stringBuilder.length());
 
                                         // 异步获取用户详细信息 + 关注列表分析，避免阻塞主消息处理线程
                                         final long _follow_uid = interact.getUid();
                                         final String _follow_uname = interact.getUname();
                                         WATCHER_EXECUTOR.execute(() -> {
+                                                HttpRoomData.processFollowings(_follow_uid, _follow_uname);
+                                                });
+                                        WATCHER_EXECUTOR.execute(() -> {
                                             try {
                                                 JSONObject card = HttpUserData.httpGetUserCardInfo(_uid);
                                                 if (card != null) {
-                                                    StringBuilder detailSb = new StringBuilder(200);
-                                                    detailSb.append(JodaTimeUtils.formatDateTime(System.currentTimeMillis()));
-                                                    SelfTools.appendAt(detailSb, 20, "[详情]");
+                                                    StringBuilder detailSb = new StringBuilder(100);
+                                                    detailSb.append(_basicInfo);
+                                                    SelfTools.appendAt(detailSb,90, "[详情] ");
 
                                                     if (card.containsKey("follow_list_visible")) {
                                                         detailSb.append("关见:").append(card.getBoolean("follow_list_visible"));
                                                     }
                                                     if (card.containsKey("fans_list_visible")) {
-                                                        detailSb.append(" , 粉见:").append(card.getBoolean("fans_list_visible"));
+                                                        detailSb.append("  , 粉见:").append(card.getBoolean("fans_list_visible"));
                                                     }
                                                     if (card.containsKey("attention")) {
-                                                        SelfTools.appendAt(detailSb, 50, " , 关注:" + card.getLong("attention"));
+                                                        detailSb.append("  , 关注:").append(card.getLong("attention"));
                                                     }
                                                     if (card.containsKey("fans")) {
-                                                        SelfTools.appendAt(detailSb, 60, " , 粉丝:" + card.getLong("fans"));
+                                                        detailSb.append("  , 粉丝:").append(card.getLong("fans"));
                                                     }
                                                     if (card.containsKey("archive_count")) {
-                                                        SelfTools.appendAt(detailSb, 70, " , 视频:" + card.getLong("archive_count"));
+                                                        detailSb.append("  , 视频:").append(card.getLong("archive_count"));
                                                     }
 
                                                     long attention = card.containsKey("attention") ? card.getLong("attention") : -1L;
@@ -1116,8 +1127,10 @@ public class ParseMessageThread extends Thread {
                                                     if (attention != -1L && fans != -1L) {
                                                         if (fans > 10_0000) {
                                                             detailSb.append(" , 大博主：").append(fans / 10_0000);
+                                                            suspiciousUrl = url + _uid + "?疑似大博主";
                                                         } else if (fans > 10000 && attention < 200 || archiveCount > 100) {
                                                             detailSb.append(" , 博主：").append(fans / 10000);
+                                                            suspiciousUrl = url + _uid + "?疑似博主";
                                                         } else if (fans < 100 && attention > 3000) {
                                                             detailSb.append(" , 人机");
                                                             suspiciousUrl = url + _uid + "?疑似人机";
@@ -1145,11 +1158,19 @@ public class ParseMessageThread extends Thread {
                                                     if (PublicDataConf.watcherLogThread != null && !PublicDataConf.watcherLogThread.FLAG) {
                                                         PublicDataConf.watcherLogString.offer(detailSb.toString());
                                                     }
+                                                } else {
+                                                    // 获取详情失败时，至少写入基本信息
+                                                    if (PublicDataConf.watcherLogThread != null && !PublicDataConf.watcherLogThread.FLAG) {
+                                                        PublicDataConf.watcherLogString.offer(_basicInfo);
+                                                    }
                                                 }
                                             } catch (Exception e) {
                                                 LOGGER.debug("获取用户详情失败:{}", e.getMessage());
+                                                // 异常时也写入基本信息，避免丢失记录
+                                                if (PublicDataConf.watcherLogThread != null && !PublicDataConf.watcherLogThread.FLAG) {
+                                                    PublicDataConf.watcherLogString.offer(_basicInfo);
+                                                }
                                             }
-                                            HttpRoomData.processFollowings(_follow_uid, _follow_uname);
                                         });
                                     }
                                 }

@@ -18,10 +18,7 @@ import xyz.acproject.danmuji.entity.view.RoomGift;
 import xyz.acproject.danmuji.tools.CurrencyTools;
 import xyz.acproject.danmuji.tools.file.FileTools;
 import xyz.acproject.danmuji.tools.file.LogFileTools;
-import xyz.acproject.danmuji.utils.JodaTimeUtils;
-import xyz.acproject.danmuji.utils.OkHttp3Utils;
-import xyz.acproject.danmuji.utils.UrlUtils;
-import xyz.acproject.danmuji.utils.WbiSignUtils;
+import xyz.acproject.danmuji.utils.*;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -382,117 +379,84 @@ public class HttpRoomData {
     public static long processFollowings(long vmid, String uname) {
         JSONObject firstPage = httpGetFollowings(vmid, 1, 50);
         JSONObject output = new JSONObject(true);
-        output.put("时", JodaTimeUtils.getCurrentDateTimeString());// print time
-        output.put("号", vmid); //viewer id
-        output.put("名", uname);
+        StringBuilder logOutStart = new StringBuilder(100);
 
-        if (firstPage == null) {
-            LOGGER.info("[" + uname + "] 关注：请求失败");
-            output.put("类型", "firstPage == null");
-            output.put("成分", "未知");
-            LogFileTools.getlogFileTools().logFollowingsFile(output.toJSONString());
-            return -1;
-        }
-        short code = firstPage.getShort("code");
-        if (code == 22115) {
-            LOGGER.info("[" + uname + "] 关注：不可见");
-            output.put("类型", "code == 22115");
-            output.put("成分", "未知");
-            LogFileTools.getlogFileTools().logFollowingsFile(output.toJSONString());
-            return -1;
-        }
-        if (code != 0) {
-            LOGGER.info("[" + uname + "] 关注：请求失败(" + firstPage.getString("message") + ")");
-            output.put("类型", "code != 0");
-            output.put("成分", "未知");
-            LogFileTools.getlogFileTools().logFollowingsFile(output.toJSONString());
-            return -1;
-        }
-        JSONObject data = firstPage.getJSONObject("data");
-        if (data == null) {
-            LOGGER.info("[" + uname + "] 关注：0 null");
-            output.put("类型", "data == null");
-            output.put("成分", "未知");
-            LogFileTools.getlogFileTools().logFollowingsFile(output.toJSONString());
-            return 0;
-        }
-        long total = data.getLongValue("total");
-        LOGGER.info("[" + uname + "] 关注：" + total);
-        if (total == 0) {
-            output.put("类型", "total == 0");
-            output.put("成分", "未知");
-            LogFileTools.getlogFileTools().logFollowingsFile(output.toJSONString());
-            return 0;
-        }
-
-        output.put("类型", "关注");
-        output.put("关注数", total);
+        short code = firstPage != null ? firstPage.getShort("code") : -1;
+        JSONObject data = firstPage != null && code == 0 ? firstPage.getJSONObject("data") : null;
+        long total = data != null ? data.getLongValue("total") : -1;
 
         int totalScore = 0;
         int tempScore = 0;
         JSONArray followingsList = new JSONArray();
         JSONArray matchedList = new JSONArray();
 
-        // 当前观众就在黑白名单里
-        if (pnScoreMap.containsKey(vmid)) {
-            tempScore = pnScoreMap.get(vmid);
-            matchedList.add( tempScore );
-        } else {
-            int totalPages = (int) Math.ceil((float) total / 50F);
-            totalPages = Math.min(totalPages, 5);
+        if (firstPage == null || code != 0 || data == null || total == 0) {
+            LOGGER.info("[" + uname + "] 关注：请求失败或无数据");
+            output.put("成份", "关注列表不可见，默认小黑屋");
+        }else {
 
-            for (int p = 1; p <= totalPages; p++) {
-                JSONObject pageData;
-                if (p == 1) {
-                    pageData = firstPage;
-                } else {
-                    pageData = httpGetFollowings(vmid, p, 50);
-                    if (pageData == null || pageData.getShort("code") != 0) {
+            // 当前观众就在黑白名单里
+            if (pnScoreMap.containsKey(vmid)) {
+                matchedList.add( pnScoreMap.get(vmid) );
+            } else {
+                int totalPages = (int) Math.ceil((float) total / 50F);
+                // totalPages = Math.min(totalPages, 5);
+                totalPages = Math.min(totalPages, 2);  // 最多两页，足够了，太多没必要
+
+                for (int p = 1; p <= totalPages; p++) {
+                    JSONObject pageData;
+                    if (p == 1) {
+                        pageData = firstPage;
+                    } else {
+                        pageData = httpGetFollowings(vmid, p, 50);
+                        if (pageData == null || pageData.getShort("code") != 0) {
+                            continue;
+                        }
+                    }
+                    JSONArray list = pageData.getJSONObject("data").getJSONArray("list");
+                    if (list == null || list.isEmpty()) {
                         continue;
                     }
-                }
-                JSONArray list = pageData.getJSONObject("data").getJSONArray("list");
-                if (list == null || list.isEmpty()) {
-                    continue;
-                }
 
-                for (Object obj : list) {
-                    JSONObject user = (JSONObject) obj;
-                    long mid = user.getLong("mid");
-                    String followedName = user.getString("uname");
-                    JSONObject item = new JSONObject(true);
-                    item.put("uid", mid);
-                    item.put("name", followedName);
-                    followingsList.add(item);
-                    if (pnScoreMap.containsKey(mid)) {
-                        tempScore = pnScoreMap.get(mid);
-                        totalScore += tempScore;
-
-                        JSONObject match = new JSONObject(true);
-                        match.put("人", followedName);
-                        match.put("分", tempScore);
-                        matchedList.add(match);
+                    for (Object obj : list) {
+                        JSONObject user = (JSONObject) obj;
+                        long mid = user.getLong("mid");
+                        String followedName = user.getString("uname");
+                        JSONObject item = new JSONObject(true);
+                        item.put("uid", mid);
+                        item.put("name", followedName);
+                        followingsList.add(item);
+                        if (pnScoreMap.containsKey(mid)) {
+                            tempScore = pnScoreMap.get(mid);
+                            totalScore += tempScore;
+                            matchedList.add(followedName+":"+tempScore);
+                        }
                     }
                 }
             }
+
+            if (totalScore > 0) {
+                output.put("成份", "关注列表自己人偏多："+totalScore);
+            } else if (totalScore < 0) {
+                output.put("成份", "关注列表有野猪皮："+totalScore);
+            } else {
+                output.put("成份", "关注列表可见，未发现异常,视情况而定");
+            }
+
+            output.put("黑白名单匹配列表：", matchedList);  // 输出黑白名单的匹配人
+            output.put("       关注列表：", followingsList); // 要输出关注的人数
         }
 
+        //通过日志查看后手动打开浏览器
+        logOutStart.append(JodaTimeUtils.getCurrentDateTimeString())
+                .append("  https://space.bilibili.com/").append(vmid)
+                .append("?name=").append(uname)
+                .append("&total=").append(total)
+                .append("&matched=").append(matchedList.size())
+                .append("&totalScore=").append(totalScore);
+        SelfTools.appendAt(logOutStart, 140, output.toJSONString());
 
-
-        // output.put("followings_list", followingsList); 不需要输出关注的人数，太多了，只要正白负黑名单负即可
-        output.put("匹配", matchedList);
-        if (totalScore > 0) {
-            output.put("成分", "人");
-            output.put("分", totalScore);
-        } else if (totalScore < 0) {
-            output.put("成分", "野猪");
-            output.put("分", totalScore);
-            // 记录可疑用户URL，可通过日志查看后手动打开浏览器
-            output.put("可疑链接", "https://space.bilibili.com/" + vmid + "?makeUp=black&makeUpScore=" + totalScore);
-        } else {
-            output.put("成分", "中");
-        }
-        LogFileTools.getlogFileTools().logFollowingsFile(output.toJSONString());
+        LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logOutStart));
 
         return total;
     }
