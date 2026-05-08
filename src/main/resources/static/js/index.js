@@ -572,6 +572,20 @@ $(document).on('click', '.livestatus-cut-off-send', function () {
 $(document).on('click', '.livestatus-room-lock-send', function () {
     method.sendLiveStatusBarrage($(".livestatus_room_lock_text").val());
 });
+// 定时姬
+$(document).on('click', '.timer-add-btn', function () {
+    method.addTimerRow();
+});
+$(document).on('click', '.timer-delete-btn', function () {
+    $(this).closest('li').remove();
+    if ($(".auto_save_set").is(':checked')) {
+        method.saveSet();
+    }
+});
+$(document).on('click', '.timer-send-btn', function () {
+    var text = $(this).closest('li').find('.timer-text').val();
+    method.sendLiveStatusBarrage(text);
+});
 const danmuku = {
     // 0弹幕 1礼物 2消息
     type: function (t) {
@@ -765,7 +779,8 @@ const method = {
                 "names": [],
                 "uids": []
             },
-            "live_status": {}
+            "live_status": {},
+            "timer": {}
         };
         set.is_auto = $(".is_autoStart").is(
             ':checked');
@@ -919,6 +934,21 @@ const method = {
         set.live_status.cut_off_text = $(".livestatus_cut_off_text").val();
         set.live_status.is_room_lock_open = $(".livestatus_room_lock_open").is(':checked');
         set.live_status.room_lock_text = $(".livestatus_room_lock_text").val();
+        set.timer.is_open = $(".timer_is_open").is(':checked');
+        set.timer.timerSets = [];
+        if ($("#timer-ul li").length > 0) {
+            var timerSet = {};
+            $("#timer-ul li").each(function (i, v) {
+                timerSet.is_open = $(this).find(".timer-row-open").is(':checked');
+                timerSet.time = $(this).find(".timer-row-time").val();
+                timerSet.text = $(this).find(".timer-text").val();
+                set.timer.timerSets.push(timerSet);
+                timerSet = {};
+            });
+            set.timer.timerSets.sort(function(a, b) {
+                return (a.time || "00:00").localeCompare(b.time || "00:00");
+            });
+        }
         /*处理验证?*/
         if (set.clock_in.is_open) {
             set.clock_in.sign_day = (new Date()).getTime();
@@ -1103,6 +1133,63 @@ const method = {
             }
         });
     },
+    addTimerRow: function (time, text, isOpen) {
+        var defaultTime = time;
+        if (!defaultTime) {
+            var d = new Date();
+            d.setMinutes(d.getMinutes() + 3);
+            defaultTime = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+        }
+        var t = defaultTime;
+        var txt = text || '';
+        var checked = isOpen ? 'checked' : '';
+        var li = '<li class="mb-2">' +
+            '<div class="row align-items-center">' +
+            '<div class="col-auto">' +
+            '<label class="form-check-label">' +
+            '<input class="form-check-input timer-row-open live-save" type="checkbox" ' + checked + '>' +
+            '</label>' +
+            '</div>' +
+            '<div class="col-auto">' +
+            '<input class="form-control form-control-sm timer-row-time live-save" type="time" value="' + t + '" step="60" style="width:110px">' +
+            '</div>' +
+            '<div class="col">' +
+            '<input class="form-control form-control-sm timer-text live-save" placeholder="定时发送的弹幕内容" value="' + method._escapeHtml(txt) + '">' +
+            '</div>' +
+            '<div class="col-auto">' +
+            '<button class="btn btn-sm btn-primary timer-send-btn">发送</button>' +
+            '</div>' +
+            '<div class="col-auto">' +
+            '<button class="btn btn-sm btn-danger timer-delete-btn">删除</button>' +
+            '</div>' +
+            '</div>' +
+            '</li>';
+        $("#timer-ul").append(li);
+    },
+    renderTimerRows: function (timerSets) {
+        $("#timer-ul").empty();
+        if (!timerSets) return;
+        for (var i = 0; i < timerSets.length; i++) {
+            var item = timerSets[i];
+            method.addTimerRow(item.time, item.text, item.is_open);
+        }
+    },
+    _sortTimerRows: function () {
+        var $ul = $("#timer-ul");
+        var $lis = $ul.children("li").get();
+        $lis.sort(function (a, b) {
+            var ta = $(a).find(".timer-row-time").val() || "00:00";
+            var tb = $(b).find(".timer-row-time").val() || "00:00";
+            return ta.localeCompare(tb);
+        });
+        $.each($lis, function (i, li) {
+            $ul.append(li);
+        });
+    },
+    _escapeHtml: function (str) {
+        if (!str) return '';
+        return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    },
     initSet: function (set) {
         "use strict";
         if (set != null) {
@@ -1234,6 +1321,16 @@ const method = {
                 $(".livestatus_cut_off_text").val(set.live_status.cut_off_text);
                 $(".livestatus_room_lock_open").prop('checked', set.live_status.is_room_lock_open);
                 $(".livestatus_room_lock_text").val(set.live_status.room_lock_text);
+            }
+            if (set.timer) {
+                $(".timer_is_open").prop('checked', set.timer.is_open);
+                if (set.timer.timerSets) {
+                    // sort by time ascending
+                    set.timer.timerSets.sort(function(a, b) {
+                        return (a.time || "00:00").localeCompare(b.time || "00:00");
+                    });
+                    method.renderTimerRows(set.timer.timerSets);
+                }
             }
 
 

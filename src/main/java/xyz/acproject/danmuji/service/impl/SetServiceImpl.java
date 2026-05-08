@@ -228,6 +228,19 @@ public class SetServiceImpl implements SetService {
                     LOGGER.error("清理定时任务错误：" + e);
                 }
             }
+            //定时姬
+            SchedulingRunnableUtil timerDanmakuTask = new SchedulingRunnableUtil("dosignTask", "sendTimerDanmaku");
+            if (centerSetConf.getTimer() != null && centerSetConf.getTimer().is_open()) {
+                if (!taskRegisterComponent.hasTask(timerDanmakuTask)) {
+                    taskRegisterComponent.addTask(timerDanmakuTask, "0 * * * * ?");
+                }
+            } else {
+                try {
+                    taskRegisterComponent.removeTask(timerDanmakuTask);
+                } catch (Exception e) {
+                    LOGGER.error("清理定时任务错误：" + e);
+                }
+            }
 
             //need roomid set
             if (PublicDataConf.ROOMID == null || PublicDataConf.ROOMID <= 0) {

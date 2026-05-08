@@ -258,14 +258,6 @@ public class ParseMessageThread extends Thread {
                                     }
                                 }
 
-                                try {
-                                    danmuWebsocket.sendMessage("auto send 自己测试");
-                                } catch (Exception e) {
-                                    // TODO 自动生成的 catch 块
-                                    e.printStackTrace();
-                                }
-
-
                                 stringBuilder.delete(0, stringBuilder.length());
                                 //						LOGGER.info("弹幕信息：" + message);
                             } else {

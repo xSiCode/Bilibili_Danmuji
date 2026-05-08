@@ -341,6 +341,13 @@ public class WebController {
             if(centerSetConf.getLive_status()==null&&PublicDataConf.centerSetConf.getLive_status()==null){
                 centerSetConf.setLive_status(new LiveStatusSetConf());
             }
+            //定时姬
+            if(centerSetConf.getTimer()==null&&PublicDataConf.centerSetConf.getTimer()!=null){
+                centerSetConf.setTimer(PublicDataConf.centerSetConf.getTimer());
+            }
+            if(centerSetConf.getTimer()==null&&PublicDataConf.centerSetConf.getTimer()==null){
+                centerSetConf.setTimer(new TimerSetConf());
+            }
             checkService.changeSet(centerSetConf,true);
         } catch (Exception e) {
             e.printStackTrace();

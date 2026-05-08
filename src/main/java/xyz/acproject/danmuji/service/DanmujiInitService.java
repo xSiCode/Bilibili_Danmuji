@@ -104,6 +104,12 @@ public class DanmujiInitService {
             if (PublicDataConf.centerSetConf.getBlack() == null) {
                 PublicDataConf.centerSetConf.setBlack(new BlackListSetConf());
             }
+            if (PublicDataConf.centerSetConf.getLive_status() == null) {
+                PublicDataConf.centerSetConf.setLive_status(new LiveStatusSetConf());
+            }
+            if (PublicDataConf.centerSetConf.getTimer() == null) {
+                PublicDataConf.centerSetConf.setTimer(new TimerSetConf());
+            }
         } else {
             // 无效的本地配置集则初始化一份
             // 此处无参初始化可以采用聚合根的思想

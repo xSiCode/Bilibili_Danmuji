@@ -279,6 +279,12 @@ public class ParseSetStatusTools {
 			if(centerSetConf.getBlack()==null){
 				centerSetConf.setBlack(new BlackListSetConf());
 			}
+			if(centerSetConf.getLive_status()==null){
+				centerSetConf.setLive_status(new LiveStatusSetConf());
+			}
+			if(centerSetConf.getTimer()==null){
+				centerSetConf.setTimer(new TimerSetConf());
+			}
 		}
 		return centerSetConf;
 	}
