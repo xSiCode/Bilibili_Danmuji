@@ -226,9 +226,11 @@ public class ParseMessageThread extends Thread {
                                     } else {
                                         hbarrage.setUlevel(null);
                                     }
+                                    if ( 1 != barrage.getIphone()){
+                                        stringBuilder.append(", https://space.bilibili.com/").append(barrage.getUid());
+                                    }
 
                                     stringBuilder.append(" 会员:").append(barrage.getUidentity());
-                                    stringBuilder.append(", phone: ").append(barrage.getIphone());
                                     stringBuilder.append(", name:").append(barrage.getUname());
                                     stringBuilder.append(",say: ");
                                     stringBuilder.append(barrage.getMsg());
@@ -1074,10 +1076,8 @@ public class ParseMessageThread extends Thread {
                                         final String _uname = interact.getUname();
                                         String url = "https://space.bilibili.com/";
                                         final MedalInfo _medal = interact.getFans_medal();
-                                        stringBuilder.append(new SimpleDateFormat("HH:mm:ss").format(System.currentTimeMillis())                                                )
-                                                .append("  ").append(_uname);
-
-                                        SelfTools.appendAt(stringBuilder,40, url+_uid);
+                                        stringBuilder.append(new SimpleDateFormat("HH:mm:ss").format(System.currentTimeMillis()))
+                                                    .append("  ").append(url).append(_uid).append("?name=").append(_uname);
 
                                         if (_medal != null) {
                                             stringBuilder.append(", 勋章:").append(_medal.getMedal_name())
@@ -1100,18 +1100,13 @@ public class ParseMessageThread extends Thread {
                                                 });
                                         WATCHER_EXECUTOR.execute(() -> {
                                             try {
+                                                int score = 0;
+
                                                 JSONObject card = HttpUserData.httpGetUserCardInfo(_uid);
                                                 if (card != null) {
                                                     StringBuilder detailSb = new StringBuilder(100);
                                                     detailSb.append(_basicInfo);
-                                                    SelfTools.appendAt(detailSb,90, "[详情] ");
 
-                                                    if (card.containsKey("follow_list_visible")) {
-                                                        detailSb.append("关见:").append(card.getBoolean("follow_list_visible"));
-                                                    }
-                                                    if (card.containsKey("fans_list_visible")) {
-                                                        detailSb.append("  , 粉见:").append(card.getBoolean("fans_list_visible"));
-                                                    }
                                                     if (card.containsKey("attention")) {
                                                         detailSb.append("  , 关注:").append(card.getLong("attention"));
                                                     }
@@ -1122,6 +1117,12 @@ public class ParseMessageThread extends Thread {
                                                         detailSb.append("  , 视频:").append(card.getLong("archive_count"));
                                                     }
 
+                                                    if (card.containsKey("follow_list_visible")) {
+                                                        if (!card.getBoolean("follow_list_visible")){
+                                                            detailSb.append("  , 关注列表:隐藏");
+                                                        }
+                                                    }
+
                                                     long attention = card.containsKey("attention") ? card.getLong("attention") : -1L;
                                                     long fans = card.containsKey("fans") ? card.getLong("fans") : -1L;
                                                     long archiveCount = card.containsKey("archive_count") ? card.getLong("archive_count") : -1L;
@@ -1129,15 +1130,16 @@ public class ParseMessageThread extends Thread {
                                                     if (attention != -1L && fans != -1L) {
                                                         if (fans > 10_0000) {
                                                             detailSb.append(" , 大博主：").append(fans / 10_0000);
-                                                            suspiciousUrl = url + _uid + "?疑似大博主";
+                                                            suspiciousUrl = "?疑似大博主";
                                                         } else if (fans > 10000 && attention < 200 || archiveCount > 100) {
                                                             detailSb.append(" , 博主：").append(fans / 10000);
-                                                            suspiciousUrl = url + _uid + "?疑似博主";
+                                                            suspiciousUrl = "?疑似博主";
                                                         } else if (fans < 100 && attention > 3000) {
                                                             detailSb.append(" , 人机");
-                                                            suspiciousUrl = url + _uid + "?疑似人机";
+                                                            suspiciousUrl =   "?疑似人机";
                                                         }
                                                     }
+                                                    detailSb.append(suspiciousUrl);
 
                                                     if (card.containsKey("level")) {
                                                         detailSb.append(" , LV:").append(card.getInteger("level"));
@@ -1155,11 +1157,6 @@ public class ParseMessageThread extends Thread {
                                                         detailSb.append(" , 签名:").append(card.getString("sign"));
                                                     }else {
                                                         detailSb.append(" , 签名:无");
-                                                    }
-
-                                                    // 可疑用户记录URL到日志，不再阻塞主线程打开浏览器
-                                                    if (suspiciousUrl != null) {
-                                                        detailSb.append(" , 可疑:").append(suspiciousUrl);
                                                     }
 
                                                     if (PublicDataConf.watcherLogThread != null && !PublicDataConf.watcherLogThread.FLAG) {

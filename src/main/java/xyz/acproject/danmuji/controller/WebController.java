@@ -618,6 +618,8 @@ public class WebController {
                 writer.write(com.alibaba.fastjson.JSON.toJSONString(result, true));
             }
 
+            HttpRoomData.reloadPnScoreMap();
+
             return Response.success(0, req);
         } catch (Exception e) {
             LOGGER.error("savePositiveWhiteNegativeBlack error", e);

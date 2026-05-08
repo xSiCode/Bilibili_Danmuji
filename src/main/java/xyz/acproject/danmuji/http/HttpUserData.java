@@ -841,18 +841,7 @@ public class HttpUserData {
         } catch (Exception e) {
             result.put("follow_list_visible", false);
         }
-        try {
-            String fansData = OkHttp3Utils.getHttp3Utils()
-                    .httpGet("https://api.bilibili.com/x/relation/followers?vmid=" + uid + "&pn=1&ps=1", headers, null)
-                    .body().string();
-            if (fansData != null) {
-                JSONObject faJo = JSONObject.parseObject(fansData);
-                result.put("fans_list_visible", faJo.getShort("code") == 0);
-              //  LOGGER.info( "https://api.bilibili.com/x/relation/followers?vmid=" + uid + "&pn=1&ps=1",faJo);
-            }
-        } catch (Exception e) {
-            result.put("fans_list_visible", false);
-        }
+
         // 3. 用户卡片接口（粉丝数、关注数）
         headers.put("referer", "https://space.bilibili.com/" + uid);
         try {

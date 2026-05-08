@@ -2088,6 +2088,7 @@ const method = {
     addPNRow: function () {
         pnData.list.unshift({ uid: '', name: '', score: 0 });
         pnData.page = 1;
+        pnData.sortState = [];
         method.renderPNTable();
     },
     // 切换排序列的升降状态：无→升→降→移除
