@@ -836,7 +836,7 @@ public class HttpUserData {
                 result.put("follow_list_visible", foJo.getShort("code") == 0);
 
 
-                LOGGER.info( "https://api.bilibili.com/x/relation/followings?vmid=" + uid + "&pn=1&ps=1",foJo);
+               // LOGGER.info( "https://api.bilibili.com/x/relation/followings?vmid=" + uid + "&pn=1&ps=1",foJo);
             }
         } catch (Exception e) {
             result.put("follow_list_visible", false);
@@ -848,7 +848,7 @@ public class HttpUserData {
             if (fansData != null) {
                 JSONObject faJo = JSONObject.parseObject(fansData);
                 result.put("fans_list_visible", faJo.getShort("code") == 0);
-                LOGGER.info( "https://api.bilibili.com/x/relation/followers?vmid=" + uid + "&pn=1&ps=1",faJo);
+              //  LOGGER.info( "https://api.bilibili.com/x/relation/followers?vmid=" + uid + "&pn=1&ps=1",faJo);
             }
         } catch (Exception e) {
             result.put("fans_list_visible", false);
@@ -877,8 +877,8 @@ public class HttpUserData {
                     result.put("article_count", cardData.getInteger("article_count"));
                 }
 
-                LOGGER.info( "https://api.bilibili.com/x/web-interface/card?mid=" + uid,data);
-                LOGGER.info( "https://api.bilibili.com/x/web-interface/card?mid=" + uid,jsonObject);
+               // LOGGER.info( "https://api.bilibili.com/x/web-interface/card?mid=" + uid,data);
+              //  LOGGER.info( "https://api.bilibili.com/x/web-interface/card?mid=" + uid,jsonObject);
             }
         } catch (Exception e) {
             LOGGER.error("获取用户卡片信息失败:{}", e.getMessage());
@@ -925,8 +925,8 @@ public class HttpUserData {
                         result.put("live_status", liveRoom.getInteger("liveStatus"));
                     }
 
-                    LOGGER.info( "https://api.bilibili.com/x/space/acc/info?mid=",data);
-                    LOGGER.info( "https://api.bilibili.com/x/space/acc/info?mid=",jsonObject);
+                 //   LOGGER.info( "https://api.bilibili.com/x/space/acc/info?mid=",data);
+                 //   LOGGER.info( "https://api.bilibili.com/x/space/acc/info?mid=",jsonObject);
                 }
             } else {
                 LOGGER.error("获取用户空间信息失败");

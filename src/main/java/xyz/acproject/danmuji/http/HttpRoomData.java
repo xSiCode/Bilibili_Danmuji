@@ -41,6 +41,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class HttpRoomData {
     private static Logger LOGGER = LogManager.getLogger(HttpRoomData.class);
     private static Map<Long, Integer> pnScoreMap = loadPositiveWhiteNegativeBlackScores();
+
     /**
      * 获取连接目标房间websocket端口 接口
      *
@@ -379,7 +380,11 @@ public class HttpRoomData {
     public static long processFollowings(long vmid, String uname) {
         JSONObject firstPage = httpGetFollowings(vmid, 1, 50);
         JSONObject output = new JSONObject(true);
-        StringBuilder logOutStart = new StringBuilder(100);
+        StringBuilder logSb = new StringBuilder(80);
+
+        logSb.append(JodaTimeUtils.getCurrentDateTimeString())
+                .append("  https://space.bilibili.com/").append(vmid)
+                .append("?name=").append(uname);
 
         short code = firstPage != null ? firstPage.getShort("code") : -1;
         JSONObject data = firstPage != null && code == 0 ? firstPage.getJSONObject("data") : null;
@@ -390,74 +395,51 @@ public class HttpRoomData {
         JSONArray followingsList = new JSONArray();
         JSONArray matchedList = new JSONArray();
 
+        // 是否可见，是否在黑白名单
         if (firstPage == null || code != 0 || data == null || total == 0) {
             LOGGER.info("[" + uname + "] 关注：请求失败或无数据");
-            output.put("成份", "关注列表不可见，默认小黑屋");
-        }else {
+            totalScore = -1;
+        } else {
 
             // 当前观众就在黑白名单里
             if (pnScoreMap.containsKey(vmid)) {
-                matchedList.add( pnScoreMap.get(vmid) );
+                totalScore = pnScoreMap.get(vmid);
+                matchedList.add(uname + ":" + totalScore);
             } else {
-                int totalPages = (int) Math.ceil((float) total / 50F);
-                // totalPages = Math.min(totalPages, 5);
-                totalPages = Math.min(totalPages, 2);  // 最多两页，足够了，太多没必要
+                JSONArray list = firstPage.getJSONObject("data").getJSONArray("list");
 
-                for (int p = 1; p <= totalPages; p++) {
-                    JSONObject pageData;
-                    if (p == 1) {
-                        pageData = firstPage;
-                    } else {
-                        pageData = httpGetFollowings(vmid, p, 50);
-                        if (pageData == null || pageData.getShort("code") != 0) {
-                            continue;
-                        }
-                    }
-                    JSONArray list = pageData.getJSONObject("data").getJSONArray("list");
-                    if (list == null || list.isEmpty()) {
-                        continue;
-                    }
-
-                    for (Object obj : list) {
-                        JSONObject user = (JSONObject) obj;
-                        long mid = user.getLong("mid");
-                        String followedName = user.getString("uname");
-                        JSONObject item = new JSONObject(true);
-                        item.put("uid", mid);
-                        item.put("name", followedName);
-                        followingsList.add(item);
-                        if (pnScoreMap.containsKey(mid)) {
-                            tempScore = pnScoreMap.get(mid);
-                            totalScore += tempScore;
-                            matchedList.add(followedName+":"+tempScore);
-                        }
+                // 判断与每个关注人的关系，并计算总分
+                for (Object obj : list) {
+                    JSONObject user = (JSONObject) obj;
+                    long mid = user.getLong("mid");
+                    String followedName = user.getString("uname");
+                    followingsList.add(followedName + ":" + mid);
+                    if (pnScoreMap.containsKey(mid)) { // 在黑白名单
+                        tempScore = pnScoreMap.get(mid);
+                        totalScore += tempScore;
+                        matchedList.add(followedName + ":" + tempScore);
                     }
                 }
             }
-
-            if (totalScore > 0) {
-                output.put("成份", "关注列表自己人偏多："+totalScore);
-            } else if (totalScore < 0) {
-                output.put("成份", "关注列表有野猪皮："+totalScore);
-            } else {
-                output.put("成份", "关注列表可见，未发现异常,视情况而定");
-            }
-
-            output.put("黑白名单匹配列表：", matchedList);  // 输出黑白名单的匹配人
-            output.put("       关注列表：", followingsList); // 要输出关注的人数
         }
 
+        if (totalScore > 0) {
+            output.put("成份", "关注列表自己人偏多：" + totalScore);
+        } else if (totalScore < 0) {
+            logSb.append("&followNum=").append(total)
+                    .append("&matchedNum=").append(matchedList.size())
+                    .append("&matchScore=").append(totalScore);
+
+            output.put("成份", "关注列表不可见或有野猪皮：" + totalScore);
+            output.put("黑白名单列表", matchedList);  // 输出黑白名单的匹配人
+            output.put("关注列表", followingsList); // 要输出关注的人数
+        } else {
+            output.put("成份", "关注列表可见，未发现异常,需其他人再次确认");
+        }
         //通过日志查看后手动打开浏览器
-        logOutStart.append(JodaTimeUtils.getCurrentDateTimeString())
-                .append("  https://space.bilibili.com/").append(vmid)
-                .append("?name=").append(uname)
-                .append("&total=").append(total)
-                .append("&matched=").append(matchedList.size())
-                .append("&totalScore=").append(totalScore);
-        SelfTools.appendAt(logOutStart, 140, output.toJSONString());
+        SelfTools.appendAt(logSb, 140, output.toJSONString());
 
-        LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logOutStart));
-
+        LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
         return total;
     }
 
@@ -753,6 +735,7 @@ public class HttpRoomData {
         }
         return null;
     }
+
     public static List<RoomBlock> getBlockList(int page) {
         String data = null;
         JSONObject jsonObject = null;

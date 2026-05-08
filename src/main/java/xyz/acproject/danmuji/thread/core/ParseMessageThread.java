@@ -209,7 +209,6 @@ public class ParseMessageThread extends Thread {
                                             stringBuilder.append("[")
                                                     .append(barrage.getMedal_name()).append(" ")
                                                     .append(barrage.getMedal_level())
-
                                                     .append("]");
                                         }
                                     } else {
@@ -228,11 +227,10 @@ public class ParseMessageThread extends Thread {
                                         hbarrage.setUlevel(null);
                                     }
 
-                                    stringBuilder.append(" 会员: ").append(barrage.getUidentity());
-                                    stringBuilder.append("  phone：").append(barrage.getIphone());
-                                    stringBuilder.append(barrage.getUid()).append("  ");
-                                    stringBuilder.append(barrage.getUname());
-                                    stringBuilder.append("        say: ");
+                                    stringBuilder.append(" 会员:").append(barrage.getUidentity());
+                                    stringBuilder.append(", phone: ").append(barrage.getIphone());
+                                    stringBuilder.append(", name:").append(barrage.getUname());
+                                    stringBuilder.append(",say: ");
                                     stringBuilder.append(barrage.getMsg());
                                     //控制台打印
                                     if (getCenterSetConf().is_cmd()) {
@@ -982,7 +980,7 @@ public class ParseMessageThread extends Thread {
                             try {
                                 String pbBase64 = jsonObject.getJSONObject("data").getString("pb");
                                 INTERACTWORDV2.InteractWordV2 interactWordV2 = INTERACTWORDV2.InteractWordV2.parseFrom(Base64.getDecoder().decode(pbBase64));
-                                LOGGER.info("INTERACT_WORD_V2_PARSE:" + JsonFormat.printer().print(interactWordV2));
+                              //  LOGGER.info("INTERACT_WORD_V2_PARSE:" + JsonFormat.printer().print(interactWordV2));
                                 msg_type =(short) interactWordV2.getMsgType();
                                 interact = new Interact();
                                 interact.setUid(interactWordV2.getUid());
@@ -995,7 +993,7 @@ public class ParseMessageThread extends Thread {
                                 interact.setTimestamp(interactWordV2.getTimestamp());
                                 interact.setScore(interactWordV2.getScore());
                                 if(interactWordV2.hasFansMedal()) {
-                                    LOGGER.info("INTERACT_WORD_V2_PARSE_FANS:" + JsonFormat.printer().print(interactWordV2));
+                                   // LOGGER.info("INTERACT_WORD_V2_PARSE_FANS:" + JsonFormat.printer().print(interactWordV2));
                                     MedalInfo medalInfo = new MedalInfo();
                                     medalInfo.setIcon_id(interactWordV2.getFansMedal().getIconId());
                                     medalInfo.setTarget_id(interactWordV2.getFansMedal().getTargetId());
@@ -1139,7 +1137,10 @@ public class ParseMessageThread extends Thread {
 
                                                     if (card.containsKey("level")) {
                                                         detailSb.append(" , LV:").append(card.getInteger("level"));
+                                                    }else {
+                                                        detailSb.append(" , LV:无");
                                                     }
+
                                                     if (card.containsKey("official_title") && StringUtils.isNotBlank(card.getString("official_title"))) {
                                                         detailSb.append(" , 认证:").append(card.getString("official_title"));
                                                     }
@@ -1148,6 +1149,8 @@ public class ParseMessageThread extends Thread {
                                                     }
                                                     if (card.containsKey("sign")) {
                                                         detailSb.append(" , 签名:").append(card.getString("sign"));
+                                                    }else {
+                                                        detailSb.append(" , 签名:无");
                                                     }
 
                                                     // 可疑用户记录URL到日志，不再阻塞主线程打开浏览器
