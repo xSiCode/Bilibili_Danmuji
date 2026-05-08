@@ -109,7 +109,7 @@ public class DanmujiInitService {
             // 此处无参初始化可以采用聚合根的思想
             PublicDataConf.centerSetConf = new CenterSetConf(new ThankGiftSetConf(), new AdvertSetConf(),
                     new ThankFollowSetConf(), new AutoReplySetConf(), new ClockInSetConf(), new ThankWelcomeSetConf(),
-                    new AutoSendGiftConf(), new PrivacySetConf(), new BlackListSetConf());
+                    new AutoSendGiftConf(), new PrivacySetConf(), new BlackListSetConf(), new LiveStatusSetConf());
         }
 
         //初始化配置文件结束

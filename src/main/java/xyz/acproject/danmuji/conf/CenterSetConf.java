@@ -140,6 +140,9 @@ public class CenterSetConf implements Serializable {
     //全局黑名单
     @JSONField(name="black")
     private BlackListSetConf black;
+    //直播状态姬
+    @JSONField(name="live_status")
+    private LiveStatusSetConf live_status;
 
 
     @JSONField(name = "edition",serialize = false)
@@ -161,12 +164,13 @@ public class CenterSetConf implements Serializable {
         centerSetConf.setAuto_gift(new AutoSendGiftConf());
         centerSetConf.setPrivacy(new PrivacySetConf());
         centerSetConf.setBlack(new BlackListSetConf());
+        centerSetConf.setLive_status(new LiveStatusSetConf());
         return centerSetConf;
     }
 
 
     public CenterSetConf(ThankGiftSetConf thank_gift, AdvertSetConf advert,
-                         ThankFollowSetConf follow, AutoReplySetConf reply, ClockInSetConf clock_in, ThankWelcomeSetConf welcome, AutoSendGiftConf auto_gift, PrivacySetConf privacy,BlackListSetConf black) {
+                         ThankFollowSetConf follow, AutoReplySetConf reply, ClockInSetConf clock_in, ThankWelcomeSetConf welcome, AutoSendGiftConf auto_gift, PrivacySetConf privacy,BlackListSetConf black,LiveStatusSetConf live_status) {
         super();
         this.thank_gift = thank_gift;
         this.advert = advert;
@@ -177,6 +181,7 @@ public class CenterSetConf implements Serializable {
         this.auto_gift= auto_gift;
         this.privacy = privacy;
         this.black= black;
+        this.live_status = live_status;
     }
 
     public String toJson() {

@@ -9,7 +9,8 @@
       "Bash(python fix_http.py)",
       "Bash(iconv -f GBK -t UTF-8)",
       "Bash(python fix_fields.py)",
-      "Bash(./gradlew.bat compileJava)"
+      "Bash(./gradlew.bat compileJava)",
+      "Bash(mvn compile *)"
     ]
   }
 }

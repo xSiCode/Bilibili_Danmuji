@@ -21,3 +21,4 @@ log/
 *.iml
 rebel.xml
 rebel-remote.xml
+positiveWhite_negativeBlack_user.json
