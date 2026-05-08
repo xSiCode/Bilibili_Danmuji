@@ -257,6 +257,15 @@ public class ParseMessageThread extends Thread {
                                                 AutoReply.getAutoReply(barrage.getUid(), barrage.getUname(), barrage.getMsg()));
                                     }
                                 }
+
+                                try {
+                                    danmuWebsocket.sendMessage("auto send 自己测试");
+                                } catch (Exception e) {
+                                    // TODO 自动生成的 catch 块
+                                    e.printStackTrace();
+                                }
+
+
                                 stringBuilder.delete(0, stringBuilder.length());
                                 //						LOGGER.info("弹幕信息：" + message);
                             } else {
@@ -601,7 +610,7 @@ public class ParseMessageThread extends Thread {
 
                         // 舰长进入直播间消息
                         case "ENTRY_EFFECT":
-                            //					LOGGER.info("舰长大大进入直播间消息推送:::" + message);
+                            LOGGER.info("舰长大大进入直播间消息推送:::" + message);
                             break;
 
                         // 节奏风暴推送 action 为start和end
@@ -939,6 +948,7 @@ public class ParseMessageThread extends Thread {
                         // 房间警告消息 目前已知触发条件为 房间分区不正确
                         case "WARNING":
                             //					LOGGER.info("房间警告消息:::" + message);
+                            holdLiveStatusMsg("warning");
                             break;
                         // 直播开启------------
                         case "LIVE":
@@ -949,16 +959,17 @@ public class ParseMessageThread extends Thread {
                             setService.holdSet(getCenterSetConf());
                             PublicDataConf.IS_ROOM_POPULARITY = true;
                             LOGGER.info("直播开启:::" + message);
+                            holdLiveStatusMsg("live");
                             break;
-
-                        // 直播超管被切断
                         case "CUT_OFF":
                             LOGGER.info("很不幸，本房间直播被切断:::" + message);
+                            holdLiveStatusMsg("cut_off");
                             break;
 
                         // 本房间已被封禁
                         case "ROOM_LOCK":
                             LOGGER.info("很不幸，本房间已被封禁:::" + message);
+                            holdLiveStatusMsg("room_lock");
                             break;
 
                         // 直播准备中(或者是关闭直播)   直播关闭
@@ -967,6 +978,7 @@ public class ParseMessageThread extends Thread {
                             setService.holdSet(getCenterSetConf());
                             PublicDataConf.IS_ROOM_POPULARITY = false;
                             LOGGER.info("直播准备中(或者是关闭直播):::" + message);
+                            holdLiveStatusMsg("preparing");
                             break;
 
                         // 勋章亲密度达到上每日上限通知
@@ -1695,6 +1707,42 @@ public class ParseMessageThread extends Thread {
                     PublicDataConf.interactWelcome.offer(interact);
                     DelayWelcomeTimeSetting();
                 }
+            }
+        }
+    }
+
+    private void holdLiveStatusMsg(String type) {
+        CenterSetConf set = getCenterSetConf();
+        if (set == null || set.getLive_status() == null) return;
+        xyz.acproject.danmuji.conf.set.LiveStatusSetConf liveStatus = set.getLive_status();
+        String text = null;
+        boolean open = false;
+        switch (type) {
+            case "live":
+                open = liveStatus.is_live_open();
+                text = liveStatus.getLive_text();
+                break;
+            case "preparing":
+                open = liveStatus.is_preparing_open();
+                text = liveStatus.getPreparing_text();
+                break;
+            case "warning":
+                open = liveStatus.is_warning_open();
+                text = liveStatus.getWarning_text();
+                break;
+            case "cut_off":
+                open = liveStatus.is_cut_off_open();
+                text = liveStatus.getCut_off_text();
+                break;
+            case "room_lock":
+                open = liveStatus.is_room_lock_open();
+                text = liveStatus.getRoom_lock_text();
+                break;
+        }
+        if (open && StringUtils.isNotBlank(text)) {
+            threadComponent.startSendBarrageThread();
+            if (PublicDataConf.sendBarrageThread != null && !PublicDataConf.sendBarrageThread.FLAG) {
+                PublicDataConf.barrageString.offer(text);
             }
         }
     }

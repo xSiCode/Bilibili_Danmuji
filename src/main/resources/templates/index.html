@@ -454,6 +454,101 @@
                             </div>
                         </div>
                         <!-- 弹幕设置结束 -->
+                        <!-- 直播状态姬设置开始 -->
+                        <a data-bs-toggle="collapse" data-target="#liveStatus-set"
+                           href="#liveStatus-set"><div class="input-group mb-1">
+                            <h5>直播状态姬</h5>
+                        </div></a>
+                        <div class="input-group mb-3 liveStatus-set collapse" id="liveStatus-set">
+                            <div class="header-set">
+                                <!-- 上播 -->
+                                <div class="row align-items-center mb-2">
+                                    <div class="col-auto">
+                                        <label class="form-check-label"> <input
+                                                class="form-check-input livestatus_live_open live-save" type="checkbox">
+                                            <span class="_description" data-bs-placement="top"
+                                                  data-bs-toggle="tooltip" title="开播时自动发送">上播</span>
+                                        </label>
+                                    </div>
+                                    <div class="col">
+                                        <input class="form-control form-control-sm livestatus_live_text live-save"
+                                               placeholder="开播时发送的弹幕内容">
+                                    </div>
+                                    <div class="col-auto">
+                                        <button class="btn btn-sm btn-primary livestatus-live-send">发送</button>
+                                    </div>
+                                </div>
+                                <!-- 下播 -->
+                                <div class="row align-items-center mb-2">
+                                    <div class="col-auto">
+                                        <label class="form-check-label"> <input
+                                                class="form-check-input livestatus_preparing_open live-save" type="checkbox">
+                                            <span class="_description" data-bs-placement="top"
+                                                  data-bs-toggle="tooltip" title="下播时自动发送">下播</span>
+                                        </label>
+                                    </div>
+                                    <div class="col">
+                                        <input class="form-control form-control-sm livestatus_preparing_text live-save"
+                                               placeholder="下播时发送的弹幕内容">
+                                    </div>
+                                    <div class="col-auto">
+                                        <button class="btn btn-sm btn-primary livestatus-preparing-send">发送</button>
+                                    </div>
+                                </div>
+                                <!-- 警告 -->
+                                <div class="row align-items-center mb-2">
+                                    <div class="col-auto">
+                                        <label class="form-check-label"> <input
+                                                class="form-check-input livestatus_warning_open live-save" type="checkbox">
+                                            <span class="_description" data-bs-placement="top"
+                                                  data-bs-toggle="tooltip" title="触发警告时自动发送">警告</span>
+                                        </label>
+                                    </div>
+                                    <div class="col">
+                                        <input class="form-control form-control-sm livestatus_warning_text live-save"
+                                               placeholder="警告时发送的弹幕内容">
+                                    </div>
+                                    <div class="col-auto">
+                                        <button class="btn btn-sm btn-primary livestatus-warning-send">发送</button>
+                                    </div>
+                                </div>
+                                <!-- 切断 -->
+                                <div class="row align-items-center mb-2">
+                                    <div class="col-auto">
+                                        <label class="form-check-label"> <input
+                                                class="form-check-input livestatus_cut_off_open live-save" type="checkbox">
+                                            <span class="_description" data-bs-placement="top"
+                                                  data-bs-toggle="tooltip" title="直播被超管切断时自动发送">切断</span>
+                                        </label>
+                                    </div>
+                                    <div class="col">
+                                        <input class="form-control form-control-sm livestatus_cut_off_text live-save"
+                                               placeholder="切断时发送的弹幕内容">
+                                    </div>
+                                    <div class="col-auto">
+                                        <button class="btn btn-sm btn-primary livestatus-cut-off-send">发送</button>
+                                    </div>
+                                </div>
+                                <!-- 封禁 -->
+                                <div class="row align-items-center mb-2">
+                                    <div class="col-auto">
+                                        <label class="form-check-label"> <input
+                                                class="form-check-input livestatus_room_lock_open live-save" type="checkbox">
+                                            <span class="_description" data-bs-placement="top"
+                                                  data-bs-toggle="tooltip" title="直播间被封禁时自动发送">封禁</span>
+                                        </label>
+                                    </div>
+                                    <div class="col">
+                                        <input class="form-control form-control-sm livestatus_room_lock_text live-save"
+                                               placeholder="封禁时发送的弹幕内容">
+                                    </div>
+                                    <div class="col-auto">
+                                        <button class="btn btn-sm btn-primary livestatus-room-lock-send">发送</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 直播状态姬设置结束 -->
                         <!-- 广告姬设置开始 -->
                         <a data-bs-toggle="collapse" data-target="#advert-set"
                            href="#advert-set"><div class="input-group mb-1">

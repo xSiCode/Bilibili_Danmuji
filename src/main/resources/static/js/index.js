@@ -556,6 +556,22 @@ $(document).on('click', '.pn-sortable', function () {
     pnData.page = 1;
     method.renderPNTable();
 });
+// 直播状态姬发送按钮
+$(document).on('click', '.livestatus-live-send', function () {
+    method.sendLiveStatusBarrage($(".livestatus_live_text").val());
+});
+$(document).on('click', '.livestatus-preparing-send', function () {
+    method.sendLiveStatusBarrage($(".livestatus_preparing_text").val());
+});
+$(document).on('click', '.livestatus-warning-send', function () {
+    method.sendLiveStatusBarrage($(".livestatus_warning_text").val());
+});
+$(document).on('click', '.livestatus-cut-off-send', function () {
+    method.sendLiveStatusBarrage($(".livestatus_cut_off_text").val());
+});
+$(document).on('click', '.livestatus-room-lock-send', function () {
+    method.sendLiveStatusBarrage($(".livestatus_room_lock_text").val());
+});
 const danmuku = {
     // 0弹幕 1礼物 2消息
     type: function (t) {
@@ -748,7 +764,8 @@ const method = {
             "black": {
                 "names": [],
                 "uids": []
-            }
+            },
+            "live_status": {}
         };
         set.is_auto = $(".is_autoStart").is(
             ':checked');
@@ -892,6 +909,16 @@ const method = {
         set.black.auto_reply = $(".is_black_reply").is(':checked');
         set.black.names = method.giftStrings_handle(set.black.names, $(".black_names").val());
         set.black.uids = method.giftStrings_handle(set.black.uids, $(".black_uids").val());
+        set.live_status.is_live_open = $(".livestatus_live_open").is(':checked');
+        set.live_status.live_text = $(".livestatus_live_text").val();
+        set.live_status.is_preparing_open = $(".livestatus_preparing_open").is(':checked');
+        set.live_status.preparing_text = $(".livestatus_preparing_text").val();
+        set.live_status.is_warning_open = $(".livestatus_warning_open").is(':checked');
+        set.live_status.warning_text = $(".livestatus_warning_text").val();
+        set.live_status.is_cut_off_open = $(".livestatus_cut_off_open").is(':checked');
+        set.live_status.cut_off_text = $(".livestatus_cut_off_text").val();
+        set.live_status.is_room_lock_open = $(".livestatus_room_lock_open").is(':checked');
+        set.live_status.room_lock_text = $(".livestatus_room_lock_text").val();
         /*处理验证?*/
         if (set.clock_in.is_open) {
             set.clock_in.sign_day = (new Date()).getTime();
@@ -1054,6 +1081,28 @@ const method = {
         });
         return flag;
     },
+    sendLiveStatusBarrage: function (text) {
+        "use strict";
+        if (!text || text.trim() === '') {
+            showMessage("弹幕内容不能为空！", "warning", 3);
+            return;
+        }
+        $.ajax({
+            url: '../sendBarrage',
+            async: false,
+            cache: false,
+            type: 'POST',
+            data: { text: text },
+            dataType: 'json',
+            success: function (data) {
+                if (data.code == "200" && data.result == 1) {
+                    showMessage("发送成功!", "success", 3);
+                } else {
+                    showMessage("发送失败!", "danger", 3);
+                }
+            }
+        });
+    },
     initSet: function (set) {
         "use strict";
         if (set != null) {
@@ -1174,6 +1223,18 @@ const method = {
             $(".is_black_reply").prop('checked', set.black.auto_reply);
             $(".black_names").val(method.giftStrings_method(set.black.names));
             $(".black_uids").val(method.giftStrings_method(set.black.uids));
+            if (set.live_status) {
+                $(".livestatus_live_open").prop('checked', set.live_status.is_live_open);
+                $(".livestatus_live_text").val(set.live_status.live_text);
+                $(".livestatus_preparing_open").prop('checked', set.live_status.is_preparing_open);
+                $(".livestatus_preparing_text").val(set.live_status.preparing_text);
+                $(".livestatus_warning_open").prop('checked', set.live_status.is_warning_open);
+                $(".livestatus_warning_text").val(set.live_status.warning_text);
+                $(".livestatus_cut_off_open").prop('checked', set.live_status.is_cut_off_open);
+                $(".livestatus_cut_off_text").val(set.live_status.cut_off_text);
+                $(".livestatus_room_lock_open").prop('checked', set.live_status.is_room_lock_open);
+                $(".livestatus_room_lock_text").val(set.live_status.room_lock_text);
+            }
 
 
             /* 处理？ */

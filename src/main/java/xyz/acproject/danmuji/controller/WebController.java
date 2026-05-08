@@ -12,6 +12,7 @@ import org.springframework.util.DigestUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import xyz.acproject.danmuji.component.TaskRegisterComponent;
+import xyz.acproject.danmuji.component.ThreadComponent;
 import xyz.acproject.danmuji.conf.CenterSetConf;
 import xyz.acproject.danmuji.conf.PublicDataConf;
 import xyz.acproject.danmuji.conf.set.*;
@@ -34,6 +35,7 @@ import xyz.acproject.danmuji.tools.file.JsonFileTools;
 import xyz.acproject.danmuji.utils.FastJsonUtils;
 import xyz.acproject.danmuji.utils.QrcodeUtils;
 import xyz.acproject.danmuji.utils.SchedulingRunnableUtil;
+import xyz.acproject.danmuji.utils.SpringUtils;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
@@ -332,6 +334,13 @@ public class WebController {
             if(centerSetConf.getBlack()==null&&PublicDataConf.centerSetConf.getBlack()==null){
                 centerSetConf.setBlack(new BlackListSetConf());
             }
+            //直播状态姬
+            if(centerSetConf.getLive_status()==null&&PublicDataConf.centerSetConf.getLive_status()!=null){
+                centerSetConf.setLive_status(PublicDataConf.centerSetConf.getLive_status());
+            }
+            if(centerSetConf.getLive_status()==null&&PublicDataConf.centerSetConf.getLive_status()==null){
+                centerSetConf.setLive_status(new LiveStatusSetConf());
+            }
             checkService.changeSet(centerSetConf,true);
         } catch (Exception e) {
             e.printStackTrace();
@@ -341,6 +350,26 @@ public class WebController {
         return Response.success(1, req);
     }
 
+    @ResponseBody
+    @PostMapping(value = "/sendBarrage")
+    public Response<?> sendBarrage(HttpServletRequest req, @RequestParam("text") String text) {
+        try {
+            if (StringUtils.isBlank(text)) {
+                return Response.success(0, req);
+            }
+            ThreadComponent threadComponent = SpringUtils.getBean(ThreadComponent.class);
+            threadComponent.startSendBarrageThread();
+            if (PublicDataConf.sendBarrageThread != null && !PublicDataConf.sendBarrageThread.FLAG) {
+                PublicDataConf.barrageString.offer(text);
+            } else {
+                return Response.success(0, req);
+            }
+            return Response.success(1, req);
+        } catch (Exception e) {
+            LOGGER.error("sendBarrage error", e);
+            return Response.success(0, req);
+        }
+    }
 
     //隐私模式后移除网络调用
 //    @ResponseBody
