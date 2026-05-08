@@ -348,6 +348,13 @@ public class WebController {
             if(centerSetConf.getTimer()==null&&PublicDataConf.centerSetConf.getTimer()==null){
                 centerSetConf.setTimer(new TimerSetConf());
             }
+            //弹幕暂存姬
+            if(centerSetConf.getDanmaku_store()==null&&PublicDataConf.centerSetConf.getDanmaku_store()!=null){
+                centerSetConf.setDanmaku_store(PublicDataConf.centerSetConf.getDanmaku_store());
+            }
+            if(centerSetConf.getDanmaku_store()==null&&PublicDataConf.centerSetConf.getDanmaku_store()==null){
+                centerSetConf.setDanmaku_store(new DanmakuStoreSetConf());
+            }
             checkService.changeSet(centerSetConf,true);
         } catch (Exception e) {
             e.printStackTrace();

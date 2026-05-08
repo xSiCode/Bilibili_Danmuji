@@ -462,7 +462,7 @@
                         <div class="input-group mb-3 liveStatus-set collapse" id="liveStatus-set">
                             <div class="header-set">
                                 <!-- 上播 -->
-                                <div class="row align-items-center mb-2">
+                                <div class="row align-items-center" style="margin-bottom:5px;--bs-gutter-x:5px">
                                     <div class="col-auto">
                                         <label class="form-check-label"> <input
                                                 class="form-check-input livestatus_live_open live-save" type="checkbox">
@@ -479,7 +479,7 @@
                                     </div>
                                 </div>
                                 <!-- 下播 -->
-                                <div class="row align-items-center mb-2">
+                                <div class="row align-items-center" style="margin-bottom:5px;--bs-gutter-x:5px">
                                     <div class="col-auto">
                                         <label class="form-check-label"> <input
                                                 class="form-check-input livestatus_preparing_open live-save" type="checkbox">
@@ -496,7 +496,7 @@
                                     </div>
                                 </div>
                                 <!-- 警告 -->
-                                <div class="row align-items-center mb-2">
+                                <div class="row align-items-center" style="margin-bottom:5px;--bs-gutter-x:5px">
                                     <div class="col-auto">
                                         <label class="form-check-label"> <input
                                                 class="form-check-input livestatus_warning_open live-save" type="checkbox">
@@ -513,7 +513,7 @@
                                     </div>
                                 </div>
                                 <!-- 切断 -->
-                                <div class="row align-items-center mb-2">
+                                <div class="row align-items-center" style="margin-bottom:5px;--bs-gutter-x:5px">
                                     <div class="col-auto">
                                         <label class="form-check-label"> <input
                                                 class="form-check-input livestatus_cut_off_open live-save" type="checkbox">
@@ -530,7 +530,7 @@
                                     </div>
                                 </div>
                                 <!-- 封禁 -->
-                                <div class="row align-items-center mb-2">
+                                <div class="row align-items-center" style="margin-bottom:5px;--bs-gutter-x:5px">
                                     <div class="col-auto">
                                         <label class="form-check-label"> <input
                                                 class="form-check-input livestatus_room_lock_open live-save" type="checkbox">
@@ -556,7 +556,7 @@
                         </div></a>
                         <div class="input-group mb-3 timer-set collapse" id="timer-set">
                             <div class="header-set">
-                                <div class="row align-items-center mb-2">
+                                <div class="row align-items-center" style="margin-bottom:5px;--bs-gutter-x:5px">
                                     <div class="col-auto">
                                         <label class="form-check-label"> <input
                                                 class="form-check-input timer_is_open live-save" type="checkbox">
@@ -575,6 +575,25 @@
                             </div>
                         </div>
                         <!-- 定时姬设置结束 -->
+                        <!-- 弹幕暂存姬设置开始 -->
+                        <a data-bs-toggle="collapse" data-target="#danmakuStore-set"
+                           href="#danmakuStore-set"><div class="input-group mb-1">
+                            <h5>弹幕暂存姬</h5>
+                        </div></a>
+                        <div class="input-group mb-3 danmakuStore-set collapse" id="danmakuStore-set">
+                            <div class="header-set">
+                                <div class="row align-items-center" style="margin-bottom:5px;--bs-gutter-x:5px">
+                                    <div class="col-auto">
+                                        <button class="btn btn-sm btn-success danmakuStore-add-btn">添加</button>
+                                    </div>
+                                </div>
+                                <div class="danmakuStore-list">
+                                    <ul class="danmakuStore-ul list-unstyled mb-0" id="danmakuStore-ul">
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 弹幕暂存姬设置结束 -->
                         <!-- 广告姬设置开始 -->
                         <a data-bs-toggle="collapse" data-target="#advert-set"
                            href="#advert-set"><div class="input-group mb-1">
@@ -1179,7 +1198,7 @@
                         </div></a>
                         <div class="input-group mb-3 positiveWhite-set collapse" id="positiveWhite-set">
                             <div class="header-set">
-                                <div class="row align-items-center mb-2">
+                                <div class="row align-items-center" style="margin-bottom:5px;--bs-gutter-x:5px">
                                     <div class="col-auto">
                                         <button class="btn btn-sm btn-primary pn-add-btn">添加</button>
                                     </div>

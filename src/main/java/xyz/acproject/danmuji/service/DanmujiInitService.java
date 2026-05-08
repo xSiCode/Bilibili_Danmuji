@@ -110,6 +110,9 @@ public class DanmujiInitService {
             if (PublicDataConf.centerSetConf.getTimer() == null) {
                 PublicDataConf.centerSetConf.setTimer(new TimerSetConf());
             }
+            if (PublicDataConf.centerSetConf.getDanmaku_store() == null) {
+                PublicDataConf.centerSetConf.setDanmaku_store(new DanmakuStoreSetConf());
+            }
         } else {
             // 无效的本地配置集则初始化一份
             // 此处无参初始化可以采用聚合根的思想

@@ -285,6 +285,9 @@ public class ParseSetStatusTools {
 			if(centerSetConf.getTimer()==null){
 				centerSetConf.setTimer(new TimerSetConf());
 			}
+			if(centerSetConf.getDanmaku_store()==null){
+				centerSetConf.setDanmaku_store(new DanmakuStoreSetConf());
+			}
 		}
 		return centerSetConf;
 	}
