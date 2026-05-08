@@ -25,6 +25,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -379,12 +380,10 @@ public class HttpRoomData {
      */
     public static long processFollowings(long vmid, String uname) {
         JSONObject firstPage = httpGetFollowings(vmid, 1, 50);
-        JSONObject output = new JSONObject(true);
         StringBuilder logSb = new StringBuilder(80);
 
-        logSb.append(JodaTimeUtils.getCurrentDateTimeString())
-                .append("  https://space.bilibili.com/").append(vmid)
-                .append("?name=").append(uname);
+        logSb.append(new SimpleDateFormat("HH:mm:ss").format(System.currentTimeMillis()))
+                .append("  https://space.bilibili.com/").append(vmid);
 
         short code = firstPage != null ? firstPage.getShort("code") : -1;
         JSONObject data = firstPage != null && code == 0 ? firstPage.getJSONObject("data") : null;
@@ -398,7 +397,12 @@ public class HttpRoomData {
         // 是否可见，是否在黑白名单
         if (firstPage == null || code != 0 || data == null || total == 0) {
             LOGGER.info("[" + uname + "] 关注：请求失败或无数据");
-            totalScore = Integer.MIN_VALUE;
+            logSb.append("?followNum=null")
+                    .append("&matchedNum=null")
+                    .append("&matchScore=0")
+                    .append("&name=").append(uname);
+
+            SelfTools.appendAt(logSb, 130, "[成分]关注列表不可见");
         } else {
 
             // 当前观众就在黑白名单里
@@ -421,28 +425,21 @@ public class HttpRoomData {
                     }
                 }
             }
-        }
+            if (totalScore > 0) {
+                SelfTools.appendAt(logSb, 140, "[成分]关注列表自己人偏多");
+            } else if (totalScore < 0) {
+                logSb.append("?followNum=").append(total)
+                        .append("&matchedNum=").append(matchedList.size())
+                        .append("&matchScore=").append(totalScore)
+                        .append("&name=").append(uname);
 
-        if (totalScore > 0) {
-            output.put("成份", "关注列表自己人偏多：" + totalScore);
-            SelfTools.appendAt(logSb, 150, output.toJSONString());
-        } else if (totalScore < 0) {
-            logSb.append("&followNum=").append(total)
-                    .append("&matchedNum=").append(matchedList.size())
-                    .append("&matchScore=").append(totalScore);
-            if (totalScore == Integer.MIN_VALUE){
-                output.put("成份", "关注列表不可见：" + totalScore);
-            }else {
-                output.put("成份", "关注列表有野猪皮：" + totalScore);
+                SelfTools.appendAt(logSb, 130, "[成分][成分]关注列表野猪皮偏多");
+            } else {
+                SelfTools.appendAt(logSb, 140, "[成分]关注列表可见，未发现异常,需其他人再次确认");
             }
-            logSb.append("  ") .append(output.toJSONString());
-        } else {
-            output.put("成份", "关注列表可见，未发现异常,需其他人再次确认");
-            SelfTools.appendAt(logSb, 140, output.toJSONString());
+            logSb.append(" 黑白名单列表:").append(matchedList.toJSONString())
+                    .append(" 关注列表:").append(followingsList.toJSONString());
         }
-
-        output.put("黑白名单列表", matchedList);  // 输出黑白名单的匹配人
-        output.put("关注列表", followingsList); // 要输出关注的人数
 
         //通过日志查看后手动打开浏览器
         LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));

@@ -226,7 +226,7 @@ public class ParseMessageThread extends Thread {
                                     } else {
                                         hbarrage.setUlevel(null);
                                     }
-                                    if ( 1 != barrage.getIphone()){
+                                    if (1 != barrage.getIphone()) {
                                         stringBuilder.append(", https://space.bilibili.com/").append(barrage.getUid());
                                     }
 
@@ -982,24 +982,24 @@ public class ParseMessageThread extends Thread {
 
 
                         case "INTERACT_WORD_V2":
-                           // LOGGER.info(":" + getCenterSetConf().toJson());
+                            // LOGGER.info(":" + getCenterSetConf().toJson());
                             try {
                                 String pbBase64 = jsonObject.getJSONObject("data").getString("pb");
                                 INTERACTWORDV2.InteractWordV2 interactWordV2 = INTERACTWORDV2.InteractWordV2.parseFrom(Base64.getDecoder().decode(pbBase64));
-                              //  LOGGER.info("INTERACT_WORD_V2_PARSE:" + JsonFormat.printer().print(interactWordV2));
-                                msg_type =(short) interactWordV2.getMsgType();
+                                //  LOGGER.info("INTERACT_WORD_V2_PARSE:" + JsonFormat.printer().print(interactWordV2));
+                                msg_type = (short) interactWordV2.getMsgType();
                                 interact = new Interact();
                                 interact.setUid(interactWordV2.getUid());
                                 interact.setUname(interactWordV2.getUname());
                                 interact.setUname_color("");
                                 interact.setIdentities(interactWordV2.getIdentitiesList().stream().map(Long::intValue)
                                         .toArray(Integer[]::new));
-                                interact.setMsg_type((short)0);
+                                interact.setMsg_type((short) 0);
                                 interact.setRoomid(interactWordV2.getRoomid());
                                 interact.setTimestamp(interactWordV2.getTimestamp());
                                 interact.setScore(interactWordV2.getScore());
-                                if(interactWordV2.hasFansMedal()) {
-                                   // LOGGER.info("INTERACT_WORD_V2_PARSE_FANS:" + JsonFormat.printer().print(interactWordV2));
+                                if (interactWordV2.hasFansMedal()) {
+                                    // LOGGER.info("INTERACT_WORD_V2_PARSE_FANS:" + JsonFormat.printer().print(interactWordV2));
                                     MedalInfo medalInfo = new MedalInfo();
                                     medalInfo.setIcon_id(interactWordV2.getFansMedal().getIconId());
                                     medalInfo.setTarget_id(interactWordV2.getFansMedal().getTargetId());
@@ -1077,7 +1077,7 @@ public class ParseMessageThread extends Thread {
                                         String url = "https://space.bilibili.com/";
                                         final MedalInfo _medal = interact.getFans_medal();
                                         stringBuilder.append(new SimpleDateFormat("HH:mm:ss").format(System.currentTimeMillis()))
-                                                    .append("  ").append(url).append(_uid).append("?name=").append(_uname);
+                                                .append("  ").append(url).append(_uid).append("?name=").append(_uname);
 
                                         if (_medal != null) {
                                             stringBuilder.append(", 勋章:").append(_medal.getMedal_name())
@@ -1106,40 +1106,42 @@ public class ParseMessageThread extends Thread {
                                                 if (card != null) {
                                                     StringBuilder detailSb = new StringBuilder(100);
                                                     detailSb.append(_basicInfo);
-
-                                                    if (card.containsKey("attention")) {
-                                                        detailSb.append("  , 关注:").append(card.getLong("attention"));
-                                                    }
-                                                    if (card.containsKey("fans")) {
-                                                        detailSb.append("  , 粉丝:").append(card.getLong("fans"));
-                                                    }
-                                                    if (card.containsKey("archive_count")) {
-                                                        detailSb.append("  , 视频:").append(card.getLong("archive_count"));
-                                                    }
+                                                    SelfTools.appendAt( detailSb, 100, String.valueOf("[详情]"));
 
                                                     if (card.containsKey("follow_list_visible")) {
-                                                        if (!card.getBoolean("follow_list_visible")){
-                                                            detailSb.append("  , 关注列表:隐藏");
+                                                        if (card.getBoolean("follow_list_visible")){
+                                                            detailSb.append(" 关注列表:显示");
+                                                        }else {
+                                                            detailSb.append(" 关注列表:隐藏");
                                                         }
                                                     }
 
-                                                    long attention = card.containsKey("attention") ? card.getLong("attention") : -1L;
-                                                    long fans = card.containsKey("fans") ? card.getLong("fans") : -1L;
-                                                    long archiveCount = card.containsKey("archive_count") ? card.getLong("archive_count") : -1L;
-                                                    String suspiciousUrl = null;
+                                                    Long attention =-1L;
+                                                    Long fans = -1L;
+                                                    Long archiveCount= -1L;
+                                                    if (card.containsKey("attention")) {
+                                                        attention = card.getLong("attention");
+                                                        detailSb.append("  , 关注:").append(attention);
+                                                    }
+                                                    if (card.containsKey("fans")) {
+                                                        fans = card.getLong("fans");
+                                                        detailSb.append("  , 粉丝:").append(fans);
+                                                    }
+                                                    if (card.containsKey("archive_count")) {
+                                                        archiveCount = card.getLong("archive_count");
+                                                        detailSb.append("  , 视频:").append(archiveCount);
+                                                    }
+
+
                                                     if (attention != -1L && fans != -1L) {
                                                         if (fans > 10_0000) {
                                                             detailSb.append(" , 大博主：").append(fans / 10_0000);
-                                                            suspiciousUrl = "?疑似大博主";
                                                         } else if (fans > 10000 && attention < 200 || archiveCount > 100) {
                                                             detailSb.append(" , 博主：").append(fans / 10000);
-                                                            suspiciousUrl = "?疑似博主";
                                                         } else if (fans < 100 && attention > 3000) {
                                                             detailSb.append(" , 人机");
-                                                            suspiciousUrl =   "?疑似人机";
                                                         }
                                                     }
-                                                    detailSb.append(suspiciousUrl);
 
                                                     if (card.containsKey("level")) {
                                                         detailSb.append(" , LV:").append(card.getInteger("level"));
@@ -1503,7 +1505,7 @@ public class ParseMessageThread extends Thread {
     public void DelayGiftTimeSetting() {
         synchronized (PublicDataConf.parsethankGiftThread) {
             if (PublicDataConf.parsethankGiftThread != null) {
-                threadComponent.startParseThankGiftThread(getCenterSetConf().getThank_gift(), getThankGiftRuleSets()) ;
+                threadComponent.startParseThankGiftThread(getCenterSetConf().getThank_gift(), getThankGiftRuleSets());
             }
         }
     }
