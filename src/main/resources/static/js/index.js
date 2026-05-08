@@ -586,6 +586,66 @@ $(document).on('click', '.timer-send-btn', function () {
     var text = $(this).closest('li').find('.timer-text').val();
     method.sendLiveStatusBarrage(text);
 });
+$(document).on('click', '.timer-copy-btn', function () {
+    var text = $(this).closest('li').find('.timer-text').val();
+    if (!text) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () {
+            showMessage("已复制到剪贴板!", "success", 2);
+        });
+    } else {
+        var $temp = $('<textarea>');
+        $('body').append($temp);
+        $temp.val(text).select();
+        document.execCommand('copy');
+        $temp.remove();
+        showMessage("已复制到剪贴板!", "success", 2);
+    }
+});
+// 弹幕暂存姬
+$(document).on('click', '.danmakuStore-add-btn', function () {
+    method.addDanmakuStoreRow();
+});
+$(document).on('click', '.danmakuStore-delete-btn', function () {
+    $(this).closest('li').remove();
+    if ($(".auto_save_set").is(':checked')) {
+        method.saveSet();
+    }
+});
+$(document).on('click', '.danmakuStore-copy-btn', function () {
+    var text = $(this).closest('li').find('.danmakuStore-text').val();
+    if (!text) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () {
+            showMessage("已复制到剪贴板!", "success", 2);
+        });
+    } else {
+        var $temp = $('<textarea>');
+        $('body').append($temp);
+        $temp.val(text).select();
+        document.execCommand('copy');
+        $temp.remove();
+        showMessage("已复制到剪贴板!", "success", 2);
+    }
+});
+$(document).on('click', '.danmakuStore-send-btn', function () {
+    var text = $(this).closest('li').find('.danmakuStore-text').val();
+    if (!text || text.trim() === '') {
+        showMessage("弹幕内容不能为空！", "warning", 3);
+        return;
+    }
+    method.sendDanmakuStoreBarrage(text);
+});
+$(document).on('input', '.danmakuStore-text', function () {
+    var len = $(this).val().length;
+    var $count = $(this).closest('li').find('.danmakuStore-count');
+    $count.text(len);
+    if (len > 40) {
+        $count.addClass('text-danger');
+    } else {
+        $count.removeClass('text-danger');
+    }
+});
 const danmuku = {
     // 0弹幕 1礼物 2消息
     type: function (t) {
@@ -780,7 +840,8 @@ const method = {
                 "uids": []
             },
             "live_status": {},
-            "timer": {}
+            "timer": {},
+            "danmaku_store": {}
         };
         set.is_auto = $(".is_autoStart").is(
             ':checked');
@@ -947,6 +1008,18 @@ const method = {
             });
             set.timer.timerSets.sort(function(a, b) {
                 return (a.time || "00:00").localeCompare(b.time || "00:00");
+            });
+        }
+        set.danmaku_store.items = [];
+        if ($("#danmakuStore-ul li").length > 0) {
+            $("#danmakuStore-ul li").each(function (i, v) {
+                var text = $(this).find(".danmakuStore-text").val();
+                if (text && text.trim() !== '') {
+                    set.danmaku_store.items.push(text);
+                }
+            });
+            set.danmaku_store.items.sort(function(a, b) {
+                return a.localeCompare(b);
             });
         }
         /*处理验证?*/
@@ -1143,8 +1216,8 @@ const method = {
         var t = defaultTime;
         var txt = text || '';
         var checked = isOpen ? 'checked' : '';
-        var li = '<li class="mb-2">' +
-            '<div class="row align-items-center">' +
+        var li = '<li style="margin-bottom:5px">' +
+            '<div class="row align-items-center" style="--bs-gutter-x:5px">' +
             '<div class="col-auto">' +
             '<label class="form-check-label">' +
             '<input class="form-check-input timer-row-open live-save" type="checkbox" ' + checked + '>' +
@@ -1155,6 +1228,9 @@ const method = {
             '</div>' +
             '<div class="col">' +
             '<input class="form-control form-control-sm timer-text live-save" placeholder="定时发送的弹幕内容" value="' + method._escapeHtml(txt) + '">' +
+            '</div>' +
+            '<div class="col-auto">' +
+            '<button class="btn btn-sm btn-secondary timer-copy-btn">复制</button>' +
             '</div>' +
             '<div class="col-auto">' +
             '<button class="btn btn-sm btn-primary timer-send-btn">发送</button>' +
@@ -1189,6 +1265,63 @@ const method = {
     _escapeHtml: function (str) {
         if (!str) return '';
         return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    },
+    addDanmakuStoreRow: function (text) {
+        var txt = text || '';
+        var len = txt.length;
+        var dangerClass = len > 40 ? ' text-danger' : '';
+        var li = '<li style="margin-bottom:5px">' +
+            '<div class="row align-items-center" style="--bs-gutter-x:5px">' +
+            '<div class="col">' +
+            '<input class="form-control form-control-sm danmakuStore-text live-save" placeholder="暂存的弹幕内容" value="' + method._escapeHtml(txt) + '">' +
+            '</div>' +
+            '<div class="col-auto">' +
+            '<span class="danmakuStore-count' + dangerClass + '" style="min-width:40px;display:inline-block;text-align:center">' + len + '</span>' +
+            '</div>' +
+            '<div class="col-auto">' +
+            '<button class="btn btn-sm btn-secondary danmakuStore-copy-btn">复制</button>' +
+            '</div>' +
+            '<div class="col-auto">' +
+            '<button class="btn btn-sm btn-primary danmakuStore-send-btn">发送</button>' +
+            '</div>' +
+            '<div class="col-auto">' +
+            '<button class="btn btn-sm btn-danger danmakuStore-delete-btn">删除</button>' +
+            '</div>' +
+            '</div>' +
+            '</li>';
+        $("#danmakuStore-ul").append(li);
+    },
+    renderDanmakuStoreRows: function (items) {
+        $("#danmakuStore-ul").empty();
+        if (!items) return;
+        for (var i = 0; i < items.length; i++) {
+            method.addDanmakuStoreRow(items[i]);
+        }
+    },
+    sendDanmakuStoreBarrage: function (text) {
+        if (text.length > 40) {
+            var chunks = [];
+            for (var i = 0; i < text.length; i += 40) {
+                chunks.push(text.substring(i, i + 40));
+            }
+            for (var j = 0; j < chunks.length; j++) {
+                method._sendBarrageChunk(chunks[j], j * 1500);
+            }
+        } else {
+            method.sendLiveStatusBarrage(text);
+        }
+    },
+    _sendBarrageChunk: function (text, delay) {
+        setTimeout(function () {
+            $.ajax({
+                url: '../sendBarrage',
+                async: true,
+                cache: false,
+                type: 'POST',
+                data: { text: text },
+                dataType: 'json',
+            });
+        }, delay);
     },
     initSet: function (set) {
         "use strict";
@@ -1331,6 +1464,12 @@ const method = {
                     });
                     method.renderTimerRows(set.timer.timerSets);
                 }
+            }
+            if (set.danmaku_store && set.danmaku_store.items) {
+                set.danmaku_store.items.sort(function(a, b) {
+                    return a.localeCompare(b);
+                });
+                method.renderDanmakuStoreRows(set.danmaku_store.items);
             }
 
 

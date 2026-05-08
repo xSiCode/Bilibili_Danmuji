@@ -146,6 +146,9 @@ public class CenterSetConf implements Serializable {
     //定时姬
     @JSONField(name="timer")
     private TimerSetConf timer;
+    //弹幕暂存姬
+    @JSONField(name="danmaku_store")
+    private DanmakuStoreSetConf danmaku_store;
 
 
     @JSONField(name = "edition",serialize = false)
@@ -169,6 +172,7 @@ public class CenterSetConf implements Serializable {
         centerSetConf.setBlack(new BlackListSetConf());
         centerSetConf.setLive_status(new LiveStatusSetConf());
         centerSetConf.setTimer(new TimerSetConf());
+        centerSetConf.setDanmaku_store(new DanmakuStoreSetConf());
         return centerSetConf;
     }
 
