@@ -398,7 +398,7 @@ public class HttpRoomData {
         // 是否可见，是否在黑白名单
         if (firstPage == null || code != 0 || data == null || total == 0) {
             LOGGER.info("[" + uname + "] 关注：请求失败或无数据");
-            totalScore = -1;
+            totalScore = Integer.MIN_VALUE;
         } else {
 
             // 当前观众就在黑白名单里
@@ -425,20 +425,26 @@ public class HttpRoomData {
 
         if (totalScore > 0) {
             output.put("成份", "关注列表自己人偏多：" + totalScore);
+            SelfTools.appendAt(logSb, 150, output.toJSONString());
         } else if (totalScore < 0) {
             logSb.append("&followNum=").append(total)
                     .append("&matchedNum=").append(matchedList.size())
                     .append("&matchScore=").append(totalScore);
-
-            output.put("成份", "关注列表不可见或有野猪皮：" + totalScore);
-            output.put("黑白名单列表", matchedList);  // 输出黑白名单的匹配人
-            output.put("关注列表", followingsList); // 要输出关注的人数
+            if (totalScore == Integer.MIN_VALUE){
+                output.put("成份", "关注列表不可见：" + totalScore);
+            }else {
+                output.put("成份", "关注列表有野猪皮：" + totalScore);
+            }
+            logSb.append("  ") .append(output.toJSONString());
         } else {
             output.put("成份", "关注列表可见，未发现异常,需其他人再次确认");
+            SelfTools.appendAt(logSb, 140, output.toJSONString());
         }
-        //通过日志查看后手动打开浏览器
-        SelfTools.appendAt(logSb, 140, output.toJSONString());
 
+        output.put("黑白名单列表", matchedList);  // 输出黑白名单的匹配人
+        output.put("关注列表", followingsList); // 要输出关注的人数
+
+        //通过日志查看后手动打开浏览器
         LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
         return total;
     }
@@ -472,6 +478,10 @@ public class HttpRoomData {
             LOGGER.error("loadPositiveWhiteNegativeBlackScores error", e);
         }
         return map;
+    }
+
+    public static void reloadPnScoreMap() {
+        pnScoreMap = loadPositiveWhiteNegativeBlackScores();
     }
 
     /**
