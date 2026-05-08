@@ -143,6 +143,9 @@ public class CenterSetConf implements Serializable {
     //直播状态姬
     @JSONField(name="live_status")
     private LiveStatusSetConf live_status;
+    //定时姬
+    @JSONField(name="timer")
+    private TimerSetConf timer;
 
 
     @JSONField(name = "edition",serialize = false)
@@ -165,6 +168,7 @@ public class CenterSetConf implements Serializable {
         centerSetConf.setPrivacy(new PrivacySetConf());
         centerSetConf.setBlack(new BlackListSetConf());
         centerSetConf.setLive_status(new LiveStatusSetConf());
+        centerSetConf.setTimer(new TimerSetConf());
         return centerSetConf;
     }
 
