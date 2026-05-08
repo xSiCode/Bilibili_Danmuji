@@ -825,6 +825,65 @@ public class HttpUserData {
         if (StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
             headers.put("cookie", PublicDataConf.USERCOOKIE);
         }
+
+        // 2. 检查关注列表/粉丝列表是否可见（通过API请求判断）
+        try {
+            String followData = OkHttp3Utils.getHttp3Utils()
+                    .httpGet("https://api.bilibili.com/x/relation/followings?vmid=" + uid + "&pn=1&ps=1", headers, null)
+                    .body().string();
+            if (followData != null) {
+                JSONObject foJo = JSONObject.parseObject(followData);
+                result.put("follow_list_visible", foJo.getShort("code") == 0);
+
+
+                LOGGER.info( "https://api.bilibili.com/x/relation/followings?vmid=" + uid + "&pn=1&ps=1",foJo);
+            }
+        } catch (Exception e) {
+            result.put("follow_list_visible", false);
+        }
+        try {
+            String fansData = OkHttp3Utils.getHttp3Utils()
+                    .httpGet("https://api.bilibili.com/x/relation/followers?vmid=" + uid + "&pn=1&ps=1", headers, null)
+                    .body().string();
+            if (fansData != null) {
+                JSONObject faJo = JSONObject.parseObject(fansData);
+                result.put("fans_list_visible", faJo.getShort("code") == 0);
+                LOGGER.info( "https://api.bilibili.com/x/relation/followers?vmid=" + uid + "&pn=1&ps=1",faJo);
+            }
+        } catch (Exception e) {
+            result.put("fans_list_visible", false);
+        }
+        // 3. 用户卡片接口（粉丝数、关注数）
+        headers.put("referer", "https://space.bilibili.com/" + uid);
+        try {
+            String data = OkHttp3Utils.getHttp3Utils()
+                    .httpGet("https://api.bilibili.com/x/web-interface/card?mid=" + uid, headers, null)
+                    .body().string();
+            if (data != null) {
+                JSONObject jsonObject = JSONObject.parseObject(data);
+                if (jsonObject.getShort("code") == 0) {
+                    JSONObject cardData = jsonObject.getJSONObject("data");
+                    JSONObject card = cardData.getJSONObject("card");
+                    if (card != null) {
+                        result.put("fans", card.getLong("fans"));
+                        result.put("attention", card.getLong("attention"));
+                        JSONObject levelInfo = card.getJSONObject("level_info");
+                        if (levelInfo != null) {
+                            result.put("current_level", levelInfo.getInteger("current_level"));
+                        }
+                    }
+                    result.put("following", cardData.getBoolean("following"));
+                    result.put("archive_count", cardData.getInteger("archive_count"));
+                    result.put("article_count", cardData.getInteger("article_count"));
+                }
+
+                LOGGER.info( "https://api.bilibili.com/x/web-interface/card?mid=" + uid,data);
+                LOGGER.info( "https://api.bilibili.com/x/web-interface/card?mid=" + uid,jsonObject);
+            }
+        } catch (Exception e) {
+            LOGGER.error("获取用户卡片信息失败:{}", e.getMessage());
+        }
+
         // 1. 空间信息接口
         try {
             String data = OkHttp3Utils.getHttp3Utils()
@@ -865,61 +924,17 @@ public class HttpUserData {
                         result.put("live_room_id", liveRoom.get("roomid"));
                         result.put("live_status", liveRoom.getInteger("liveStatus"));
                     }
+
+                    LOGGER.info( "https://api.bilibili.com/x/space/acc/info?mid=",data);
+                    LOGGER.info( "https://api.bilibili.com/x/space/acc/info?mid=",jsonObject);
                 }
+            } else {
+                LOGGER.error("获取用户空间信息失败");
             }
         } catch (Exception e) {
             LOGGER.error("获取用户空间信息失败:{}", e.getMessage());
         }
-        // 2. 检查关注列表/粉丝列表是否可见（通过API请求判断）
-        try {
-            String followData = OkHttp3Utils.getHttp3Utils()
-                    .httpGet("https://api.bilibili.com/x/relation/followings?vmid=" + uid + "&pn=1&ps=1", headers, null)
-                    .body().string();
-            if (followData != null) {
-                JSONObject foJo = JSONObject.parseObject(followData);
-                result.put("follow_list_visible", foJo.getShort("code") == 0);
-            }
-        } catch (Exception e) {
-            result.put("follow_list_visible", false);
-        }
-        try {
-            String fansData = OkHttp3Utils.getHttp3Utils()
-                    .httpGet("https://api.bilibili.com/x/relation/followers?vmid=" + uid + "&pn=1&ps=1", headers, null)
-                    .body().string();
-            if (fansData != null) {
-                JSONObject faJo = JSONObject.parseObject(fansData);
-                result.put("fans_list_visible", faJo.getShort("code") == 0);
-            }
-        } catch (Exception e) {
-            result.put("fans_list_visible", false);
-        }
-        // 3. 用户卡片接口（粉丝数、关注数）
-        headers.put("referer", "https://space.bilibili.com/" + uid);
-        try {
-            String data = OkHttp3Utils.getHttp3Utils()
-                    .httpGet("https://api.bilibili.com/x/web-interface/card?mid=" + uid, headers, null)
-                    .body().string();
-            if (data != null) {
-                JSONObject jsonObject = JSONObject.parseObject(data);
-                if (jsonObject.getShort("code") == 0) {
-                    JSONObject cardData = jsonObject.getJSONObject("data");
-                    JSONObject card = cardData.getJSONObject("card");
-                    if (card != null) {
-                        result.put("fans", card.getLong("fans"));
-                        result.put("attention", card.getLong("attention"));
-                        JSONObject levelInfo = card.getJSONObject("level_info");
-                        if (levelInfo != null) {
-                            result.put("current_level", levelInfo.getInteger("current_level"));
-                        }
-                    }
-                    result.put("following", cardData.getBoolean("following"));
-                    result.put("archive_count", cardData.getInteger("archive_count"));
-                    result.put("article_count", cardData.getInteger("article_count"));
-                }
-            }
-        } catch (Exception e) {
-            LOGGER.error("获取用户卡片信息失败:{}", e.getMessage());
-        }
+
         return result.isEmpty() ? null : result;
     }
 
