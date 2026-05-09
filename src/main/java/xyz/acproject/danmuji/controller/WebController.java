@@ -4,7 +4,6 @@ import com.alibaba.fastjson.JSONObject;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -537,20 +536,20 @@ public class WebController {
     @ResponseBody
     @PostMapping(value = "/setImport")
     public Response<?> setImport(@RequestParam("file") MultipartFile file, HttpServletRequest req) throws IOException {
-        if (!file.getResource().getFilename().endsWith(".json")) {
+        String originalFilename = file.getOriginalFilename();
+        if (originalFilename == null || !originalFilename.endsWith(".json")) {
             return Response.success(2, req);
         }
         String jsonString = new BufferedReader(new InputStreamReader(file.getInputStream(), "utf-8"))
                 .lines().collect(Collectors.joining(System.lineSeparator()));
         try {
             CenterSetConf centerSetConf = FastJsonUtils.parseObject(jsonString, CenterSetConf.class);
-            if (centerSetConf != null) {
-                centerSetConf = ParseSetStatusTools.initCenterChildConfig(centerSetConf);
-//                centerSetConf.setClock_in(PublicDataConf.centerSetConf.getClock_in());
-                BeanUtils.copyProperties(centerSetConf, PublicDataConf.centerSetConf);
-                //如果有密钥 如果没密
-                checkService.changeSet(centerSetConf,true);
+            if (centerSetConf == null) {
+                LOGGER.error("setImport: 解析JSON配置失败, filename={}", originalFilename);
+                return Response.success(1, req);
             }
+            centerSetConf = ParseSetStatusTools.initCenterChildConfig(centerSetConf);
+            checkService.changeSet(centerSetConf, true);
         } catch (Exception e) {
             LOGGER.error("setImport error", e);
             return Response.success(1, req);

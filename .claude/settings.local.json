@@ -10,7 +10,8 @@
       "Bash(iconv -f GBK -t UTF-8)",
       "Bash(python fix_fields.py)",
       "Bash(./gradlew.bat compileJava)",
-      "Bash(mvn compile *)"
+      "Bash(mvn compile *)",
+      "Bash(xargs grep -l -i \"import\\\\|export\")"
     ]
   }
 }
