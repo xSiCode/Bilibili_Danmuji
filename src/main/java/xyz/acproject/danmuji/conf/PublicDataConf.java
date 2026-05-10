@@ -64,6 +64,9 @@ public class PublicDataConf {
 	public static User USER = null;
 	//cookie
 	public static UserCookie COOKIE = null;
+	//WBI签名密钥
+	public static String WBI_IMG_KEY = null;
+	public static String WBI_SUB_KEY = null;
 	//user弹幕长度
 	public static UserBarrageMsg USERBARRAGEMESSAGE = null;
 	//user房间管理信息
