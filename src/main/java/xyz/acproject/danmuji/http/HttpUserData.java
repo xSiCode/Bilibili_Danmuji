@@ -1224,4 +1224,147 @@ public class HttpUserData {
         }
         return code;
     }
+
+    /**
+     * 根据UID获取用户名
+     *
+     * @param uid 用户uid
+     * @return 用户名，失败返回null
+     */
+    public static String httpGetUserNameByUid(long uid) {
+        String data = null;
+        JSONObject jsonObject = null;
+        Map<String, String> headers = new HashMap<>(3);
+        headers.put("user-agent",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36");
+        if (StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
+            headers.put("cookie", PublicDataConf.USERCOOKIE);
+        }
+        try {
+            data = OkHttp3Utils.getHttp3Utils()
+                    .httpGet("https://api.bilibili.com/x/space/acc/info?mid=" + uid, headers, null)
+                    .body().string();
+        } catch (Exception e) {
+            LOGGER.error("获取用户名失败:{}", e.getMessage());
+            return null;
+        }
+        if (data == null) return null;
+        jsonObject = JSONObject.parseObject(data);
+        if (jsonObject.getShort("code") == 0) {
+
+            System.out.println(" 根据UID获取用户名 1 ytf:"+ jsonObject.toJSONString());
+
+            return jsonObject.getJSONObject("data").getString("name");
+        }
+        return null;
+    }
+
+    /**
+     * 根据用户名搜索最多前3位用户，按粉丝数降序排列，补充card和upstat数据
+     *
+     * @param name 用户名
+     * @return JSONArray 包含最多3个用户信息 {uid, uname, face, fans, attention, likes, play_count}
+     */
+    public static JSONArray httpSearchUserByName(String name) {
+        String data = null;
+        JSONObject jsonObject = null;
+        Map<String, String> headers = new HashMap<>(3);
+        headers.put("user-agent",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36");
+        headers.put("referer", "https://www.bilibili.com/");
+        if (StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
+            headers.put("cookie", PublicDataConf.USERCOOKIE);
+        }
+        try {
+            data = OkHttp3Utils.getHttp3Utils()
+                    .httpGet("https://api.bilibili.com/x/web-interface/search/type?keyword="
+                            + UrlUtils.URLEncoderString(name, "utf-8") + "&search_type=bili_user&page=1", headers, null)
+                    .body().string();
+        } catch (Exception e) {
+            LOGGER.error("搜索用户失败:{}", e.getMessage());
+            return null;
+        }
+        if (data == null) return null;
+        jsonObject = JSONObject.parseObject(data);
+        if (jsonObject.getShort("code") != 0) return null;
+        JSONArray result = jsonObject.getJSONObject("data").getJSONArray("result");
+        if (result == null || result.isEmpty()) return null;
+
+        // 按粉丝数降序排列
+        List<JSONObject> sorted = new ArrayList<>();
+        for (int i = 0; i < result.size(); i++) {
+            sorted.add(result.getJSONObject(i));
+        }
+        sorted.sort((a, b) -> {
+            long fa = a.getLong("fans") != null ? a.getLong("fans") : 0;
+            long fb = b.getLong("fans") != null ? b.getLong("fans") : 0;
+            return Long.compare(fb, fa);
+        });
+
+        // 取前3
+        int limit = Math.min(3, sorted.size());
+        JSONArray retList = new JSONArray();
+        for (int i = 0; i < limit; i++) {
+            JSONObject item = sorted.get(i);
+            long mid = item.getLong("mid");
+            JSONObject enriched = new JSONObject();
+            enriched.put("uid", mid);
+            enriched.put("uname", item.getString("uname"));
+            enriched.put("face", item.getString("upic"));
+            enriched.put("fans", item.getLong("fans") != null ? item.getLong("fans") : 0);
+
+            System.out.println("根据用户名搜索最多前3位用户，按粉丝数降序排列，补充card和upstat数据 2 ytf:"+ enriched.toJSONString());
+            // 获取关注数和播放/获赞数
+            enrichUserStats(mid, enriched, headers);
+            retList.add(enriched);
+        }
+        return retList;
+    }
+
+    private static void enrichUserStats(long mid, JSONObject enriched, Map<String, String> headers) {
+        // 获取card数据（关注数）
+        try {
+            String cardData = OkHttp3Utils.getHttp3Utils()
+                    .httpGet("https://api.bilibili.com/x/web-interface/card?mid=" + mid, headers, null)
+                    .body().string();
+            if (cardData != null) {
+                JSONObject cardJson = JSONObject.parseObject(cardData);
+                if (cardJson.getShort("code") == 0) {
+                    JSONObject card = cardJson.getJSONObject("data").getJSONObject("card");
+                    if (card != null) {
+                        enriched.put("attention", card.getLong("attention") != null ? card.getLong("attention") : 0);
+
+
+                        System.out.println("获取card数据 关注数  3 ytf:"+ card.toJSONString());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            enriched.put("attention", 0);
+        }
+
+        // 获取upstat数据（获赞数、播放数）
+        try {
+            String upstatData = OkHttp3Utils.getHttp3Utils()
+                    .httpGet("https://api.bilibili.com/x/space/upstat?mid=" + mid, headers, null)
+                    .body().string();
+            if (upstatData != null) {
+                JSONObject upstatJson = JSONObject.parseObject(upstatData);
+                if (upstatJson.getShort("code") == 0) {
+                    JSONObject upstatDataObj = upstatJson.getJSONObject("data");
+                    if (upstatDataObj != null) {
+                        enriched.put("likes", upstatDataObj.getLong("likes") != null ? upstatDataObj.getLong("likes") : 0);
+                        JSONObject archive = upstatDataObj.getJSONObject("archive");
+                        enriched.put("play_count", archive != null && archive.getLong("view") != null ? archive.getLong("view") : 0);
+
+
+                        System.out.println("获取upstat数据（获赞数、播放数）4  ytf:"+ upstatDataObj.toJSONString());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            enriched.put("likes", 0);
+            enriched.put("play_count", 0);
+        }
+    }
 }

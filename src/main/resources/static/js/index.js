@@ -588,6 +588,62 @@ $(document).on('click', '.badlist_row_del', function () {
         }
     });
 });
+$(document).on('click', '.badlist_uid_lookup', function () {
+    var uid = Number($(".badlist_uid").val());
+    if (!uid || uid <= 0) return;
+    var $btn = $(this);
+    $btn.prop('disabled', true).text('...');
+    $.ajax({
+        url: '../get_uname_by_uid',
+        type: 'GET',
+        data: {uid: uid},
+        dataType: 'json',
+        success: function (data) {
+            if (data.code == "200" && data.result) {
+                $(".badlist_uname").val(data.result);
+            }
+        },
+        complete: function () {
+            $btn.prop('disabled', false).text('查');
+        }
+    });
+});
+$(document).on('click', '.badlist_uname_lookup', function () {
+    var uname = $.trim($(".badlist_uname").val());
+    if (!uname) return;
+    var $btn = $(this);
+    $btn.prop('disabled', true).text('...');
+    $.ajax({
+        url: '../search_uid_by_uname',
+        type: 'GET',
+        data: {uname: uname},
+        dataType: 'json',
+        success: function (data) {
+            if (data.code == "200" && data.result && data.result.length > 0) {
+                method.renderSearchResults(data.result);
+            }
+        },
+        complete: function () {
+            $btn.prop('disabled', false).text('查');
+        }
+    });
+});
+$(document).on('click', '.badlist-result-item', function () {
+    var uid = $(this).data('uid');
+    var uname = $(this).data('uname');
+    $(".badlist_uid").val(uid);
+    $(".badlist_uname").val(uname);
+    $(".badlist-search-results").hide();
+});
+$(document).on('click', '.badlist-result-close', function () {
+    $(".badlist-search-results").hide();
+});
+$(document).on('mouseenter', '.badlist-result-item', function () {
+    $(this).addClass('shadow-sm');
+});
+$(document).on('mouseleave', '.badlist-result-item', function () {
+    $(this).removeClass('shadow-sm');
+});
 $(document).on('click', '.pn-add-btn', function () {
     method.addPNRow();
 });
@@ -2234,6 +2290,47 @@ const method = {
             // 用不同透明度表示优先级：第一优先不透明，后续半透明
             $icon.css('opacity', 1 - i * 0.35);
         }
+    },
+    fmtNum: function (n) {
+        if (n == null) return '0';
+        if (n >= 100000000) return (n / 100000000).toFixed(1) + '亿';
+        if (n >= 10000) return (n / 10000).toFixed(1) + '万';
+        return n.toString();
+    },
+    renderSearchResults: function (list) {
+        var $container = $(".badlist-search-results");
+        var $row = $container.find(".badlist-result-row");
+        $row.empty();
+        for (var i = 0; i < list.length; i++) {
+            var u = list[i];
+            var isTop = (i === 0);
+            var $col = $("<div>").addClass("col-md-4 mb-2");
+            var $card = $("<div>")
+                .addClass("badlist-result-item card p-2")
+                .attr("data-uid", u.uid)
+                .attr("data-uname", u.uname)
+                .css("cursor", "pointer");
+            if (isTop) {
+                $card.addClass("border-primary");
+            }
+            var faceHtml = u.face
+                ? '<img src="' + u.face + '" width="40" height="40" class="rounded-circle me-2" onerror="this.style.display=\'none\'">'
+                : '';
+            var html = '<div class="d-flex align-items-center mb-1">'
+                + faceHtml
+                + '<strong class="text-truncate">' + (u.uname || '') + '</strong>'
+                + (isTop ? ' <span class="badge bg-primary ms-1">推荐</span>' : '')
+                + '</div>'
+                + '<div class="small text-muted">'
+                + '<span>关注 ' + method.fmtNum(u.attention) + '</span> &nbsp;'
+                + '<span>粉丝 ' + method.fmtNum(u.fans) + '</span><br>'
+                + '<span>获赞 ' + method.fmtNum(u.likes) + '</span> &nbsp;'
+                + '<span>播放 ' + method.fmtNum(u.play_count) + '</span>'
+                + '</div>';
+            $card.html(html).appendTo($col);
+            $col.appendTo($row);
+        }
+        $container.show();
     },
     renderBadListTable: function () {
         var $tbody = $(".badlist-tbody");
