@@ -512,6 +512,82 @@ $(document).on('click', '.black_flag_parent', function () {
         $(".black_flag_child").prop('checked', true);
     }
 });
+$(document).on('click', '.badlist_add_btn', function () {
+    var uid = Number($(".badlist_uid").val());
+    var uname = $(".badlist_uname").val() || '';
+    if (!uid || uid <= 0) {
+        return;
+    }
+    $.ajax({
+        url: '../add_badlist',
+        type: 'GET',
+        data: {uid: uid, uname: uname},
+        dataType: 'json',
+        success: function (data) {
+            if (data.code == "200" && data.result == 0) {
+                var found = false;
+                for (var i = 0; i < badListData.length; i++) {
+                    if (badListData[i].uid === uid) {
+                        badListData[i].uname = uname;
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    badListData.push({uid: uid, uname: uname});
+                }
+                method.renderBadListTable();
+                method.saveSet();
+            }
+        },
+        error: function () {
+        }
+    });
+});
+$(document).on('click', '.badlist_del_btn', function () {
+    var uid = Number($(".badlist_uid").val());
+    if (!uid || uid <= 0) {
+        return;
+    }
+    $.ajax({
+        url: '../del_badlist',
+        type: 'GET',
+        data: {uid: uid},
+        dataType: 'json',
+        success: function (data) {
+            if (data.code == "200" && data.result == 0) {
+                badListData = badListData.filter(function (item) {
+                    return item.uid !== uid;
+                });
+                method.renderBadListTable();
+                method.saveSet();
+            }
+        },
+        error: function () {
+        }
+    });
+});
+$(document).on('click', '.badlist_row_del', function () {
+    var uid = Number($(this).data('uid'));
+    if (!uid) return;
+    $.ajax({
+        url: '../del_badlist',
+        type: 'GET',
+        data: {uid: uid},
+        dataType: 'json',
+        success: function (data) {
+            if (data.code == "200" && data.result == 0) {
+                badListData = badListData.filter(function (item) {
+                    return item.uid !== uid;
+                });
+                method.renderBadListTable();
+                method.saveSet();
+            }
+        },
+        error: function () {
+        }
+    });
+});
 $(document).on('click', '.pn-add-btn', function () {
     method.addPNRow();
 });
@@ -797,6 +873,7 @@ const danmuku = {
 const publicData = {
     set: {},
 }
+let badListData = [];
 const pnData = {
     list: [],
     page: 1,
@@ -841,7 +918,10 @@ const method = {
             },
             "live_status": {},
             "timer": {},
-            "danmaku_store": {}
+            "danmaku_store": {},
+            "bad_list": {
+                "bad_users": []
+            }
         };
         set.is_auto = $(".is_autoStart").is(
             ':checked');
@@ -985,6 +1065,7 @@ const method = {
         set.black.auto_reply = $(".is_black_reply").is(':checked');
         set.black.names = method.giftStrings_handle(set.black.names, $(".black_names").val());
         set.black.uids = method.giftStrings_handle(set.black.uids, $(".black_uids").val());
+        set.bad_list.bad_users = badListData;
         set.live_status.is_live_open = $(".livestatus_live_open").is(':checked');
         set.live_status.live_text = $(".livestatus_live_text").val();
         set.live_status.is_preparing_open = $(".livestatus_preparing_open").is(':checked');
@@ -1443,6 +1524,12 @@ const method = {
             $(".is_black_reply").prop('checked', set.black.auto_reply);
             $(".black_names").val(method.giftStrings_method(set.black.names));
             $(".black_uids").val(method.giftStrings_method(set.black.uids));
+            if (set.bad_list && set.bad_list.bad_users) {
+                badListData = set.bad_list.bad_users;
+            } else {
+                badListData = [];
+            }
+            method.renderBadListTable();
             if (set.live_status) {
                 $(".livestatus_live_open").prop('checked', set.live_status.is_live_open);
                 $(".livestatus_live_text").val(set.live_status.live_text);
@@ -2146,6 +2233,28 @@ const method = {
             }
             // 用不同透明度表示优先级：第一优先不透明，后续半透明
             $icon.css('opacity', 1 - i * 0.35);
+        }
+    },
+    renderBadListTable: function () {
+        var $tbody = $(".badlist-tbody");
+        var $table = $(".badlist-table");
+        if (!badListData || badListData.length === 0) {
+            $table.hide();
+            return;
+        }
+        $table.show();
+        $tbody.empty();
+        for (var i = 0; i < badListData.length; i++) {
+            var bu = badListData[i];
+            var $tr = $("<tr>");
+            $tr.append($("<td>").text(bu.uid || ''));
+            $tr.append($("<td>").text(bu.uname || ''));
+            var $delBtn = $("<button>")
+                .addClass("btn btn-sm btn-outline-danger badlist_row_del")
+                .attr("data-uid", bu.uid)
+                .text("取消拉黑");
+            $tr.append($("<td>").append($delBtn));
+            $tbody.append($tr);
         }
     },
 };

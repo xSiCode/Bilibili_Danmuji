@@ -354,6 +354,13 @@ public class WebController {
             if(centerSetConf.getDanmaku_store()==null&&PublicDataConf.centerSetConf.getDanmaku_store()==null){
                 centerSetConf.setDanmaku_store(new DanmakuStoreSetConf());
             }
+            //拉黑姬
+            if(centerSetConf.getBadList()==null&&PublicDataConf.centerSetConf.getBadList()!=null){
+                centerSetConf.setBadList(PublicDataConf.centerSetConf.getBadList());
+            }
+            if(centerSetConf.getBadList()==null&&PublicDataConf.centerSetConf.getBadList()==null){
+                centerSetConf.setBadList(new BadListSetConf());
+            }
             checkService.changeSet(centerSetConf,true);
         } catch (Exception e) {
             e.printStackTrace();
@@ -555,6 +562,49 @@ public class WebController {
             return Response.success(1, req);
         }
         return Response.success(0, req);
+    }
+
+    @ResponseBody
+    @GetMapping(value = "/add_badlist")
+    public Response<?> addBadList(@RequestParam("uid") long uid, @RequestParam(value = "uname", required = false) String uname, HttpServletRequest req) {
+        short code = -1;
+        if (StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
+            code = HttpUserData.httpPostAddBadList(uid);
+        }
+        if (code == 0) {
+            if (StringUtils.isBlank(uname)) {
+                uname = "";
+            }
+            List<BadListSetConf.BadUser> badUsers = PublicDataConf.centerSetConf.getBadList().getBadUsers();
+            boolean exists = false;
+            for (BadListSetConf.BadUser bu : badUsers) {
+                if (bu.getUid() != null && bu.getUid().equals(uid)) {
+                    bu.setUname(uname);
+                    exists = true;
+                    break;
+                }
+            }
+            if (!exists) {
+                badUsers.add(new BadListSetConf.BadUser(uid, uname));
+            }
+            checkService.changeSet(PublicDataConf.centerSetConf, false);
+        }
+        return Response.success(code, req);
+    }
+
+    @ResponseBody
+    @GetMapping(value = "/del_badlist")
+    public Response<?> delBadList(@RequestParam("uid") long uid, HttpServletRequest req) {
+        short code = -1;
+        if (StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
+            code = HttpUserData.httpPostDeleteBadList(uid);
+        }
+        if (code == 0) {
+            List<BadListSetConf.BadUser> badUsers = PublicDataConf.centerSetConf.getBadList().getBadUsers();
+            badUsers.removeIf(bu -> bu.getUid() != null && bu.getUid().equals(uid));
+            checkService.changeSet(PublicDataConf.centerSetConf, false);
+        }
+        return Response.success(code, req);
     }
 
     @ResponseBody

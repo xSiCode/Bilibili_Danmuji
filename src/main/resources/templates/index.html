@@ -1310,6 +1310,44 @@
                                 ></textarea>
                             </div>
                         </div>
+                        <!-- 拉黑姬设置开始 -->
+                        <a data-bs-toggle="collapse" data-target="#badlist-set"
+                           href="#badlist-set"><div class="input-group mb-1">
+                            <h5>拉黑姬</h5>
+                        </div></a>
+                        <div class="input-group mb-3 badlist-set collapse" id="badlist-set">
+                            <div class="header-set">
+                                <div class="row align-items-center mb-2">
+                                    <div class="col-auto">
+                                        <label class="form-label mb-0">UID:</label>
+                                        <input class="form-control form-control-sm badlist_uid"
+                                               style="width:150px;display:inline-block;"
+                                               type="number"
+                                               placeholder="输入用户UID">
+                                    </div>
+                                    <div class="col-auto">
+                                        <label class="form-label mb-0">用户名:</label>
+                                        <input class="form-control form-control-sm badlist_uname"
+                                               style="width:180px;display:inline-block;"
+                                               type="text"
+                                               placeholder="便于记忆(可选)">
+                                    </div>
+                                    <div class="col-auto">
+                                        <button class="btn btn-sm btn-danger badlist_add_btn">拉黑</button>
+                                        <button class="btn btn-sm btn-outline-danger badlist_del_btn">取消拉黑</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="footer-set">
+                                <table class="table table-sm table-striped badlist-table" style="display:none;">
+                                    <thead>
+                                        <tr><th>UID</th><th>用户名</th><th>操作</th></tr>
+                                    </thead>
+                                    <tbody class="badlist-tbody"></tbody>
+                                </table>
+                                <small class="text-muted">拉黑为B站用户层面的黑名单，非直播间禁言。需要登录后操作。</small>
+                            </div>
+                        </div>
                         <!-- 弹幕姬登录设置开始 -->
                         <a data-bs-toggle="collapse" data-target="#managerLogin-set"
                            href="#managerLogin-set"><div class="input-group mb-1">
