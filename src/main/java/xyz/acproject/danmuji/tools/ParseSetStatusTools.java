@@ -288,6 +288,9 @@ public class ParseSetStatusTools {
 			if(centerSetConf.getDanmaku_store()==null){
 				centerSetConf.setDanmaku_store(new DanmakuStoreSetConf());
 			}
+			if(centerSetConf.getBadList()==null){
+				centerSetConf.setBadList(new BadListSetConf());
+			}
 		}
 		return centerSetConf;
 	}

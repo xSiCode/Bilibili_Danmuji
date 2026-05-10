@@ -383,7 +383,7 @@ public class HttpRoomData {
         StringBuilder logSb = new StringBuilder(80);
 
         logSb.append(new SimpleDateFormat("HH:mm:ss").format(System.currentTimeMillis()))
-                .append("  https://space.bilibili.com/").append(vmid);
+                .append("  https://space.bilibili.com/").append(vmid).append("/dynamic");
 
         short code = firstPage != null ? firstPage.getShort("code") : -1;
         JSONObject data = firstPage != null && code == 0 ? firstPage.getJSONObject("data") : null;
@@ -397,9 +397,7 @@ public class HttpRoomData {
         // 是否可见，是否在黑白名单
         if (firstPage == null || code != 0 || data == null || total == 0) {
             LOGGER.info("[" + uname + "] 关注：请求失败或无数据");
-            logSb.append("?followNum=null")
-                    .append("&matchedNum=null")
-                    .append("&matchScore=0")
+            logSb.append("?关注列表不可见")
                     .append("&name=").append(uname);
 
             SelfTools.appendAt(logSb, 130, "[成分]关注列表不可见");
@@ -428,17 +426,17 @@ public class HttpRoomData {
             if (totalScore > 0) {
                 SelfTools.appendAt(logSb, 140, "[成分]关注列表自己人偏多");
             } else if (totalScore < 0) {
-                logSb.append("?followNum=").append(total)
-                        .append("&matchedNum=").append(matchedList.size())
-                        .append("&matchScore=").append(totalScore)
+                logSb.append("?关注数=").append(total)
+                        .append("&匹配数=").append(matchedList.size())
+                        .append("&匹配分数=").append(totalScore)
                         .append("&name=").append(uname);
 
-                SelfTools.appendAt(logSb, 130, "[成分][成分]关注列表野猪皮偏多");
+                SelfTools.appendAt(logSb, 130, "[成分]关注列表野猪皮偏多");
             } else {
                 SelfTools.appendAt(logSb, 140, "[成分]关注列表可见，未发现异常,需其他人再次确认");
             }
             logSb.append(" 黑白名单列表:").append(matchedList.toJSONString())
-                    .append(" 关注列表:").append(followingsList.toJSONString());
+                    .append("  ||>>  🍉🍉  关注列表:").append(followingsList.toJSONString());
         }
 
         //通过日志查看后手动打开浏览器

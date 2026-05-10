@@ -1082,6 +1082,100 @@ public class HttpUserData {
 
 
     /**
+     * 拉黑用户（加入黑名单）
+     *
+     * @param fid 被拉黑用户uid
+     * @return
+     */
+    public static Short httpPostAddBadList(long fid) {
+        JSONObject jsonObject = null;
+        String data = null;
+        short code = -1;
+        Map<String, String> headers = null;
+        Map<String, String> params = null;
+        if (PublicDataConf.COOKIE == null)
+            return code;
+        headers = new HashMap<>(4);
+        headers.put("user-agent",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36");
+        headers.put("referer", "https://space.bilibili.com/");
+        if (StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
+            headers.put("cookie", PublicDataConf.USERCOOKIE);
+        }
+        params = new HashMap<>(5);
+        params.put("fid", String.valueOf(fid));
+        params.put("act", "5");
+        params.put("re_src", "11");
+        params.put("csrf_token", PublicDataConf.COOKIE.getBili_jct());
+        params.put("csrf", PublicDataConf.COOKIE.getBili_jct());
+        try {
+            data = OkHttp3Utils.getHttp3Utils()
+                    .httpPostForm("https://api.bilibili.com/x/relation/modify", headers, params)
+                    .body().string();
+        } catch (Exception e) {
+            LOGGER.error(e);
+            data = null;
+        }
+        if (data == null)
+            return code;
+        jsonObject = JSONObject.parseObject(data);
+        code = jsonObject.getShort("code");
+        if (code == 0) {
+            LOGGER.info("拉黑用户成功:{}", fid);
+        } else {
+            LOGGER.error("拉黑用户失败,原因:{}", jsonObject.getString("message"));
+        }
+        return code;
+    }
+
+    /**
+     * 取消拉黑用户（移出黑名单）
+     *
+     * @param fid 被拉黑用户uid
+     * @return
+     */
+    public static Short httpPostDeleteBadList(long fid) {
+        JSONObject jsonObject = null;
+        String data = null;
+        short code = -1;
+        Map<String, String> headers = null;
+        Map<String, String> params = null;
+        if (PublicDataConf.COOKIE == null)
+            return code;
+        headers = new HashMap<>(4);
+        headers.put("user-agent",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36");
+        headers.put("referer", "https://space.bilibili.com/");
+        if (StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
+            headers.put("cookie", PublicDataConf.USERCOOKIE);
+        }
+        params = new HashMap<>(5);
+        params.put("fid", String.valueOf(fid));
+        params.put("act", "6");
+        params.put("re_src", "11");
+        params.put("csrf_token", PublicDataConf.COOKIE.getBili_jct());
+        params.put("csrf", PublicDataConf.COOKIE.getBili_jct());
+        try {
+            data = OkHttp3Utils.getHttp3Utils()
+                    .httpPostForm("https://api.bilibili.com/x/relation/modify", headers, params)
+                    .body().string();
+        } catch (Exception e) {
+            LOGGER.error(e);
+            data = null;
+        }
+        if (data == null)
+            return code;
+        jsonObject = JSONObject.parseObject(data);
+        code = jsonObject.getShort("code");
+        if (code == 0) {
+            LOGGER.info("取消拉黑用户成功:{}", fid);
+        } else {
+            LOGGER.error("取消拉黑用户失败,原因:{}", jsonObject.getString("message"));
+        }
+        return code;
+    }
+
+    /**
      * 解除禁言
      *
      * @return

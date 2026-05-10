@@ -11,7 +11,8 @@
       "Bash(python fix_fields.py)",
       "Bash(./gradlew.bat compileJava)",
       "Bash(mvn compile *)",
-      "Bash(xargs grep -l -i \"import\\\\|export\")"
+      "Bash(xargs grep -l -i \"import\\\\|export\")",
+      "WebFetch(domain:qinshixixing.gitbooks.io)"
     ]
   }
 }

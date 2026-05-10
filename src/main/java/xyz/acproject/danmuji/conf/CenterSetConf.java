@@ -149,6 +149,9 @@ public class CenterSetConf implements Serializable {
     //弹幕暂存姬
     @JSONField(name="danmaku_store")
     private DanmakuStoreSetConf danmaku_store;
+    //拉黑姬
+    @JSONField(name="bad_list")
+    private BadListSetConf badList;
 
 
     @JSONField(name = "edition",serialize = false)
@@ -173,12 +176,13 @@ public class CenterSetConf implements Serializable {
         centerSetConf.setLive_status(new LiveStatusSetConf());
         centerSetConf.setTimer(new TimerSetConf());
         centerSetConf.setDanmaku_store(new DanmakuStoreSetConf());
+        centerSetConf.setBadList(new BadListSetConf());
         return centerSetConf;
     }
 
 
     public CenterSetConf(ThankGiftSetConf thank_gift, AdvertSetConf advert,
-                         ThankFollowSetConf follow, AutoReplySetConf reply, ClockInSetConf clock_in, ThankWelcomeSetConf welcome, AutoSendGiftConf auto_gift, PrivacySetConf privacy,BlackListSetConf black,LiveStatusSetConf live_status) {
+                         ThankFollowSetConf follow, AutoReplySetConf reply, ClockInSetConf clock_in, ThankWelcomeSetConf welcome, AutoSendGiftConf auto_gift, PrivacySetConf privacy,BlackListSetConf black,LiveStatusSetConf live_status,BadListSetConf badList) {
         super();
         this.thank_gift = thank_gift;
         this.advert = advert;
@@ -190,6 +194,7 @@ public class CenterSetConf implements Serializable {
         this.privacy = privacy;
         this.black= black;
         this.live_status = live_status;
+        this.badList = badList;
     }
 
     public String toJson() {
