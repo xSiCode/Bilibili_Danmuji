@@ -1324,19 +1324,28 @@
                                                style="width:150px;display:inline-block;"
                                                type="number"
                                                placeholder="输入用户UID">
+                                        <button class="btn btn-sm btn-outline-secondary badlist_uid_lookup" title="根据UID查用户名">查</button>
                                     </div>
                                     <div class="col-auto">
                                         <label class="form-label mb-0">用户名:</label>
                                         <input class="form-control form-control-sm badlist_uname"
                                                style="width:180px;display:inline-block;"
                                                type="text"
-                                               placeholder="便于记忆(可选)">
+                                               placeholder="输入用户名搜索">
+                                        <button class="btn btn-sm btn-outline-secondary badlist_uname_lookup" title="根据用户名查UID">查</button>
                                     </div>
                                     <div class="col-auto">
                                         <button class="btn btn-sm btn-danger badlist_add_btn">拉黑</button>
                                         <button class="btn btn-sm btn-outline-danger badlist_del_btn">取消拉黑</button>
                                     </div>
                                 </div>
+                            </div>
+                            <div class="badlist-search-results mt-2" style="display:none;">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <small class="text-muted">搜索结果，点击选择:</small>
+                                    <button class="btn btn-sm btn-outline-secondary badlist-result-close" style="font-size:10px;">关闭</button>
+                                </div>
+                                <div class="row badlist-result-row"></div>
                             </div>
                             <div class="footer-set">
                                 <table class="table table-sm table-striped badlist-table" style="display:none;">

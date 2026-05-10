@@ -1,5 +1,6 @@
 package xyz.acproject.danmuji.controller;
 
+import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -484,6 +485,20 @@ public class WebController {
             code = HttpUserData.httpPostAddBlock(uid, time);
         }
         return Response.success(code, req);
+    }
+
+    @ResponseBody
+    @GetMapping(value = "/get_uname_by_uid")
+    public Response<?> getUnameByUid(@RequestParam("uid") long uid, HttpServletRequest req) {
+        String uname = HttpUserData.httpGetUserNameByUid(uid);
+        return Response.success(uname, req);
+    }
+
+    @ResponseBody
+    @GetMapping(value = "/search_uid_by_uname")
+    public Response<?> searchUidByUname(@RequestParam("uname") String uname, HttpServletRequest req) {
+        JSONArray result = HttpUserData.httpSearchUserByName(uname);
+        return Response.success(result, req);
     }
 
     @ResponseBody
