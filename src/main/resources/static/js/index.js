@@ -628,7 +628,7 @@ $(document).on('click', '.badlist_uname_lookup', function () {
         }
     });
 });
-$(document).on('click', '.badlist-result-item', function () {
+$(document).on('click', '.badlist-result-select', function () {
     var uid = $(this).data('uid');
     var uname = $(this).data('uname');
     $(".badlist_uid").val(uid);
@@ -637,12 +637,6 @@ $(document).on('click', '.badlist-result-item', function () {
 });
 $(document).on('click', '.badlist-result-close', function () {
     $(".badlist-search-results").hide();
-});
-$(document).on('mouseenter', '.badlist-result-item', function () {
-    $(this).addClass('shadow-sm');
-});
-$(document).on('mouseleave', '.badlist-result-item', function () {
-    $(this).removeClass('shadow-sm');
 });
 $(document).on('click', '.pn-add-btn', function () {
     method.addPNRow();
@@ -2297,38 +2291,42 @@ const method = {
         if (n >= 10000) return (n / 10000).toFixed(1) + '万';
         return n.toString();
     },
+    fmtDate: function (ts) {
+        if (!ts) return '-';
+        var d = new Date(ts * 1000);
+        return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+    },
     renderSearchResults: function (list) {
         var $container = $(".badlist-search-results");
-        var $row = $container.find(".badlist-result-row");
-        $row.empty();
+        var $tbody = $container.find(".badlist-result-tbody");
+        $tbody.empty();
         for (var i = 0; i < list.length; i++) {
             var u = list[i];
             var isTop = (i === 0);
-            var $col = $("<div>").addClass("col-md-4 mb-2");
-            var $card = $("<div>")
-                .addClass("badlist-result-item card p-2")
-                .attr("data-uid", u.uid)
-                .attr("data-uname", u.uname)
-                .css("cursor", "pointer");
-            if (isTop) {
-                $card.addClass("border-primary");
-            }
+            var profileUrl = 'https://space.bilibili.com/' + u.uid + '/dynamic';
             var faceHtml = u.face
-                ? '<img src="' + u.face + '" width="40" height="40" class="rounded-circle me-2" onerror="this.style.display=\'none\'">'
+                ? '<a href="' + profileUrl + '" target="_blank"><img src="' + u.face + '" width="28" height="28" class="rounded-circle me-1" style="vertical-align:middle;" onerror="this.style.display=\'none\'"></a>'
                 : '';
-            var html = '<div class="d-flex align-items-center mb-1">'
-                + faceHtml
-                + '<strong class="text-truncate">' + (u.uname || '') + '</strong>'
-                + (isTop ? ' <span class="badge bg-primary ms-1">推荐</span>' : '')
-                + '</div>'
-                + '<div class="small text-muted">'
-                + '<span>关注 ' + method.fmtNum(u.attention) + '</span> &nbsp;'
-                + '<span>粉丝 ' + method.fmtNum(u.fans) + '</span><br>'
-                + '<span>获赞 ' + method.fmtNum(u.likes) + '</span> &nbsp;'
-                + '<span>播放 ' + method.fmtNum(u.play_count) + '</span>'
-                + '</div>';
-            $card.html(html).appendTo($col);
-            $col.appendTo($row);
+            var nameHtml = faceHtml + '<a href="' + profileUrl + '" target="_blank" title="打开用户动态页" style="display:inline-block;max-width:calc(100% - 40px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;"><strong>' + (u.uname || '') + '</strong></a>'
+                + (isTop ? ' <span class="badge bg-primary ms-1" style="font-size:10px;">推荐</span>' : '');
+            var selectBtn = '<button class="btn btn-sm btn-outline-primary badlist-result-select" data-uid="' + u.uid + '" data-uname="' + u.uname + '" style="font-size:11px;">选择</button>';
+            var visibleIcon = u.follow_list_visible
+                ? '<span class="text-success">✓</span>'
+                : '<span class="text-danger">✗</span>';
+            var $tr = $("<tr>");
+            $tr.append($("<td>").html(nameHtml));
+            $tr.append($("<td>").text(method.fmtNum(u.fans)));
+            $tr.append($("<td>").text(method.fmtNum(u.attention)));
+            $tr.append($("<td>").text(method.fmtNum(u.likes)));
+            $tr.append($("<td>").text(method.fmtNum(u.play_count)));
+            $tr.append($("<td>").text(u.archive_count || '0'));
+            $tr.append($("<td>").html(visibleIcon));
+            $tr.append($("<td>").text(method.fmtDate(u.latest_dynamic_date)));
+            $tr.append($("<td>").html(selectBtn));
+            if (isTop) {
+                $tr.addClass("table-primary");
+            }
+            $tbody.append($tr);
         }
         $container.show();
     },

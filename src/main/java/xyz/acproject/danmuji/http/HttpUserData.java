@@ -87,6 +87,21 @@ public class HttpUserData {
         short code = jsonObject.getShort("code");
         if (code == 0) {
             userNav = JSONObject.parseObject(jsonObject.getString("data"), UserNav.class);
+            // 保存WBI签名密钥
+            if (userNav != null && userNav.getWbiImg() != null) {
+                String imgUrl = userNav.getWbiImg().getImgUrl();
+                String subUrl = userNav.getWbiImg().getSubUrl();
+                if (StringUtils.isNotBlank(imgUrl)) {
+                    String[] parts = imgUrl.split("/");
+                    String filename = parts[parts.length - 1];
+                    PublicDataConf.WBI_IMG_KEY = filename.substring(0, filename.lastIndexOf('.'));
+                }
+                if (StringUtils.isNotBlank(subUrl)) {
+                    String[] parts = subUrl.split("/");
+                    String filename = parts[parts.length - 1];
+                    PublicDataConf.WBI_SUB_KEY = filename.substring(0, filename.lastIndexOf('.'));
+                }
+            }
         }  else {
             LOGGER.error("获取用户nav信息失败：" + jsonObject.toString());
         }
@@ -1322,7 +1337,7 @@ public class HttpUserData {
     }
 
     private static void enrichUserStats(long mid, JSONObject enriched, Map<String, String> headers) {
-        // 获取card数据（关注数）
+        // 获取card数据（关注数、作品数）
         try {
             String cardData = OkHttp3Utils.getHttp3Utils()
                     .httpGet("https://api.bilibili.com/x/web-interface/card?mid=" + mid, headers, null)
@@ -1330,17 +1345,30 @@ public class HttpUserData {
             if (cardData != null) {
                 JSONObject cardJson = JSONObject.parseObject(cardData);
                 if (cardJson.getShort("code") == 0) {
-                    JSONObject card = cardJson.getJSONObject("data").getJSONObject("card");
+                    JSONObject dataObj = cardJson.getJSONObject("data");
+                    JSONObject card = dataObj.getJSONObject("card");
                     if (card != null) {
                         enriched.put("attention", card.getLong("attention") != null ? card.getLong("attention") : 0);
-
-
-                        System.out.println("获取card数据 关注数  3 ytf:"+ card.toJSONString());
                     }
+                    enriched.put("archive_count", dataObj.getInteger("archive_count") != null ? dataObj.getInteger("archive_count") : 0);
                 }
             }
         } catch (Exception e) {
             enriched.put("attention", 0);
+            enriched.put("archive_count", 0);
+        }
+
+        // 获取关注列表是否可见
+        try {
+            String followData = OkHttp3Utils.getHttp3Utils()
+                    .httpGet("https://api.bilibili.com/x/relation/followings?vmid=" + mid + "&pn=1&ps=1", headers, null)
+                    .body().string();
+            if (followData != null) {
+                JSONObject foJo = JSONObject.parseObject(followData);
+                enriched.put("follow_list_visible", foJo.getShort("code") == 0);
+            }
+        } catch (Exception e) {
+            enriched.put("follow_list_visible", false);
         }
 
         // 获取upstat数据（获赞数、播放数）
@@ -1356,15 +1384,38 @@ public class HttpUserData {
                         enriched.put("likes", upstatDataObj.getLong("likes") != null ? upstatDataObj.getLong("likes") : 0);
                         JSONObject archive = upstatDataObj.getJSONObject("archive");
                         enriched.put("play_count", archive != null && archive.getLong("view") != null ? archive.getLong("view") : 0);
-
-
-                        System.out.println("获取upstat数据（获赞数、播放数）4  ytf:"+ upstatDataObj.toJSONString());
                     }
                 }
             }
         } catch (Exception e) {
             enriched.put("likes", 0);
             enriched.put("play_count", 0);
+        }
+        enriched.put("latest_video_date", 0);
+
+        // 获取最新动态日期
+        try {
+            Map<String, String> dynHeaders = new HashMap<>(headers);
+            dynHeaders.put("referer", "https://space.bilibili.com/" + mid);
+            String dynData = OkHttp3Utils.getHttp3Utils()
+                    .httpGet("https://api.vc.bilibili.com/dynamic_svr/v1/dynamic_svr/space_history?host_uid=" + mid + "&offset_dynamic_id=0&need_top=1", dynHeaders, null)
+                    .body().string();
+            if (dynData != null) {
+                JSONObject dynJson = JSONObject.parseObject(dynData);
+                if (dynJson.getShort("code") == 0) {
+                    JSONArray cards = dynJson.getJSONObject("data").getJSONArray("cards");
+                    if (cards != null && !cards.isEmpty()) {
+                        JSONObject firstCard = cards.getJSONObject(0);
+                        JSONObject desc = firstCard.getJSONObject("desc");
+                        if (desc != null && desc.getLong("timestamp") != null) {
+                            enriched.put("latest_dynamic_date", desc.getLong("timestamp"));
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.warn("获取最新动态日期失败 mid={}: {}", mid, e.getMessage());
+            enriched.put("latest_dynamic_date", 0);
         }
     }
 }
