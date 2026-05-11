@@ -57,6 +57,29 @@ java version "11.0.16"
 
 # 版本2.7.0.6
 
+## GitHub Actions 自动构建（推荐）
+
+**每次推送代码后自动编译，无需等待手动发布：**
+
+1. 前往 [Actions](https://github.com/xSiCode/Bilibili_Danmuji/actions/workflows/build.yaml) 页面
+2. 点击最新的 `Build` 工作流运行记录
+3. 在 Artifacts 区域下载对应版本：
+
+| 制品 | 说明 |
+|---|---|
+| `BiliBili_Danmuji_x.x.x.jar` | 纯 JAR 包，需要系统安装 Java 8+ |
+| `BiliBili_Danmuji_x.x.x` | JAR + 启动脚本 (run.bat / run.sh)，需要系统安装 Java |
+| `BiliBili_Danmuji_x.x.x_portable` | 绿色便携版，自带 JRE，解压即用，无需安装 Java |
+
+**运行方式：**
+- **Windows** — 双击 `run.bat`
+- **Linux/Mac** — 终端执行 `./run.sh`
+- 启动后浏览器打开 `http://127.0.0.1:23333` 进行配置
+
+如需自定义端口：编辑 `run.bat` / `run.sh` 中的 `--server.port=23333` 参数。
+
+---
+
 - **danmuji(常规版本 需要java环境) [地址](https://github.com/BanqiJane/Bilibili_Danmuji/releases/tag/2.7.0.6 "下载地址")**<br/><br/>
 - **danmuji-green(
   window64绿色版本，不用配置安装java环境) [地址](https://github.com/BanqiJane/Bilibili_Danmuji/releases/tag/2.7.0.6 "下载地址")**<br/><br/>
@@ -250,6 +273,14 @@ java version "11.0.16"
 <br/><br/>
 
 # 如何运行<br/>
+
+### 从 GitHub Actions 下载（推荐，无需本地编译）
+
+1. 打开 [Actions 构建页面](https://github.com/xSiCode/Bilibili_Danmuji/actions/workflows/build.yaml)
+2. 点击最新一次运行记录，下拉到 **Artifacts** 区域
+3. 选择下载：
+   - **便携版** — 下载 `BiliBili_Danmuji_x.x.x_portable`，解压后直接双击 `run.bat`(Windows) 或 `./run.sh`(Linux/Mac)
+   - **常规版** — 下载 `BiliBili_Danmuji_x.x.x`，需要系统已安装 Java 8+
 
 ### 发布版本(java环境配置好的前提下）<br/>
 

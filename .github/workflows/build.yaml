@@ -1,0 +1,116 @@
+name: Build
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 8
+        uses: actions/setup-java@v4
+        with:
+          java-version: "8"
+          distribution: "temurin"
+
+      - name: Extract version
+        id: version
+        run: |
+          VERSION=$(grep -E "^\s*version\s*=" build.gradle | head -1 | sed "s/.*version[[:space:]]*=[[:space:]]*['\"]\?//;s/['\"].*//")
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Version: ${VERSION}"
+
+      - name: Build with Gradle
+        run: |
+          chmod +x ./gradlew
+          ./gradlew build -x test
+
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BiliBili_Danmuji-${{ steps.version.outputs.version }}.jar
+          path: build/libs/BiliBili_Danmuji-${{ steps.version.outputs.version }}.jar
+
+      - name: Create dist (requires system Java)
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          DIST="dist/BiliBili_Danmuji_${VERSION}"
+          mkdir -p "${DIST}"
+
+          cp "build/libs/BiliBili_Danmuji-${VERSION}.jar" "${DIST}/"
+
+          # Windows 启动脚本
+          cat > "${DIST}/run.bat" << 'EOF'
+          @echo off
+          title BiliBili_Danmuji
+          if not defined JAVA_HOME (
+              echo [WARN] JAVA_HOME not set, trying system PATH...
+          )
+          java -jar -Xms64m -Xmx128m BiliBili_Danmuji-*.jar --server.port=23333
+          pause
+          EOF
+
+          # Linux/Mac 启动脚本
+          cat > "${DIST}/run.sh" << 'EOF'
+          #!/bin/bash
+          DIR="$(cd "$(dirname "$0")" && pwd)"
+          java -jar -Xms64m -Xmx128m "${DIR}"/BiliBili_Danmuji-*.jar --server.port=23333
+          EOF
+          chmod +x "${DIST}/run.sh"
+
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BiliBili_Danmuji_${{ steps.version.outputs.version }}
+          path: dist/BiliBili_Danmuji_${{ steps.version.outputs.version }}/
+
+      - name: Create portable dist (bundled JRE)
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          PORTABLE="dist/BiliBili_Danmuji_${VERSION}_portable"
+          mkdir -p "${PORTABLE}"
+
+          cp "build/libs/BiliBili_Danmuji-${VERSION}.jar" "${PORTABLE}/"
+
+          # 从 GitHub Actions 的 JDK 中提取 JRE
+          if [ -d "${JAVA_HOME}/jre" ]; then
+            cp -r "${JAVA_HOME}/jre" "${PORTABLE}/jre"
+          elif [ -d "${JAVA_HOME}" ]; then
+            # 某些发行版 JDK 本身就是 JRE 布局
+            mkdir -p "${PORTABLE}/jre/bin"
+            cp "${JAVA_HOME}/bin/java" "${PORTABLE}/jre/bin/" 2>/dev/null || true
+            # 如果上面不行，直接用整个 JAVA_HOME 作为 jre
+            if [ ! -f "${PORTABLE}/jre/bin/java" ]; then
+              rm -rf "${PORTABLE}/jre"
+              cp -r "${JAVA_HOME}" "${PORTABLE}/jre"
+            fi
+          fi
+
+          # Windows 启动脚本 (使用自带 JRE)
+          cat > "${PORTABLE}/run.bat" << 'EOF'
+          @echo off
+          title BiliBili_Danmuji
+          jre\bin\java -jar -Xms64m -Xmx128m BiliBili_Danmuji-*.jar --server.port=23333
+          pause
+          EOF
+
+          # Linux/Mac 启动脚本 (使用自带 JRE)
+          cat > "${PORTABLE}/run.sh" << 'EOF'
+          #!/bin/bash
+          DIR="$(cd "$(dirname "$0")" && pwd)"
+          "${DIR}"/jre/bin/java -jar -Xms64m -Xmx128m "${DIR}"/BiliBili_Danmuji-*.jar --server.port=23333
+          EOF
+          chmod +x "${PORTABLE}/run.sh"
+
+      - name: Upload portable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BiliBili_Danmuji_${{ steps.version.outputs.version }}_portable
+          path: dist/BiliBili_Danmuji_${{ steps.version.outputs.version }}_portable/
