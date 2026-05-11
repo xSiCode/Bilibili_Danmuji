@@ -48,11 +48,11 @@ jobs:
           mkdir -p "${DIST}"
           cp "build/libs/BiliBili_Danmuji-${VERSION}.jar" "${DIST}/"
 
-          # Windows 脚本
-          cat > "${DIST}/run.bat" << 'EOF'
+          # Windows 脚本 — 必须用确切的 JAR 文件名，CMD 不支持通配符
+          cat > "${DIST}/run.bat" << EOF
           @echo off
           title BiliBili_Danmuji
-          java -jar -Xms64m -Xmx128m BiliBili_Danmuji-*.jar --server.port=23333
+          java -jar -Xms64m -Xmx128m BiliBili_Danmuji-${VERSION}.jar --server.port=23333
           pause
           EOF
 
@@ -150,10 +150,11 @@ jobs:
           cp "BiliBili_Danmuji-${VERSION}.jar" "${PORTABLE}/"
           cp -r jre "${PORTABLE}/jre"
 
-          cat > "${PORTABLE}/run.bat" << 'EOF'
+          # 必须用确切的 JAR 文件名，CMD 不支持通配符
+          cat > "${PORTABLE}/run.bat" << EOF
           @echo off
           title BiliBili_Danmuji
-          jre\bin\java -jar -Xms64m -Xmx128m BiliBili_Danmuji-*.jar --server.port=23333
+          jre\bin\java -jar -Xms64m -Xmx128m BiliBili_Danmuji-${VERSION}.jar --server.port=23333
           pause
           EOF
 
