@@ -83,7 +83,7 @@ public class CenterSetConf implements Serializable {
     private Long roomid = 0l;
     //是否自动连接
     @JSONField(name = "is_auto")
-    private boolean is_auto = false;
+    private boolean is_auto = true;
     //window是否自动打开设置页面 默认open
     @JSONField(name = "win_auto_openSet")
     private boolean win_auto_openSet = true;
