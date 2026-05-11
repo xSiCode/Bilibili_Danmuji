@@ -374,7 +374,7 @@ public class HttpRoomData {
      */
     public static void processFollowings(long vmid, String uname , String threadStr) {
         JSONObject firstPage = httpGetFollowings(vmid, 1, 50);
-        StringBuilder logSb = new StringBuilder(110);
+        StringBuilder logSb = new StringBuilder(105);
 
         logSb.append(threadStr) ;
 
@@ -422,7 +422,7 @@ public class HttpRoomData {
             } else if (totalScore < 0) {
                 SelfTools.appendAt(logSb, 110, "[成分:野猪偏多]");
             } else {
-                SelfTools.appendAt(logSb, 115, "[成分:需要确认]");
+                SelfTools.appendAt(logSb, 120, "[成分:需要确认]");
             }
             logSb.append(" [比例:").append(matchedList.size()).append("/").append(total) .append("]")
                     .append(",黑白名单:").append(matchedList.toJSONString())

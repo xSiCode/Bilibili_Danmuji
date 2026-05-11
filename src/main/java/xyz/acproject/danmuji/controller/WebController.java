@@ -362,6 +362,13 @@ public class WebController {
             if(centerSetConf.getBadList()==null&&PublicDataConf.centerSetConf.getBadList()==null){
                 centerSetConf.setBadList(new BadListSetConf());
             }
+            //整流回复姬
+            if(centerSetConf.getRectifier()==null&&PublicDataConf.centerSetConf.getRectifier()!=null){
+                centerSetConf.setRectifier(PublicDataConf.centerSetConf.getRectifier());
+            }
+            if(centerSetConf.getRectifier()==null&&PublicDataConf.centerSetConf.getRectifier()==null){
+                centerSetConf.setRectifier(new RectifierSetConf());
+            }
             checkService.changeSet(centerSetConf,true);
         } catch (Exception e) {
             e.printStackTrace();

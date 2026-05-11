@@ -172,6 +172,9 @@ public class PublicDataConf {
 	public final static String PROFILE_SET_NAME = "set";
 
 	public final static String PROFILE_COOKIE_NAME = "ySZL4SBB";
+	//整流回复姬冷却时间戳(毫秒)
+	public static volatile long rectifierCooldownUntil = 0L;
+
 	public static boolean INIT_CHECK_EDITION = false;
 	public static boolean INIT_CHECK_ANNOUNCE = false;
 	public static int manager_login_size=0;
