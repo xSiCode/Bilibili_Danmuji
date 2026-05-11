@@ -36,7 +36,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class HttpRoomData {
     private static Logger LOGGER = LogManager.getLogger(HttpRoomData.class);
-    private static Map<Long, Integer> pnScoreMap = loadPositiveWhiteNegativeBlackScores();
+    private static Map<Long, Integer> pnScoreMap = loadNegativeBlackPositiveWhiteScores();
 
     /**
      * 获取连接目标房间websocket端口 接口
@@ -79,7 +79,7 @@ public class HttpRoomData {
             LOGGER.error("未知错误,原因:" + jsonObject.getString("message"));
         }
 
-        pnScoreMap = loadPositiveWhiteNegativeBlackScores();
+        pnScoreMap = loadNegativeBlackPositiveWhiteScores();
 
         return conf;
     }
@@ -441,11 +441,11 @@ public class HttpRoomData {
     /**
      * 加载正白负黑表，返回 uid -> score 的映射
      */
-    private static Map<Long, Integer> loadPositiveWhiteNegativeBlackScores() {
+    private static Map<Long, Integer> loadNegativeBlackPositiveWhiteScores() {
         Map<Long, Integer> map = new HashMap<>();
         try {
             FileTools fileTools = new FileTools();
-            File file = new File(fileTools.getBaseJarPath(), "positiveWhite_negativeBlack_user.json");
+            File file = new File(fileTools.getBaseJarPath(), "负黑正白判定表.json");
             if (!file.exists()) return map;
             StringBuilder sb = new StringBuilder();
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
@@ -464,13 +464,13 @@ public class HttpRoomData {
                 }
             }
         } catch (Exception e) {
-            LOGGER.error("loadPositiveWhiteNegativeBlackScores error", e);
+            LOGGER.error("loadNegativeBlackPositiveWhiteScores error", e);
         }
         return map;
     }
 
     public static void reloadPnScoreMap() {
-        pnScoreMap = loadPositiveWhiteNegativeBlackScores();
+        pnScoreMap = loadNegativeBlackPositiveWhiteScores();
     }
 
     /**
