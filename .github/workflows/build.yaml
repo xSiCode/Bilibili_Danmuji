@@ -101,7 +101,7 @@ jobs:
         run: |
           # Spring Boot fat JAR 内嵌套 JAR 结构导致 jdeps 无法准确分析模块依赖，
           # 直接使用内嵌 Tomcat + WebSocket + Thymeleaf 所需的完整模块集合
-          MODS="java.base,java.desktop,java.management,java.naming,java.security.jgss,java.sql,java.xml,jdk.unsupported,java.instrument,java.compiler"
+          MODS="java.base,java.desktop,java.management,java.naming,java.security.jgss,java.sql,java.xml,jdk.unsupported,java.instrument,java.compiler,jdk.crypto.ec"
           echo "JRE modules: ${MODS}"
 
           jlink \
