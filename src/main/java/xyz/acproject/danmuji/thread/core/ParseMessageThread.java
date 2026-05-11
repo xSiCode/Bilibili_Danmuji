@@ -127,7 +127,7 @@ public class ParseMessageThread extends Thread {
                         continue;
                     }
                     cmd = parseCmd(cmd);
-                    LOGGER.info("cmd switch out: " + cmd);
+                    //LOGGER.info("cmd switch out: " + cmd);
                     switch (cmd) {
                         // 弹幕
                         case "DANMU_MSG":
@@ -1055,9 +1055,26 @@ public class ParseMessageThread extends Thread {
                                 }
                                 //欢迎进入直播间 + 观众记录
                                 if (msg_type == 1) {
+                                    String threadStr;
+                                    final MedalInfo _medal = interact.getFans_medal();
                                     if (getCenterSetConf().is_welcome_all()) {
-                                        stringBuilder.append(JodaTimeUtils.formatDateTime(System.currentTimeMillis())).append(":新的访客: ")
+                                        stringBuilder.append(new SimpleDateFormat("HH:mm:ss").format(System.currentTimeMillis()))
+                                                .append(" https://space.bilibili.com/")
+                                                .append(interact.getUid())
+                                                .append("/dynamic ")
                                                 .append(interact.getUname());
+
+                                        if (_medal != null) {
+                                            stringBuilder.append("[").append(_medal.getMedal_name())
+                                                    .append(" ").append(_medal.getMedal_level()).append("]");
+                                        }else {
+                                            stringBuilder.append(" [无勋章]");
+                                        }
+
+                                        threadStr = stringBuilder.toString();
+
+                                        stringBuilder.append("[新的访客]");
+
                                         if (getCenterSetConf().is_cmd()) {
                                             System.out.println(stringBuilder.toString());
                                         }
@@ -1070,114 +1087,17 @@ public class ParseMessageThread extends Thread {
                                             e.printStackTrace();
                                         }
                                         stringBuilder.delete(0, stringBuilder.length());
+                                    } else {
+                                        threadStr = "null";
                                     }
+                                    // followings.txt log
                                     if (getCenterSetConf().is_watcher_log()) {
-                                        final long _uid = interact.getUid();
-                                        final String _uname = interact.getUname();
-                                        String url = "https://space.bilibili.com/";
-                                        final MedalInfo _medal = interact.getFans_medal();
-                                        stringBuilder.append(new SimpleDateFormat("HH:mm:ss").format(System.currentTimeMillis()))
-                                                .append("  ").append(url).append(_uid).append("?name=").append(_uname);
-
-                                        if (_medal != null) {
-                                            stringBuilder.append(", 勋章:").append(_medal.getMedal_name())
-                                                    .append(" Lv.").append(_medal.getMedal_level());
-                                            if (_medal.getGuard_level() != null && _medal.getGuard_level() > 0) {
-                                                stringBuilder.append(", 舰长:")
-                                                        .append(ParseIndentityTools.parseGuard(_medal.getGuard_level()));
-                                            }
-                                        }
-
-                                        // 暂存基本信息，等异步获取详情后合并为一行写入
-                                        final String _basicInfo = stringBuilder.toString();
-                                        stringBuilder.delete(0, stringBuilder.length());
-
                                         // 异步获取用户详细信息 + 关注列表分析，避免阻塞主消息处理线程
                                         final long _follow_uid = interact.getUid();
                                         final String _follow_uname = interact.getUname();
                                         WATCHER_EXECUTOR.execute(() -> {
-                                                HttpRoomData.processFollowings(_follow_uid, _follow_uname);
+                                                HttpRoomData.processFollowings(_follow_uid, _follow_uname, threadStr);
                                                 });
-                                        WATCHER_EXECUTOR.execute(() -> {
-                                            try {
-                                                int score = 0;
-
-                                                JSONObject card = HttpUserData.httpGetUserCardInfo(_uid);
-                                                if (card != null) {
-                                                    StringBuilder detailSb = new StringBuilder(100);
-                                                    detailSb.append(_basicInfo);
-                                                    SelfTools.appendAt( detailSb, 100, String.valueOf("[详情]"));
-
-                                                    if (card.containsKey("follow_list_visible")) {
-                                                        if (card.getBoolean("follow_list_visible")){
-                                                            detailSb.append(" 关注列表:显示");
-                                                        }else {
-                                                            detailSb.append(" 关注列表:隐藏");
-                                                        }
-                                                    }
-
-                                                    Long attention =-1L;
-                                                    Long fans = -1L;
-                                                    Long archiveCount= -1L;
-                                                    if (card.containsKey("attention")) {
-                                                        attention = card.getLong("attention");
-                                                        detailSb.append("  , 关注:").append(attention);
-                                                    }
-                                                    if (card.containsKey("fans")) {
-                                                        fans = card.getLong("fans");
-                                                        detailSb.append("  , 粉丝:").append(fans);
-                                                    }
-                                                    if (card.containsKey("archive_count")) {
-                                                        archiveCount = card.getLong("archive_count");
-                                                        detailSb.append("  , 视频:").append(archiveCount);
-                                                    }
-
-
-                                                    if (attention != -1L && fans != -1L) {
-                                                        if (fans > 10_0000) {
-                                                            detailSb.append(" , 大博主：").append(fans / 10_0000);
-                                                        } else if (fans > 10000 && attention < 200 || archiveCount > 100) {
-                                                            detailSb.append(" , 博主：").append(fans / 10000);
-                                                        } else if (fans < 100 && attention > 3000) {
-                                                            detailSb.append(" , 人机");
-                                                        }
-                                                    }
-
-                                                    if (card.containsKey("level")) {
-                                                        detailSb.append(" , LV:").append(card.getInteger("level"));
-                                                    }else {
-                                                        detailSb.append(" , LV:无");
-                                                    }
-
-                                                    if (card.containsKey("official_title") && StringUtils.isNotBlank(card.getString("official_title"))) {
-                                                        detailSb.append(" , 认证:").append(card.getString("official_title"));
-                                                    }
-                                                    if (card.containsKey("vip_label") && StringUtils.isNotBlank(card.getString("vip_label"))) {
-                                                        detailSb.append(" , 会员:").append(card.getString("vip_label"));
-                                                    }
-                                                    if (card.containsKey("sign")) {
-                                                        detailSb.append(" , 签名:").append(card.getString("sign"));
-                                                    }else {
-                                                        detailSb.append(" , 签名:无");
-                                                    }
-
-                                                    if (PublicDataConf.watcherLogThread != null && !PublicDataConf.watcherLogThread.FLAG) {
-                                                        PublicDataConf.watcherLogString.offer(detailSb.toString());
-                                                    }
-                                                } else {
-                                                    // 获取详情失败时，至少写入基本信息
-                                                    if (PublicDataConf.watcherLogThread != null && !PublicDataConf.watcherLogThread.FLAG) {
-                                                        PublicDataConf.watcherLogString.offer(_basicInfo);
-                                                    }
-                                                }
-                                            } catch (Exception e) {
-                                                LOGGER.debug("获取用户详情失败:{}", e.getMessage());
-                                                // 异常时也写入基本信息，避免丢失记录
-                                                if (PublicDataConf.watcherLogThread != null && !PublicDataConf.watcherLogThread.FLAG) {
-                                                    PublicDataConf.watcherLogString.offer(_basicInfo);
-                                                }
-                                            }
-                                        });
                                     }
                                 }
                                 //欢迎感谢
@@ -1237,7 +1157,7 @@ public class ParseMessageThread extends Thread {
                         case "WATCHED_CHANGE":
                             //{"cmd":"WATCHED_CHANGE","data":{"num":184547,"text_small":"18.4万","text_large":"18.4万人看过"}}
                             PublicDataConf.ROOM_WATCHER = JSONObject.parseObject(jsonObject.getString("data")).getLong("num");
-//                            LOGGER.info("多少人观看过:::" + message);
+                            LOGGER.info("多少人观看过:::" + message);
                             break;
                         case "STOP_LIVE_ROOM_LIST":
                             //					LOGGER.info("直播间关闭集合推送:::" + message);

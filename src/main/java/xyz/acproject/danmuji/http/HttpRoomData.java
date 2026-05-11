@@ -1,20 +1,16 @@
 package xyz.acproject.danmuji.http;
 
-import cn.hutool.core.util.URLUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.tomcat.util.security.MD5Encoder;
 import org.springframework.util.CollectionUtils;
-import org.springframework.util.DigestUtils;
 import xyz.acproject.danmuji.conf.PublicDataConf;
 import xyz.acproject.danmuji.entity.room_data.*;
 import xyz.acproject.danmuji.entity.server_data.Conf;
 import xyz.acproject.danmuji.entity.user_data.UserNav;
-import xyz.acproject.danmuji.entity.view.RoomGift;
 import xyz.acproject.danmuji.tools.CurrencyTools;
 import xyz.acproject.danmuji.tools.file.FileTools;
 import xyz.acproject.danmuji.tools.file.LogFileTools;
@@ -24,8 +20,6 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
-import java.nio.charset.Charset;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -378,12 +372,11 @@ public class HttpRoomData {
     /**
      * 处理用户关注列表：判断可见性，输出结果，如果可见且有关注数据则写入文件
      */
-    public static long processFollowings(long vmid, String uname) {
+    public static void processFollowings(long vmid, String uname , String threadStr) {
         JSONObject firstPage = httpGetFollowings(vmid, 1, 50);
-        StringBuilder logSb = new StringBuilder(80);
+        StringBuilder logSb = new StringBuilder(110);
 
-        logSb.append(new SimpleDateFormat("HH:mm:ss").format(System.currentTimeMillis()))
-                .append("  https://space.bilibili.com/").append(vmid).append("/dynamic");
+        logSb.append(threadStr) ;
 
         short code = firstPage != null ? firstPage.getShort("code") : -1;
         JSONObject data = firstPage != null && code == 0 ? firstPage.getJSONObject("data") : null;
@@ -397,10 +390,8 @@ public class HttpRoomData {
         // 是否可见，是否在黑白名单
         if (firstPage == null || code != 0 || data == null || total == 0) {
             LOGGER.info("[" + uname + "] 关注：请求失败或无数据");
-            logSb.append("?关注列表不可见")
-                    .append("&name=").append(uname);
 
-            SelfTools.appendAt(logSb, 130, "[成分]关注列表不可见");
+            SelfTools.appendAt(logSb, 110, "[成分:不可见]");
         } else {
 
             // 当前观众就在黑白名单里
@@ -423,25 +414,23 @@ public class HttpRoomData {
                     }
                 }
             }
-            if (totalScore > 0) {
-                SelfTools.appendAt(logSb, 140, "[成分]关注列表自己人偏多");
-            } else if (totalScore < 0) {
-                logSb.append("?关注数=").append(total)
-                        .append("&匹配数=").append(matchedList.size())
-                        .append("&匹配分数=").append(totalScore)
-                        .append("&name=").append(uname);
 
-                SelfTools.appendAt(logSb, 130, "[成分]关注列表野猪皮偏多");
+            logSb.append("[分数:").append(totalScore).append("]");
+
+            if (totalScore > 0) {
+                SelfTools.appendAt(logSb, 120, "[成分:己方偏多]");
+            } else if (totalScore < 0) {
+                SelfTools.appendAt(logSb, 110, "[成分:野猪偏多]");
             } else {
-                SelfTools.appendAt(logSb, 140, "[成分]关注列表可见，未发现异常,需其他人再次确认");
+                SelfTools.appendAt(logSb, 115, "[成分:需要确认]");
             }
-            logSb.append(" 黑白名单列表:").append(matchedList.toJSONString())
-                    .append("  ||>>  🍉🍉  关注列表:").append(followingsList.toJSONString());
+            logSb.append(" [比例:").append(matchedList.size()).append("/").append(total) .append("]")
+                    .append(",黑白名单:").append(matchedList.toJSONString())
+                    .append(" 🍉🍉 关注列表:").append(followingsList.toJSONString());
         }
 
         //通过日志查看后手动打开浏览器
         LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
-        return total;
     }
 
     /**
