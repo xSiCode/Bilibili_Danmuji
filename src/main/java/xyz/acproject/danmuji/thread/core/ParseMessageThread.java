@@ -12,6 +12,8 @@ import xyz.acproject.danmuji.component.black.BlackParseComponent;
 import xyz.acproject.danmuji.conf.CacheConf;
 import xyz.acproject.danmuji.conf.CenterSetConf;
 import xyz.acproject.danmuji.conf.PublicDataConf;
+import xyz.acproject.danmuji.conf.set.GazeWelcomeSet;
+import xyz.acproject.danmuji.conf.set.GazeWelcomeSetConf;
 import xyz.acproject.danmuji.conf.set.RectifierSetConf;
 import xyz.acproject.danmuji.conf.set.ThankGiftRuleSet;
 import xyz.acproject.danmuji.controller.DanmuWebsocket;
@@ -961,6 +963,7 @@ public class ParseMessageThread extends Thread {
                             setService.holdSet(getCenterSetConf());
                             PublicDataConf.IS_ROOM_POPULARITY = false;
                             LOGGER.info("直播准备中(或者是关闭直播):::" + message);
+
                             holdLiveStatusMsg("preparing");
                             break;
 
@@ -987,6 +990,10 @@ public class ParseMessageThread extends Thread {
                                 interact.setRoomid(interactWordV2.getRoomid());
                                 interact.setTimestamp(interactWordV2.getTimestamp());
                                 interact.setScore(interactWordV2.getScore());
+
+                                final long _follow_uid = interact.getUid();
+                                final String _follow_uname = interact.getUname();
+
                                 if (interactWordV2.hasFansMedal()) {
                                     // LOGGER.info("INTERACT_WORD_V2_PARSE_FANS:" + JsonFormat.printer().print(interactWordV2));
                                     MedalInfo medalInfo = new MedalInfo();
@@ -1006,8 +1013,9 @@ public class ParseMessageThread extends Thread {
                                 //控制台打印处理
                                 if (getCenterSetConf().is_follow_dm()) {
                                     if (msg_type == 2) {
-                                        stringBuilder.append(new SimpleDateFormat("HH:mm:ss").format(System.currentTimeMillis())).append(" [直接关注] ")
-                                                .append(interact.getUname());
+                                        stringBuilder.append(new SimpleDateFormat("HH:mm:ss").format(System.currentTimeMillis()))
+                                                .append(" [直接关注] ")
+                                                .append(_follow_uname);
                                         //控制台打印
                                         if (getCenterSetConf().is_cmd()) {
                                             System.out.println(stringBuilder.toString());
@@ -1053,11 +1061,15 @@ public class ParseMessageThread extends Thread {
                                 if (msg_type == 1) {
                                     final MedalInfo _medal = interact.getFans_medal();
 
-                                    stringBuilder.append(new SimpleDateFormat("HH:mm:ss").format(System.currentTimeMillis())).append(" [新的访客] ")
-                                            .append(interact.getUname());
+                                    stringBuilder.append(new SimpleDateFormat("HH:mm:ss").format(System.currentTimeMillis()))
+                                            .append(" [新的访客] ")
+                                            .append("https://space.bilibili.com/")
+                                            .append(_follow_uid)
+                                            .append("?dynamic&")
+                                            .append(_follow_uname);
 
                                     if (_medal != null) {
-                                        stringBuilder.append("[").append(_medal.getMedal_name())
+                                        stringBuilder.append(" [").append(_medal.getMedal_name())
                                                 .append(" ").append(_medal.getMedal_level()).append("]");
                                     }else {
                                         stringBuilder.append(" [无勋章]");
@@ -1079,12 +1091,14 @@ public class ParseMessageThread extends Thread {
                                     // followings.txt log
                                     if (getCenterSetConf().is_watcher_log()) {
                                         // 异步获取用户详细信息 + 关注列表分析，避免阻塞主消息处理线程
-                                        final long _follow_uid = interact.getUid();
-                                        final String _follow_uname = interact.getUname();
                                         WATCHER_EXECUTOR.execute(() -> {
                                                 HttpRoomData.processFollowings(_follow_uid, _follow_uname);
                                                 });
                                     }
+                                }
+                                //欢迎凝视姬
+                                if (msg_type == 1) {
+                                    handleGazeWelcome(interact);
                                 }
                                 //欢迎感谢
                                 boolean welcomeHandledByRectifier = false;
@@ -1738,6 +1752,27 @@ public class ParseMessageThread extends Thread {
         }
         PublicDataConf.rectifierCooldownUntil = now + (getCenterSetConf().getRectifier().getInterval() * 1000L);
         return true;
+    }
+
+    private void handleGazeWelcome(Interact interact) {
+        GazeWelcomeSetConf gazeConf = getCenterSetConf().getGaze_welcome();
+        if (gazeConf == null || !gazeConf.is_open() || interact == null) return;
+        if (gazeConf.getGazeWelcomeSets() == null || gazeConf.getGazeWelcomeSets().isEmpty()) return;
+        String uname = interact.getUname();
+        if (StringUtils.isBlank(uname)) return;
+        for (GazeWelcomeSet item : gazeConf.getGazeWelcomeSets()) {
+            if (item.is_open() && uname.equals(item.getUsername())) {
+                String text = item.getText();
+                if (StringUtils.isNotBlank(text)) {
+                    text = text.replace("%uNames%", uname);
+                    ThreadComponent tc = SpringUtils.getBean(ThreadComponent.class);
+                    tc.startSendBarrageThread();
+                    if (PublicDataConf.sendBarrageThread != null && !PublicDataConf.sendBarrageThread.FLAG) {
+                        PublicDataConf.barrageString.offer(text);
+                    }
+                }
+            }
+        }
     }
 
     private void sendRectifierBarrage(String text) {

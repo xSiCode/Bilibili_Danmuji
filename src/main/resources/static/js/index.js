@@ -728,6 +728,20 @@ $(document).on('click', '.timer-copy-btn', function () {
         showMessage("已复制到剪贴板!", "success", 2);
     }
 });
+// 欢迎凝视姬
+$(document).on('click', '.gazeWelcome-add-btn', function () {
+    method.addGazeWelcomeRow();
+});
+$(document).on('click', '.gazeWelcome-delete-btn', function () {
+    $(this).closest('li').remove();
+    if ($(".auto_save_set").is(':checked')) {
+        method.saveSet();
+    }
+});
+$(document).on('click', '.gazeWelcome-send-btn', function () {
+    var text = $(this).closest('li').find('.gazeWelcome-text').val();
+    method.sendLiveStatusBarrage(text);
+});
 // 弹幕暂存姬
 $(document).on('click', '.danmakuStore-add-btn', function () {
     method.addDanmakuStoreRow();
@@ -1179,6 +1193,19 @@ const method = {
                 return (a.time || "00:00").localeCompare(b.time || "00:00");
             });
         }
+        set.gaze_welcome = {};
+        set.gaze_welcome.is_open = $(".gazeWelcome_is_open").is(':checked');
+        set.gaze_welcome.gazeWelcomeSets = [];
+        if ($("#gazeWelcome-ul li").length > 0) {
+            var gazeSet = {};
+            $("#gazeWelcome-ul li").each(function (i, v) {
+                gazeSet.is_open = $(this).find(".gazeWelcome-row-open").is(':checked');
+                gazeSet.username = $(this).find(".gazeWelcome-username").val();
+                gazeSet.text = $(this).find(".gazeWelcome-text").val();
+                set.gaze_welcome.gazeWelcomeSets.push(gazeSet);
+                gazeSet = {};
+            });
+        }
         set.danmaku_store.items = [];
         if ($("#danmakuStore-ul li").length > 0) {
             $("#danmakuStore-ul li").each(function (i, v) {
@@ -1439,6 +1466,41 @@ const method = {
             $ul.append(li);
         });
     },
+    addGazeWelcomeRow: function (username, text, isOpen) {
+        var uname = username || '';
+        var txt = text || '';
+        var checked = isOpen ? 'checked' : '';
+        var li = '<li style="margin-bottom:5px">' +
+            '<div class="row align-items-center" style="--bs-gutter-x:5px">' +
+            '<div class="col-auto">' +
+            '<label class="form-check-label">' +
+            '<input class="form-check-input gazeWelcome-row-open live-save" type="checkbox" ' + checked + '>' +
+            '</label>' +
+            '</div>' +
+            '<div class="col-auto">' +
+            '<input class="form-control form-control-sm gazeWelcome-username live-save" type="text" placeholder="用户名" value="' + method._escapeHtml(uname) + '" style="width:130px">' +
+            '</div>' +
+            '<div class="col">' +
+            '<input class="form-control form-control-sm gazeWelcome-text live-save" placeholder="欢迎弹幕内容，支持%uNames%等变量" value="' + method._escapeHtml(txt) + '">' +
+            '</div>' +
+            '<div class="col-auto">' +
+            '<button class="btn btn-sm btn-primary gazeWelcome-send-btn">发送</button>' +
+            '</div>' +
+            '<div class="col-auto">' +
+            '<button class="btn btn-sm btn-danger gazeWelcome-delete-btn">删除</button>' +
+            '</div>' +
+            '</div>' +
+            '</li>';
+        $("#gazeWelcome-ul").append(li);
+    },
+    renderGazeWelcomeRows: function (gazeWelcomeSets) {
+        $("#gazeWelcome-ul").empty();
+        if (!gazeWelcomeSets) return;
+        for (var i = 0; i < gazeWelcomeSets.length; i++) {
+            var item = gazeWelcomeSets[i];
+            method.addGazeWelcomeRow(item.username, item.text, item.is_open);
+        }
+    },
     _escapeHtml: function (str) {
         if (!str) return '';
         return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -1646,6 +1708,12 @@ const method = {
                         return (a.time || "00:00").localeCompare(b.time || "00:00");
                     });
                     method.renderTimerRows(set.timer.timerSets);
+                }
+            }
+            if (set.gaze_welcome) {
+                $(".gazeWelcome_is_open").prop('checked', set.gaze_welcome.is_open);
+                if (set.gaze_welcome.gazeWelcomeSets) {
+                    method.renderGazeWelcomeRows(set.gaze_welcome.gazeWelcomeSets);
                 }
             }
             if (set.danmaku_store && set.danmaku_store.items) {
