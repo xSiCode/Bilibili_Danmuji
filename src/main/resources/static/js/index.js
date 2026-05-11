@@ -2370,15 +2370,15 @@ const method = {
                 ? '<span class="text-success">✓</span>'
                 : '<span class="text-danger">✗</span>';
             var $tr = $("<tr>");
-            $tr.append($("<td>").html(nameHtml));
-            $tr.append($("<td>").text(method.fmtNum(u.fans)));
-            $tr.append($("<td>").text(method.fmtNum(u.attention)));
-            $tr.append($("<td>").text(method.fmtNum(u.likes)));
-            $tr.append($("<td>").text(method.fmtNum(u.play_count)));
-            $tr.append($("<td>").text(u.archive_count || '0'));
-            $tr.append($("<td>").html(visibleIcon));
-            $tr.append($("<td>").text(method.fmtDate(u.latest_dynamic_date)));
-            $tr.append($("<td>").html(selectBtn));
+            $tr.append($("<td>").addClass("br-col-user").html(nameHtml));
+            $tr.append($("<td>").addClass("br-col-fans").text(method.fmtNum(u.fans)));
+            $tr.append($("<td>").addClass("br-col-attention").text(method.fmtNum(u.attention)));
+            $tr.append($("<td>").addClass("br-col-likes").text(method.fmtNum(u.likes)));
+            $tr.append($("<td>").addClass("br-col-play").text(method.fmtNum(u.play_count)));
+            $tr.append($("<td>").addClass("br-col-archive").text(u.archive_count || '0'));
+            $tr.append($("<td>").addClass("br-col-visible").html(visibleIcon));
+            $tr.append($("<td>").addClass("br-col-dynamic").text(method.fmtDate(u.latest_dynamic_date)));
+            $tr.append($("<td>").addClass("br-col-action").html(selectBtn));
             if (isTop) {
                 $tr.addClass("table-primary");
             }

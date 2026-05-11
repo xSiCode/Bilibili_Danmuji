@@ -20,6 +20,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -372,11 +373,15 @@ public class HttpRoomData {
     /**
      * 处理用户关注列表：判断可见性，输出结果，如果可见且有关注数据则写入文件
      */
-    public static void processFollowings(long vmid, String uname , String threadStr) {
+    public static void processFollowings(long vmid, String uname) {
         JSONObject firstPage = httpGetFollowings(vmid, 1, 50);
-        StringBuilder logSb = new StringBuilder(105);
+        StringBuilder logSb = new StringBuilder(100);
 
-        logSb.append(threadStr) ;
+        logSb.append(new SimpleDateFormat("HH:mm:ss").format(System.currentTimeMillis()))
+                .append(" https://space.bilibili.com/")
+                .append(vmid)
+                .append("/dynamic&")
+                .append(uname);
 
         short code = firstPage != null ? firstPage.getShort("code") : -1;
         JSONObject data = firstPage != null && code == 0 ? firstPage.getJSONObject("data") : null;

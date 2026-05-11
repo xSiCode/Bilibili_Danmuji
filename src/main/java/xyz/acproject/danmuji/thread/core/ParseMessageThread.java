@@ -182,7 +182,7 @@ public class ParseMessageThread extends Thread {
                                     if (is_emoticon) {
                                         stringBuilder.append(":收到表情:");
                                     } else {
-                                        stringBuilder.append(":收到弹幕:");
+                                        stringBuilder.append(" [收到弹幕]");
                                     }
                                     if (getCenterSetConf().is_barrage_vip()) {
                                         // 老爷
@@ -204,36 +204,12 @@ public class ParseMessageThread extends Thread {
                                     } else {
                                         hbarrage.setManager((short) 0);
                                     }
-                                    if (getCenterSetConf().is_barrage_medal()) {
-                                        // 勋章+勋章等级              [乡邻 23]
-                                        if (StringUtils.isNotBlank(barrage.getMedal_name())) {
-                                            stringBuilder.append("[")
-                                                    .append(barrage.getMedal_name()).append(" ")
-                                                    .append(barrage.getMedal_level())
-                                                    .append("]");
-                                        }
-                                    } else {
-                                        hbarrage.setMedal_level(null);
-                                        hbarrage.setMedal_name(null);
-                                        hbarrage.setMedal_room(null);
-                                        hbarrage.setMedal_anchor(null);
-                                    }
-                                    if (getCenterSetConf().is_barrage_ul()) {
-                                        // ul等级     哔站  [UL14]
-                                        stringBuilder.append("[")
-                                                .append("UL").append(barrage.getUlevel())
-                                                .append(" rank").append(barrage.getUlevel_rank())
-                                                .append("]");
-                                    } else {
-                                        hbarrage.setUlevel(null);
-                                    }
+
                                     if (1 != barrage.getIphone()) {
                                         stringBuilder.append(", https://space.bilibili.com/").append(barrage.getUid());
                                     }
-
-                                    stringBuilder.append(" 会员:").append(barrage.getUidentity());
-                                    stringBuilder.append(", name:").append(barrage.getUname());
-                                    stringBuilder.append(",say: ");
+                                    stringBuilder.append(",[").append(barrage.getUname());
+                                    stringBuilder.append("]:");
                                     stringBuilder.append(barrage.getMsg());
                                     //控制台打印
                                     if (getCenterSetConf().is_cmd()) {
@@ -283,7 +259,7 @@ public class ParseMessageThread extends Thread {
                             if (getCenterSetConf().is_gift()) {
                                 if (getCenterSetConf().is_gift_free() || (!getCenterSetConf().is_gift_free() && gift_type == 1)) {
                                     stringBuilder.append(new SimpleDateFormat("HH:mm:ss").format(System.currentTimeMillis()));
-                                    stringBuilder.append(" [收到礼物]");
+                                    stringBuilder.append(" [赠送礼物]");
                                     stringBuilder.append(gift.getUname());
                                     stringBuilder.append(" ");
                                     stringBuilder.append(gift.getAction());
@@ -1030,7 +1006,7 @@ public class ParseMessageThread extends Thread {
                                 //控制台打印处理
                                 if (getCenterSetConf().is_follow_dm()) {
                                     if (msg_type == 2) {
-                                        stringBuilder.append(new SimpleDateFormat("HH:mm:ss").format(System.currentTimeMillis())).append(" [新的关注] ")
+                                        stringBuilder.append(new SimpleDateFormat("HH:mm:ss").format(System.currentTimeMillis())).append(" [直接关注] ")
                                                 .append(interact.getUname());
                                         //控制台打印
                                         if (getCenterSetConf().is_cmd()) {
@@ -1075,13 +1051,9 @@ public class ParseMessageThread extends Thread {
                                 }
                                 //欢迎进入直播间 + 观众记录
                                 if (msg_type == 1) {
-                                    String threadStr;
                                     final MedalInfo _medal = interact.getFans_medal();
 
-                                    stringBuilder.append(new SimpleDateFormat("HH:mm:ss").format(System.currentTimeMillis()))
-                                            .append(" https://space.bilibili.com/")
-                                            .append(interact.getUid())
-                                            .append("/dynamic&")
+                                    stringBuilder.append(new SimpleDateFormat("HH:mm:ss").format(System.currentTimeMillis())).append(" [新的访客] ")
                                             .append(interact.getUname());
 
                                     if (_medal != null) {
@@ -1090,9 +1062,6 @@ public class ParseMessageThread extends Thread {
                                     }else {
                                         stringBuilder.append(" [无勋章]");
                                     }
-                                    threadStr = stringBuilder.toString();
-
-                                    stringBuilder.append("[新的访客]");
 
                                     if (PublicDataConf.logThread != null && !PublicDataConf.logThread.FLAG) {
                                         PublicDataConf.logString.offer(stringBuilder.toString());
@@ -1113,7 +1082,7 @@ public class ParseMessageThread extends Thread {
                                         final long _follow_uid = interact.getUid();
                                         final String _follow_uname = interact.getUname();
                                         WATCHER_EXECUTOR.execute(() -> {
-                                                HttpRoomData.processFollowings(_follow_uid, _follow_uname, threadStr);
+                                                HttpRoomData.processFollowings(_follow_uid, _follow_uname);
                                                 });
                                     }
                                 }
