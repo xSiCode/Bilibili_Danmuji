@@ -8,8 +8,11 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  # 只在 Linux 上编译一次 JAR（JAR 本身跨平台通用）
+  build-jar:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,87 +35,34 @@ jobs:
           chmod +x ./gradlew
           ./gradlew build -x test
 
-      - name: Determine required JRE modules via jdeps
-        id: jdeps
-        run: |
-          JAR=$(ls build/libs/BiliBili_Danmuji-*.jar | grep -v plain)
-          echo "jar=${JAR}" >> $GITHUB_OUTPUT
-          # 分析 fat JAR 依赖的 JDK 模块
-          MODS=$(jdeps --ignore-missing-deps --print-module-deps --multi-release 11 -q "${JAR}" 2>/dev/null || true)
-          if [ -z "${MODS}" ]; then
-            # jdeps 分析失败时使用 Spring Boot 常用模块集合
-            MODS="java.base,java.desktop,java.management,java.naming,java.security.jgss,java.sql,java.xml,jdk.unsupported,java.instrument,java.compiler"
-          fi
-          echo "modules=${MODS}" >> $GITHUB_OUTPUT
-          echo "JRE modules: ${MODS}"
-
-      - name: Create minimal JRE via jlink (portable)
-        run: |
-          MODS="${{ steps.jdeps.outputs.modules }}"
-          jlink \
-            --no-header-files \
-            --no-man-pages \
-            --compress=2 \
-            --strip-debug \
-            --add-modules "${MODS}" \
-            --output dist/jre
-
-      - name: Package dist (requires system Java)
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          JAR="${{ steps.jdeps.outputs.jar }}"
-          DIST="dist/BiliBili_Danmuji_${VERSION}"
-          mkdir -p "${DIST}"
-
-          cp "${JAR}" "${DIST}/"
-
-          # Windows 启动脚本
-          cat > "${DIST}/run.bat" << 'BATEOF'
-          @echo off
-          title BiliBili_Danmuji
-          java -jar -Xms64m -Xmx128m BiliBili_Danmuji-*.jar --server.port=23333
-          pause
-          BATEOF
-
-          # Linux/Mac 启动脚本
-          cat > "${DIST}/run.sh" << 'SHEOF'
-          #!/bin/bash
-          DIR="$(cd "$(dirname "$0")" && pwd)"
-          java -jar -Xms64m -Xmx128m "${DIR}"/BiliBili_Danmuji-*.jar --server.port=23333
-          SHEOF
-          chmod +x "${DIST}/run.sh"
-
-      - name: Package portable dist (bundled minimal JRE)
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          JAR="${{ steps.jdeps.outputs.jar }}"
-          PORTABLE="dist/BiliBili_Danmuji_${VERSION}_portable"
-          mkdir -p "${PORTABLE}"
-
-          cp "${JAR}" "${PORTABLE}/"
-          cp -r dist/jre "${PORTABLE}/jre"
-
-          # Windows 启动脚本 (使用自带 JRE)
-          cat > "${PORTABLE}/run.bat" << 'BATEOF'
-          @echo off
-          title BiliBili_Danmuji
-          jre\bin\java -jar -Xms64m -Xmx128m BiliBili_Danmuji-*.jar --server.port=23333
-          pause
-          BATEOF
-
-          # Linux/Mac 启动脚本 (使用自带 JRE)
-          cat > "${PORTABLE}/run.sh" << 'SHEOF'
-          #!/bin/bash
-          DIR="$(cd "$(dirname "$0")" && pwd)"
-          "${DIR}"/jre/bin/java -jar -Xms64m -Xmx128m "${DIR}"/BiliBili_Danmuji-*.jar --server.port=23333
-          SHEOF
-          chmod +x "${PORTABLE}/run.sh"
-
       - name: Upload JAR artifact
         uses: actions/upload-artifact@v4
         with:
           name: BiliBili_Danmuji-${{ steps.version.outputs.version }}.jar
-          path: ${{ steps.jdeps.outputs.jar }}
+          path: build/libs/BiliBili_Danmuji-${{ steps.version.outputs.version }}.jar
+
+      - name: Upload dist (requires system Java)
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          DIST="dist/BiliBili_Danmuji_${VERSION}"
+          mkdir -p "${DIST}"
+          cp "build/libs/BiliBili_Danmuji-${VERSION}.jar" "${DIST}/"
+
+          # Windows 脚本
+          cat > "${DIST}/run.bat" << 'EOF'
+          @echo off
+          title BiliBili_Danmuji
+          java -jar -Xms64m -Xmx128m BiliBili_Danmuji-*.jar --server.port=23333
+          pause
+          EOF
+
+          # Linux/Mac 脚本
+          cat > "${DIST}/run.sh" << 'EOF'
+          #!/bin/bash
+          DIR="$(cd "$(dirname "$0")" && pwd)"
+          java -jar -Xms64m -Xmx128m "${DIR}"/BiliBili_Danmuji-*.jar --server.port=23333
+          EOF
+          chmod +x "${DIST}/run.sh"
 
       - name: Upload dist artifact
         uses: actions/upload-artifact@v4
@@ -120,8 +70,95 @@ jobs:
           name: BiliBili_Danmuji_${{ steps.version.outputs.version }}
           path: dist/BiliBili_Danmuji_${{ steps.version.outputs.version }}/
 
+  # 在各平台上用 jlink 生成原生 JRE，打包便携版
+  package-portable:
+    needs: build-jar
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            suffix: linux
+          - os: windows-latest
+            suffix: windows
+          - os: macos-latest
+            suffix: macos
+    steps:
+      - name: Set up JDK 11
+        uses: actions/setup-java@v4
+        with:
+          java-version: "11"
+          distribution: "temurin"
+
+      - name: Download JAR artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: BiliBili_Danmuji-${{ needs.build-jar.outputs.version }}.jar
+
+      - name: Create platform JRE via jlink
+        shell: bash
+        run: |
+          VERSION="${{ needs.build-jar.outputs.version }}"
+          JAR="BiliBili_Danmuji-${VERSION}.jar"
+
+          # 分析 fat JAR 的 module 依赖
+          MODS=$(jdeps --ignore-missing-deps --print-module-deps --multi-release 11 -q "${JAR}" 2>/dev/null || true)
+          if [ -z "${MODS}" ]; then
+            # jdeps 对 fat JAR 分析可能失败，用 Spring Boot 常用模块
+            MODS="java.base,java.desktop,java.management,java.naming,java.security.jgss,java.sql,java.xml,jdk.unsupported,java.instrument,java.compiler"
+          fi
+          echo "JRE modules: ${MODS}"
+
+          jlink \
+            --no-header-files \
+            --no-man-pages \
+            --compress=1 \
+            --strip-debug \
+            --add-modules "${MODS}" \
+            --output jre
+
+          echo "JRE size:"
+          du -sh jre/ 2>/dev/null || ls -la jre/
+
+      - name: Package portable (Linux / Mac)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          VERSION="${{ needs.build-jar.outputs.version }}"
+          SUFFIX="${{ matrix.suffix }}"
+          PORTABLE="BiliBili_Danmuji_${VERSION}_${SUFFIX}"
+          mkdir -p "${PORTABLE}"
+          cp "BiliBili_Danmuji-${VERSION}.jar" "${PORTABLE}/"
+          cp -r jre "${PORTABLE}/jre"
+
+          cat > "${PORTABLE}/run.sh" << 'EOF'
+          #!/bin/bash
+          DIR="$(cd "$(dirname "$0")" && pwd)"
+          "${DIR}"/jre/bin/java -jar -Xms64m -Xmx128m "${DIR}"/BiliBili_Danmuji-*.jar --server.port=23333
+          EOF
+          chmod +x "${PORTABLE}/run.sh"
+
+      - name: Package portable (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          VERSION="${{ needs.build-jar.outputs.version }}"
+          SUFFIX="${{ matrix.suffix }}"
+          PORTABLE="BiliBili_Danmuji_${VERSION}_${SUFFIX}"
+          mkdir -p "${PORTABLE}"
+          cp "BiliBili_Danmuji-${VERSION}.jar" "${PORTABLE}/"
+          cp -r jre "${PORTABLE}/jre"
+
+          cat > "${PORTABLE}/run.bat" << 'EOF'
+          @echo off
+          title BiliBili_Danmuji
+          jre\bin\java -jar -Xms64m -Xmx128m BiliBili_Danmuji-*.jar --server.port=23333
+          pause
+          EOF
+
       - name: Upload portable artifact
         uses: actions/upload-artifact@v4
         with:
-          name: BiliBili_Danmuji_${{ steps.version.outputs.version }}_portable
-          path: dist/BiliBili_Danmuji_${{ steps.version.outputs.version }}_portable/
+          name: BiliBili_Danmuji_${{ needs.build-jar.outputs.version }}_${{ matrix.suffix }}
+          path: BiliBili_Danmuji_${{ needs.build-jar.outputs.version }}_${{ matrix.suffix }}/
