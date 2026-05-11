@@ -2182,7 +2182,7 @@ const method = {
     },
     loadPNList: function () {
         $.ajax({
-            url: '../getPositiveWhiteNegativeBlack',
+            url: '../getNegativeBlackPositiveWhite',
             async: false,
             cache: false,
             type: 'GET',
@@ -2256,10 +2256,10 @@ const method = {
             }
         }
         pnData.list = list;
-        var payload = { type: "positiveWhite_negativeBlack_user", followings_list: list };
+        var payload = { type: "负黑正白判定表", followings_list: list };
         var result = 0;
         $.ajax({
-            url: '../savePositiveWhiteNegativeBlack',
+            url: '../saveNegativeBlackPositiveWhite',
             async: false,
             cache: false,
             type: 'POST',

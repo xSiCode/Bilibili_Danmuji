@@ -208,7 +208,7 @@ public class ParseMessageThread extends Thread {
                                     if (1 != barrage.getIphone()) {
                                         stringBuilder.append(", https://space.bilibili.com/").append(barrage.getUid());
                                     }
-                                    stringBuilder.append(",[").append(barrage.getUname());
+                                    stringBuilder.append("[").append(barrage.getUname());
                                     stringBuilder.append("]:");
                                     stringBuilder.append(barrage.getMsg());
                                     //控制台打印

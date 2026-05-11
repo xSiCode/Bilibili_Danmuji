@@ -630,14 +630,14 @@ public class WebController {
     }
 
     @ResponseBody
-    @GetMapping(value = "/getPositiveWhiteNegativeBlack")
-    public Response<?> getPositiveWhiteNegativeBlack(HttpServletRequest req) {
+    @GetMapping(value = "/getNegativeBlackPositiveWhite")
+    public Response<?> getNegativeBlackPositiveWhite(HttpServletRequest req) {
         try {
             FileTools fileTools = new FileTools();
-            File file = new File(fileTools.getBaseJarPath(), "positiveWhite_negativeBlack_user.json");
+            File file = new File(fileTools.getBaseJarPath(), "负黑正白判定表.json");
             if (!file.exists()) {
                 JSONObject empty = new JSONObject();
-                empty.put("type", "positiveWhite_negativeBlack_user");
+                empty.put("type", "负黑正白判定表");
                 empty.put("followings_list", new com.alibaba.fastjson.JSONArray());
                 return Response.success(empty, req);
             }
@@ -651,22 +651,22 @@ public class WebController {
             JSONObject jsonObject = JSONObject.parseObject(sb.toString());
             return Response.success(jsonObject, req);
         } catch (Exception e) {
-            LOGGER.error("getPositiveWhiteNegativeBlack error", e);
+            LOGGER.error("getNegativeBlackPositiveWhite error", e);
             return Response.success(null, req);
         }
     }
 
     @ResponseBody
-    @PostMapping(value = "/savePositiveWhiteNegativeBlack")
-    public Response<?> savePositiveWhiteNegativeBlack(@RequestParam("data") String data, HttpServletRequest req) {
+    @PostMapping(value = "/saveNegativeBlackPositiveWhite")
+    public Response<?> saveNegativeBlackPositiveWhite(@RequestParam("data") String data, HttpServletRequest req) {
         try {
             FileTools fileTools = new FileTools();
-            File file = new File(fileTools.getBaseJarPath(), "positiveWhite_negativeBlack_user.json");
+            File file = new File(fileTools.getBaseJarPath(), "负黑正白判定表.json");
             JSONObject inputData = JSONObject.parseObject(data);
             com.alibaba.fastjson.JSONArray inputList = inputData.getJSONArray("followings_list");
 
             JSONObject result = new JSONObject();
-            result.put("type", "positiveWhite_negativeBlack_user");
+            result.put("type", "负黑正白判定表");
             com.alibaba.fastjson.JSONArray resultList = new com.alibaba.fastjson.JSONArray();
             Set<Long> seenUids = new HashSet<>();
 
@@ -693,7 +693,7 @@ public class WebController {
 
             return Response.success(0, req);
         } catch (Exception e) {
-            LOGGER.error("savePositiveWhiteNegativeBlack error", e);
+            LOGGER.error("saveNegativeBlackPositiveWhite error", e);
             return Response.success(1, req);
         }
     }

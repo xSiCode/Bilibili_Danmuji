@@ -267,6 +267,9 @@ public class ParseSetStatusTools {
 			if (centerSetConf.getReply() == null) {
 				centerSetConf.setReply(new AutoReplySetConf());
 			}
+			if (centerSetConf.getClock_in() == null) {
+				centerSetConf.setClock_in(new ClockInSetConf());
+			}
 			if (centerSetConf.getWelcome() == null) {
 				centerSetConf.setWelcome(new ThankWelcomeSetConf());
 			}
