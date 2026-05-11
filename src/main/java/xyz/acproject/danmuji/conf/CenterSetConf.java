@@ -152,6 +152,9 @@ public class CenterSetConf implements Serializable {
     //拉黑姬
     @JSONField(name="bad_list")
     private BadListSetConf badList;
+    //整流回复姬
+    @JSONField(name="rectifier")
+    private RectifierSetConf rectifier;
 
 
     @JSONField(name = "edition",serialize = false)
@@ -177,12 +180,13 @@ public class CenterSetConf implements Serializable {
         centerSetConf.setTimer(new TimerSetConf());
         centerSetConf.setDanmaku_store(new DanmakuStoreSetConf());
         centerSetConf.setBadList(new BadListSetConf());
+        centerSetConf.setRectifier(new RectifierSetConf());
         return centerSetConf;
     }
 
 
     public CenterSetConf(ThankGiftSetConf thank_gift, AdvertSetConf advert,
-                         ThankFollowSetConf follow, AutoReplySetConf reply, ClockInSetConf clock_in, ThankWelcomeSetConf welcome, AutoSendGiftConf auto_gift, PrivacySetConf privacy,BlackListSetConf black,LiveStatusSetConf live_status,BadListSetConf badList) {
+                         ThankFollowSetConf follow, AutoReplySetConf reply, ClockInSetConf clock_in, ThankWelcomeSetConf welcome, AutoSendGiftConf auto_gift, PrivacySetConf privacy,BlackListSetConf black,LiveStatusSetConf live_status,TimerSetConf timer,DanmakuStoreSetConf danmaku_store,BadListSetConf badList,RectifierSetConf rectifier) {
         super();
         this.thank_gift = thank_gift;
         this.advert = advert;
@@ -194,7 +198,10 @@ public class CenterSetConf implements Serializable {
         this.privacy = privacy;
         this.black= black;
         this.live_status = live_status;
+        this.timer = timer;
+        this.danmaku_store = danmaku_store;
         this.badList = badList;
+        this.rectifier = rectifier;
     }
 
     public String toJson() {

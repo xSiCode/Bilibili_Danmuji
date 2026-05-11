@@ -25,4 +25,9 @@ public class DanmakuStoreSetConf extends OpenSetConf implements Serializable {
 
     @JSONField(name = "items")
     private List<String> items = new ArrayList<>();
+
+    public List<String> getItems() {
+        if (items == null) return new ArrayList<>();
+        return items;
+    }
 }

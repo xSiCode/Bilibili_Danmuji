@@ -274,12 +274,16 @@ public class SetServiceImpl implements SetService {
                 // sendbarragethread
                 boolean liveStatusAnyOpen = PublicDataConf.centerSetConf.getLive_status() != null
                         && PublicDataConf.centerSetConf.getLive_status().anyOpen();
+                boolean rectifierAnyOpen = PublicDataConf.centerSetConf.getRectifier() != null
+                        && PublicDataConf.centerSetConf.getRectifier().is_open()
+                        && PublicDataConf.centerSetConf.getRectifier().anyActionOpen();
                 if (PublicDataConf.advertThread == null
                         && !PublicDataConf.centerSetConf.getFollow().is_followThank()
                         && !PublicDataConf.centerSetConf.getWelcome().is_welcomeThank()
                         && !PublicDataConf.centerSetConf.getThank_gift().is_giftThank()
                         && PublicDataConf.autoReplyThread == null
-                        && !liveStatusAnyOpen) {
+                        && !liveStatusAnyOpen
+                        && !rectifierAnyOpen) {
                     threadComponent.closeSendBarrageThread();
                     PublicDataConf.init_send();
                 } else {

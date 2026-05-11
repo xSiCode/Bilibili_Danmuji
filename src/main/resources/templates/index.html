@@ -1385,6 +1385,70 @@
                                 <small class="text-muted">拉黑为B站用户层面的黑名单，非直播间禁言。需要登录后操作。</small>
                             </div>
                         </div>
+                        <!-- 整流回复姬设置开始 -->
+                        <a data-bs-toggle="collapse" data-target="#rectifier-set"
+                           href="#rectifier-set"><div class="input-group mb-1">
+                            <h5>整流回复姬</h5>
+                        </div></a>
+                        <div class="input-group mb-3 rectifier-set collapse" id="rectifier-set">
+                            <div class="header-set">
+                                <div class="row align-items-center" style="margin-bottom:5px;--bs-gutter-x:5px">
+                                    <div class="col-auto">
+                                        <label class="form-check-label">
+                                            <input class="form-check-input rectifier_is_open live-save" type="checkbox">
+                                            <span class="_description" data-bs-placement="top"
+                                                  data-bs-toggle="tooltip" title="是否启用整流回复姬">启用</span>
+                                        </label>
+                                    </div>
+                                    <div class="col-auto">
+                                        <label class="form-label mb-0">间隔时间:</label>
+                                        <input class="form-control form-control-sm rectifier_interval live-save" type="number" min="1" value="30" style="width:80px;display:inline-block;">
+                                        <span class="ms-1">秒</span>
+                                    </div>
+                                </div>
+                                <!-- 欢迎整流 -->
+                                <div class="row align-items-center" style="margin-bottom:5px;--bs-gutter-x:5px">
+                                    <div class="col-auto">
+                                        <label class="form-check-label">
+                                            <input class="form-check-input rectifier_welcome_open live-save" type="checkbox">
+                                            <span class="_description" data-bs-placement="top"
+                                                  data-bs-toggle="tooltip" title="整流欢迎开关(与欢迎姬互斥)">欢迎</span>
+                                        </label>
+                                    </div>
+                                    <div class="col">
+                                        <input class="form-control form-control-sm rectifier_welcome_text live-save" placeholder="欢迎文本，支持%uNames%变量">
+                                    </div>
+                                </div>
+                                <!-- 关注整流 -->
+                                <div class="row align-items-center" style="margin-bottom:5px;--bs-gutter-x:5px">
+                                    <div class="col-auto">
+                                        <label class="form-check-label">
+                                            <input class="form-check-input rectifier_follow_open live-save" type="checkbox">
+                                            <span class="_description" data-bs-placement="top"
+                                                  data-bs-toggle="tooltip" title="整流关注开关(与关注姬互斥)">关注</span>
+                                        </label>
+                                    </div>
+                                    <div class="col">
+                                        <input class="form-control form-control-sm rectifier_follow_text live-save" placeholder="关注文本，支持%uNames%变量">
+                                    </div>
+                                </div>
+                                <!-- 礼物整流 -->
+                                <div class="row align-items-center" style="margin-bottom:5px;--bs-gutter-x:5px">
+                                    <div class="col-auto">
+                                        <label class="form-check-label">
+                                            <input class="form-check-input rectifier_gift_open live-save" type="checkbox">
+                                            <span class="_description" data-bs-placement="top"
+                                                  data-bs-toggle="tooltip" title="整流礼物开关(与礼物姬互斥)">礼物</span>
+                                        </label>
+                                    </div>
+                                    <div class="col">
+                                        <input class="form-control form-control-sm rectifier_gift_text live-save" placeholder="礼物文本，支持%uName%,%GiftName%,%Num%,%Type%变量">
+                                    </div>
+                                </div>
+                                <small class="text-muted">当启用且至少一个子开关打开时，欢迎/关注/礼物事件触发后会进入冷却期，冷却期内不再触发。冷却结束后才可再次触发。</small>
+                            </div>
+                        </div>
+                        <!-- 整流回复姬设置结束 -->
                         <!-- 弹幕姬登录设置开始 -->
                         <a data-bs-toggle="collapse" data-target="#managerLogin-set"
                            href="#managerLogin-set"><div class="input-group mb-1">

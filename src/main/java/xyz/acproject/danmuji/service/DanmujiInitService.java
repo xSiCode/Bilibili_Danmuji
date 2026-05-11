@@ -116,12 +116,16 @@ public class DanmujiInitService {
             if (PublicDataConf.centerSetConf.getBadList() == null) {
                 PublicDataConf.centerSetConf.setBadList(new BadListSetConf());
             }
+            if (PublicDataConf.centerSetConf.getRectifier() == null) {
+                PublicDataConf.centerSetConf.setRectifier(new RectifierSetConf());
+            }
         } else {
             // 无效的本地配置集则初始化一份
             // 此处无参初始化可以采用聚合根的思想
             PublicDataConf.centerSetConf = new CenterSetConf(new ThankGiftSetConf(), new AdvertSetConf(),
                     new ThankFollowSetConf(), new AutoReplySetConf(), new ClockInSetConf(), new ThankWelcomeSetConf(),
-                    new AutoSendGiftConf(), new PrivacySetConf(), new BlackListSetConf(), new LiveStatusSetConf(), new BadListSetConf());
+                    new AutoSendGiftConf(), new PrivacySetConf(), new BlackListSetConf(), new LiveStatusSetConf(),
+                    new TimerSetConf(), new DanmakuStoreSetConf(), new BadListSetConf(), new RectifierSetConf());
         }
 
         //初始化配置文件结束
