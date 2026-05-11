@@ -99,15 +99,9 @@ jobs:
       - name: Create platform JRE via jlink
         shell: bash
         run: |
-          VERSION="${{ needs.build-jar.outputs.version }}"
-          JAR="BiliBili_Danmuji-${VERSION}.jar"
-
-          # 分析 fat JAR 的 module 依赖
-          MODS=$(jdeps --ignore-missing-deps --print-module-deps --multi-release 11 -q "${JAR}" 2>/dev/null || true)
-          if [ -z "${MODS}" ]; then
-            # jdeps 对 fat JAR 分析可能失败，用 Spring Boot 常用模块
-            MODS="java.base,java.desktop,java.management,java.naming,java.security.jgss,java.sql,java.xml,jdk.unsupported,java.instrument,java.compiler"
-          fi
+          # Spring Boot fat JAR 内嵌套 JAR 结构导致 jdeps 无法准确分析模块依赖，
+          # 直接使用内嵌 Tomcat + WebSocket + Thymeleaf 所需的完整模块集合
+          MODS="java.base,java.desktop,java.management,java.naming,java.security.jgss,java.sql,java.xml,jdk.unsupported,java.instrument,java.compiler"
           echo "JRE modules: ${MODS}"
 
           jlink \
