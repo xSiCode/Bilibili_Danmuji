@@ -630,6 +630,48 @@ public class WebController {
     }
 
     @ResponseBody
+    @GetMapping(value = "/room_admin_block")
+    public Response<?> roomAdminBlock(@RequestParam("uid") long uid, @RequestParam(value = "uname", required = false) String uname, HttpServletRequest req) {
+        short code = -1;
+        if (StringUtils.isBlank(PublicDataConf.USERCOOKIE)) {
+            return Response.success(code, req);
+        }
+        HttpUserData.httpGetUserBarrageMsg();
+        boolean isManager = PublicDataConf.USERMANAGER != null && PublicDataConf.USERMANAGER.is_manager();
+        if (!isManager && PublicDataConf.USER != null && PublicDataConf.AUID != null
+                && PublicDataConf.USER.getUid().equals(PublicDataConf.AUID)) {
+            isManager = true;
+        }
+        if (!isManager) {
+            return Response.success((short)-2, req);
+        }
+        short blockCode = HttpUserData.httpPostAddBlock(uid, (short)1);
+        short badlistCode = HttpUserData.httpPostAddBadList(uid);
+        if (blockCode == 0) {
+            if (StringUtils.isBlank(uname)) {
+                uname = "";
+            }
+            List<BadListSetConf.BadUser> badUsers = PublicDataConf.centerSetConf.getBadList().getBadUsers();
+            boolean exists = false;
+            for (BadListSetConf.BadUser bu : badUsers) {
+                if (bu.getUid() != null && bu.getUid().equals(uid)) {
+                    bu.setUname(uname);
+                    exists = true;
+                    break;
+                }
+            }
+            if (!exists) {
+                badUsers.add(new BadListSetConf.BadUser(uid, uname));
+            }
+            checkService.changeSet(PublicDataConf.centerSetConf, false);
+            code = 0;
+        } else {
+            code = blockCode;
+        }
+        return Response.success(code, req);
+    }
+
+    @ResponseBody
     @GetMapping(value = "/getNegativeBlackPositiveWhite")
     public Response<?> getNegativeBlackPositiveWhite(HttpServletRequest req) {
         try {

@@ -14,7 +14,10 @@
       "Bash(xargs grep -l -i \"import\\\\|export\")",
       "WebFetch(domain:qinshixixing.gitbooks.io)",
       "Bash(cd \"E:\\\\\\\\claudeCode\\\\\\\\Bilibili_Danmuji\")",
-      "Bash(wc *)"
+      "Bash(wc *)",
+      "WebSearch",
+      "WebFetch(domain:deepwiki.com)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ]
   }
 }

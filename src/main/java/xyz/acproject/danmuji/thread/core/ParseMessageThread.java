@@ -595,7 +595,7 @@ public class ParseMessageThread extends Thread {
 
                         // 舰长进入直播间消息
                         case "ENTRY_EFFECT":
-                            LOGGER.info("舰长大大进入直播间消息推送:::" + message);
+                           // LOGGER.info("舰长大大进入直播间消息推送:::" + message);
                             break;
 
                         // 节奏风暴推送 action 为start和end

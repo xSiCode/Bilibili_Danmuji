@@ -638,6 +638,83 @@ $(document).on('click', '.badlist-result-select', function () {
 $(document).on('click', '.badlist-result-close', function () {
     $(".badlist-search-results").hide();
 });
+$(document).on('click', '.room_admin_block_btn', function () {
+    var uid = Number($(".room_admin_uid").val());
+    var uname = $(".room_admin_uname").val() || '';
+    if (!uid || uid <= 0) {
+        return;
+    }
+    var $btn = $(this);
+    $btn.prop('disabled', true).text('...');
+    $.ajax({
+        url: '../room_admin_block',
+        type: 'GET',
+        data: {uid: uid, uname: uname},
+        dataType: 'json',
+        success: function (data) {
+            if (data.code == "200" && data.result == 0) {
+                alert('已踢出直播间并拉黑该用户');
+            } else if (data.code == "200" && data.result == -2) {
+                alert('无权限：仅房管或主播可执行此操作');
+            } else {
+                alert('操作失败，请检查是否已登录并连接直播间');
+            }
+        },
+        complete: function () {
+            $btn.prop('disabled', false).text('拉黑');
+        }
+    });
+});
+$(document).on('click', '.room_admin_uid_lookup', function () {
+    var uid = Number($(".room_admin_uid").val());
+    if (!uid || uid <= 0) return;
+    var $btn = $(this);
+    $btn.prop('disabled', true).text('...');
+    $.ajax({
+        url: '../get_uname_by_uid',
+        type: 'GET',
+        data: {uid: uid},
+        dataType: 'json',
+        success: function (data) {
+            if (data.code == "200" && data.result) {
+                $(".room_admin_uname").val(data.result);
+            }
+        },
+        complete: function () {
+            $btn.prop('disabled', false).text('查');
+        }
+    });
+});
+$(document).on('click', '.room_admin_uname_lookup', function () {
+    var uname = $.trim($(".room_admin_uname").val());
+    if (!uname) return;
+    var $btn = $(this);
+    $btn.prop('disabled', true).text('...');
+    $.ajax({
+        url: '../search_uid_by_uname',
+        type: 'GET',
+        data: {uname: uname},
+        dataType: 'json',
+        success: function (data) {
+            if (data.code == "200" && data.result && data.result.length > 0) {
+                method.renderSearchResults(data.result, 'room-admin');
+            }
+        },
+        complete: function () {
+            $btn.prop('disabled', false).text('查');
+        }
+    });
+});
+$(document).on('click', '.room-admin-result-select', function () {
+    var uid = $(this).data('uid');
+    var uname = $(this).data('uname');
+    $(".room_admin_uid").val(uid);
+    $(".room_admin_uname").val(uname);
+    $(".room-admin-search-results").hide();
+});
+$(document).on('click', '.room-admin-result-close', function () {
+    $(".room-admin-search-results").hide();
+});
 $(document).on('click', '.pn-add-btn', function () {
     method.addPNRow();
 });
@@ -2420,9 +2497,10 @@ const method = {
         var d = new Date(ts * 1000);
         return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
     },
-    renderSearchResults: function (list) {
-        var $container = $(".badlist-search-results");
-        var $tbody = $container.find(".badlist-result-tbody");
+    renderSearchResults: function (list, prefix) {
+        prefix = prefix || 'badlist';
+        var $container = $("." + prefix + "-search-results");
+        var $tbody = $container.find("." + prefix + "-result-tbody");
         $tbody.empty();
         for (var i = 0; i < list.length; i++) {
             var u = list[i];
@@ -2433,7 +2511,7 @@ const method = {
                 : '';
             var nameHtml = faceHtml + '<a href="' + profileUrl + '" target="_blank" title="打开用户动态页" style="display:inline-block;max-width:calc(100% - 40px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;"><strong>' + (u.uname || '') + '</strong></a>'
                 + (isTop ? ' <span class="badge bg-primary ms-1" style="font-size:10px;">推荐</span>' : '');
-            var selectBtn = '<button class="btn btn-sm btn-outline-primary badlist-result-select" data-uid="' + u.uid + '" data-uname="' + u.uname + '" style="font-size:11px;">选择</button>';
+            var selectBtn = '<button class="btn btn-sm btn-outline-primary ' + prefix + '-result-select" data-uid="' + u.uid + '" data-uname="' + u.uname + '" style="font-size:11px;">选择</button>';
             var visibleIcon = u.follow_list_visible
                 ? '<span class="text-success">✓</span>'
                 : '<span class="text-danger">✗</span>';
