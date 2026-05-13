@@ -380,7 +380,7 @@ public class HttpRoomData {
         logSb.append(new SimpleDateFormat("HH:mm:ss").format(System.currentTimeMillis()))
                 .append(" https://space.bilibili.com/")
                 .append(vmid)
-                .append("?dynamic&")
+                .append("/dynamic&")
                 .append(uname);
 
         short code = firstPage != null ? firstPage.getShort("code") : -1;
@@ -420,10 +420,10 @@ public class HttpRoomData {
                 }
             }
 
-            logSb.append("[分数:").append(totalScore).append("]");
+            logSb.append(" [分数:").append(totalScore).append("]");
 
             if (totalScore > 0) {
-                SelfTools.appendAt(logSb, 105, "[成分:己方偏多]");
+                SelfTools.appendAt(logSb, 110, "[成分:己方偏多]");
             } else if (totalScore < 0) {
                 SelfTools.appendAt(logSb, 90, "[成分:野猪偏多]");
             } else {

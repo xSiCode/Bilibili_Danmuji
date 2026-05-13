@@ -210,7 +210,7 @@ public class ParseMessageThread extends Thread {
                                     if (1 != barrage.getIphone()) {
                                         stringBuilder.append(", https://space.bilibili.com/").append(barrage.getUid());
                                     }
-                                    stringBuilder.append("[").append(barrage.getUname());
+                                    stringBuilder.append(" [").append(barrage.getUname());
                                     stringBuilder.append("]:");
                                     stringBuilder.append(barrage.getMsg());
                                     //控制台打印
@@ -1065,7 +1065,7 @@ public class ParseMessageThread extends Thread {
                                             .append(" [新的访客] ")
                                             .append("https://space.bilibili.com/")
                                             .append(_follow_uid)
-                                            .append("?dynamic&")
+                                            .append("/dynamic&")
                                             .append(_follow_uname);
 
                                     if (_medal != null) {

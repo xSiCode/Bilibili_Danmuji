@@ -49,31 +49,21 @@ public class SendBarrageThread extends Thread {
                             } else {
                                 LOGGER.info(barrageStr_split);
                             }
-                            Thread.sleep(1455);
                         } catch (Exception e) {
                             System.err.println("发送弹幕线程抛出:" + e);
-                            // TODO: handle exception
                         }
                     }
                 } else {
 
                     if (!PublicDataConf.centerSetConf.isTest_mode()) {
                         try {
-                            // TODO 自动生成的方法存根
                             HttpUserData.httpPostSendBarrage(barrageStr);
 
                         } catch (Exception e) {
-//							LOGGER.error("发送弹幕线程抛出v:" + e);
-                            // TODO: handle exception
                         }
-//
                     } else {
                         LOGGER.info(barrageStr);
                     }
-                }
-                try {
-                    Thread.sleep(1455);
-                } catch (InterruptedException e) {
                 }
 
             } else {
