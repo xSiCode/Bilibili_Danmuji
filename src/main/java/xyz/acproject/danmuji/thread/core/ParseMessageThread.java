@@ -43,6 +43,7 @@ import xyz.acproject.danmuji.utils.SpringUtils;
 
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.regex.Pattern;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -1761,7 +1762,7 @@ public class ParseMessageThread extends Thread {
         String uname = interact.getUname();
         if (StringUtils.isBlank(uname)) return;
         for (GazeWelcomeSet item : gazeConf.getGazeWelcomeSets()) {
-            if (item.is_open() && uname.equals(item.getUsername())) {
+            if (item.is_open() && matchesUsername(uname, item.getUsername())) {
                 String text = item.getText();
                 if (StringUtils.isNotBlank(text)) {
                     text = text.replace("%uNames%", uname);
@@ -1773,6 +1774,20 @@ public class ParseMessageThread extends Thread {
                 }
             }
         }
+    }
+
+    private boolean matchesUsername(String uname, String pattern) {
+        if (StringUtils.isBlank(pattern)) return false;
+        if (pattern.length() >= 2 && pattern.startsWith("`") && pattern.endsWith("`")) {
+            String regex = pattern.substring(1, pattern.length() - 1);
+            try {
+                return Pattern.compile(regex).matcher(uname).find();
+            } catch (Exception e) {
+                LOGGER.warn("invalid regex pattern: {}", regex);
+                return false;
+            }
+        }
+        return uname.contains(pattern);
     }
 
     private void sendRectifierBarrage(String text) {
