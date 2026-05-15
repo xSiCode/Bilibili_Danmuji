@@ -380,7 +380,7 @@ public class HttpRoomData {
         logSb.append(new SimpleDateFormat("HH:mm:ss").format(System.currentTimeMillis()))
                 .append(" https://space.bilibili.com/")
                 .append(vmid)
-                .append("/dynamic&")
+                .append("/dynamic?")
                 .append(uname);
 
         short code = firstPage != null ? firstPage.getShort("code") : -1;
@@ -394,7 +394,7 @@ public class HttpRoomData {
 
         // 是否可见，是否在黑白名单
         if (firstPage == null || code != 0 || data == null || total == 0) {
-            LOGGER.info("[" + uname + "] 关注：请求失败或无数据");
+           // LOGGER.info("[" + uname + "] 关注：请求失败或无数据");
 
             SelfTools.appendAt(logSb, 95, "[成分:不可见]");
         } else {

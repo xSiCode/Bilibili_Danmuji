@@ -1066,7 +1066,7 @@ public class ParseMessageThread extends Thread {
                                             .append(" [新的访客] ")
                                             .append("https://space.bilibili.com/")
                                             .append(_follow_uid)
-                                            .append("/dynamic&")
+                                            .append("/dynamic?")
                                             .append(_follow_uname);
 
                                     if (_medal != null) {
@@ -1164,8 +1164,8 @@ public class ParseMessageThread extends Thread {
                             break;
                         case "WATCHED_CHANGE":
                             //{"cmd":"WATCHED_CHANGE","data":{"num":184547,"text_small":"18.4万","text_large":"18.4万人看过"}}
-                            PublicDataConf.ROOM_WATCHER = JSONObject.parseObject(jsonObject.getString("data")).getLong("num");
-                            LOGGER.info("多少人观看过:::" + message);
+                         //   PublicDataConf.ROOM_WATCHER = JSONObject.parseObject(jsonObject.getString("data")).getLong("num");
+                           // LOGGER.info("多少人观看过:::" + message);
                             break;
                         case "STOP_LIVE_ROOM_LIST":
                             //					LOGGER.info("直播间关闭集合推送:::" + message);
