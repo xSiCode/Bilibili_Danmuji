@@ -128,7 +128,7 @@ public class DanmujiInitService {
             PublicDataConf.centerSetConf = new CenterSetConf(new ThankGiftSetConf(), new AdvertSetConf(),
                     new ThankFollowSetConf(), new AutoReplySetConf(), new ClockInSetConf(), new ThankWelcomeSetConf(),
                     new AutoSendGiftConf(), new PrivacySetConf(), new BlackListSetConf(), new LiveStatusSetConf(),
-                    new TimerSetConf(), new DanmakuStoreSetConf(), new BadListSetConf(), new RectifierSetConf(), new GazeWelcomeSetConf(), new AutoBlackListSetConf());
+                    new TimerSetConf(), new DanmakuStoreSetConf(), new BadListSetConf(), new RectifierSetConf(), new GazeWelcomeSetConf(), new AutoBlackListSetConf(), new PnScoreSetConf());
         }
 
         //初始化配置文件结束

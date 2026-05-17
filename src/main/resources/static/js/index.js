@@ -35,6 +35,7 @@ $(function () {
     publicData.set = method.initSet(method.getSet());
     method.loadPNList();
     method.loadAutoBlackList();
+    method.loadPnScoreRecords();
     $('.thankgift_thank_status')
         .change(
             function () {
@@ -732,6 +733,88 @@ setInterval(function () {
         });
     }
 }, 30000);
+// 负黑正白打分姬事件
+$(document).on('change', '.pn_score_enabled', function () {
+    pnScoreData.enabled = $(this).is(':checked');
+    method.savePnScoreSettings();
+});
+$(document).on('change', '.pn_default_scoring', function () {
+    pnScoreData.default_scoring = $(this).is(':checked');
+    method.savePnScoreSettings();
+});
+$(document).on('click', '.pn-score-prev', function () {
+    if (pnScoreData.page > 1) {
+        pnScoreData.page--;
+        method.renderPnScoreTable();
+    }
+});
+$(document).on('click', '.pn-score-next', function () {
+    var totalPages = Math.max(1, Math.ceil(pnScoreData.records.length / pnScoreData.pageSize));
+    if (pnScoreData.page < totalPages) {
+        pnScoreData.page++;
+        method.renderPnScoreTable();
+    }
+});
+$(document).on('click', '.pn-score-delete-btn', function () {
+    var $row = $(this).closest('tr');
+    var uid = Number($row.data('uid'));
+    var time = $row.data('time');
+    if (!uid) return;
+    $.ajax({
+        url: '../deletePnScoreRecord',
+        type: 'GET',
+        data: {uid: uid, time: time},
+        dataType: 'json',
+        success: function (data) {
+            if (data.code == "200" && data.result == 0) {
+                method.loadPnScoreRecords();
+            }
+        }
+    });
+});
+$(document).on('click', '.pn-score-save-btn', function () {
+    var $row = $(this).closest('tr');
+    var uid = Number($row.data('uid'));
+    var uname = $row.find('a').text() || '';
+    var score = parseInt($row.find('.pn-score-input').val()) || 0;
+    if (!uid) return;
+    var $btn = $(this);
+    $btn.prop('disabled', true).text('...');
+    $.ajax({
+        url: '../savePnScoreToTable',
+        type: 'POST',
+        data: {uid: uid, uname: uname, score: score},
+        dataType: 'json',
+        success: function (data) {
+            if (data.code == "200" && data.result == 0) {
+                method.loadPnScoreRecords();
+                showMessage("打分保存成功!", "success", 3);
+            } else {
+                showMessage("打分保存失败!", "danger", 3);
+            }
+        },
+        complete: function () {
+            $btn.prop('disabled', false).text('保存');
+        }
+    });
+});
+// 自动刷新打分列表（每30秒，仅刷新记录）
+setInterval(function () {
+    if (pnScoreData.enabled) {
+        $.ajax({
+            url: '../getPnScoreRecords',
+            cache: false,
+            type: 'GET',
+            dataType: 'json',
+            success: function (data) {
+                if (data.code == "200" && data.result) {
+                    pnScoreData.records = data.result.records || [];
+                    method.renderPnScoreTable();
+                }
+            }
+        });
+    }
+}, 30000);
 // 直播状态姬发送按钮
 $(document).on('click', '.livestatus-live-send', function () {
     method.sendLiveStatusBarrage($(".livestatus_live_text").val());
@@ -1033,6 +1116,14 @@ const autoBlackData = {
     pageSize: 5,
     maxRecords: 50
 };
+const pnScoreData = {
+    enabled: false,
+    default_scoring: false,
+    records: [],
+    page: 1,
+    pageSize: 10,
+    maxRecords: 100
+};
 const pnData = {
     list: [],
     page: 1,
@@ -1082,7 +1173,8 @@ const method = {
                 "bad_users": []
             },
             "rectifier": {},
-            "auto_black_list": {}
+            "auto_black_list": {},
+            "pn_score": {}
         };
         set.is_auto = $(".is_autoStart").is(
             ':checked');
@@ -1287,6 +1379,8 @@ const method = {
         set.rectifier.gift_text = $(".rectifier_gift_text").val();
         set.auto_black_list.enabled = $(".auto_black_enabled").is(':checked');
         set.auto_black_list.black_score = parseInt($(".auto_black_score").val()) || -1;
+        set.pn_score.enabled = $(".pn_score_enabled").is(':checked');
+        set.pn_score.default_scoring = $(".pn_default_scoring").is(':checked');
         /*处理验证?*/
         if (set.clock_in.is_open) {
             set.clock_in.sign_day = (new Date()).getTime();
@@ -1798,6 +1892,12 @@ const method = {
                 autoBlackData.black_score = set.auto_black_list.black_score != null ? set.auto_black_list.black_score : -1;
                 $(".auto_black_enabled").prop('checked', autoBlackData.enabled);
                 $(".auto_black_score").val(autoBlackData.black_score);
+            }
+            if (set.pn_score) {
+                pnScoreData.enabled = set.pn_score.enabled || false;
+                pnScoreData.default_scoring = set.pn_score.default_scoring || false;
+                $(".pn_score_enabled").prop('checked', pnScoreData.enabled);
+                $(".pn_default_scoring").prop('checked', pnScoreData.default_scoring);
             }
 
 
@@ -2630,6 +2730,59 @@ function sendMessage() {
         $(".auto-black-page-info").text("第" + autoBlackData.page + "页/共" + totalPages + "页");
         $(".auto-black-prev").prop('disabled', autoBlackData.page <= 1);
         $(".auto-black-next").prop('disabled', autoBlackData.page >= totalPages);
+    },
+    loadPnScoreRecords: function () {
+        $.ajax({
+            url: '../getPnScoreRecords',
+            async: false,
+            cache: false,
+            type: 'GET',
+            dataType: 'json',
+            success: function (data) {
+                if (data.code == "200" && data.result) {
+                    pnScoreData.enabled = data.result.enabled || false;
+                    pnScoreData.default_scoring = data.result.default_scoring || false;
+                    pnScoreData.records = data.result.records || [];
+                    $(".pn_score_enabled").prop('checked', pnScoreData.enabled);
+                    $(".pn_default_scoring").prop('checked', pnScoreData.default_scoring);
+                }
+            }
+        });
+        pnScoreData.page = 1;
+        method.renderPnScoreTable();
+    },
+    renderPnScoreTable: function () {
+        var tbody = $(".pn-score-tbody");
+        tbody.empty();
+        var start = (pnScoreData.page - 1) * pnScoreData.pageSize;
+        var end = Math.min(start + pnScoreData.pageSize, pnScoreData.records.length);
+        var pageItems = pnScoreData.records.slice(start, end);
+        for (var i = 0; i < pageItems.length; i++) {
+            var item = pageItems[i];
+            var row = '<tr data-uid="' + (item.uid || '') + '" data-time="' + (item.time || '') + '">' +
+                '<td>' + (item.time || '') + '</td>' +
+                '<td><a href="https://space.bilibili.com/' + (item.uid || '') + '/dynamic" target="_blank">' + (item.uname || '') + '</a></td>' +
+                '<td><input class="form-control form-control-sm pn-score-input" type="number" value="' + (item.score || 0) + '" style="width:80px;"></td>' +
+                '<td>' +
+                '<button class="btn btn-sm btn-danger pn-score-delete-btn">删除显示</button> ' +
+                '<button class="btn btn-sm btn-success pn-score-save-btn">保存</button>' +
+                '</td>' +
+                '</tr>';
+            tbody.append(row);
+        }
+        var totalPages = Math.max(1, Math.ceil(pnScoreData.records.length / pnScoreData.pageSize));
+        $(".pn-score-page-info").text("第" + pnScoreData.page + "页/共" + totalPages + "页");
+        $(".pn-score-prev").prop('disabled', pnScoreData.page <= 1);
+        $(".pn-score-next").prop('disabled', pnScoreData.page >= totalPages);
+    },
+    savePnScoreSettings: function () {
+        $.ajax({
+            url: '../savePnScoreSettings',
+            type: 'POST',
+            data: {enabled: pnScoreData.enabled, default_scoring: pnScoreData.default_scoring},
+            dataType: 'json',
+            success: function () {}
+        });
     }
 }
 

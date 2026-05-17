@@ -763,6 +763,136 @@ public class WebController {
         }
     }
 
+    // ========== 负黑正白打分姬 ==========
+
+    @ResponseBody
+    @GetMapping(value = "/getPnScoreRecords")
+    public Response<?> getPnScoreRecords(HttpServletRequest req) {
+        try {
+            JSONObject result = new JSONObject();
+            PnScoreSetConf conf = PublicDataConf.centerSetConf != null ? PublicDataConf.centerSetConf.getPnScore() : null;
+            result.put("enabled", conf != null && conf.isEnabled());
+            result.put("default_scoring", conf != null && conf.isDefault_scoring());
+            List<HttpRoomData.PnScoreRecord> records = HttpRoomData.loadPnScoreRecords();
+            JSONArray arr = new JSONArray();
+            for (HttpRoomData.PnScoreRecord r : records) {
+                JSONObject entry = new JSONObject();
+                entry.put("uid", r.getUid());
+                entry.put("uname", r.getUname());
+                entry.put("total_score", r.getTotalScore());
+                entry.put("score", r.getScore());
+                entry.put("time", r.getTime());
+                arr.add(entry);
+            }
+            result.put("records", arr);
+            return Response.success(result, req);
+        } catch (Exception e) {
+            LOGGER.error("getPnScoreRecords error", e);
+            return Response.success(null, req);
+        }
+    }
+
+    @ResponseBody
+    @PostMapping(value = "/savePnScoreSettings")
+    public Response<?> savePnScoreSettings(@RequestParam("enabled") boolean enabled,
+                                           @RequestParam("default_scoring") boolean defaultScoring,
+                                           HttpServletRequest req) {
+        try {
+            if (PublicDataConf.centerSetConf != null) {
+                PnScoreSetConf conf = PublicDataConf.centerSetConf.getPnScore();
+                if (conf == null) {
+                    conf = new PnScoreSetConf();
+                    PublicDataConf.centerSetConf.setPnScore(conf);
+                }
+                conf.setEnabled(enabled);
+                conf.setDefault_scoring(defaultScoring);
+                checkService.changeSet(PublicDataConf.centerSetConf, false);
+            }
+            return Response.success(0, req);
+        } catch (Exception e) {
+            LOGGER.error("savePnScoreSettings error", e);
+            return Response.success(1, req);
+        }
+    }
+
+    @ResponseBody
+    @PostMapping(value = "/savePnScoreToTable")
+    public Response<?> savePnScoreToTable(@RequestParam("uid") long uid,
+                                          @RequestParam("uname") String uname,
+                                          @RequestParam("score") int score,
+                                          HttpServletRequest req) {
+        try {
+            // 保存到负黑正白判定表
+            FileTools fileTools = new FileTools();
+            File file = new File(fileTools.getBaseJarPath(), "负黑正白判定表.json");
+            JSONObject json;
+            JSONArray list;
+            if (file.exists()) {
+                StringBuilder sb = new StringBuilder();
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) sb.append(line);
+                }
+                json = JSONObject.parseObject(sb.toString());
+                list = json.getJSONArray("followings_list");
+                if (list == null) list = new JSONArray();
+            } else {
+                json = new JSONObject();
+                json.put("type", "负黑正白判定表");
+                list = new JSONArray();
+            }
+            boolean found = false;
+            for (Object obj : list) {
+                JSONObject entry = (JSONObject) obj;
+                if (entry.getLongValue("uid") == uid) {
+                    entry.put("score", score);
+                    entry.put("name", uname);
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                JSONObject entry = new JSONObject();
+                entry.put("uid", uid);
+                entry.put("name", uname);
+                entry.put("score", score);
+                list.add(0, entry);
+            }
+            json.put("followings_list", list);
+            if (!file.getParentFile().exists()) file.getParentFile().mkdirs();
+            try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"))) {
+                writer.write(com.alibaba.fastjson.JSON.toJSONString(json, true));
+            }
+            HttpRoomData.reloadPnScoreMap();
+
+            // 从打分记录中移除（已在判定表中）
+            List<HttpRoomData.PnScoreRecord> records = HttpRoomData.loadPnScoreRecords();
+            records.removeIf(r -> r.getUid() != null && r.getUid().equals(uid));
+            HttpRoomData.savePnScoreRecords(records);
+
+            return Response.success(0, req);
+        } catch (Exception e) {
+            LOGGER.error("savePnScoreToTable error", e);
+            return Response.success(1, req);
+        }
+    }
+
+    @ResponseBody
+    @GetMapping(value = "/deletePnScoreRecord")
+    public Response<?> deletePnScoreRecord(@RequestParam("uid") long uid,
+                                           @RequestParam("time") String time,
+                                           HttpServletRequest req) {
+        try {
+            List<HttpRoomData.PnScoreRecord> records = HttpRoomData.loadPnScoreRecords();
+            records.removeIf(r -> r.getUid() != null && r.getUid().equals(uid) && time.equals(r.getTime()));
+            HttpRoomData.savePnScoreRecords(records);
+            return Response.success(0, req);
+        } catch (Exception e) {
+            LOGGER.error("deletePnScoreRecord error", e);
+            return Response.success(1, req);
+        }
+    }
+
     @Autowired
     public void setCheckService(SetService checkService) {
         this.checkService = checkService;

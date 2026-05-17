@@ -9,6 +9,7 @@ import org.apache.logging.log4j.Logger;
 import org.springframework.util.CollectionUtils;
 import xyz.acproject.danmuji.conf.PublicDataConf;
 import xyz.acproject.danmuji.conf.set.AutoBlackListSetConf;
+import xyz.acproject.danmuji.conf.set.PnScoreSetConf;
 import xyz.acproject.danmuji.entity.room_data.*;
 import xyz.acproject.danmuji.entity.server_data.Conf;
 import xyz.acproject.danmuji.entity.user_data.UserNav;
@@ -424,11 +425,15 @@ public class HttpRoomData {
                 }
 
                 // 负黑自动小黑屋姬：自动拉黑逻辑
-                boolean processBlackResult = processAutoBlackList(vmid, uname, totalScore);
-                if (processBlackResult) {
+                boolean blacked = processAutoBlackList(vmid, uname, totalScore);
+                if (blacked) {
                     logSb.append(" [已自动拉黑]");
-                }else {
-                    logSb.append(" [自动拉黑失败]");
+                }
+
+                // 负黑正白打分姬：记录未在判定表中的用户，可选默认打分
+                boolean scored = processPnScore(vmid, uname, totalScore);
+                if (scored) {
+                    logSb.append(" [已自动打分]");
                 }
             }
 
@@ -790,8 +795,7 @@ public class HttpRoomData {
      * 负黑自动小黑屋姬：根据totalScore和拉黑分数判断是否自动拉黑
      */
     private static boolean processAutoBlackList(long vmid, String uname, int totalScore) {
-        boolean  flagBlack = false;
-
+        boolean flagBlack = false;
         try {
             if (PublicDataConf.centerSetConf == null) return false;
             AutoBlackListSetConf conf = PublicDataConf.centerSetConf.getAutoBlackList();
@@ -833,7 +837,6 @@ public class HttpRoomData {
         } catch (Exception e) {
             LOGGER.error("processAutoBlackList error", e);
         }
-
         return flagBlack;
     }
 
@@ -956,5 +959,125 @@ public class HttpRoomData {
         } catch (Exception e) {
             LOGGER.error("updatePnScoreForUser error", e);
         }
+    }
+
+    /**
+     * 负黑正白打分姬：记录未在判定表中的用户，可选默认打分
+     */
+    private static boolean processPnScore(long vmid, String uname, int totalScore) {
+        boolean flagScored = false;
+        try {
+            if (PublicDataConf.centerSetConf == null) return false;
+            PnScoreSetConf conf = PublicDataConf.centerSetConf.getPnScore();
+            if (conf == null || !conf.isEnabled()) return false;
+
+            // 添加记录
+            addPnScoreRecord(vmid, uname, totalScore);
+
+            // 默认打分
+            if (conf.isDefault_scoring()) {
+                if (totalScore < 0) {
+                    updatePnScoreForUser(vmid, uname, -2);
+                    flagScored = true;
+                } else if (totalScore > 0) {
+                    updatePnScoreForUser(vmid, uname, 2);
+                    flagScored = true;
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.error("processPnScore error", e);
+        }
+        return flagScored;
+    }
+
+    private static synchronized void addPnScoreRecord(long uid, String uname, int totalScore) {
+        List<PnScoreRecord> records = loadPnScoreRecords();
+        PnScoreRecord record = new PnScoreRecord();
+        record.setUid(uid);
+        record.setUname(uname);
+        record.setTotalScore(totalScore);
+        record.setScore(0);
+        record.setTime(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(System.currentTimeMillis()));
+        records.add(0, record);
+        while (records.size() > 100) {
+            records.remove(records.size() - 1);
+        }
+        savePnScoreRecords(records);
+    }
+
+    public static List<PnScoreRecord> loadPnScoreRecords() {
+        List<PnScoreRecord> records = new ArrayList<>();
+        try {
+            FileTools fileTools = new FileTools();
+            File file = new File(fileTools.getBaseJarPath(), "负黑正白打分记录.json");
+            if (!file.exists()) return records;
+            StringBuilder sb = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
+                String line;
+                while ((line = reader.readLine()) != null) sb.append(line);
+            }
+            JSONObject json = JSONObject.parseObject(sb.toString());
+            if (json == null) return records;
+            JSONArray list = json.getJSONArray("records");
+            if (list != null) {
+                for (Object obj : list) {
+                    JSONObject entry = (JSONObject) obj;
+                    PnScoreRecord r = new PnScoreRecord();
+                    r.setUid(entry.getLong("uid"));
+                    r.setUname(entry.getString("uname"));
+                    r.setTotalScore(entry.getIntValue("total_score"));
+                    r.setScore(entry.getIntValue("score"));
+                    r.setTime(entry.getString("time"));
+                    records.add(r);
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.error("loadPnScoreRecords error", e);
+        }
+        return records;
+    }
+
+    public static void savePnScoreRecords(List<PnScoreRecord> records) {
+        try {
+            FileTools fileTools = new FileTools();
+            File file = new File(fileTools.getBaseJarPath(), "负黑正白打分记录.json");
+            if (!file.getParentFile().exists()) file.getParentFile().mkdirs();
+            JSONObject json = new JSONObject();
+            JSONArray arr = new JSONArray();
+            for (PnScoreRecord r : records) {
+                JSONObject entry = new JSONObject();
+                entry.put("uid", r.getUid());
+                entry.put("uname", r.getUname());
+                entry.put("total_score", r.getTotalScore());
+                entry.put("score", r.getScore());
+                entry.put("time", r.getTime());
+                arr.add(entry);
+            }
+            json.put("records", arr);
+            try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"))) {
+                writer.write(JSON.toJSONString(json, true));
+            }
+        } catch (Exception e) {
+            LOGGER.error("savePnScoreRecords error", e);
+        }
+    }
+
+    public static class PnScoreRecord {
+        private Long uid;
+        private String uname;
+        private int totalScore;
+        private int score;
+        private String time;
+
+        public Long getUid() { return uid; }
+        public void setUid(Long uid) { this.uid = uid; }
+        public String getUname() { return uname; }
+        public void setUname(String uname) { this.uname = uname; }
+        public int getTotalScore() { return totalScore; }
+        public void setTotalScore(int totalScore) { this.totalScore = totalScore; }
+        public int getScore() { return score; }
+        public void setScore(int score) { this.score = score; }
+        public String getTime() { return time; }
+        public void setTime(String time) { this.time = time; }
     }
 }
