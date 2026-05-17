@@ -1066,7 +1066,7 @@ public class ParseMessageThread extends Thread {
                                             .append(" [新的访客] ")
                                             .append("https://space.bilibili.com/")
                                             .append(_follow_uid)
-                                            .append("/dynamic?")
+                                            .append("/dynamic ")
                                             .append(_follow_uname);
 
                                     if (_medal != null) {
@@ -1475,13 +1475,6 @@ public class ParseMessageThread extends Thread {
         if (PublicDataConf.parsethankGiftThread != null && PublicDataConf.parsethankGiftThread.COOLDOWN) {
             return;
         }
-        // 等待期内（线程存活且未终止）直接丢弃礼物，不重置计时器，确保间隔到期后才发感谢
-        if (PublicDataConf.parsethankGiftThread != null) {
-            String state = PublicDataConf.parsethankGiftThread.getState().toString();
-            if (!"TERMINATED".equals(state) && !"NEW".equals(state)) {
-                return;
-            }
-        }
         if (gift != null && StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
             if (PublicDataConf.sendBarrageThread != null && PublicDataConf.parsethankGiftThread != null) {
                 if (!PublicDataConf.sendBarrageThread.FLAG && !PublicDataConf.parsethankGiftThread.TFLAG) {
@@ -1538,13 +1531,6 @@ public class ParseMessageThread extends Thread {
         // 冷却期内直接丢弃
         if (PublicDataConf.parsethankFollowThread != null && PublicDataConf.parsethankFollowThread.COOLDOWN) {
             return;
-        }
-        // 等待期内丢弃，不重置计时器
-        if (PublicDataConf.parsethankFollowThread != null) {
-            String state = PublicDataConf.parsethankFollowThread.getState().toString();
-            if (!"TERMINATED".equals(state) && !"NEW".equals(state)) {
-                return;
-            }
         }
         if (interact != null && StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
             if (PublicDataConf.sendBarrageThread != null && PublicDataConf.parsethankFollowThread != null) {
@@ -1617,13 +1603,6 @@ public class ParseMessageThread extends Thread {
             // 冷却期内直接丢弃
             if (PublicDataConf.parseThankWelcomeThread != null && PublicDataConf.parseThankWelcomeThread.COOLDOWN) {
                 return;
-            }
-            // 等待期内丢弃，不重置计时器
-            if (PublicDataConf.parseThankWelcomeThread != null) {
-                String state = PublicDataConf.parseThankWelcomeThread.getState().toString();
-                if (!"TERMINATED".equals(state) && !"NEW".equals(state)) {
-                    return;
-                }
             }
             if (PublicDataConf.sendBarrageThread != null && PublicDataConf.parseThankWelcomeThread != null) {
                 if (!PublicDataConf.sendBarrageThread.FLAG && !PublicDataConf.parseThankWelcomeThread.FLAG) {

@@ -25,7 +25,7 @@ public class ParseThankFollowThread extends Thread {
 	private String thankFollowString = "感谢 %uNames% 的关注";
 	private Short num = 1;
 	private Long delaytime = 3000L;
-	private Long timestamp;
+	private Long timestamp = System.currentTimeMillis();
 	@Override
 	public void run() {
 		String thankFollowStr = null;
@@ -44,39 +44,38 @@ public class ParseThankFollowThread extends Thread {
 				} catch (InterruptedException e) {
 					// TODO 自动生成的 catch 块
 				}
-				long nowTime = System.currentTimeMillis();
-				if (nowTime - getTimestamp() < getDelaytime()) {
-				} else {
-					//do something
-					PublicDataConf.interacts.drainTo(interacts);
-					if(interacts.size()>0) {
-						for (int i = 0; i < interacts.size(); i += getNum()) {
-							for (int j = i; j < i + getNum(); j++) {
-								if (j >= interacts.size()) {
-									break;
-								}
-								stringBuilder.append(interacts.get(j).getUname()).append(",");
+
+				if (COOLDOWN) {
+					continue;
+				}
+
+				PublicDataConf.interacts.drainTo(interacts);
+				if(interacts.size()>0) {
+					// 立刻进入间隔期，丢弃间隔期内新来的事件
+					COOLDOWN = true;
+					for (int i = 0; i < interacts.size(); i += getNum()) {
+						for (int j = i; j < i + getNum(); j++) {
+							if (j >= interacts.size()) {
+								break;
 							}
-							stringBuilder.delete(stringBuilder.length() - 1, stringBuilder.length());
-							
-							thankFollowStr =StringUtils.replace(handleThankStr(getThankFollowString()), "%uNames%", stringBuilder.toString());
-							stringBuilder.delete(0, stringBuilder.length());
-							if (PublicDataConf.sendBarrageThread != null
-									&& !PublicDataConf.sendBarrageThread.FLAG) {
-								PublicDataConf.barrageString.offer(thankFollowStr);
-							}
-							thankFollowStr = null;
+							stringBuilder.append(interacts.get(j).getUname()).append(",");
 						}
+						stringBuilder.delete(stringBuilder.length() - 1, stringBuilder.length());
+
+						thankFollowStr =StringUtils.replace(handleThankStr(getThankFollowString()), "%uNames%", stringBuilder.toString());
+						stringBuilder.delete(0, stringBuilder.length());
+						if (PublicDataConf.sendBarrageThread != null
+								&& !PublicDataConf.sendBarrageThread.FLAG) {
+							PublicDataConf.barrageString.offer(thankFollowStr);
+						}
+						thankFollowStr = null;
 					}
 					interacts.clear();
-					// 间隔感谢：感谢完成后进入冷却期，冷却期内的关注直接丢弃
-					COOLDOWN = true;
 					try {
 						Thread.sleep(getDelaytime());
 					} catch (InterruptedException e) {
 					}
 					COOLDOWN = false;
-					break;
 				}
 			}
 		}
@@ -93,7 +92,6 @@ public class ParseThankFollowThread extends Thread {
 		}
 		return thankStr;
 	}
-
 
 
 }

@@ -510,9 +510,9 @@ public class WebController {
 
     @ResponseBody
     @GetMapping(value = "/del_block")
-    public Response<?> del_block(@RequestParam("id") long id, HttpServletRequest req) {
+    public Response<?> del_block(@RequestParam("uid") long uid, HttpServletRequest req) {
         short code = -1;
-        code = HttpUserData.httpPostDeleteBlock(id);
+        code = HttpUserData.httpPostDeleteBlock(uid);
         return Response.success(code, req);
     }
 
@@ -645,8 +645,7 @@ public class WebController {
         if (!isManager) {
             return Response.success((short)-2, req);
         }
-        short blockCode = HttpUserData.httpPostAddBlock(uid, (short)1);
-        short badlistCode = HttpUserData.httpPostAddBadList(uid);
+        short blockCode = HttpUserData.httpPostAddBlock(uid, (short)-1);
         if (blockCode == 0) {
             if (StringUtils.isBlank(uname)) {
                 uname = "";

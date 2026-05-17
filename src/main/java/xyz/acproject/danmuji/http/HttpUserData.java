@@ -768,10 +768,10 @@ public class HttpUserData {
     }
 
     /**
-     * 禁言
+     * 禁言/拉黑用户
      *
      * @param uid  被禁言人uid
-     * @param hour 禁言时间 单位小时
+     * @param hour 禁言时间 单位小时，-1为永久，0为本场结束
      * @return
      */
     public static Short httpPostAddBlock(long uid, short hour) {
@@ -780,8 +780,8 @@ public class HttpUserData {
         short code = -1;
         Map<String, String> headers = null;
         Map<String, String> params = null;
-        if (hour < 1) {
-            hour = 1;
+        if (hour < -1) {
+            hour = -1;
         }
         if (hour > 720) {
             hour = 720;
@@ -796,19 +796,19 @@ public class HttpUserData {
             headers.put("cookie", PublicDataConf.USERCOOKIE);
         }
         params = new HashMap<>(7);
-        params.put("roomid", PublicDataConf.ROOMID.toString());
-        params.put("block_uid", String.valueOf(uid));
+        params.put("room_id", PublicDataConf.ROOMID.toString());
+        params.put("tuid", String.valueOf(uid));
         params.put("hour", String.valueOf(hour));
+        params.put("mobile_app", "web");
         params.put("csrf_token", PublicDataConf.COOKIE.getBili_jct());
         params.put("csrf", PublicDataConf.COOKIE.getBili_jct());
         params.put("visit_id", "");
         try {
             data = OkHttp3Utils.getHttp3Utils()
-                    .httpPostForm("https://api.live.bilibili.com/banned_service/v2/Silent/add_block_user", headers,
+                    .httpPostForm("https://api.live.bilibili.com/xlive/web-ucenter/v1/banned/AddSilentUser", headers,
                             params)
                     .body().string();
         } catch (Exception e) {
-            // TODO 自动生成的 catch 块
             LOGGER.error(e);
             data = null;
         }
@@ -817,10 +817,9 @@ public class HttpUserData {
         jsonObject = JSONObject.parseObject(data);
         code = jsonObject.getShort("code");
         if (code == 0) {
-            // 禁言成功
-//			System.out.println(jsonObject.getString("data"));
+            LOGGER.info("禁言成功: uid={}, hour={}", uid, hour);
         } else {
-            LOGGER.error("禁言失败,原因" + jsonObject.getString("msg"));
+            LOGGER.error("禁言失败,原因:{}", jsonObject.getString("message"));
         }
         return code;
     }
@@ -1193,10 +1192,10 @@ public class HttpUserData {
     /**
      * 解除禁言
      *
+     * @param uid 被禁言用户uid
      * @return
-     * @Param bid block id
      */
-    public static Short httpPostDeleteBlock(long bid) {
+    public static Short httpPostDeleteBlock(long uid) {
         JSONObject jsonObject = null;
         String data = null;
         short code = -1;
@@ -1211,19 +1210,18 @@ public class HttpUserData {
         if (StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
             headers.put("cookie", PublicDataConf.USERCOOKIE);
         }
-        params = new HashMap<>(7);
-        params.put("id", String.valueOf(bid));
-        params.put("roomid", PublicDataConf.ROOMID.toString());
+        params = new HashMap<>(5);
+        params.put("room_id", PublicDataConf.ROOMID.toString());
+        params.put("tuid", String.valueOf(uid));
         params.put("csrf_token", PublicDataConf.COOKIE.getBili_jct());
         params.put("csrf", PublicDataConf.COOKIE.getBili_jct());
         params.put("visit_id", "");
         try {
             data = OkHttp3Utils.getHttp3Utils()
-                    .httpPostForm("https://api.live.bilibili.com/banned_service/v1/Silent/del_room_block_user", headers,
+                    .httpPostForm("https://api.live.bilibili.com/xlive/web-ucenter/v1/banned/DelSilentUser", headers,
                             params)
                     .body().string();
         } catch (Exception e) {
-            // TODO 自动生成的 catch 块
             LOGGER.error(e);
             data = null;
         }
@@ -1232,10 +1230,9 @@ public class HttpUserData {
         jsonObject = JSONObject.parseObject(data);
         code = jsonObject.getShort("code");
         if (code == 0) {
-            // 解禁成功
-//			System.out.println(jsonObject.getString("data"));
+            LOGGER.info("解除禁言成功: uid={}", uid);
         } else {
-            LOGGER.error("解除禁言失败,原因" + jsonObject.getString("msg"));
+            LOGGER.error("解除禁言失败,原因:{}", jsonObject.getString("message"));
         }
         return code;
     }

@@ -352,9 +352,9 @@ $(document).on('click', '.shieldgift_delete', function () {
     }
 });
 $(document).on('click', '.del_block_click', function () {
-    let id = $(this).attr("data-id");
-    if (id != undefined) {
-        method.delBlock(id);
+    let uid = $(this).attr("data-uid");
+    if (uid != undefined) {
+        method.delBlock(uid);
     }
 });
 $(document).on('click', '.block-pre-page', function () {
@@ -501,6 +501,10 @@ $(document).on('click', '.danmu-tips-li', function (e) {
         $(".block-input").val("");
         $(".block-input").attr("placeholder", "禁言(" + uname + "-" + uid + ")" + "-禁言时间为1-720小时");
         // $(".block-model").modal('show');
+    } else if (text.trim() === "房管拉黑") {
+        $(".room_admin_uid").val(uid);
+        $(".room_admin_uname").val(uname);
+        $(".room_admin_block_btn").trigger('click');
     } else {
 
     }
@@ -1009,7 +1013,7 @@ const danmuku = {
         }
     },
     tips: function (d) {
-        return `<div class="danmu-tips" uid="` + d.uid + `"><ul class="danmu-tips-ul"><li class="danmu-tips-li" data-bs-toggle="modal" data-bs-target="#block-model">禁言</li><li class="danmu-tips-li">查看</li><li class="danmu-tips-li">关闭</li></ul></div>`;
+        return `<div class="danmu-tips" uid="` + d.uid + `"><ul class="danmu-tips-ul"><li class="danmu-tips-li" data-bs-toggle="modal" data-bs-target="#block-model">禁言</li><li class="danmu-tips-li">查看</li><li class="danmu-tips-li room-admin-tips-li">房管拉黑</li><li class="danmu-tips-li">关闭</li></ul></div>`;
     },
     danmu: function (type, d) {
         var type_index = 0;
@@ -2144,9 +2148,9 @@ const method = {
     //     });
     //     return ip;
     // },
-    delBlock: function (id) {
+    delBlock: function (uid) {
         $.ajax({
-            url: '../del_block?id=' + id,
+            url: '../del_block?uid=' + uid,
             async: false,
             cache: false,
             type: 'GET',
@@ -2183,7 +2187,7 @@ const method = {
                                 ` <tr class="list-row">
                         <td width="35%" class="list-unit"><p class="user-name-col">` + i.uname + `</p></td>
                         <td width="44%" class="list-unit">` + i.block_end_time + `</td>
-                        <td width="17%" class="list-unit pointer no-select"><span class="del_block_click" data-id="` + i.id + `">撤销</span>
+                        <td width="17%" class="list-unit pointer no-select"><span class="del_block_click" data-uid="` + i.uid + `">撤销</span>
                         </td>
                     </tr>`
                             );

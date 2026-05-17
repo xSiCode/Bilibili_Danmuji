@@ -35,7 +35,7 @@ public class ParseThankGiftThread extends Thread {
 	public volatile boolean TFLAG = false;
 	public volatile boolean COOLDOWN = false;
 	private Long delaytime = 3000L;
-	private Long timestamp;
+	private Long timestamp = System.currentTimeMillis();
 	private String thankGiftString = "感谢%uName%大佬%Type%的%GiftName% x%Num%";
 	private ThankGiftStatus thankGiftStatus;
 	private Short num = 2;
@@ -67,55 +67,107 @@ public class ParseThankGiftThread extends Thread {
 				} catch (InterruptedException e) {
 					// TODO 自动生成的 catch 块
 				}
-				long nowTime = System.currentTimeMillis();
-				if (nowTime - getTimestamp() < getDelaytime()) {
 
-				} else {
-					if (PublicDataConf.thankGiftConcurrentHashMap.size() > 0) {
+				if (COOLDOWN) {
+					continue;
+				}
 
-						//这里是自定义模式去除
-						for (Entry<String, Vector<Gift>> entry : PublicDataConf.thankGiftConcurrentHashMap.entrySet()) {
-							gifts = entry.getValue();
-							for (Iterator<Gift> iterator = gifts.iterator(); iterator.hasNext();) {
-								gift = iterator.next();
-								if (ParseSetStatusTools.getGiftShieldStatus(PublicDataConf.centerSetConf.getThank_gift()
-										.getShield_status()) == ShieldGift.CUSTOM_RULE) {
-									if (ShieldGiftTools.shieldGift(gift,
-											getListGiftShieldStatus(),
-											getListPeopleShieldStatus(),
-											ShieldGift.CUSTOM_RULE, null,
-											getThankGiftRuleSets()) == null) {
-										iterator.remove();
-									}
+				if (PublicDataConf.thankGiftConcurrentHashMap.size() > 0) {
+					// 立刻进入间隔期，丢弃间隔期内新来的事件
+					COOLDOWN = true;
+
+					//这里是自定义模式去除
+					for (Entry<String, Vector<Gift>> entry : PublicDataConf.thankGiftConcurrentHashMap.entrySet()) {
+						gifts = entry.getValue();
+						for (Iterator<Gift> iterator = gifts.iterator(); iterator.hasNext();) {
+							gift = iterator.next();
+							if (ParseSetStatusTools.getGiftShieldStatus(PublicDataConf.centerSetConf.getThank_gift()
+									.getShield_status()) == ShieldGift.CUSTOM_RULE) {
+								if (ShieldGiftTools.shieldGift(gift,
+										getListGiftShieldStatus(),
+										getListPeopleShieldStatus(),
+										ShieldGift.CUSTOM_RULE, null,
+										getThankGiftRuleSets()) == null) {
+									iterator.remove();
 								}
 							}
+						}
 //							gifts.sort((g1,g2)->g1.getTimestamp().compareTo(g2.getTimestamp()));
 //							Collections.reverse(gifts);
-							// 每人(uName)每种礼物(GiftName)感谢 延迟内(delaytime)
-							if (getThankGiftStatus() == ThankGiftStatus.one_people) {
-								for (Iterator<Gift> iterator = gifts.iterator(); iterator.hasNext();) {
-									gift = iterator.next();
+						// 每人(uName)每种礼物(GiftName)感谢 延迟内(delaytime)
+						if (getThankGiftStatus() == ThankGiftStatus.one_people) {
+							for (Iterator<Gift> iterator = gifts.iterator(); iterator.hasNext();) {
+								gift = iterator.next();
 
-									thankGiftStr = StringUtils.replace(handleThankStr(getThankGiftString()), "%uName%",
-											gift.getUname());
-									thankGiftStr = StringUtils.replace(thankGiftStr, "%GiftName%", gift.getGiftName());
-									thankGiftStr = StringUtils.replace(thankGiftStr, "%Num%", gift.getNum().toString());
-									thankGiftStr = StringUtils.replace(thankGiftStr, "%Type%", gift.getAction());
-									if (PublicDataConf.sendBarrageThread != null
-											&& !PublicDataConf.sendBarrageThread.FLAG) {
-										PublicDataConf.barrageString.offer(thankGiftStr);
-									}
+								thankGiftStr = StringUtils.replace(handleThankStr(getThankGiftString()), "%uName%",
+										gift.getUname());
+								thankGiftStr = StringUtils.replace(thankGiftStr, "%GiftName%", gift.getGiftName());
+								thankGiftStr = StringUtils.replace(thankGiftStr, "%Num%", gift.getNum().toString());
+								thankGiftStr = StringUtils.replace(thankGiftStr, "%Type%", gift.getAction());
+								if (PublicDataConf.sendBarrageThread != null
+										&& !PublicDataConf.sendBarrageThread.FLAG) {
+									PublicDataConf.barrageString.offer(thankGiftStr);
 								}
 							}
-							// 每人(uName)多种礼物(Gifts)感谢 最多不超过几种(num)礼物 延迟内(delaytime) end beta版
-							if (getThankGiftStatus() == ThankGiftStatus.some_people) {
+						}
+						// 每人(uName)多种礼物(Gifts)感谢 最多不超过几种(num)礼物 延迟内(delaytime) end beta版
+						if (getThankGiftStatus() == ThankGiftStatus.some_people) {
+							for (int i = 0; i < gifts.size(); i += getNum()) {
+								for (int j = i; j < i + getNum(); j++) {
+									if (j >= gifts.size()) {
+										break;
+									}
+									thankGiftStr = StringUtils.replace(handleThankStr(getThankGiftString()),
+											"%uName%", entry.getKey());
+									if (is_num()) {
+										stringBuilder.append(gifts.get(j).getNum()).append("个")
+												.append(gifts.get(j).getGiftName()).append(",");
+									} else {
+										stringBuilder.append(gifts.get(j).getGiftName()).append(",");
+									}
+								}
+								stringBuilder.delete(stringBuilder.length() - 1, stringBuilder.length());
+								thankGiftStr = StringUtils.replace(thankGiftStr, "%Gifts%",
+										stringBuilder.toString());
+								//如果还有这个参数写死赠送
+								thankGiftStr = StringUtils.replace(thankGiftStr, "%Type%","赠送");
+								stringBuilder.delete(0, stringBuilder.length());
+								if (PublicDataConf.sendBarrageThread != null
+										&& !PublicDataConf.sendBarrageThread.FLAG) {
+									PublicDataConf.barrageString.offer(thankGiftStr);
+								}
+								thankGiftStr = null;
+							}
+
+							stringBuilder.delete(0, stringBuilder.length());
+						}
+					}
+					// 多人(uNames)多种(Gifts)礼物感谢 最多多少个人及多种(num)礼物 延迟内(delaytime) end beta版
+					if (getThankGiftStatus() == ThankGiftStatus.some_peoples) {
+						// 多次
+						int page = (int) Math.ceil(
+								(double) PublicDataConf.thankGiftConcurrentHashMap.size() / (double) getNum());
+						if (getNum() > 1 && PublicDataConf.thankGiftConcurrentHashMap.size() > 1) {
+							for (int i = 0; i < page; i++) {
+								if (PublicDataConf.sendBarrageThread != null
+										&& !PublicDataConf.sendBarrageThread.FLAG) {
+									PublicDataConf.barrageString
+											.offer(somePeoplesHandle(PublicDataConf.thankGiftConcurrentHashMap,
+													getNum(), handleThankStr(getThankGiftString())));
+								}
+							}
+						} else {
+							// 单次
+							for (Entry<String, Vector<Gift>> entry : PublicDataConf.thankGiftConcurrentHashMap
+									.entrySet()) {
+								gifts = entry.getValue();
 								for (int i = 0; i < gifts.size(); i += getNum()) {
 									for (int j = i; j < i + getNum(); j++) {
 										if (j >= gifts.size()) {
 											break;
 										}
 										thankGiftStr = StringUtils.replace(handleThankStr(getThankGiftString()),
-												"%uName%", entry.getKey());
+												"%uNames%", entry.getKey());
 										if (is_num()) {
 											stringBuilder.append(gifts.get(j).getNum()).append("个")
 													.append(gifts.get(j).getGiftName()).append(",");
@@ -135,70 +187,17 @@ public class ParseThankGiftThread extends Thread {
 									}
 									thankGiftStr = null;
 								}
-
 								stringBuilder.delete(0, stringBuilder.length());
-							}
-						}
-						// 多人(uNames)多种(Gifts)礼物感谢 最多多少个人及多种(num)礼物 延迟内(delaytime) end beta版
-						if (getThankGiftStatus() == ThankGiftStatus.some_peoples) {
-							// 多次
-							int page = (int) Math.ceil(
-									(double) PublicDataConf.thankGiftConcurrentHashMap.size() / (double) getNum());
-							if (getNum() > 1 && PublicDataConf.thankGiftConcurrentHashMap.size() > 1) {
-								for (int i = 0; i < page; i++) {
-									if (PublicDataConf.sendBarrageThread != null
-											&& !PublicDataConf.sendBarrageThread.FLAG) {
-										PublicDataConf.barrageString
-												.offer(somePeoplesHandle(PublicDataConf.thankGiftConcurrentHashMap,
-														getNum(), handleThankStr(getThankGiftString())));
-									}
-								}
-							} else {
-								// 单次
-								for (Entry<String, Vector<Gift>> entry : PublicDataConf.thankGiftConcurrentHashMap
-										.entrySet()) {
-									gifts = entry.getValue();
-									for (int i = 0; i < gifts.size(); i += getNum()) {
-										for (int j = i; j < i + getNum(); j++) {
-											if (j >= gifts.size()) {
-												break;
-											}
-											thankGiftStr = StringUtils.replace(handleThankStr(getThankGiftString()),
-													"%uNames%", entry.getKey());
-											if (is_num()) {
-												stringBuilder.append(gifts.get(j).getNum()).append("个")
-														.append(gifts.get(j).getGiftName()).append(",");
-											} else {
-												stringBuilder.append(gifts.get(j).getGiftName()).append(",");
-											}
-										}
-										stringBuilder.delete(stringBuilder.length() - 1, stringBuilder.length());
-										thankGiftStr = StringUtils.replace(thankGiftStr, "%Gifts%",
-												stringBuilder.toString());
-										//如果还有这个参数写死赠送
-										thankGiftStr = StringUtils.replace(thankGiftStr, "%Type%","赠送");
-										stringBuilder.delete(0, stringBuilder.length());
-										if (PublicDataConf.sendBarrageThread != null
-												&& !PublicDataConf.sendBarrageThread.FLAG) {
-											PublicDataConf.barrageString.offer(thankGiftStr);
-										}
-										thankGiftStr = null;
-									}
-									stringBuilder.delete(0, stringBuilder.length());
-								}
 							}
 						}
 					}
 
 					PublicDataConf.thankGiftConcurrentHashMap.clear();
-					// 间隔感谢：感谢完成后进入冷却期，冷却期内的礼物直接丢弃
-					COOLDOWN = true;
 					try {
 						Thread.sleep(getDelaytime());
 					} catch (InterruptedException e) {
 					}
 					COOLDOWN = false;
-					break;
 				}
 			}
 		}

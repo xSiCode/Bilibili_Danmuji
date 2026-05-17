@@ -23,7 +23,7 @@ public class ParseThankWelcomeThread extends Thread{
     private String thankWelcomeString = "欢迎%uNames%进入直播间~";
     private Short num = 1;
     private Long delaytime = 3000L;
-    private Long timestamp;
+    private Long timestamp = System.currentTimeMillis();
     @Override
     public void run() {
         super.run();
@@ -43,39 +43,38 @@ public class ParseThankWelcomeThread extends Thread{
                 } catch (InterruptedException e) {
                     // TODO 自动生成的 catch 块
                 }
-                long nowTime = System.currentTimeMillis();
-                if (nowTime - getTimestamp() < getDelaytime()) {
-                } else {
-                    //do something
-                    PublicDataConf.interactWelcome.drainTo(interacts);
-                    if(interacts.size()>0) {
-                        for (int i = 0; i < interacts.size(); i += getNum()) {
-                            for (int j = i; j < i + getNum(); j++) {
-                                if (j >= interacts.size()) {
-                                    break;
-                                }
-                                stringBuilder.append(interacts.get(j).getUname()).append(",");
-                            }
-                            stringBuilder.delete(stringBuilder.length() - 1, stringBuilder.length());
 
-                            thankWelcomeStr =StringUtils.replace(handleThankStr(getThankWelcomeString()), "%uNames%", stringBuilder.toString());
-                            stringBuilder.delete(0, stringBuilder.length());
-                            if (PublicDataConf.sendBarrageThread != null
-                                    && !PublicDataConf.sendBarrageThread.FLAG) {
-                                PublicDataConf.barrageString.offer(thankWelcomeStr);
+                if (COOLDOWN) {
+                    continue;
+                }
+
+                PublicDataConf.interactWelcome.drainTo(interacts);
+                if(interacts.size()>0) {
+                    // 立刻进入间隔期，丢弃间隔期内新来的事件
+                    COOLDOWN = true;
+                    for (int i = 0; i < interacts.size(); i += getNum()) {
+                        for (int j = i; j < i + getNum(); j++) {
+                            if (j >= interacts.size()) {
+                                break;
                             }
-                            thankWelcomeStr = null;
+                            stringBuilder.append(interacts.get(j).getUname()).append(",");
                         }
+                        stringBuilder.delete(stringBuilder.length() - 1, stringBuilder.length());
+
+                        thankWelcomeStr =StringUtils.replace(handleThankStr(getThankWelcomeString()), "%uNames%", stringBuilder.toString());
+                        stringBuilder.delete(0, stringBuilder.length());
+                        if (PublicDataConf.sendBarrageThread != null
+                                && !PublicDataConf.sendBarrageThread.FLAG) {
+                            PublicDataConf.barrageString.offer(thankWelcomeStr);
+                        }
+                        thankWelcomeStr = null;
                     }
                     interacts.clear();
-                    // 间隔欢迎：欢迎完成后进入冷却期，冷却期内进入的观众直接丢弃
-                    COOLDOWN = true;
                     try {
                         Thread.sleep(getDelaytime());
                     } catch (InterruptedException e) {
                     }
                     COOLDOWN = false;
-                    break;
                 }
             }
         }
