@@ -10,7 +10,7 @@ import xyz.acproject.danmuji.entity.room_data.MedalInfoAnchor;
 import xyz.acproject.danmuji.entity.user_data.AutoSendGift;
 import xyz.acproject.danmuji.entity.user_data.User;
 import xyz.acproject.danmuji.entity.user_data.UserCookie;
-import xyz.acproject.danmuji.entity.user_data.UserManager;
+
 import xyz.acproject.danmuji.entity.user_in_room_barrageMsg.UserBarrageMsg;
 import xyz.acproject.danmuji.thread.*;
 import xyz.acproject.danmuji.thread.core.HeartByteThread;
@@ -69,8 +69,7 @@ public class PublicDataConf {
 	public static String WBI_SUB_KEY = null;
 	//user弹幕长度
 	public static UserBarrageMsg USERBARRAGEMESSAGE = null;
-	//user房间管理信息
-	public static UserManager USERMANAGER = null;
+
 	//天选礼物屏蔽
 	public static String SHIELDGIFTNAME = null;
 	//天选是否正在屏蔽关注

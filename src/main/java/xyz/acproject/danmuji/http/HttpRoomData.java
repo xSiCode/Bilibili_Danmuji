@@ -373,7 +373,7 @@ public class HttpRoomData {
     /**
      * 处理用户关注列表：判断可见性，输出结果，如果可见且有关注数据则写入文件
      */
-    public static void processFollowings(long vmid, String uname) {
+    public static int  processFollowings(long vmid, String uname) {
         JSONObject firstPage = httpGetFollowings(vmid, 1, 50);
         StringBuilder logSb = new StringBuilder(100);
 
@@ -436,6 +436,8 @@ public class HttpRoomData {
 
         //通过日志查看后手动打开浏览器
         LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
+
+        return totalScore;
     }
 
     /**

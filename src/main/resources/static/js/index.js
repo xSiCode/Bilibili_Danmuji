@@ -29,7 +29,6 @@ $(function () {
             }
         });
     };
-    method.getBlocks(1);
     $("#file").change(function () {
         method.importDfFile();
     });
@@ -237,12 +236,7 @@ $(document).on('click', '.btn-close-block', function () {
         $("#block-model").modal('hide');
     // }
 });
-$(document).on('click', '.btn-close-wel', function () {
-    let is_kong = false;
-    // if ($(".wel-mask").is(":visible")) {
-        $("#wel-model").modal('hide');
-    // }
-});
+
 // 原btn-closer模态关闭按钮已移除，改为内联显示
 $(document).on('click', '.btn-block', function () {
     const uid = $(".block-input").attr("uid");
@@ -351,29 +345,7 @@ $(document).on('click', '.shieldgift_delete', function () {
     } else {
     }
 });
-$(document).on('click', '.del_block_click', function () {
-    let uid = $(this).attr("data-uid");
-    if (uid != undefined) {
-        method.delBlock(uid);
-    }
-});
-$(document).on('click', '.block-pre-page', function () {
-    let page = $(".block-page").text();
-    if (page > 1) {
-        method.getBlocks(Number(page) - 1);
-        $(".block-page").text(Number(page) - 1);
-    } else {
-        showMessage("没有上一页了", "warning","3");
-    }
-});
-$(document).on('click', '.block-next-page', function () {
-    let page = $(".block-page").text();
-    if (method.getBlocks(Number(page) + 1)) {
-        $(".block-page").text(Number(page) + 1);
-    } else {
-        showMessage("没有更多数据了", "warning","3");
-    }
-});
+
 // $('#reply-btns').delegate('.reply_edit','click', function () {
 $(document).on('click', '.reply_edit', function () {
     let index = $(this).parent().parent().index();
@@ -475,9 +447,7 @@ $(document).on('click', '#checkupdate', function () {
         }, 1000)
     });
 });
-$(document).on('click', '.room-manager', function (e) {
-    $(".wel-mask").show();
-});
+
 $(document).on('click', '.danmu-child', function (e) {
     $(this).children(".danmu-tips").css("left", e.pageX - $(this).offset().left);
     $(this).addClass("danmu-child-z");
@@ -501,10 +471,6 @@ $(document).on('click', '.danmu-tips-li', function (e) {
         $(".block-input").val("");
         $(".block-input").attr("placeholder", "禁言(" + uname + "-" + uid + ")" + "-禁言时间为1-720小时");
         // $(".block-model").modal('show');
-    } else if (text.trim() === "房管拉黑") {
-        $(".room_admin_uid").val(uid);
-        $(".room_admin_uname").val(uname);
-        $(".room_admin_block_btn").trigger('click');
     } else {
 
     }
@@ -642,83 +608,7 @@ $(document).on('click', '.badlist-result-select', function () {
 $(document).on('click', '.badlist-result-close', function () {
     $(".badlist-search-results").hide();
 });
-$(document).on('click', '.room_admin_block_btn', function () {
-    var uid = Number($(".room_admin_uid").val());
-    var uname = $(".room_admin_uname").val() || '';
-    if (!uid || uid <= 0) {
-        return;
-    }
-    var $btn = $(this);
-    $btn.prop('disabled', true).text('...');
-    $.ajax({
-        url: '../room_admin_block',
-        type: 'GET',
-        data: {uid: uid, uname: uname},
-        dataType: 'json',
-        success: function (data) {
-            if (data.code == "200" && data.result == 0) {
-                alert('已踢出直播间并拉黑该用户');
-            } else if (data.code == "200" && data.result == -2) {
-                alert('无权限：仅房管或主播可执行此操作');
-            } else {
-                alert('操作失败，请检查是否已登录并连接直播间');
-            }
-        },
-        complete: function () {
-            $btn.prop('disabled', false).text('拉黑');
-        }
-    });
-});
-$(document).on('click', '.room_admin_uid_lookup', function () {
-    var uid = Number($(".room_admin_uid").val());
-    if (!uid || uid <= 0) return;
-    var $btn = $(this);
-    $btn.prop('disabled', true).text('...');
-    $.ajax({
-        url: '../get_uname_by_uid',
-        type: 'GET',
-        data: {uid: uid},
-        dataType: 'json',
-        success: function (data) {
-            if (data.code == "200" && data.result) {
-                $(".room_admin_uname").val(data.result);
-            }
-        },
-        complete: function () {
-            $btn.prop('disabled', false).text('查');
-        }
-    });
-});
-$(document).on('click', '.room_admin_uname_lookup', function () {
-    var uname = $.trim($(".room_admin_uname").val());
-    if (!uname) return;
-    var $btn = $(this);
-    $btn.prop('disabled', true).text('...');
-    $.ajax({
-        url: '../search_uid_by_uname',
-        type: 'GET',
-        data: {uname: uname},
-        dataType: 'json',
-        success: function (data) {
-            if (data.code == "200" && data.result && data.result.length > 0) {
-                method.renderSearchResults(data.result, 'room-admin');
-            }
-        },
-        complete: function () {
-            $btn.prop('disabled', false).text('查');
-        }
-    });
-});
-$(document).on('click', '.room-admin-result-select', function () {
-    var uid = $(this).data('uid');
-    var uname = $(this).data('uname');
-    $(".room_admin_uid").val(uid);
-    $(".room_admin_uname").val(uname);
-    $(".room-admin-search-results").hide();
-});
-$(document).on('click', '.room-admin-result-close', function () {
-    $(".room-admin-search-results").hide();
-});
+
 $(document).on('click', '.pn-add-btn', function () {
     method.addPNRow();
 });
@@ -1013,7 +903,7 @@ const danmuku = {
         }
     },
     tips: function (d) {
-        return `<div class="danmu-tips" uid="` + d.uid + `"><ul class="danmu-tips-ul"><li class="danmu-tips-li" data-bs-toggle="modal" data-bs-target="#block-model">禁言</li><li class="danmu-tips-li">查看</li><li class="danmu-tips-li room-admin-tips-li">房管拉黑</li><li class="danmu-tips-li">关闭</li></ul></div>`;
+        return `<div class="danmu-tips" uid="` + d.uid + `"><ul class="danmu-tips-ul"><li class="danmu-tips-li" data-bs-toggle="modal" data-bs-target="#block-model">禁言</li><li class="danmu-tips-li">查看</li><li class="danmu-tips-li">关闭</li></ul></div>`;
     },
     danmu: function (type, d) {
         var type_index = 0;
@@ -2148,56 +2038,6 @@ const method = {
     //     });
     //     return ip;
     // },
-    delBlock: function (uid) {
-        $.ajax({
-            url: '../del_block?uid=' + uid,
-            async: false,
-            cache: false,
-            type: 'GET',
-            dataType: 'json',
-            success: function (data) {
-                if (data.result == 0) {
-                    showMessage("撤销禁言成功!", "success",2);
-                    method.getBlocks(1);
-                } else {
-                    showMessage("撤销禁言成功!", "danger",3);
-                    // alert("撤销禁言失败");
-                }
-            }
-        });
-    },
-    getBlocks: function (page) {
-        let ip = true;
-        $.ajax({
-            url: '../blocks?page=' + page,
-            async: false,
-            cache: false,
-            type: 'GET',
-            dataType: 'json',
-            success: function (data) {
-                if (data.code == "200") {
-                    if (data.result == null || data.result.length < 1) {
-                        ip = false;
-                    } else {
-                        $('.list-row').remove();
-                    }
-                    if (ip) {
-                        for (let i of data.result) {
-                            $('.list-body').append(
-                                ` <tr class="list-row">
-                        <td width="35%" class="list-unit"><p class="user-name-col">` + i.uname + `</p></td>
-                        <td width="44%" class="list-unit">` + i.block_end_time + `</td>
-                        <td width="17%" class="list-unit pointer no-select"><span class="del_block_click" data-uid="` + i.uid + `">撤销</span>
-                        </td>
-                    </tr>`
-                            );
-                        }
-                    }
-                }
-            }
-        });
-        return ip;
-    },
     setExprot: function () {
         $.ajax({
             url: '../setExport',

@@ -22,7 +22,9 @@
       "Bash(curl -s \"https://raw.githubusercontent.com/Nemo2011/bilibili-api/main/bilibili_api/live.py\")",
       "Bash(curl -s \"https://raw.githubusercontent.com/Nemo2011/bilibili-api/main/bilibili_api/data/api/live.json\")",
       "Bash(./gradlew build *)",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "Bash(where mvn *)",
+      "Bash(where mvnw *)"
     ]
   }
 }

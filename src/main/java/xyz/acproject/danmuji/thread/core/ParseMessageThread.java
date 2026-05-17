@@ -901,15 +901,6 @@ public class ParseMessageThread extends Thread {
                             //					LOGGER.info("收到活动礼物赠送，更新信息:::" + message);
                             break;
 
-                        // 设定房管消息 新房管的诞生
-                        case "room_admin_entrance":
-                            //					LOGGER.info("有人被设为了房管:::" + message);
-                            break;
-
-                        // 房管列表更新消息 激活条件为新房管的诞生
-                        case "ROOM_ADMINS":
-                            //					LOGGER.info("房管列表更新推送:::" + message);
-                            break;
 
                         // 房间护盾 推测推送消息为破站官方屏蔽的关键字 触发条件未知
                         case "ROOM_SHIELD":
@@ -1093,8 +1084,10 @@ public class ParseMessageThread extends Thread {
                                     if (getCenterSetConf().is_watcher_log()) {
                                         // 异步获取用户详细信息 + 关注列表分析，避免阻塞主消息处理线程
                                         WATCHER_EXECUTOR.execute(() -> {
-                                                HttpRoomData.processFollowings(_follow_uid, _follow_uname);
-                                                });
+                                            int currentUserScore = HttpRoomData.processFollowings(_follow_uid, _follow_uname);
+
+
+                                        });
                                     }
                                 }
                                 //欢迎凝视姬

@@ -21,7 +21,7 @@ import xyz.acproject.danmuji.entity.login_data.LoginData;
 import xyz.acproject.danmuji.entity.login_data.Qrcode;
 import xyz.acproject.danmuji.entity.other.EditionResult;
 import xyz.acproject.danmuji.entity.other.InitCheckServerParam;
-import xyz.acproject.danmuji.entity.room_data.RoomBlock;
+
 import xyz.acproject.danmuji.http.HttpOtherData;
 import xyz.acproject.danmuji.http.HttpRoomData;
 import xyz.acproject.danmuji.http.HttpUserData;
@@ -42,7 +42,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.*;
 import java.net.URLEncoder;
-import java.util.ArrayList;
+
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -79,7 +79,7 @@ public class WebController {
         model.addAttribute("HROOMID", PublicDataConf.centerSetConf.getRoomid());
         model.addAttribute("POPU", PublicDataConf.ROOM_POPULARITY);
         model.addAttribute("ROOM_WATCHER", PublicDataConf.ROOM_WATCHER);
-        model.addAttribute("MANAGER", PublicDataConf.USERMANAGER != null ? PublicDataConf.USERMANAGER.is_manager() : false);
+
         if (PublicDataConf.USER != null) {
             model.addAttribute("USER", PublicDataConf.USER);
         }
@@ -508,27 +508,8 @@ public class WebController {
         return Response.success(result, req);
     }
 
-    @ResponseBody
-    @GetMapping(value = "/del_block")
-    public Response<?> del_block(@RequestParam("uid") long uid, HttpServletRequest req) {
-        short code = -1;
-        code = HttpUserData.httpPostDeleteBlock(uid);
-        return Response.success(code, req);
-    }
 
 
-    @ResponseBody
-    @GetMapping(value = "/blocks")
-    public Response<?> blocks(@RequestParam("page") int page, HttpServletRequest req) {
-        if (page <= 0) {
-            page = 1;
-        }
-        List<RoomBlock> roomBlockList = new ArrayList<>();
-        if (PublicDataConf.ROOMID != null && StringUtils.isNotBlank(PublicDataConf.USERCOOKIE) && PublicDataConf.USERMANAGER != null && PublicDataConf.USERMANAGER.is_manager()) {
-            roomBlockList = HttpRoomData.getBlockList(page);
-        }
-        return Response.success(roomBlockList, req);
-    }
 
     @ResponseBody
     @GetMapping(value = "/setExport")
@@ -629,46 +610,8 @@ public class WebController {
         return Response.success(code, req);
     }
 
-    @ResponseBody
-    @GetMapping(value = "/room_admin_block")
-    public Response<?> roomAdminBlock(@RequestParam("uid") long uid, @RequestParam(value = "uname", required = false) String uname, HttpServletRequest req) {
-        short code = -1;
-        if (StringUtils.isBlank(PublicDataConf.USERCOOKIE)) {
-            return Response.success(code, req);
-        }
-        HttpUserData.httpGetUserBarrageMsg();
-        boolean isManager = PublicDataConf.USERMANAGER != null && PublicDataConf.USERMANAGER.is_manager();
-        if (!isManager && PublicDataConf.USER != null && PublicDataConf.AUID != null
-                && PublicDataConf.USER.getUid().equals(PublicDataConf.AUID)) {
-            isManager = true;
-        }
-        if (!isManager) {
-            return Response.success((short)-2, req);
-        }
-        short blockCode = HttpUserData.httpPostAddBlock(uid, (short)-1);
-        if (blockCode == 0) {
-            if (StringUtils.isBlank(uname)) {
-                uname = "";
-            }
-            List<BadListSetConf.BadUser> badUsers = PublicDataConf.centerSetConf.getBadList().getBadUsers();
-            boolean exists = false;
-            for (BadListSetConf.BadUser bu : badUsers) {
-                if (bu.getUid() != null && bu.getUid().equals(uid)) {
-                    bu.setUname(uname);
-                    exists = true;
-                    break;
-                }
-            }
-            if (!exists) {
-                badUsers.add(new BadListSetConf.BadUser(uid, uname));
-            }
-            checkService.changeSet(PublicDataConf.centerSetConf, false);
-            code = 0;
-        } else {
-            code = blockCode;
-        }
-        return Response.success(code, req);
-    }
+
+
 
     @ResponseBody
     @GetMapping(value = "/getNegativeBlackPositiveWhite")

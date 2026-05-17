@@ -432,14 +432,8 @@ public class HttpUserData {
             LOGGER.info("获取本房间可发送弹幕长度+是否是管理员 成功");
             PublicDataConf.USERBARRAGEMESSAGE = JSONObject
                     .parseObject((((JSONObject) jsonObject.get("data")).getString("property")), UserBarrageMsg.class);
-            Boolean manager = jsonObject.getJSONObject("data").getJSONObject("badge").getBoolean("is_room_admin");
-            PublicDataConf.USERMANAGER = new UserManager();
-            PublicDataConf.USERMANAGER.set_manager(manager != null ? manager : false);
-            PublicDataConf.USERMANAGER.setRoomid(PublicDataConf.ROOMID);
-            PublicDataConf.USERMANAGER.setShort_roomid(CurrencyTools.parseRoomId());
-            if(PublicDataConf.USER!=null&&ObjectUtil.equal(PublicDataConf.USER.getUid(),PublicDataConf.AUID)){
-                PublicDataConf.USERMANAGER.set_manager(true);
-            }
+
+
         } else if (code == -101) {
             LOGGER.info("未登录，请登录:" + jsonObject.toString());
         } else if (code == -400) {

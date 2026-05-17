@@ -146,11 +146,7 @@
 
                                                 </div>
                                             </li>
-                                            <li class="ps-1 py-1" th:if="${MANAGER}">
-                                                <span class="room-manager">
-                                                    <a data-bs-target="#wel-model" data-bs-toggle="modal"
-                                                        href="javascript:void(0)">房间管理</a></span>
-                                            </li>
+
                                             <li class="ps-1 py-1" th:if="${ROOMID}!=null">
                                                 主播：<a
                                                     th:href="@{'https://space.bilibili.com/'+${AUID}}"
@@ -1400,61 +1396,7 @@
                                 <small class="text-muted">拉黑为B站用户层面的黑名单，非直播间禁言。需要登录后操作。</small>
                             </div>
                         </div>
-                        <!-- 直播间房管姬设置开始 -->
-                        <a data-bs-toggle="collapse" data-target="#room-admin-set"
-                           href="#room-admin-set" th:if="${MANAGER}"><div class="input-group mb-1">
-                            <h5>直播间房管姬</h5>
-                        </div></a>
-                        <div class="input-group mb-3 room-admin-set collapse" id="room-admin-set" th:if="${MANAGER}">
-                            <div class="header-set">
-                                <div class="row align-items-center mb-2">
-                                    <div class="col-auto">
-                                        <label class="form-label mb-0">UID:</label>
-                                        <input class="form-control form-control-sm room_admin_uid"
-                                               style="width:150px;display:inline-block;"
-                                               type="number"
-                                               placeholder="输入用户UID">
-                                        <button class="btn btn-sm btn-outline-secondary room_admin_uid_lookup" title="根据UID查用户名">查</button>
-                                    </div>
-                                    <div class="col-auto">
-                                        <label class="form-label mb-0">用户名:</label>
-                                        <input class="form-control form-control-sm room_admin_uname"
-                                               style="width:180px;display:inline-block;"
-                                               type="text"
-                                               placeholder="输入用户名搜索">
-                                        <button class="btn btn-sm btn-outline-secondary room_admin_uname_lookup" title="根据用户名查UID">查</button>
-                                    </div>
-                                    <div class="col-auto">
-                                        <button class="btn btn-sm btn-danger room_admin_block_btn">拉黑</button>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="room-admin-search-results mt-2" style="display:none;">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <small class="text-muted">搜索结果，点击选择:</small>
-                                    <button class="btn btn-sm btn-outline-secondary room-admin-result-close" style="font-size:10px;">关闭</button>
-                                </div>
-                                <div style="overflow-x:auto;width:100%;">
-                                    <table class="table table-sm table-hover room-admin-result-table mb-0">
-                                        <thead>
-                                            <tr>
-                                                <th class="br-col-user">用户</th>
-                                                <th class="br-col-fans">粉丝</th>
-                                                <th class="br-col-attention">关注</th>
-                                                <th class="br-col-likes">获赞</th>
-                                                <th class="br-col-play">播放</th>
-                                                <th class="br-col-archive">作品</th>
-                                                <th class="br-col-visible">关注可见</th>
-                                                <th class="br-col-dynamic">最新动态</th>
-                                                <th class="br-col-action">操作</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="room-admin-result-tbody"></tbody>
-                                    </table>
-                                </div>
-                            </div>
-                            <small class="text-muted">房管或主播专属功能：踢出直播间并拉黑该用户。需要登录后操作。</small>
-                        </div>
+
                         <!-- 整流回复姬设置开始 -->
                         <a data-bs-toggle="collapse" data-target="#rectifier-set"
                            href="#rectifier-set"><div class="input-group mb-1">
@@ -1809,43 +1751,7 @@
         </div>
     </div>
 </div>
-<!-- 禁言列表 -->
-<div class="modal" id="wel-model">
-    <div class="modal-dialog">
-        <div class="modal-content wel-wrap" style="overflow: auto;resize: both;">
-            <div class="t">
-                禁言列表窗口 <i class="btn-close-wel"> </i>
-            </div>
-            <div class="con">
-                <div class="input-group mb-3">
-                    <table class="user-list">
-                        <thead>
-                        <tr class="list-head">
-                            <th class="list-head-text list-unit" width="35%">用户名称</th>
-                            <th class="list-head-text list-unit" width="44%">解禁时间</th>
-                            <th class="list-head-text list-unit" width="17%">操作</th>
-                        </tr>
-                        </thead>
-                        <tbody class="list-body ps ps--theme_default">
-                        <!--                    <tr class="list-row">-->
-                        <!--                        <td width="35%" class="list-unit"><p class="user-name-col">火鸡味-大锅巴</p></td>-->
-                        <!--                        <td width="44%" class="list-unit">2021-05-17 22:43:39</td>-->
-                        <!--                        <td width="21%" class="list-unit pointer no-select"><span>撤销</span>-->
-                        <!--                        </td>-->
-                        <!--                    </tr>-->
-                        </tbody>
-                    </table>
-                    <div class="block-btn">
-                        <div class="block-btn-body"><a class="block-pre-page" href="javascript:void(0)">上一页</a><span
-                                class="block-page">1</span><a class="block-next-page"
-                                                              href="javascript:void(0)">下一页</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+
 <!-- 右下角消息提示  -->
 <div class="tips-wrap">
     <div class="tips-t"></div>
