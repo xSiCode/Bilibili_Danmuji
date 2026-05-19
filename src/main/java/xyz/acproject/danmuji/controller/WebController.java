@@ -687,10 +687,10 @@ public class WebController {
     public Response<?> getAutoBlockRecords(HttpServletRequest req) {
         try {
             FileTools fileTools = new FileTools();
-            File file = new File(fileTools.getBaseJarPath(), "auto_block_records.json");
+            File file = new File(fileTools.getBaseJarPath(), "负黑自动拉黑记录.json");
             if (!file.exists()) {
                 JSONObject empty = new JSONObject();
-                empty.put("type", "auto_block_records");
+                empty.put("type", "负黑自动拉黑记录");
                 empty.put("records", new com.alibaba.fastjson.JSONArray());
                 return Response.success(empty, req);
             }
@@ -714,7 +714,7 @@ public class WebController {
     public Response<?> deleteAutoBlockRecord(@RequestParam("uid") long uid, HttpServletRequest req) {
         try {
             FileTools fileTools = new FileTools();
-            File file = new File(fileTools.getBaseJarPath(), "auto_block_records.json");
+            File file = new File(fileTools.getBaseJarPath(), "负黑自动拉黑记录.json");
             if (!file.exists()) {
                 return Response.success(0, req);
             }
@@ -755,7 +755,7 @@ public class WebController {
         if (code == 0) {
             try {
                 FileTools fileTools = new FileTools();
-                File file = new File(fileTools.getBaseJarPath(), "auto_block_records.json");
+                File file = new File(fileTools.getBaseJarPath(), "负黑自动拉黑记录.json");
                 if (file.exists()) {
                     StringBuilder sb = new StringBuilder();
                     try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {

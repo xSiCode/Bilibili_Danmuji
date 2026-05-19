@@ -1092,7 +1092,7 @@ public class ParseMessageThread extends Thread {
                                                     int blockInterval = getCenterSetConf().getAuto_block().getBlock_interval();
                                                     try {
                                                         FileTools fileTools = new FileTools();
-                                                        java.io.File file = new java.io.File(fileTools.getBaseJarPath(), "auto_block_records.json");
+                                                        java.io.File file = new java.io.File(fileTools.getBaseJarPath(), "负黑自动拉黑记录.json");
                                                         if (file.exists()) {
                                                             StringBuilder fsb = new StringBuilder();
                                                             try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(new java.io.FileInputStream(file), "UTF-8"))) {
@@ -1133,7 +1133,7 @@ public class ParseMessageThread extends Thread {
                                                                 java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                                                                 String timeStr = sdf.format(new Date());
                                                                 FileTools fileTools = new FileTools();
-                                                                java.io.File file = new java.io.File(fileTools.getBaseJarPath(), "auto_block_records.json");
+                                                                java.io.File file = new java.io.File(fileTools.getBaseJarPath(), "负黑自动拉黑记录.json");
                                                                 JSONObject data;
                                                                 com.alibaba.fastjson.JSONArray records;
                                                                 if (file.exists()) {
@@ -1148,7 +1148,7 @@ public class ParseMessageThread extends Thread {
                                                                     records = data.getJSONArray("records");
                                                                 } else {
                                                                     data = new JSONObject();
-                                                                    data.put("type", "auto_block_records");
+                                                                    data.put("type", "负黑自动拉黑记录");
                                                                     records = new com.alibaba.fastjson.JSONArray();
                                                                     data.put("records", records);
                                                                 }
