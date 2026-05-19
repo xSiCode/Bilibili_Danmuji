@@ -1243,20 +1243,15 @@ div .link-popup-panel .popup-content-ctnr p {
     width: 100%;
 }
 .auto-block-table .ab-col-time {
-    width: 22%;
-}
-.auto-block-table .ab-col-uname {
-    width: 28%;
-}
-.auto-block-table .ab-col-score {
-    width: 10%;
+    width: 138px;
 }
 .auto-block-table .ab-col-unblock {
-    width: 20%;
+    width: 78px;
 }
 .auto-block-table .ab-col-delete {
-    width: 20%;
+    width: 78px;
 }
+/* 被拉黑用户名 和 拉黑类型和分数 平分剩余空间，不设固定宽度 */
 .ab-uname-link {
     text-decoration: none;
 }
