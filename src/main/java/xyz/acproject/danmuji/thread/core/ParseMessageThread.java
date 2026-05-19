@@ -1053,21 +1053,12 @@ public class ParseMessageThread extends Thread {
                                 }
                                 //欢迎进入直播间 + 观众记录
                                 if (msg_type == 1) {
-                                    final MedalInfo _medal = interact.getFans_medal();
-
                                     stringBuilder.append(new SimpleDateFormat("HH:mm:ss").format(System.currentTimeMillis()))
                                             .append(" [新的访客] ")
                                             .append("https://space.bilibili.com/")
                                             .append(_follow_uid)
-                                            .append("/dynamic ")
-                                            .append(_follow_uname);
-
-                                    if (_medal != null) {
-                                        stringBuilder.append(" [").append(_medal.getMedal_name())
-                                                .append(" ").append(_medal.getMedal_level()).append("]");
-                                    }else {
-                                        stringBuilder.append(" [无勋章]");
-                                    }
+                                            .append(" [")
+                                            .append(_follow_uname).append("] ");
 
                                     if (PublicDataConf.logThread != null && !PublicDataConf.logThread.FLAG) {
                                         PublicDataConf.logString.offer(stringBuilder.toString());

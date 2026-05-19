@@ -1243,13 +1243,13 @@ div .link-popup-panel .popup-content-ctnr p {
     width: 100%;
 }
 .auto-block-table .ab-col-time {
-    width: 138px;
+    width: 200px;
 }
 .auto-block-table .ab-col-unblock {
-    width: 78px;
+    width: 100px;
 }
 .auto-block-table .ab-col-delete {
-    width: 78px;
+    width: 100px;
 }
 /* 被拉黑用户名 和 拉黑类型和分数 平分剩余空间，不设固定宽度 */
 .ab-uname-link {

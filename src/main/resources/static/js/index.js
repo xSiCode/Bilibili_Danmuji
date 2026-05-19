@@ -35,6 +35,8 @@ $(function () {
     publicData.set = method.initSet(method.getSet());
     method.loadPNList();
     method.loadAutoBlockList();
+    // 负黑自动拉黑姬：建立WebSocket连接接收实时推送
+    method._connectAutoBlockWs();
     $('.thankgift_thank_status')
         .change(
             function () {
@@ -2425,6 +2427,44 @@ const method = {
             $icon.css('opacity', 1 - i * 0.35);
         }
     },
+    // 负黑自动拉黑姬WebSocket连接
+    _autoBlockWs: null,
+    _connectAutoBlockWs: function () {
+        var self = this;
+        var wsUrl = (publicData.set && publicData.set.connect_docket) ? publicData.set.connect_docket : ('ws://' + window.location.host + '/danmu/sub');
+        if (self._autoBlockWs) {
+            try { self._autoBlockWs.close(); } catch (e) {}
+        }
+        try {
+            self._autoBlockWs = new WebSocket(wsUrl);
+            self._autoBlockWs.onmessage = function (msg) {
+                var data = JSON.parse(msg.data);
+                if (data.cmd === 'auto_block' && data.result) {
+                    autoBlockData.list.unshift(data.result);
+                    if (autoBlockData.list.length > 50) {
+                        autoBlockData.list = autoBlockData.list.slice(0, 50);
+                    }
+                    if ($("#autoBlock-set").hasClass("show")) {
+                        if (autoBlockData.page === 1) {
+                            method.renderAutoBlockTable();
+                        } else {
+                            var totalPages = Math.max(1, Math.min(10, Math.ceil(autoBlockData.list.length / autoBlockData.pageSize)));
+                            $(".ab-page-info").text("第" + autoBlockData.page + "页/共" + totalPages + "页");
+                            $(".ab-prev").prop('disabled', autoBlockData.page <= 1);
+                            $(".ab-next").prop('disabled', autoBlockData.page >= totalPages);
+                        }
+                    }
+                }
+            };
+            self._autoBlockWs.onclose = function () {
+                // 断线3秒后重连
+                setTimeout(function () { method._connectAutoBlockWs(); }, 3000);
+            };
+        } catch (e) {
+            // 连接失败，3秒后重试
+            setTimeout(function () { method._connectAutoBlockWs(); }, 3000);
+        }
+    },
     loadAutoBlockList: function () {
         $.ajax({
             url: '../getAutoBlockRecords',
@@ -2568,26 +2608,7 @@ function openSocket(ip, sliceh) {
             // console.log($("#danmu").scrollTop()+":"+$("div[class='danmu-child']:last").offset().top +":"+$("#danmu").height()+":"+$("#danmu")[0].scrollHeight);
             // 发现消息进入 开始处理前端触发逻辑
             let data = JSON.parse(msg.data);
-            if (data.cmd === "auto_block") {
-                // real-time auto-block notification
-                if (data.result) {
-                    autoBlockData.list.unshift(data.result);
-                    if (autoBlockData.list.length > 50) {
-                        autoBlockData.list = autoBlockData.list.slice(0, 50);
-                    }
-                    // only refresh UI if the panel is expanded
-                    if ($("#autoBlock-set").hasClass("show")) {
-                        if (autoBlockData.page === 1) {
-                            method.renderAutoBlockTable();
-                        } else {
-                            var totalPages = Math.max(1, Math.min(10, Math.ceil(autoBlockData.list.length / autoBlockData.pageSize)));
-                            $(".ab-page-info").text("第" + autoBlockData.page + "页/共" + totalPages + "页");
-                            $(".ab-prev").prop('disabled', autoBlockData.page <= 1);
-                            $(".ab-next").prop('disabled', autoBlockData.page >= totalPages);
-                        }
-                    }
-                }
-            } else if (data.cmd === "cmdp") {
+            if (data.cmd === "cmdp") {
                 $("#danmu").append("<div class='danmu-child'>" + data.result + "</div>");
             } else {
                 $("#danmu").append(danmuku.danmu(data.cmd, data.result));
