@@ -450,9 +450,10 @@ public class HttpRoomData {
 
         StringBuilder logSb = new StringBuilder(100);
         logSb.append(new SimpleDateFormat("HH:mm:ss").format(System.currentTimeMillis()))
-                .append(" https://space.bilibili.com/")
+                .append(" ")
+                .append("https://space.bilibili.com/")
                 .append(vmid)
-                .append("/dynamic [")
+                .append(" [")
                 .append(uname)
                 .append("] ");
 
@@ -487,32 +488,23 @@ public class HttpRoomData {
                 } else if (fans < 50 && attention > 4000) {
                     //疑似人机，拉黑处理
                     blackWhiteScore = -2;
-                    blackWhiteType = "[疑似人机]";
+                    blackWhiteType = "[拉黑：疑似人机]";
                     logSb.append(blackWhiteType);
                 } else if (currentLevel < 2) {
                     blackWhiteScore = -2;
-                    blackWhiteType = "[等级过低，lv:" + currentLevel + "]";
+                    blackWhiteType = "[拉黑：lv:" + currentLevel + "]";
                     logSb.append(blackWhiteType);
                 }
 
                 if (fans > 1000 || archiveCount > 50 || likeNum > 10_000) {
                     //粉丝数高，投稿高，获赞高
-                    logSb.append(" [疑是up主,需要重视度:").append(fans / 1000 + archiveCount / 50 + likeNum / 10_000).append("]");
+                    logSb.append(" [KOL:").append(fans / 1000 + archiveCount / 50 + likeNum / 10_000).append("]");
                 }
-
-                // 日志打印
-                logSb.append(", [等级:").append(currentLevel)
-                        .append(", 投稿:").append(archiveCount)
-                        .append(", 关注:").append(attention)
-                        .append(" 粉丝:").append(fans)
-                        .append(", 获赞:").append(likeNum).append("]");
-
-
             } else {
-                logSb.append("[用户card异常]");
+                logSb.append("[error 用户card异常]");
             }
         } else {
-            logSb.append("[api返回异常]");
+            logSb.append("[error api返回异常]");
         }
 
         // 当前观众就在本地黑白名单里
@@ -523,7 +515,7 @@ public class HttpRoomData {
         }
 
         if (blackWhiteScore != 0) { // 说明已经经过了判断
-            LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb.append("[已自动处理]")));
+            LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb.append("[已处理]")));
 
             return Pair.of(blackWhiteScore, blackWhiteType);
         }
@@ -532,7 +524,7 @@ public class HttpRoomData {
         JSONObject firstPage = httpGetFollowings(vmid, 1, 50);
         short code = firstPage != null ? firstPage.getShort("code") : -1;
         JSONObject data = firstPage != null && code == 0 ? firstPage.getJSONObject("data") : null;
-        total = data != null ? data.getLongValue("total") : -1;
+        total = data != null ? data.getLongValue("total") : 0;
 
         JSONArray followingsList = new JSONArray();
         JSONArray matchedList = new JSONArray();
@@ -545,7 +537,7 @@ public class HttpRoomData {
             if (dynData.length() < 168) {
                 //关注不可见，且没有动态，直接拉黑     无法查看返回的字符串是84或122长度 。 内容：{"code":0,"message":"OK","ttl":1,"data":{"has_more":0,"cards":null,"next_offset":0}
                 blackWhiteScore = -2;
-                blackWhiteType = "[关注不可见 且没有动态]";
+                blackWhiteType = "[拉黑：关注不可见且没有动态]";
                 logSb.append(blackWhiteType);
             } else if (dynData.length() > 1450) {  // 至少有个动态的字符长度大约是1723字符
                 // 动态判断：使用黑名单姬的自定义屏蔽名字，包含匹配，匹配母串为dynData
@@ -554,8 +546,8 @@ public class HttpRoomData {
                         if (StringUtils.isBlank(s)) continue;
                         if (StringUtils.contains(dynData, s)) {
                             blackWhiteScore = -2;
-                            blackWhiteType = "[关注不可见 且动态违规:" + s + "]";
-                            logSb.append(blackWhiteType).append("[已拉黑]");
+                            blackWhiteType = "[拉黑：关注不可见且动态含违禁词:" + s + "]";
+                            logSb.append(blackWhiteType);
                             break;
                         }
                     }
@@ -565,12 +557,12 @@ public class HttpRoomData {
             }
 
             if (blackWhiteScore != 0) { // 说明已经经过了判断
-                LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb.append("[已自动处理]")) );
+                LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb.append("[已处理]")) );
 
                 return Pair.of(blackWhiteScore, blackWhiteType);
             }
 
-            SelfTools.appendAt(logSb, 160, "[成分:关注不可见]");
+            SelfTools.appendAt(logSb, 110, "[成分:关注不可见]");
         } else {
             JSONArray list = firstPage.getJSONObject("data").getJSONArray("list");
 
@@ -588,18 +580,46 @@ public class HttpRoomData {
             }
 
             if (blackWhiteScore > 0) {
-                SelfTools.appendAt(logSb, 175, "[成分:己方偏多]");
+                SelfTools.appendAt(logSb, 120, "[成分:己方偏多]");
             } else if (blackWhiteScore < 0) {
-                blackWhiteType = "[成分:野猪偏多]";
-                SelfTools.appendAt(logSb, 155, blackWhiteType);
-
+                blackWhiteType = "[拉黑:野猪偏多]";
             } else {
-                SelfTools.appendAt(logSb, 170, "[成分:需要手动确认]");
+                // 关注列表分析正常后，再通过空间动态判断， 只判断是否有违禁词
+                String dynData = httpGetUserDynamic(vmid);
+
+                // 动态判断：使用黑名单姬的自定义屏蔽名字，包含匹配，匹配母串为dynData
+                if (PublicDataConf.centerSetConf.getBlack() != null) {
+                    for (String s : PublicDataConf.centerSetConf.getBlack().getNames()) {
+                        if (StringUtils.isBlank(s)) continue;
+                        if (StringUtils.contains(dynData, s)) {
+                            blackWhiteScore = -2;
+                            blackWhiteType = "[拉黑：关注正常，但动态含违禁词:" + s + "]";
+                            logSb.append(blackWhiteType);
+                            break;
+                        }
+                    }
+                }
+
+                if (blackWhiteScore == 0){
+                    SelfTools.appendAt(logSb, 110, "[成分:需要手动确认]");
+                }
             }
 
-            logSb.append(" [黑白分:").append(blackWhiteScore)
-                    .append("], [匹配数:").append(matchedList.size())
-                    .append("], 黑白名单:").append(matchedList.toJSONString())
+            if (blackWhiteScore < 0) { // 说明已经经过了判断
+                LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb.append("[已处理]")) );
+
+                return Pair.of(blackWhiteScore, blackWhiteType);
+            }
+
+            // 日志打印
+            logSb.append(" [LV:").append(currentLevel)
+                    .append("] 投稿:").append(archiveCount)
+                    .append("] 关注:").append(attention)
+                    .append("] 粉丝:").append(fans)
+                    .append("] 获赞:").append(likeNum)
+                    .append("] [黑白分:").append(blackWhiteScore)
+                    .append("] [匹配数:").append(matchedList.size())
+                    .append("] 黑白名单:").append(matchedList.toJSONString())
                     .append(" 🍉🍉 关注列表:").append(followingsList.toJSONString());
         }
 
