@@ -1156,7 +1156,7 @@ public class ParseMessageThread extends Thread {
                                                                 record.put("time", timeStr);
                                                                 record.put("uid", _follow_uid);
                                                                 record.put("uname", _follow_uname);
-                                                                record.put("score", blackWhiteType +":" +blackWhiteScore );
+                                                                record.put("score", blackWhiteType +" [" +blackWhiteScore+"]" );
                                                                 records.add(0, record);
                                                                 if (!file.getParentFile().exists()) {
                                                                     file.getParentFile().mkdirs();

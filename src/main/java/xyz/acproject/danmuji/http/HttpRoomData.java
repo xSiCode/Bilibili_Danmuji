@@ -488,17 +488,17 @@ public class HttpRoomData {
                 } else if (fans < 50 && attention > 4000) {
                     //疑似人机，拉黑处理
                     blackWhiteScore = -2;
-                    blackWhiteType = "[拉黑：疑似人机]";
+                    blackWhiteType = "[拉黑:疑似人机]";
                     logSb.append(blackWhiteType);
                 } else if (currentLevel < 2) {
                     blackWhiteScore = -2;
-                    blackWhiteType = "[拉黑：lv:" + currentLevel + "]";
+                    blackWhiteType = "[拉黑:LV:" + currentLevel + "]";
                     logSb.append(blackWhiteType);
                 }
 
                 if (fans > 1000 || archiveCount > 50 || likeNum > 10_000) {
                     //粉丝数高，投稿高，获赞高
-                    logSb.append(" [KOL:").append(fans / 1000 + archiveCount / 50 + likeNum / 10_000).append("]");
+                    logSb.append(" [KOL:").append(fans / 1000 + archiveCount / 100 + likeNum / 10_000).append("]");
                 }
             } else {
                 logSb.append("[error 用户card异常]");
@@ -537,7 +537,7 @@ public class HttpRoomData {
             if (dynData.length() < 168) {
                 //关注不可见，且没有动态，直接拉黑     无法查看返回的字符串是84或122长度 。 内容：{"code":0,"message":"OK","ttl":1,"data":{"has_more":0,"cards":null,"next_offset":0}
                 blackWhiteScore = -2;
-                blackWhiteType = "[拉黑：关注不可见且没有动态]";
+                blackWhiteType = "[拉黑:关注不可见且没有动态]";
                 logSb.append(blackWhiteType);
             } else if (dynData.length() > 1450) {  // 至少有个动态的字符长度大约是1723字符
                 // 动态判断：使用黑名单姬的自定义屏蔽名字，包含匹配，匹配母串为dynData
@@ -546,7 +546,7 @@ public class HttpRoomData {
                         if (StringUtils.isBlank(s)) continue;
                         if (StringUtils.contains(dynData, s)) {
                             blackWhiteScore = -2;
-                            blackWhiteType = "[拉黑：关注不可见且动态含违禁词:" + s + "]";
+                            blackWhiteType = "[拉黑:关注不可见且动态含违禁词:" + s + "]";
                             logSb.append(blackWhiteType);
                             break;
                         }
@@ -593,7 +593,7 @@ public class HttpRoomData {
                         if (StringUtils.isBlank(s)) continue;
                         if (StringUtils.contains(dynData, s)) {
                             blackWhiteScore = -2;
-                            blackWhiteType = "[拉黑：关注正常，但动态含违禁词:" + s + "]";
+                            blackWhiteType = "[拉黑:关注正常，但动态含违禁词:" + s + "]";
                             logSb.append(blackWhiteType);
                             break;
                         }
