@@ -36,6 +36,7 @@ import xyz.acproject.danmuji.tools.CurrencyTools;
 import xyz.acproject.danmuji.tools.ParseIndentityTools;
 import xyz.acproject.danmuji.tools.ParseSetStatusTools;
 import xyz.acproject.danmuji.tools.ShieldGiftTools;
+import xyz.acproject.danmuji.tools.file.FileTools;
 import xyz.acproject.danmuji.tools.file.GuardFileTools;
 import xyz.acproject.danmuji.utils.JodaTimeUtils;
 import xyz.acproject.danmuji.utils.SelfTools;
@@ -1084,11 +1085,100 @@ public class ParseMessageThread extends Thread {
                                     if (getCenterSetConf().is_watcher_log()) {
                                         // 异步获取用户详细信息 + 关注列表分析，避免阻塞主消息处理线程
                                         WATCHER_EXECUTOR.execute(() -> {
-                                            int currentUserScore = HttpRoomData.processFollowings(_follow_uid, _follow_uname);
+                                            int totalScore = HttpRoomData.processFollowings(_follow_uid, _follow_uname);
 
+                                            // 负黑自动拉黑姬
+                                            if (getCenterSetConf().getAuto_block() != null && getCenterSetConf().getAuto_block().is_auto_block()) {
+                                                int blockScore = getCenterSetConf().getAuto_block().getBlock_score();
+                                                if (totalScore <= blockScore) {
+                                                    // check if this uid was already blocked within the interval
+                                                    boolean withinInterval = false;
+                                                    int blockInterval = getCenterSetConf().getAuto_block().getBlock_interval();
+                                                    try {
+                                                        FileTools fileTools = new FileTools();
+                                                        java.io.File file = new java.io.File(fileTools.getBaseJarPath(), "auto_block_records.json");
+                                                        if (file.exists()) {
+                                                            StringBuilder fsb = new StringBuilder();
+                                                            try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(new java.io.FileInputStream(file), "UTF-8"))) {
+                                                                String line;
+                                                                while ((line = reader.readLine()) != null) {
+                                                                    fsb.append(line);
+                                                                }
+                                                            }
+                                                            JSONObject existing = JSONObject.parseObject(fsb.toString());
+                                                            com.alibaba.fastjson.JSONArray existingRecords = existing.getJSONArray("records");
+                                                            if (existingRecords != null) {
+                                                                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                                                                long now = System.currentTimeMillis();
+                                                                for (int i = 0; i < existingRecords.size(); i++) {
+                                                                    JSONObject r = existingRecords.getJSONObject(i);
+                                                                    if (r.getLong("uid") != null && r.getLong("uid") == _follow_uid) {
+                                                                        String lastTimeStr = r.getString("time");
+                                                                        if (lastTimeStr != null) {
+                                                                            try {
+                                                                                long lastTime = sdf.parse(lastTimeStr).getTime();
+                                                                                if (now - lastTime < blockInterval * 60L * 1000L) {
+                                                                                    withinInterval = true;
+                                                                                }
+                                                                            } catch (Exception ignored) {}
+                                                                        }
+                                                                        break;
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    } catch (Exception e) {
+                                                        LOGGER.error("auto_block check existing error", e);
+                                                    }
+                                                    if (!withinInterval) {
+                                                        short code = HttpUserData.httpPostAddBadList(_follow_uid);
+                                                        if (code == 0) {
+                                                            try {
+                                                                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                                                                String timeStr = sdf.format(new Date());
+                                                                FileTools fileTools = new FileTools();
+                                                                java.io.File file = new java.io.File(fileTools.getBaseJarPath(), "auto_block_records.json");
+                                                                JSONObject data;
+                                                                com.alibaba.fastjson.JSONArray records;
+                                                                if (file.exists()) {
+                                                                    StringBuilder fsb = new StringBuilder();
+                                                                    try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(new java.io.FileInputStream(file), "UTF-8"))) {
+                                                                        String line;
+                                                                        while ((line = reader.readLine()) != null) {
+                                                                            fsb.append(line);
+                                                                        }
+                                                                    }
+                                                                    data = JSONObject.parseObject(fsb.toString());
+                                                                    records = data.getJSONArray("records");
+                                                                } else {
+                                                                    data = new JSONObject();
+                                                                    data.put("type", "auto_block_records");
+                                                                    records = new com.alibaba.fastjson.JSONArray();
+                                                                    data.put("records", records);
+                                                                }
+                                                                JSONObject record = new JSONObject();
+                                                                record.put("time", timeStr);
+                                                                record.put("uid", _follow_uid);
+                                                                record.put("uname", _follow_uname);
+                                                                record.put("score", totalScore);
+                                                                records.add(0, record);
+                                                                if (!file.getParentFile().exists()) {
+                                                                    file.getParentFile().mkdirs();
+                                                                }
+                                                                try (java.io.BufferedWriter writer = new java.io.BufferedWriter(new java.io.OutputStreamWriter(new java.io.FileOutputStream(file), "UTF-8"))) {
+                                                                    writer.write(com.alibaba.fastjson.JSON.toJSONString(data, true));
+                                                                }
+                                                            } catch (Exception e) {
+                                                                LOGGER.error("auto_block record save error", e);
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
 
                                         });
                                     }
+
                                 }
                                 //欢迎凝视姬
                                 if (msg_type == 1) {

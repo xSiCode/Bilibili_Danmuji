@@ -1237,6 +1237,33 @@ div .link-popup-panel .popup-content-ctnr p {
     box-sizing: border-box;
 }
 
+/* 负黑自动拉黑姬表格列宽 */
+.auto-block-table {
+    table-layout: fixed;
+    width: 100%;
+}
+.auto-block-table .ab-col-time {
+    width: 22%;
+}
+.auto-block-table .ab-col-uname {
+    width: 28%;
+}
+.auto-block-table .ab-col-score {
+    width: 10%;
+}
+.auto-block-table .ab-col-unblock {
+    width: 20%;
+}
+.auto-block-table .ab-col-delete {
+    width: 20%;
+}
+.ab-uname-link {
+    text-decoration: none;
+}
+.ab-uname-link:hover {
+    text-decoration: underline;
+}
+
 /* 拉黑姬搜索结果表格列宽 */
 .badlist-result-table {
     table-layout: fixed;

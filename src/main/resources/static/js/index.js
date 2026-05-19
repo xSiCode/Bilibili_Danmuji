@@ -34,6 +34,7 @@ $(function () {
     });
     publicData.set = method.initSet(method.getSet());
     method.loadPNList();
+    method.loadAutoBlockList();
     $('.thankgift_thank_status')
         .change(
             function () {
@@ -653,6 +654,85 @@ $(document).on('click', '.pn-sortable', function () {
     pnData.page = 1;
     method.renderPNTable();
 });
+// 负黑自动拉黑姬 - 上一页
+$(document).on('click', '.ab-prev', function () {
+    if (autoBlockData.page > 1) {
+        autoBlockData.page--;
+        method.renderAutoBlockTable();
+    }
+});
+// 负黑自动拉黑姬 - 下一页
+$(document).on('click', '.ab-next', function () {
+    var totalPages = Math.max(1, Math.ceil(autoBlockData.list.length / autoBlockData.pageSize));
+    if (autoBlockData.page < totalPages) {
+        autoBlockData.page++;
+        method.renderAutoBlockTable();
+    }
+});
+// 负黑自动拉黑姬 - 解除拉黑
+$(document).on('click', '.ab-unblock-btn', function () {
+    var uid = Number($(this).data('uid'));
+    if (!uid) return;
+    var $btn = $(this);
+    $btn.prop('disabled', true).text('...');
+    $.ajax({
+        url: '../unblockAutoBlockUser',
+        type: 'GET',
+        data: {uid: uid},
+        dataType: 'json',
+        success: function (data) {
+            if (data.code == "200" && data.result == 0) {
+                autoBlockData.list = autoBlockData.list.filter(function (item) {
+                    return item.uid !== uid;
+                });
+                var totalPages = Math.max(1, Math.ceil(autoBlockData.list.length / autoBlockData.pageSize));
+                if (autoBlockData.page > totalPages) {
+                    autoBlockData.page = totalPages;
+                }
+                method.renderAutoBlockTable();
+            }
+        },
+        complete: function () {
+            $btn.prop('disabled', false).text('解除拉黑');
+        }
+    });
+});
+// 负黑自动拉黑姬 - 删除显示
+$(document).on('click', '.ab-delete-btn', function () {
+    var uid = Number($(this).data('uid'));
+    if (!uid) return;
+    var $btn = $(this);
+    $btn.prop('disabled', true).text('...');
+    $.ajax({
+        url: '../deleteAutoBlockRecord',
+        type: 'POST',
+        data: {uid: uid},
+        dataType: 'json',
+        success: function (data) {
+            if (data.code == "200" && data.result == 0) {
+                autoBlockData.list = autoBlockData.list.filter(function (item) {
+                    return item.uid !== uid;
+                });
+                var totalPages = Math.max(1, Math.ceil(autoBlockData.list.length / autoBlockData.pageSize));
+                if (autoBlockData.page > totalPages) {
+                    autoBlockData.page = totalPages;
+                }
+                method.renderAutoBlockTable();
+            }
+        },
+        complete: function () {
+            $btn.prop('disabled', false).text('删除显示');
+        }
+    });
+});
+// 负黑自动拉黑姬 - 拉黑分数变更保存
+$(document).on('change', '.auto-block-score', function () {
+    method.saveSet();
+});
+// 负黑自动拉黑姬 - 拉黑间隔时间变更保存
+$(document).on('change', '.auto-block-interval', function () {
+    method.saveSet();
+});
 // 直播状态姬发送按钮
 $(document).on('click', '.livestatus-live-send', function () {
     method.sendLiveStatusBarrage($(".livestatus_live_text").val());
@@ -958,6 +1038,11 @@ const pnData = {
         {col: 'name', dir: 'asc'}
     ],
 }
+const autoBlockData = {
+    list: [],
+    page: 1,
+    pageSize: 5,
+}
 const method = {
     saveSet: function () {
         let c1 = false;
@@ -994,7 +1079,8 @@ const method = {
             "bad_list": {
                 "bad_users": []
             },
-            "rectifier": {}
+            "rectifier": {},
+            "auto_block": {}
         };
         set.is_auto = $(".is_autoStart").is(
             ':checked');
@@ -1197,6 +1283,9 @@ const method = {
         set.rectifier.follow_text = $(".rectifier_follow_text").val();
         set.rectifier.gift_open = $(".rectifier_gift_open").is(':checked');
         set.rectifier.gift_text = $(".rectifier_gift_text").val();
+        set.auto_block.is_auto_block = $(".is_auto_block").is(':checked');
+        set.auto_block.block_score = parseInt($(".auto-block-score").val()) || -1;
+        set.auto_block.block_interval = parseInt($(".auto-block-interval").val()) || 3;
         /*处理验证?*/
         if (set.clock_in.is_open) {
             set.clock_in.sign_day = (new Date()).getTime();
@@ -1702,6 +1791,11 @@ const method = {
                 $(".rectifier_follow_text").val(set.rectifier.follow_text || "谢谢%uNames%的关注~");
                 $(".rectifier_gift_open").prop('checked', set.rectifier.gift_open);
                 $(".rectifier_gift_text").val(set.rectifier.gift_text || "感谢%uName%的%GiftName%~");
+            }
+            if (set.auto_block) {
+                $(".is_auto_block").prop('checked', set.auto_block.is_auto_block);
+                $(".auto-block-score").val(set.auto_block.block_score != null ? set.auto_block.block_score : -1);
+                $(".auto-block-interval").val(set.auto_block.block_interval != null ? set.auto_block.block_interval : 3);
             }
 
 
@@ -2329,6 +2423,54 @@ const method = {
             // 用不同透明度表示优先级：第一优先不透明，后续半透明
             $icon.css('opacity', 1 - i * 0.35);
         }
+    },
+    loadAutoBlockList: function () {
+        $.ajax({
+            url: '../getAutoBlockRecords',
+            async: false,
+            cache: false,
+            type: 'GET',
+            dataType: 'json',
+            success: function (data) {
+                if (data.code == "200" && data.result && data.result.records) {
+                    autoBlockData.list = data.result.records;
+                } else {
+                    autoBlockData.list = [];
+                }
+            }
+        });
+        autoBlockData.page = 1;
+        method.renderAutoBlockTable();
+    },
+    renderAutoBlockTable: function () {
+        var tbody = $(".auto-block-tbody");
+        tbody.empty();
+        var start = (autoBlockData.page - 1) * autoBlockData.pageSize;
+        var end = Math.min(start + autoBlockData.pageSize, autoBlockData.list.length);
+        var pageItems = autoBlockData.list.slice(start, end);
+        for (var i = 0; i < pageItems.length; i++) {
+            var item = pageItems[i];
+            var uname = item.uname || '';
+            var uid = item.uid || '';
+            var score = item.score || 0;
+            var time = item.time || '';
+            var row = '<tr data-uid="' + uid + '">' +
+                '<td class="ab-col-time">' + method._escHtml(time) + '</td>' +
+                '<td class="ab-col-uname"><a class="ab-uname-link" href="https://space.bilibili.com/' + uid + '" target="_blank">' + method._escHtml(uname) + '</a></td>' +
+                '<td class="ab-col-score">' + score + '</td>' +
+                '<td class="ab-col-unblock"><button class="btn btn-sm btn-warning ab-unblock-btn" data-uid="' + uid + '">解除拉黑</button></td>' +
+                '<td class="ab-col-delete"><button class="btn btn-sm btn-danger ab-delete-btn" data-uid="' + uid + '">删除显示</button></td>' +
+                '</tr>';
+            tbody.append(row);
+        }
+        var totalPages = Math.max(1, Math.min(10, Math.ceil(autoBlockData.list.length / autoBlockData.pageSize)));
+        $(".ab-page-info").text("第" + autoBlockData.page + "页/共" + totalPages + "页");
+        $(".ab-prev").prop('disabled', autoBlockData.page <= 1);
+        $(".ab-next").prop('disabled', autoBlockData.page >= totalPages);
+    },
+    _escHtml: function (str) {
+        if (!str) return '';
+        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     },
     fmtNum: function (n) {
         if (n == null) return '0';

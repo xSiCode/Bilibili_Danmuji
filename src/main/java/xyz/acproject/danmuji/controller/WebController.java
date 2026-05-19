@@ -682,6 +682,109 @@ public class WebController {
         }
     }
 
+    @ResponseBody
+    @GetMapping(value = "/getAutoBlockRecords")
+    public Response<?> getAutoBlockRecords(HttpServletRequest req) {
+        try {
+            FileTools fileTools = new FileTools();
+            File file = new File(fileTools.getBaseJarPath(), "auto_block_records.json");
+            if (!file.exists()) {
+                JSONObject empty = new JSONObject();
+                empty.put("type", "auto_block_records");
+                empty.put("records", new com.alibaba.fastjson.JSONArray());
+                return Response.success(empty, req);
+            }
+            StringBuilder sb = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    sb.append(line);
+                }
+            }
+            JSONObject jsonObject = JSONObject.parseObject(sb.toString());
+            return Response.success(jsonObject, req);
+        } catch (Exception e) {
+            LOGGER.error("getAutoBlockRecords error", e);
+            return Response.success(null, req);
+        }
+    }
+
+    @ResponseBody
+    @PostMapping(value = "/deleteAutoBlockRecord")
+    public Response<?> deleteAutoBlockRecord(@RequestParam("uid") long uid, HttpServletRequest req) {
+        try {
+            FileTools fileTools = new FileTools();
+            File file = new File(fileTools.getBaseJarPath(), "auto_block_records.json");
+            if (!file.exists()) {
+                return Response.success(0, req);
+            }
+            StringBuilder sb = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    sb.append(line);
+                }
+            }
+            JSONObject data = JSONObject.parseObject(sb.toString());
+            com.alibaba.fastjson.JSONArray records = data.getJSONArray("records");
+            if (records != null) {
+                for (int i = records.size() - 1; i >= 0; i--) {
+                    JSONObject record = records.getJSONObject(i);
+                    if (record.getLong("uid") != null && record.getLong("uid") == uid) {
+                        records.remove(i);
+                    }
+                }
+            }
+            try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"))) {
+                writer.write(com.alibaba.fastjson.JSON.toJSONString(data, true));
+            }
+            return Response.success(0, req);
+        } catch (Exception e) {
+            LOGGER.error("deleteAutoBlockRecord error", e);
+            return Response.success(1, req);
+        }
+    }
+
+    @ResponseBody
+    @GetMapping(value = "/unblockAutoBlockUser")
+    public Response<?> unblockAutoBlockUser(@RequestParam("uid") long uid, HttpServletRequest req) {
+        short code = -1;
+        if (StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
+            code = HttpUserData.httpPostDeleteBadList(uid);
+        }
+        if (code == 0) {
+            try {
+                FileTools fileTools = new FileTools();
+                File file = new File(fileTools.getBaseJarPath(), "auto_block_records.json");
+                if (file.exists()) {
+                    StringBuilder sb = new StringBuilder();
+                    try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            sb.append(line);
+                        }
+                    }
+                    JSONObject data = JSONObject.parseObject(sb.toString());
+                    com.alibaba.fastjson.JSONArray records = data.getJSONArray("records");
+                    if (records != null) {
+                        for (int i = records.size() - 1; i >= 0; i--) {
+                            JSONObject record = records.getJSONObject(i);
+                            if (record.getLong("uid") != null && record.getLong("uid") == uid) {
+                                records.remove(i);
+                            }
+                        }
+                    }
+                    try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"))) {
+                        writer.write(com.alibaba.fastjson.JSON.toJSONString(data, true));
+                    }
+                }
+            } catch (Exception e) {
+                LOGGER.error("unblockAutoBlockUser delete record error", e);
+            }
+        }
+        return Response.success(code, req);
+    }
+
     @Autowired
     public void setCheckService(SetService checkService) {
         this.checkService = checkService;

@@ -1250,6 +1250,54 @@
                             </div>
                         </div>
                         <!-- 正白负黑姬设置结束 -->
+                        <!-- 负黑自动拉黑姬设置开始 -->
+                        <a data-bs-toggle="collapse" data-target="#autoBlock-set"
+                           href="#autoBlock-set"><div class="input-group mb-1">
+                            <h5>负黑自动拉黑姬</h5>
+                        </div></a>
+                        <div class="input-group mb-3 autoBlock-set collapse" id="autoBlock-set">
+                            <div class="header-set">
+                                <div class="row align-items-center" style="margin-bottom:5px;--bs-gutter-x:5px">
+                                    <div class="col-auto">
+                                        <label class="form-check-label">
+                                            <input class="form-check-input is_auto_block live-save" type="checkbox">
+                                            <span class="_description" data-bs-html="true"
+                                                  data-bs-placement="top" data-bs-toggle="tooltip"
+                                                  title="开启后，当用户总分低于拉黑分数时自动拉黑">开关</span>
+                                        </label>
+                                    </div>
+                                    <div class="col-auto">
+                                        <span>拉黑分数：</span>
+                                        <input class="form-control form-control-sm auto-block-score" type="number" style="width:80px;display:inline-block" value="-1">
+                                    </div>
+                                    <div class="col-auto">
+                                        <span>拉黑间隔时间(分钟)：</span>
+                                        <input class="form-control form-control-sm auto-block-interval" type="number" style="width:70px;display:inline-block" value="3" min="1">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group footer-set">
+                                <table class="table table-bordered table-sm auto-block-table">
+                                    <thead>
+                                        <tr>
+                                            <th class="ab-col-time">时间</th>
+                                            <th class="ab-col-uname">被拉黑用户名</th>
+                                            <th class="ab-col-score">分数</th>
+                                            <th class="ab-col-unblock">解除拉黑</th>
+                                            <th class="ab-col-delete">删除显示</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="auto-block-tbody">
+                                    </tbody>
+                                </table>
+                                <div class="auto-block-pagination d-flex justify-content-center align-items-center mt-2">
+                                    <button class="btn btn-sm btn-outline-secondary ab-prev">上一页</button>
+                                    <span class="ab-page-info mx-2">第1页</span>
+                                    <button class="btn btn-sm btn-outline-secondary ab-next">下一页</button>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 负黑自动拉黑姬设置结束 -->
                         <!-- 黑名单模式设置开始 -->
                         <a data-bs-toggle="collapse" data-target="#black-set"
                            href="#black-set"><div class="input-group mb-1">

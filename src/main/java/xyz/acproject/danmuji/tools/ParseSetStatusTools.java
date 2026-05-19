@@ -300,6 +300,9 @@ public class ParseSetStatusTools {
 			if(centerSetConf.getGaze_welcome()==null){
 				centerSetConf.setGaze_welcome(new GazeWelcomeSetConf());
 			}
+			if(centerSetConf.getAuto_block()==null){
+				centerSetConf.setAuto_block(new AutoBlockSetConf());
+			}
 		}
 		return centerSetConf;
 	}
