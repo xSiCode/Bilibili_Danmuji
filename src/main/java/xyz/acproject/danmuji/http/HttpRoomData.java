@@ -500,6 +500,12 @@ public class HttpRoomData {
                     //粉丝数高，投稿高，获赞高
                     logSb.append(" [KOL:").append(fans / 1000 + archiveCount / 100 + likeNum / 10_000).append("]");
                 }
+
+                logSb.append(" [LV:").append(currentLevel)
+                        .append("] [投稿:").append(archiveCount)
+                        .append("] [关注:").append(attention)
+                        .append("] [粉丝:").append(fans)
+                        .append("] [获赞:").append(likeNum);
             } else {
                 logSb.append("[error 用户card异常]");
             }
@@ -510,7 +516,7 @@ public class HttpRoomData {
         // 当前观众就在本地黑白名单里
         if (pnScoreMap.containsKey(vmid)) {
             blackWhiteScore = pnScoreMap.get(vmid);
-            blackWhiteType = "[已在黑白名单]";
+            blackWhiteType = "[已在黑白名单:"+blackWhiteScore+"]";
             logSb.append(blackWhiteType);
         }
 
@@ -612,12 +618,7 @@ public class HttpRoomData {
             }
 
             // 日志打印
-            logSb.append(" [LV:").append(currentLevel)
-                    .append("] 投稿:").append(archiveCount)
-                    .append("] 关注:").append(attention)
-                    .append("] 粉丝:").append(fans)
-                    .append("] 获赞:").append(likeNum)
-                    .append("] [黑白分:").append(blackWhiteScore)
+            logSb.append("] [黑白分:").append(blackWhiteScore)
                     .append("] [匹配数:").append(matchedList.size())
                     .append("] 黑白名单:").append(matchedList.toJSONString())
                     .append(" 🍉🍉 关注列表:").append(followingsList.toJSONString());
