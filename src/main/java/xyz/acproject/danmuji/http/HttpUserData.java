@@ -1246,7 +1246,7 @@ public class HttpUserData {
         if (StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
             headers.put("cookie", PublicDataConf.USERCOOKIE);
         }
-        try {
+        try { //     过期，很容易请求频繁 https://api.bilibili.com/x/space/acc/info?mid=
             data = OkHttp3Utils.getHttp3Utils()
                     .httpGet("https://api.bilibili.com/x/space/acc/info?mid=" + uid, headers, null)
                     .body().string();

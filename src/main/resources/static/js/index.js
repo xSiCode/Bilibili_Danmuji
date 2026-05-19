@@ -733,6 +733,10 @@ $(document).on('change', '.auto-block-score', function () {
 $(document).on('change', '.auto-block-interval', function () {
     method.saveSet();
 });
+// 负黑自动拉黑姬 - 面板展开时重新加载数据
+$('#autoBlock-set').on('shown.bs.collapse', function () {
+    method.loadAutoBlockList();
+});
 // 直播状态姬发送按钮
 $(document).on('click', '.livestatus-live-send', function () {
     method.sendLiveStatusBarrage($(".livestatus_live_text").val());
@@ -2567,7 +2571,26 @@ function openSocket(ip, sliceh) {
             // console.log($("#danmu").scrollTop()+":"+$("div[class='danmu-child']:last").offset().top +":"+$("#danmu").height()+":"+$("#danmu")[0].scrollHeight);
             // 发现消息进入 开始处理前端触发逻辑
             let data = JSON.parse(msg.data);
-            if (data.cmd === "cmdp") {
+            if (data.cmd === "auto_block") {
+                // real-time auto-block notification
+                if (data.result) {
+                    autoBlockData.list.unshift(data.result);
+                    if (autoBlockData.list.length > 50) {
+                        autoBlockData.list = autoBlockData.list.slice(0, 50);
+                    }
+                    // only refresh UI if the panel is expanded
+                    if ($("#autoBlock-set").hasClass("show")) {
+                        if (autoBlockData.page === 1) {
+                            method.renderAutoBlockTable();
+                        } else {
+                            var totalPages = Math.max(1, Math.min(10, Math.ceil(autoBlockData.list.length / autoBlockData.pageSize)));
+                            $(".ab-page-info").text("第" + autoBlockData.page + "页/共" + totalPages + "页");
+                            $(".ab-prev").prop('disabled', autoBlockData.page <= 1);
+                            $(".ab-next").prop('disabled', autoBlockData.page >= totalPages);
+                        }
+                    }
+                }
+            } else if (data.cmd === "cmdp") {
                 $("#danmu").append("<div class='danmu-child'>" + data.result + "</div>");
             } else {
                 $("#danmu").append(danmuku.danmu(data.cmd, data.result));

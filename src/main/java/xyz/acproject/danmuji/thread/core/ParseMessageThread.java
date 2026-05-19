@@ -1168,6 +1168,12 @@ public class ParseMessageThread extends Thread {
                                                                 try (java.io.BufferedWriter writer = new java.io.BufferedWriter(new java.io.OutputStreamWriter(new java.io.FileOutputStream(file), "UTF-8"))) {
                                                                     writer.write(com.alibaba.fastjson.JSON.toJSONString(data, true));
                                                                 }
+                                                                // push to frontend for real-time refresh
+                                                                try {
+                                                                    danmuWebsocket.sendMessage(WsPackage.toJson("auto_block", (short) 0, record));
+                                                                } catch (Exception e) {
+                                                                    LOGGER.error("auto_block ws push error", e);
+                                                                }
                                                             } catch (Exception e) {
                                                                 LOGGER.error("auto_block record save error", e);
                                                             }

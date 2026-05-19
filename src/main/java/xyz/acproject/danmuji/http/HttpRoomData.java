@@ -392,7 +392,7 @@ public class HttpRoomData {
         JSONArray followingsList = new JSONArray();
         JSONArray matchedList = new JSONArray();
 
-        // 是否可见
+        // 关注列表不可见
         if (firstPage == null || code != 0 || data == null || total == 0) {
            // LOGGER.info("[" + uname + "] 关注：请求失败或无数据");
 
