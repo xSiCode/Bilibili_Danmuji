@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.google.protobuf.util.JsonFormat;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.util.CollectionUtils;
@@ -1085,12 +1086,16 @@ public class ParseMessageThread extends Thread {
                                     if (getCenterSetConf().is_watcher_log()) {
                                         // 异步获取用户详细信息 + 关注列表分析，避免阻塞主消息处理线程
                                         WATCHER_EXECUTOR.execute(() -> {
-                                            int totalScore = HttpRoomData.processFollowings(_follow_uid, _follow_uname);
+
+                                            Pair<Integer, String> blackWhiteResult = HttpRoomData.processFollowings(_follow_uid, _follow_uname);
+
+                                            int blackWhiteScore = blackWhiteResult.getLeft();
+                                            String blackWhiteType = blackWhiteResult.getRight();
 
                                             // 负黑自动拉黑姬
                                             if (getCenterSetConf().getAuto_block() != null && getCenterSetConf().getAuto_block().is_auto_block()) {
                                                 int blockScore = getCenterSetConf().getAuto_block().getBlock_score();
-                                                if (totalScore <= blockScore) {
+                                                if (blackWhiteScore <= blockScore) {
                                                     // check if this uid was already blocked within the interval
                                                     boolean withinInterval = false;
                                                     int blockInterval = getCenterSetConf().getAuto_block().getBlock_interval();
@@ -1160,7 +1165,7 @@ public class ParseMessageThread extends Thread {
                                                                 record.put("time", timeStr);
                                                                 record.put("uid", _follow_uid);
                                                                 record.put("uname", _follow_uname);
-                                                                record.put("score", totalScore);
+                                                                record.put("score", blackWhiteType +":" +blackWhiteScore );
                                                                 records.add(0, record);
                                                                 if (!file.getParentFile().exists()) {
                                                                     file.getParentFile().mkdirs();

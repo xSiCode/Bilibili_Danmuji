@@ -429,7 +429,7 @@ public class HttpRoomData {
     /**
      * 处理用户关注列表：判断可见性，输出结果，如果可见且有关注数据则写入文件
      */
-    public static int processFollowings(long vmid, String uname) {
+    public static Pair<Integer, String> processFollowings(long vmid, String uname) {
         /**
          * 步骤：
          * 1. 获取用户卡片信息
@@ -437,8 +437,9 @@ public class HttpRoomData {
          */
 
         long total = 0;
-        int totalScore = 0;
         int tempScore = 0;
+        int blackWhiteScore = 0;
+        String blackWhiteType = null;
 
         long fans = -1;
         long attention = -1;
@@ -453,7 +454,7 @@ public class HttpRoomData {
                 .append(vmid)
                 .append("/dynamic [")
                 .append(uname)
-                .append("]");
+                .append("] ");
 
         //用户卡片信息 判断
         JSONObject dataX = httpGetUserCard(vmid);
@@ -475,27 +476,23 @@ public class HttpRoomData {
                 }
 
                 following = dataCard.getBooleanValue("following");
-                archiveCount =  dataCard.getLongValue("archive_count") ;
-                likeNum = dataCard.getLongValue("like_num") ;
+                archiveCount = dataCard.getLongValue("archive_count");
+                likeNum = dataCard.getLongValue("like_num");
 
                 // 条件判断
                 if (following) {  // 哔哩哔哩 已关注
-                    logSb.append(" [我已关注]");
-                    totalScore = 2;
-                } else if (pnScoreMap.containsKey(vmid)) {  // 当前观众就在本地黑白名单里
-                    logSb.append(" [黑白分:").append(totalScore).append("]");
-                    totalScore = pnScoreMap.get(vmid);
-                }
-
-                if (fans < 50 && attention > 4000) {
+                    blackWhiteScore = 2;
+                    blackWhiteType = "[已关注]";
+                    logSb.append(blackWhiteType);
+                } else if (fans < 50 && attention > 4000) {
                     //疑似人机，拉黑处理
-                    totalScore = -2;
-                    logSb.append(" [疑似人机]");
-                }
-
-                if (currentLevel < 2) {
-                    logSb.append(" [等级过低，lv:").append(currentLevel).append("]");
-                    totalScore = -2;
+                    blackWhiteScore = -2;
+                    blackWhiteType = "[疑似人机]";
+                    logSb.append(blackWhiteType);
+                } else if (currentLevel < 2) {
+                    blackWhiteScore = -2;
+                    blackWhiteType = "[等级过低，lv:" + currentLevel + "]";
+                    logSb.append(blackWhiteType);
                 }
 
                 if (fans > 1000 || archiveCount > 50 || likeNum > 10_000) {
@@ -510,15 +507,25 @@ public class HttpRoomData {
                         .append(" 粉丝:").append(fans)
                         .append(", 获赞:").append(likeNum).append("]");
 
-                if (totalScore != 0) { // 说明已经经过了判断
-                    LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
-                    return totalScore;
-                }
+
             } else {
                 logSb.append("[用户card异常]");
             }
         } else {
             logSb.append("[api返回异常]");
+        }
+
+        // 当前观众就在本地黑白名单里
+        if (pnScoreMap.containsKey(vmid)) {
+            blackWhiteScore = pnScoreMap.get(vmid);
+            blackWhiteType = "[已在黑白名单]";
+            logSb.append(blackWhiteType);
+        }
+
+        if (blackWhiteScore != 0) { // 说明已经经过了判断
+            LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb.append("[已自动处理]")));
+
+            return Pair.of(blackWhiteScore, blackWhiteType);
         }
 
         // 用户关注数判断
@@ -532,21 +539,23 @@ public class HttpRoomData {
 
         // 关注列表不可见
         if (firstPage == null || code != 0 || data == null || total == 0) {
-            // 关注不可见时，通过空间动态判断
+            // 通过空间动态判断
             String dynData = httpGetUserDynamic(vmid);
 
-            if (dynData.length() < 168){
+            if (dynData.length() < 168) {
                 //关注不可见，且没有动态，直接拉黑     无法查看返回的字符串是84或122长度 。 内容：{"code":0,"message":"OK","ttl":1,"data":{"has_more":0,"cards":null,"next_offset":0}
-                totalScore = -2;
-                logSb.append(" [没有动态]");
-            } else if ( dynData.length() > 1450){  // 至少有个动态的字符长度大约是1723字符
+                blackWhiteScore = -2;
+                blackWhiteType = "[关注不可见 且没有动态]";
+                logSb.append(blackWhiteType);
+            } else if (dynData.length() > 1450) {  // 至少有个动态的字符长度大约是1723字符
                 // 动态判断：使用黑名单姬的自定义屏蔽名字，包含匹配，匹配母串为dynData
                 if (PublicDataConf.centerSetConf.getBlack() != null) {
                     for (String s : PublicDataConf.centerSetConf.getBlack().getNames()) {
                         if (StringUtils.isBlank(s)) continue;
                         if (StringUtils.contains(dynData, s)) {
-                            totalScore = -2;
-                            logSb.append(" [动态命中黑名单:").append(s).append("]");
+                            blackWhiteScore = -2;
+                            blackWhiteType = "[关注不可见 且动态违规:" + s + "]";
+                            logSb.append(blackWhiteType).append("[已拉黑]");
                             break;
                         }
                     }
@@ -555,44 +564,41 @@ public class HttpRoomData {
                 logSb.append(" [error:不应该出现本记录，需要修复]");
             }
 
-            SelfTools.appendAt(logSb, 160, "[成分:不可见]");
+            if (blackWhiteScore != 0) { // 说明已经经过了判断
+                LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb.append("[已自动处理]")) );
 
-            if (totalScore != 0) { // 说明已经经过了判断
-                LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
-                return totalScore;
+                return Pair.of(blackWhiteScore, blackWhiteType);
             }
-        } else {
-            // 当前观众就在黑白名单里
-            if (pnScoreMap.containsKey(vmid)) {
-                totalScore = pnScoreMap.get(vmid);
-                matchedList.add(uname + ":" + totalScore);
-            } else {
-                //  观众可见 且不在黑白名单
-                JSONArray list = firstPage.getJSONObject("data").getJSONArray("list");
 
-                // 判断与每个关注人的关系，并计算总分
-                for (Object obj : list) {
-                    JSONObject user = (JSONObject) obj;
-                    long mid = user.getLong("mid");
-                    String followedName = user.getString("uname");
-                    followingsList.add(followedName + ":" + mid);
-                    if (pnScoreMap.containsKey(mid)) { // 在黑白名单
-                        tempScore = pnScoreMap.get(mid);
-                        totalScore += tempScore;
-                        matchedList.add(followedName + ":" + tempScore);
-                    }
+            SelfTools.appendAt(logSb, 160, "[成分:关注不可见]");
+        } else {
+            JSONArray list = firstPage.getJSONObject("data").getJSONArray("list");
+
+            // 判断与每个关注人的关系，并计算总分
+            for (Object obj : list) {
+                JSONObject user = (JSONObject) obj;
+                long mid = user.getLong("mid");
+                String followedName = user.getString("uname");
+                followingsList.add(followedName + ":" + mid);
+                if (pnScoreMap.containsKey(mid)) { // 在黑白名单
+                    tempScore = pnScoreMap.get(mid);
+                    blackWhiteScore += tempScore;
+                    matchedList.add(followedName + ":" + tempScore);
                 }
             }
 
-            if (totalScore > 0) {
+            if (blackWhiteScore > 0) {
                 SelfTools.appendAt(logSb, 175, "[成分:己方偏多]");
-            } else if (totalScore < 0) {
-                SelfTools.appendAt(logSb, 155, "[成分:野猪偏多]");
+            } else if (blackWhiteScore < 0) {
+                blackWhiteType = "[成分:野猪偏多]";
+                SelfTools.appendAt(logSb, 155, blackWhiteType);
+
             } else {
-                SelfTools.appendAt(logSb, 170, "[成分:需要确认]");
+                SelfTools.appendAt(logSb, 170, "[成分:需要手动确认]");
             }
-            logSb.append(" [黑白分:").append(totalScore)
-            .append("], [匹配数:").append(matchedList.size())
+
+            logSb.append(" [黑白分:").append(blackWhiteScore)
+                    .append("], [匹配数:").append(matchedList.size())
                     .append("], 黑白名单:").append(matchedList.toJSONString())
                     .append(" 🍉🍉 关注列表:").append(followingsList.toJSONString());
         }
@@ -600,7 +606,7 @@ public class HttpRoomData {
         //通过日志查看后手动打开浏览器
         LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
 
-        return totalScore;
+        return  Pair.of(blackWhiteScore, blackWhiteType);
     }
 
     /**
