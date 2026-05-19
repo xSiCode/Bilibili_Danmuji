@@ -1084,7 +1084,7 @@ public class ParseMessageThread extends Thread {
                                     if (getCenterSetConf().is_watcher_log()) {
                                         // 异步获取用户详细信息 + 关注列表分析，避免阻塞主消息处理线程
                                         WATCHER_EXECUTOR.execute(() -> {
-                                           HttpRoomData.processFollowings(_follow_uid, _follow_uname);
+                                            int currentUserScore = HttpRoomData.processFollowings(_follow_uid, _follow_uname);
 
 
                                         });

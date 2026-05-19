@@ -34,7 +34,6 @@ $(function () {
     });
     publicData.set = method.initSet(method.getSet());
     method.loadPNList();
-    method.loadAutoBlackList();
     $('.thankgift_thank_status')
         .change(
             function () {
@@ -654,84 +653,6 @@ $(document).on('click', '.pn-sortable', function () {
     pnData.page = 1;
     method.renderPNTable();
 });
-// 负黑自动小黑屋姬事件
-$(document).on('change', '.auto_black_enabled', function () {
-    autoBlackData.enabled = $(this).is(':checked');
-    method.saveAutoBlackSettings();
-});
-$(document).on('change', '.auto_black_score', function () {
-    var val = parseInt($(this).val()) || 0;
-    if (val > 0) {
-        alert("拉黑分数大于0，请谨慎设置！建议中断直播后再操作。");
-        $(this).val(autoBlackData.black_score);
-        return;
-    }
-    autoBlackData.black_score = val;
-    method.saveAutoBlackSettings();
-});
-$(document).on('click', '.auto-black-prev', function () {
-    if (autoBlackData.page > 1) {
-        autoBlackData.page--;
-        method.renderAutoBlackTable();
-    }
-});
-$(document).on('click', '.auto-black-next', function () {
-    var totalPages = Math.max(1, Math.ceil(autoBlackData.records.length / autoBlackData.pageSize));
-    if (autoBlackData.page < totalPages) {
-        autoBlackData.page++;
-        method.renderAutoBlackTable();
-    }
-});
-$(document).on('click', '.auto-black-unblock-btn', function () {
-    var uid = Number($(this).closest('tr').data('uid'));
-    if (!uid) return;
-    $.ajax({
-        url: '../auto_unblack',
-        type: 'GET',
-        data: {uid: uid},
-        dataType: 'json',
-        success: function (data) {
-            if (data.code == "200" && data.result == 0) {
-                method.loadAutoBlackList();
-                showMessage("解除拉黑成功", "success", 3);
-            } else {
-                showMessage("解除拉黑失败", "danger", 3);
-            }
-        }
-    });
-});
-$(document).on('click', '.auto-black-delete-btn', function () {
-    var uid = Number($(this).closest('tr').data('uid'));
-    if (!uid) return;
-    $.ajax({
-        url: '../auto_black_delete_display',
-        type: 'GET',
-        data: {uid: uid},
-        dataType: 'json',
-        success: function (data) {
-            if (data.code == "200" && data.result == 0) {
-                method.loadAutoBlackList();
-            }
-        }
-    });
-});
-// 自动刷新小黑屋列表（每30秒，仅刷新记录，不覆盖设置UI）
-setInterval(function () {
-    if (autoBlackData.enabled) {
-        $.ajax({
-            url: '../getAutoBlackList',
-            cache: false,
-            type: 'GET',
-            dataType: 'json',
-            success: function (data) {
-                if (data.code == "200" && data.result) {
-                    autoBlackData.records = data.result.records || [];
-                    method.renderAutoBlackTable();
-                }
-            }
-        });
-    }
-}, 30000);
 // 直播状态姬发送按钮
 $(document).on('click', '.livestatus-live-send', function () {
     method.sendLiveStatusBarrage($(".livestatus_live_text").val());
@@ -1025,14 +946,6 @@ const publicData = {
     set: {},
 }
 let badListData = [];
-const autoBlackData = {
-    enabled: false,
-    black_score: -1,
-    records: [],
-    page: 1,
-    pageSize: 5,
-    maxRecords: 50
-};
 const pnData = {
     list: [],
     page: 1,
@@ -1081,8 +994,7 @@ const method = {
             "bad_list": {
                 "bad_users": []
             },
-            "rectifier": {},
-            "auto_black_list": {}
+            "rectifier": {}
         };
         set.is_auto = $(".is_autoStart").is(
             ':checked');
@@ -1285,8 +1197,6 @@ const method = {
         set.rectifier.follow_text = $(".rectifier_follow_text").val();
         set.rectifier.gift_open = $(".rectifier_gift_open").is(':checked');
         set.rectifier.gift_text = $(".rectifier_gift_text").val();
-        set.auto_black_list.enabled = $(".auto_black_enabled").is(':checked');
-        set.auto_black_list.black_score = parseInt($(".auto_black_score").val()) || -1;
         /*处理验证?*/
         if (set.clock_in.is_open) {
             set.clock_in.sign_day = (new Date()).getTime();
@@ -1792,12 +1702,6 @@ const method = {
                 $(".rectifier_follow_text").val(set.rectifier.follow_text || "谢谢%uNames%的关注~");
                 $(".rectifier_gift_open").prop('checked', set.rectifier.gift_open);
                 $(".rectifier_gift_text").val(set.rectifier.gift_text || "感谢%uName%的%GiftName%~");
-            }
-            if (set.auto_black_list) {
-                autoBlackData.enabled = set.auto_black_list.enabled || false;
-                autoBlackData.black_score = set.auto_black_list.black_score != null ? set.auto_black_list.black_score : -1;
-                $(".auto_black_enabled").prop('checked', autoBlackData.enabled);
-                $(".auto_black_score").val(autoBlackData.black_score);
             }
 
 
@@ -2573,63 +2477,6 @@ function sendMessage() {
                 console.log("消息发送失败")
             }
         }
-    },
-    loadAutoBlackList: function () {
-        $.ajax({
-            url: '../getAutoBlackList',
-            async: false,
-            cache: false,
-            type: 'GET',
-            dataType: 'json',
-            success: function (data) {
-                if (data.code == "200" && data.result) {
-                    autoBlackData.enabled = data.result.enabled || false;
-                    autoBlackData.black_score = data.result.black_score != null ? data.result.black_score : -1;
-                    autoBlackData.records = data.result.records || [];
-                    $(".auto_black_enabled").prop('checked', autoBlackData.enabled);
-                    $(".auto_black_score").val(autoBlackData.black_score);
-                }
-            }
-        });
-        autoBlackData.page = 1;
-        method.renderAutoBlackTable();
-    },
-    saveAutoBlackSettings: function () {
-        $.ajax({
-            url: '../saveAutoBlackList',
-            type: 'POST',
-            data: {enabled: autoBlackData.enabled, black_score: autoBlackData.black_score},
-            dataType: 'json',
-            success: function (data) {
-                if (data.code == "200" && data.result == 0) {
-                    // settings persisted by backend, no need to call saveSet
-                }
-            }
-        });
-    },
-    renderAutoBlackTable: function () {
-        var tbody = $(".auto-black-tbody");
-        tbody.empty();
-        var start = (autoBlackData.page - 1) * autoBlackData.pageSize;
-        var end = Math.min(start + autoBlackData.pageSize, autoBlackData.records.length);
-        var pageItems = autoBlackData.records.slice(start, end);
-        for (var i = 0; i < pageItems.length; i++) {
-            var item = pageItems[i];
-            var row = '<tr data-uid="' + (item.uid || '') + '">' +
-                '<td>' + (item.time || '') + '</td>' +
-                '<td><a href="https://space.bilibili.com/' + (item.uid || '') + '/dynamic" target="_blank">' + (item.uname || '') + '</a></td>' +
-                '<td>' + (item.score || 0) + '</td>' +
-                '<td>' +
-                '<button class="btn btn-sm btn-outline-danger auto-black-unblock-btn">解除拉黑</button> ' +
-                '<button class="btn btn-sm btn-outline-secondary auto-black-delete-btn">删除显示</button>' +
-                '</td>' +
-                '</tr>';
-            tbody.append(row);
-        }
-        var totalPages = Math.max(1, Math.ceil(autoBlackData.records.length / autoBlackData.pageSize));
-        $(".auto-black-page-info").text("第" + autoBlackData.page + "页/共" + totalPages + "页");
-        $(".auto-black-prev").prop('disabled', autoBlackData.page <= 1);
-        $(".auto-black-next").prop('disabled', autoBlackData.page >= totalPages);
     }
 }
 

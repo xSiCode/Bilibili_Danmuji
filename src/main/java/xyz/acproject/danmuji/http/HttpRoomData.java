@@ -8,7 +8,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.util.CollectionUtils;
 import xyz.acproject.danmuji.conf.PublicDataConf;
-import xyz.acproject.danmuji.conf.set.AutoBlackListSetConf;
 import xyz.acproject.danmuji.entity.room_data.*;
 import xyz.acproject.danmuji.entity.server_data.Conf;
 import xyz.acproject.danmuji.entity.user_data.UserNav;
@@ -18,12 +17,9 @@ import xyz.acproject.danmuji.tools.file.LogFileTools;
 import xyz.acproject.danmuji.utils.*;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -377,7 +373,7 @@ public class HttpRoomData {
     /**
      * 处理用户关注列表：判断可见性，输出结果，如果可见且有关注数据则写入文件
      */
-    public static void   processFollowings(long vmid, String uname) {
+    public static int  processFollowings(long vmid, String uname) {
         JSONObject firstPage = httpGetFollowings(vmid, 1, 50);
         StringBuilder logSb = new StringBuilder(100);
 
@@ -422,14 +418,6 @@ public class HttpRoomData {
                         matchedList.add(followedName + ":" + tempScore);
                     }
                 }
-
-                // 负黑自动小黑屋姬：自动拉黑逻辑
-                boolean processBlackResult = processAutoBlackList(vmid, uname, totalScore);
-                if (processBlackResult) {
-                    logSb.append(" [已自动拉黑]");
-                }else {
-                    logSb.append(" [自动拉黑失败]");
-                }
             }
 
             logSb.append(" [分数:").append(totalScore).append("]");
@@ -448,6 +436,8 @@ public class HttpRoomData {
 
         //通过日志查看后手动打开浏览器
         LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
+
+        return totalScore;
     }
 
     /**
@@ -784,177 +774,5 @@ public class HttpRoomData {
             return roomBlocks;
         }
         return roomBlocks;
-    }
-
-    /**
-     * 负黑自动小黑屋姬：根据totalScore和拉黑分数判断是否自动拉黑
-     */
-    private static boolean processAutoBlackList(long vmid, String uname, int totalScore) {
-        boolean  flagBlack = false;
-
-        try {
-            if (PublicDataConf.centerSetConf == null) return false;
-            AutoBlackListSetConf conf = PublicDataConf.centerSetConf.getAutoBlackList();
-            if (conf == null || !conf.isEnabled()) return false;
-
-            int blackScore = conf.getBlack_score();
-            boolean shouldBlack = false;
-            Integer newPnScore = null;
-
-            if (blackScore < 0) {
-                if (totalScore <= blackScore) {
-                    shouldBlack = true;
-                    newPnScore = -2;
-                } else if (totalScore > 0) {
-                    newPnScore = 2;
-                }
-            } else if (blackScore == 0) {
-                if (totalScore <= -1) {
-                    shouldBlack = true;
-                    newPnScore = -2;
-                } else if (totalScore == 0) {
-                    shouldBlack = true;
-                } else if (totalScore > 0) {
-                    newPnScore = 2;
-                }
-            }
-
-            if (shouldBlack) {
-                Short result = HttpUserData.httpPostAddBadList(vmid);
-                if (result != null && result == 0) {
-                    addAutoBlackRecord(vmid, uname, totalScore);
-                    flagBlack = true;
-                }
-            }
-
-            if (newPnScore != null) {
-                updatePnScoreForUser(vmid, uname, newPnScore);
-            }
-        } catch (Exception e) {
-            LOGGER.error("processAutoBlackList error", e);
-        }
-
-        return flagBlack;
-    }
-
-    private static synchronized void addAutoBlackRecord(long uid, String uname, int score) {
-        List<AutoBlackListSetConf.AutoBlackUser> records = loadAutoBlackRecords();
-        // dedup: remove existing entry for same uid
-        records.removeIf(r -> r.getUid() != null && r.getUid().equals(uid));
-        AutoBlackListSetConf.AutoBlackUser record = new AutoBlackListSetConf.AutoBlackUser();
-        record.setUid(uid);
-        record.setUname(uname);
-        record.setScore(score);
-        record.setTime(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(System.currentTimeMillis()));
-        records.add(0, record);
-        // keep only newest 50
-        while (records.size() > 50) {
-            records.remove(records.size() - 1);
-        }
-        saveAutoBlackRecords(records);
-    }
-
-    public static List<AutoBlackListSetConf.AutoBlackUser> loadAutoBlackRecords() {
-        List<AutoBlackListSetConf.AutoBlackUser> records = new ArrayList<>();
-        try {
-            FileTools fileTools = new FileTools();
-            File file = new File(fileTools.getBaseJarPath(), "自动小黑屋记录.json");
-            if (!file.exists()) return records;
-            StringBuilder sb = new StringBuilder();
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
-                String line;
-                while ((line = reader.readLine()) != null) sb.append(line);
-            }
-            JSONObject json = JSONObject.parseObject(sb.toString());
-            if (json == null) return records;
-            JSONArray list = json.getJSONArray("records");
-            if (list != null) {
-                for (Object obj : list) {
-                    JSONObject entry = (JSONObject) obj;
-                    AutoBlackListSetConf.AutoBlackUser user = new AutoBlackListSetConf.AutoBlackUser();
-                    user.setUid(entry.getLong("uid"));
-                    user.setUname(entry.getString("uname"));
-                    user.setScore(entry.getIntValue("score"));
-                    user.setTime(entry.getString("time"));
-                    records.add(user);
-                }
-            }
-        } catch (Exception e) {
-            LOGGER.error("loadAutoBlackRecords error", e);
-        }
-        return records;
-    }
-
-    public static void saveAutoBlackRecords(List<AutoBlackListSetConf.AutoBlackUser> records) {
-        try {
-            FileTools fileTools = new FileTools();
-            File file = new File(fileTools.getBaseJarPath(), "自动小黑屋记录.json");
-            if (!file.getParentFile().exists()) file.getParentFile().mkdirs();
-            JSONObject json = new JSONObject();
-            JSONArray arr = new JSONArray();
-            for (AutoBlackListSetConf.AutoBlackUser user : records) {
-                JSONObject entry = new JSONObject();
-                entry.put("uid", user.getUid());
-                entry.put("uname", user.getUname());
-                entry.put("score", user.getScore());
-                entry.put("time", user.getTime());
-                arr.add(entry);
-            }
-            json.put("records", arr);
-            try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"))) {
-                writer.write(JSON.toJSONString(json, true));
-            }
-        } catch (Exception e) {
-            LOGGER.error("saveAutoBlackRecords error", e);
-        }
-    }
-
-    private static void updatePnScoreForUser(long uid, String uname, int newScore) {
-        try {
-            FileTools fileTools = new FileTools();
-            File file = new File(fileTools.getBaseJarPath(), "负黑正白判定表.json");
-            JSONObject json;
-            JSONArray list;
-            if (file.exists()) {
-                StringBuilder sb = new StringBuilder();
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
-                    String line;
-                    while ((line = reader.readLine()) != null) sb.append(line);
-                }
-                json = JSONObject.parseObject(sb.toString());
-                list = json.getJSONArray("followings_list");
-                if (list == null) list = new JSONArray();
-            } else {
-                json = new JSONObject();
-                json.put("type", "负黑正白判定表");
-                list = new JSONArray();
-            }
-            // update or add entry
-            boolean found = false;
-            for (Object obj : list) {
-                JSONObject entry = (JSONObject) obj;
-                if (entry.getLongValue("uid") == uid) {
-                    entry.put("score", newScore);
-                    entry.put("name", uname);
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                JSONObject entry = new JSONObject();
-                entry.put("uid", uid);
-                entry.put("name", uname);
-                entry.put("score", newScore);
-                list.add(0, entry);
-            }
-            json.put("followings_list", list);
-            if (!file.getParentFile().exists()) file.getParentFile().mkdirs();
-            try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"))) {
-                writer.write(JSON.toJSONString(json, true));
-            }
-            reloadPnScoreMap();
-        } catch (Exception e) {
-            LOGGER.error("updatePnScoreForUser error", e);
-        }
     }
 }
