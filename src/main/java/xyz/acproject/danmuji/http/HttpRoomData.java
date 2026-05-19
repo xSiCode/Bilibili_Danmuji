@@ -371,39 +371,150 @@ public class HttpRoomData {
     }
 
     /**
+     * 获取用户个人信息卡片
+     */
+    public static JSONObject httpGetUserCard(long mid) {
+        String data = null;
+        JSONObject jsonObject = null;
+        Map<String, String> headers = null;
+        Map<String, String> params = null;
+        headers = new HashMap<>(3);
+        headers.put("referer", "https://space.bilibili.com/" + mid + "/");
+        headers.put("user-agent",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36");
+        if (StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
+            headers.put("cookie", PublicDataConf.USERCOOKIE);
+        }
+        params = new HashMap<>(1);
+        params.put("mid", String.valueOf(mid));
+        try {
+            data = OkHttp3Utils.getHttp3Utils()
+                    .httpGet("https://api.bilibili.com/x/web-interface/card", headers, params).body().string();
+        } catch (Exception e) {
+            LOGGER.error(e);
+            data = null;
+        }
+        if (data == null)
+            return null;
+        jsonObject = JSONObject.parseObject(data);
+        return jsonObject;
+    }
+
+    /**
      * 处理用户关注列表：判断可见性，输出结果，如果可见且有关注数据则写入文件
      */
-    public static int  processFollowings(long vmid, String uname) {
-        JSONObject firstPage = httpGetFollowings(vmid, 1, 50);
-        StringBuilder logSb = new StringBuilder(100);
+    public static int processFollowings(long vmid, String uname) {
+        /**
+         * 步骤：
+         * 1. 获取用户卡片信息
+         * 2. 获取用户关注列表
+         */
 
+        long total = 0;
+        int totalScore = 0;
+        int tempScore = 0;
+
+        long fans = -1;
+        long attention = -1;
+        long archiveCount = -1;
+        long likeNum = -1;
+        boolean following = false;
+        int currentLevel = -1;
+
+        StringBuilder logSb = new StringBuilder(100);
         logSb.append(new SimpleDateFormat("HH:mm:ss").format(System.currentTimeMillis()))
                 .append(" https://space.bilibili.com/")
                 .append(vmid)
-                .append("/dynamic ")
-                .append(uname);
+                .append("/dynamic [")
+                .append(uname)
+                .append("]");
 
+        //用户卡片信息 判断
+        JSONObject dataX = httpGetUserCard(vmid);
+        if (dataX != null && dataX.getShort("code") == 0) {
+            JSONObject dataCard = dataX.getJSONObject("data");
+
+            if (dataCard != null) {
+                //数据获取
+                JSONObject cardInfo = dataCard.getJSONObject("card");
+
+                fans = cardInfo != null ? cardInfo.getLongValue("fans") : -2;
+                attention = cardInfo != null ? cardInfo.getLongValue("attention") : -2;
+
+                if (cardInfo != null) {
+                    JSONObject levelInfo = cardInfo.getJSONObject("level_info");
+                    if (levelInfo != null) {
+                        currentLevel = levelInfo.getIntValue("current_level");
+                    }
+                }
+
+                following = dataCard.getBooleanValue("following");
+                archiveCount =  dataCard.getLongValue("archive_count") ;
+                likeNum = dataCard.getLongValue("like_num") ;
+
+                // 条件判断
+                if (following) {  // 哔哩哔哩 已关注
+                    logSb.append(" [我已关注]");
+                    totalScore = 2;
+                } else if (pnScoreMap.containsKey(vmid)) {  // 当前观众就在本地黑白名单里
+                    logSb.append(" [黑白分:").append(totalScore).append("]");
+                    totalScore = pnScoreMap.get(vmid);
+                }
+
+                if (fans < 50 && attention > 4000) {
+                    //疑似人机，拉黑处理
+                    totalScore = -2;
+                    logSb.append(" [疑似人机]");
+                }
+
+                if (currentLevel < 2) {
+                    logSb.append(" [等级过低，lv:").append(currentLevel).append("]");
+                    totalScore = -2;
+                }
+
+                if (fans > 1000 || archiveCount > 50 || likeNum > 10_000) {
+                    //粉丝数高，投稿高，获赞高
+                    logSb.append(" [疑是up主,需要重视度:").append(fans / 1000 + archiveCount / 50 + likeNum / 10_000).append("]");
+                }
+
+                // 日志打印
+                logSb.append(", [等级:").append(currentLevel)
+                        .append(", 投稿:").append(archiveCount)
+                        .append(", 关注:").append(attention)
+                        .append(" 粉丝:").append(fans)
+                        .append(", 获赞:").append(likeNum).append("]");
+
+                if (totalScore != 0) { // 说明已经经过了判断
+                    LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
+                    return totalScore;
+                }
+            } else {
+                logSb.append("[用户card异常]");
+            }
+        } else {
+            logSb.append("[api返回异常]");
+        }
+
+        // 用户关注数判断
+        JSONObject firstPage = httpGetFollowings(vmid, 1, 50);
         short code = firstPage != null ? firstPage.getShort("code") : -1;
         JSONObject data = firstPage != null && code == 0 ? firstPage.getJSONObject("data") : null;
-        long total = data != null ? data.getLongValue("total") : -1;
+        total = data != null ? data.getLongValue("total") : -1;
 
-        int totalScore = 0;
-        int tempScore = 0;
         JSONArray followingsList = new JSONArray();
         JSONArray matchedList = new JSONArray();
 
         // 关注列表不可见
         if (firstPage == null || code != 0 || data == null || total == 0) {
-           // LOGGER.info("[" + uname + "] 关注：请求失败或无数据");
-
-            SelfTools.appendAt(logSb, 95, "[成分:不可见]");
+            SelfTools.appendAt(logSb, 160, "[成分:不可见]");
+            // 关注不可见时，尝试通过用户卡片信息判断
         } else {
-
             // 当前观众就在黑白名单里
             if (pnScoreMap.containsKey(vmid)) {
                 totalScore = pnScoreMap.get(vmid);
                 matchedList.add(uname + ":" + totalScore);
             } else {
+                //  观众可见 且不在黑白名单
                 JSONArray list = firstPage.getJSONObject("data").getJSONArray("list");
 
                 // 判断与每个关注人的关系，并计算总分
@@ -420,17 +531,16 @@ public class HttpRoomData {
                 }
             }
 
-            logSb.append(" [分数:").append(totalScore).append("]");
-
             if (totalScore > 0) {
-                SelfTools.appendAt(logSb, 110, "[成分:己方偏多]");
+                SelfTools.appendAt(logSb, 175, "[成分:己方偏多]");
             } else if (totalScore < 0) {
-                SelfTools.appendAt(logSb, 90, "[成分:野猪偏多]");
+                SelfTools.appendAt(logSb, 155, "[成分:野猪偏多]");
             } else {
-                SelfTools.appendAt(logSb, 105, "[成分:需要确认]");
+                SelfTools.appendAt(logSb, 170, "[成分:需要确认]");
             }
-            logSb.append(" [比例:").append(matchedList.size()).append("/").append(total) .append("]")
-                    .append(",黑白名单:").append(matchedList.toJSONString())
+            logSb.append(" [黑白分:").append(totalScore)
+            .append("], [匹配数:").append(matchedList.size())
+                    .append("], 黑白名单:").append(matchedList.toJSONString())
                     .append(" 🍉🍉 关注列表:").append(followingsList.toJSONString());
         }
 
