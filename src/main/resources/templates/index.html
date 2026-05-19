@@ -1306,16 +1306,6 @@
                         <div class="input-group mb-3 black-set collapse" id="black-set">
                             <div class="header-set">
                                 <div class="row align-items-center">
-                                    <!-- 模糊模式 -->
-                                    <div class="col-auto">
-                                        <label class="form-check-label"> <input
-                                                class="form-check-input is_fuzzy_query live-save"
-                                                type="checkbox">
-                                            <span class="_description" data-bs-html="true"
-                                                  data-bs-placement="top" data-bs-toggle="tooltip"
-                                                  title="是否全局模糊匹配用户名(意思是用户名只要包含就屏蔽)">模糊</span>
-                                        </label>
-                                    </div>
                                     <!-- 全局 -->
                                     <div class="col-auto">
                                         <label class="form-check-label"> <input
@@ -1369,14 +1359,14 @@
 									<textarea class="form-control input-margin-b black_names live-save"
                                               data-bs-html="true"
                                               data-bs-placement="top" data-bs-toggle="tooltip"
-                                              placeholder="这里填写自定义屏蔽用户名字，多个请以 中文逗号(，)为分割；&#10;%表示模糊匹配，例如：%你好，表示你好结尾的人；%你好%，表示包含你好的。&#10;模糊匹配模式表示全为包含并不需要％号"
-                                              title="这里填写自定义屏蔽用户名字，多个请以 中文逗号(，)为分割；<br/>%表示模糊匹配，例如：%你好，表示你好结尾的人；%你好%，表示包含你好的。<br/>模糊匹配模式表示全为包含并不需要％号"
+                                              placeholder="自定义屏蔽用户名字，一行一个，包含匹配（用户名包含关键字即屏蔽）"
+                                              title="自定义屏蔽用户名字，一行一个，包含匹配（用户名包含关键字即屏蔽）"
                                     ></textarea>
                                 <textarea class="form-control input-margin-b black_uids live-save"
                                           data-bs-html="true"
                                           data-bs-placement="top" data-bs-toggle="tooltip"
-                                          placeholder="自定义屏蔽用户uid，以 中文逗号(，)为分割"
-                                          title="这里填写自定义屏蔽用户uid，以 中文逗号(，)为分割"
+                                          placeholder="自定义屏蔽用户uid，一行一个"
+                                          title="自定义屏蔽用户uid，一行一个"
                                 ></textarea>
                             </div>
                         </div>

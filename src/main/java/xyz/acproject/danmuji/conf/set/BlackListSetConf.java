@@ -28,8 +28,6 @@ public class BlackListSetConf{
     private boolean thank_follow;
     @JSONField(name = "auto_reply")
     private boolean auto_reply;
-    @JSONField(name = "fuzzy_query")
-    private boolean fuzzy_query;
     @JSONField(name = "names")
     private HashSet<String> names;
     @JSONField(name = "uids")

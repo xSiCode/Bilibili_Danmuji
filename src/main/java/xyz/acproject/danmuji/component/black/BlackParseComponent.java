@@ -92,36 +92,10 @@ public class BlackParseComponent {
                 Gift gift = (Gift) t;
                 name = gift.getUname();
             }
-            //判断
-            String replaced_s = s.replace("%", "");
-            //非模糊模式
-            if(!PublicDataConf.centerSetConf.getBlack().isFuzzy_query()) {
-                if (s.startsWith("%") && s.endsWith("%")) {
-                    if (StringUtils.contains(name, replaced_s)) {
-                        nameFlag = false;
-                        break;
-                    }
-                } else if (s.startsWith("%")) {
-                    if (StringUtils.endsWith(name, replaced_s)) {
-                        nameFlag = false;
-                        break;
-                    }
-                } else if (s.endsWith("%")) {
-                    if (StringUtils.startsWith(name, replaced_s)) {
-                        nameFlag = false;
-                        break;
-                    }
-                } else {
-                    if (replaced_s.equals(name)) {
-                        nameFlag = false;
-                        break;
-                    }
-                }
-            }else{
-                if(StringUtils.contains(name, replaced_s)){
-                    nameFlag = false;
-                    break;
-                }
+            // 包含匹配
+            if (StringUtils.contains(name, s)) {
+                nameFlag = false;
+                break;
             }
         }
         String uid = "";

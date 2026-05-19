@@ -1220,14 +1220,13 @@ const method = {
         set.auto_gift.room_id = $(".autoGift_roomids").val();
         set.privacy.is_open = $(".is_privacy_open").is(':checked');
         set.privacy.small_heart_url = $(".privacy_heart_url").val();
-        set.black.fuzzy_query = $(".is_fuzzy_query").is(':checked');
         set.black.all = $(".is_black_all").is(':checked');
         set.black.thank_gift = $(".is_black_gift").is(':checked');
         set.black.thank_welcome = $(".is_black_welcome").is(':checked');
         set.black.thank_follow = $(".is_black_follow").is(':checked');
         set.black.auto_reply = $(".is_black_reply").is(':checked');
-        set.black.names = method.giftStrings_handle(set.black.names, $(".black_names").val());
-        set.black.uids = method.giftStrings_handle(set.black.uids, $(".black_uids").val());
+        set.black.names = ($(".black_names").val() || '').split('\n').map(function(s) { return s.trim(); }).filter(function(s) { return s !== ''; });
+        set.black.uids = ($(".black_uids").val() || '').split('\n').map(function(s) { return s.trim(); }).filter(function(s) { return s !== ''; });
         set.bad_list.bad_users = badListData;
         set.live_status.is_live_open = $(".livestatus_live_open").is(':checked');
         set.live_status.live_text = $(".livestatus_live_text").val();
@@ -1738,14 +1737,13 @@ const method = {
             $(".autoGift_roomids").val(set.auto_gift.room_id);
             $(".is_privacy_open").prop('checked', set.privacy.is_open);
             $(".privacy_heart_url").val(set.privacy.small_heart_url);
-            $(".is_fuzzy_query").prop('checked', set.black.fuzzy_query);
             $(".is_black_all").prop('checked', set.black.all);
             $(".is_black_gift").prop('checked', set.black.thank_gift);
             $(".is_black_follow").prop('checked', set.black.thank_follow);
             $(".is_black_welcome").prop('checked', set.black.thank_welcome);
             $(".is_black_reply").prop('checked', set.black.auto_reply);
-            $(".black_names").val(method.giftStrings_method(set.black.names));
-            $(".black_uids").val(method.giftStrings_method(set.black.uids));
+            $(".black_names").val(set.black.names ? set.black.names.join('\n') : '');
+            $(".black_uids").val(set.black.uids ? set.black.uids.join('\n') : '');
             if (set.bad_list && set.bad_list.bad_users) {
                 badListData = set.bad_list.bad_users;
             } else {
@@ -1964,7 +1962,6 @@ const method = {
                 $(".is_autoGift_open").attr("disabled", true);
                 $(".autoGift_time").attr("disabled", true);
                 $(".autoGift_roomids").attr("disabled", true);
-                $(".is_fuzzy_query").attr("disabled", true);
                 $(".is_black_all").attr("disabled", true);
                 $(".is_black_gift").attr("disabled", true);
                 $(".is_black_welcome").attr("disabled", true);

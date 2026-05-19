@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.util.CollectionUtils;
@@ -400,6 +401,31 @@ public class HttpRoomData {
         return jsonObject;
     }
 
+
+    // 获取用户动态，不必解析
+    public static String httpGetUserDynamic(long mid) {
+        Map<String, String> headers = new HashMap<>(3);
+        headers.put("referer", "https://space.bilibili.com/" + mid);
+        headers.put("user-agent",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36");
+        if (StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
+            headers.put("cookie", PublicDataConf.USERCOOKIE);
+        }
+        String dynData = null;
+
+        try {
+            dynData = OkHttp3Utils.getHttp3Utils()
+                    .httpGet("https://api.vc.bilibili.com/dynamic_svr/v1/dynamic_svr/space_history?host_uid=" + mid + "&offset_dynamic_id=0&need_top=1", headers, null)
+                    .body().string();
+
+        } catch (Exception e) {
+            LOGGER.warn("获取最新动态失败", mid, e.getMessage());
+        }
+
+        return dynData;
+    }
+
+
     /**
      * 处理用户关注列表：判断可见性，输出结果，如果可见且有关注数据则写入文件
      */
@@ -506,8 +532,35 @@ public class HttpRoomData {
 
         // 关注列表不可见
         if (firstPage == null || code != 0 || data == null || total == 0) {
+            // 关注不可见时，通过空间动态判断
+            String dynData = httpGetUserDynamic(vmid);
+
+            if (dynData.length() < 168){
+                //关注不可见，且没有动态，直接拉黑     无法查看返回的字符串是84或122长度 。 内容：{"code":0,"message":"OK","ttl":1,"data":{"has_more":0,"cards":null,"next_offset":0}
+                totalScore = -2;
+                logSb.append(" [没有动态]");
+            } else if ( dynData.length() > 1450){  // 至少有个动态的字符长度大约是1723字符
+                // 动态判断：使用黑名单姬的自定义屏蔽名字，包含匹配，匹配母串为dynData
+                if (PublicDataConf.centerSetConf.getBlack() != null) {
+                    for (String s : PublicDataConf.centerSetConf.getBlack().getNames()) {
+                        if (StringUtils.isBlank(s)) continue;
+                        if (StringUtils.contains(dynData, s)) {
+                            totalScore = -2;
+                            logSb.append(" [动态命中黑名单:").append(s).append("]");
+                            break;
+                        }
+                    }
+                }
+            } else {
+                logSb.append(" [error:不应该出现本记录，需要修复]");
+            }
+
             SelfTools.appendAt(logSb, 160, "[成分:不可见]");
-            // 关注不可见时，尝试通过用户卡片信息判断
+
+            if (totalScore != 0) { // 说明已经经过了判断
+                LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
+                return totalScore;
+            }
         } else {
             // 当前观众就在黑白名单里
             if (pnScoreMap.containsKey(vmid)) {
