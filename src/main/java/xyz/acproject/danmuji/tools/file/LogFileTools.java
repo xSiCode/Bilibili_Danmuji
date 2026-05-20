@@ -170,7 +170,7 @@ public class LogFileTools {
 		}
 	}
 
-	public synchronized void logFollowersFile(String msg) {
+	public synchronized void logTestFile(String msg) {
 		String path = System.getProperty("user.dir");
 		FileTools fileTools = new FileTools();
 		StringBuilder stringBuilder = new StringBuilder();
@@ -188,7 +188,7 @@ public class LogFileTools {
 			stringBuilder.append("(");
 			stringBuilder.append(PublicDataConf.ROOMID);
 			stringBuilder.append(")");
-			stringBuilder.append("followers");
+			stringBuilder.append("testLog");
 			file = new File(path + stringBuilder.toString() + ".txt");
 			stringBuilder.delete(0, stringBuilder.length());
 			if (file.exists() == false)

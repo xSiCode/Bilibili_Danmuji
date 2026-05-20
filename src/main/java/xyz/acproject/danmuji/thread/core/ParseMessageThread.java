@@ -213,8 +213,8 @@ public class ParseMessageThread extends Thread {
                                     if (1 != barrage.getIphone()) {
                                         stringBuilder.append(", https://space.bilibili.com/").append(barrage.getUid());
                                     }
-                                    stringBuilder.append(" [").append(barrage.getUname());
-                                    stringBuilder.append("]:");
+                                    stringBuilder.append(" ").append(barrage.getUname());
+                                    stringBuilder.append(" ");
                                     stringBuilder.append(barrage.getMsg());
                                     //控制台打印
                                     if (getCenterSetConf().is_cmd()) {
@@ -1057,8 +1057,8 @@ public class ParseMessageThread extends Thread {
                                             .append(" [新的访客] ")
                                             .append("https://space.bilibili.com/")
                                             .append(_follow_uid)
-                                            .append(" [")
-                                            .append(_follow_uname).append("] ");
+                                            .append(" ")
+                                            .append(_follow_uname);
 
                                     if (PublicDataConf.logThread != null && !PublicDataConf.logThread.FLAG) {
                                         PublicDataConf.logString.offer(stringBuilder.toString());
