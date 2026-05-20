@@ -1047,7 +1047,7 @@ const pnData = {
 const autoBlockData = {
     list: [],
     page: 1,
-    pageSize: 5,
+    pageSize: 10,
 }
 const method = {
     saveSet: function () {
@@ -2441,8 +2441,8 @@ const method = {
                 var data = JSON.parse(msg.data);
                 if (data.cmd === 'auto_block' && data.result) {
                     autoBlockData.list.unshift(data.result);
-                    if (autoBlockData.list.length > 50) {
-                        autoBlockData.list = autoBlockData.list.slice(0, 50);
+                    if (autoBlockData.list.length > 100) {
+                        autoBlockData.list = autoBlockData.list.slice(0, 100);
                     }
                     if ($("#autoBlock-set").hasClass("show")) {
                         if (autoBlockData.page === 1) {

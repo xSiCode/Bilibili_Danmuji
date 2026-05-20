@@ -461,9 +461,9 @@ public class HttpRoomData {
         // 1 当前观众就在本地黑白名单里
         if (pnScoreMap.containsKey(vmid)) {
             blackWhiteScore = pnScoreMap.get(vmid);
-            blackWhiteType = "[已在黑白名单:" + blackWhiteScore + "]";
+            blackWhiteType = "[已在名单: " + blackWhiteScore + "]";
             logSb.append(blackWhiteType);
-            LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb.append("[已处理:黑白名单]")));
+            LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb.append(" [跳过]")));
 
             return Pair.of(blackWhiteScore, blackWhiteType);
         }
@@ -490,7 +490,6 @@ public class HttpRoomData {
                 blackWhiteScore = -2;
                 blackWhiteType = "[拉黑:关注不可见且没有动态]";
                 logSb.append(blackWhiteType);
-                SelfTools.appendAt(logSb, 90, blackWhiteType);
 
                 // 添加日志，如果返回的是 api 返回的错误信息，则添加日志
                 LogFileTools.getlogFileTools().logTestFile(  new SimpleDateFormat("HH:mm:ss").format(System.currentTimeMillis()) + " "+  dynData);
@@ -503,7 +502,7 @@ public class HttpRoomData {
                             blackWhiteScore = -2;
                             blackWhiteType = "[拉黑:动态含违禁词:" + s + "]";
                             logSb.append(blackWhiteType);
-                            SelfTools.appendAt(logSb, 90, blackWhiteType);
+                            SelfTools.appendAt(logSb, 130, blackWhiteType);
                             break;
                         }
                     }
@@ -511,6 +510,13 @@ public class HttpRoomData {
             } else {
                 logSb.append(" [error:不应该出现本记录，需要修复]");
             }
+
+            if(blackWhiteScore != 0){
+                LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
+
+                return Pair.of(blackWhiteScore, blackWhiteType);
+            }
+
             logSb.append("关注列表不可见");
         } else {
             JSONArray list = firstPage.getJSONObject("data").getJSONArray("list");
@@ -539,21 +545,21 @@ public class HttpRoomData {
             }
 
             if (blackWhiteScore > 0) {
-                SelfTools.appendAt(logSb, 100, "[成分:己方偏多]");
+                SelfTools.appendAt(logSb, 140, "[成分:己方偏多]");
             } else if (blackWhiteScore < 0) {
                 blackWhiteType = "[拉黑:关注野猪偏多]";
-                SelfTools.appendAt(logSb, 90, "[成分:野猪偏多]");
+                SelfTools.appendAt(logSb, 130, "[成分:野猪偏多]");
             }
-        }
 
-        if (blackWhiteScore != 0) { // 说明已经经过了判断
-            // 日志打印
-            logSb.append(" [黑白分:").append(blackWhiteScore)
-                    .append("] [匹配数:").append(matchedList.size())
-                    .append("] 黑白名单:").append(matchedList.toJSONString())
-                    .append(" 🍉🍉 关注列表:").append(followingsList.toJSONString());
-            LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
-            return Pair.of(blackWhiteScore, blackWhiteType);
+            if (blackWhiteScore != 0) { // 说明已经经过了判断
+                // 日志打印
+                logSb.append(" [黑白分:").append(blackWhiteScore)
+                        .append("] [匹配数:").append(matchedList.size())
+                        .append("] 黑白名单:").append(matchedList.toJSONString())
+                        .append(" 🍉🍉 关注列表:").append(followingsList.toJSONString());
+                LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
+                return Pair.of(blackWhiteScore, blackWhiteType);
+            }
         }
 
         // 3  用户卡片信息 判断   这个api 有调用次数限制，估计 1分钟100词限制，放到最后
@@ -612,9 +618,17 @@ public class HttpRoomData {
             logSb.append("[用户API error]");
         }
 
-        SelfTools.appendAt(logSb, 140, "[成分:]");
+        if (blackWhiteScore > 0) {
+            SelfTools.appendAt(logSb, 140, "[成分:己方偏多]");
+        } else if (blackWhiteScore < 0) {
+            blackWhiteType = "[拉黑:关注野猪偏多]";
+            SelfTools.appendAt(logSb, 130, "[成分:野猪偏多]");
+        } else {
+            SelfTools.appendAt(logSb, 140, "[成分:路人]");
+        }
+
         logSb.append(" [黑白分:").append(blackWhiteScore)
-                .append(" 🍉🍉 关注列表:").append(followingsList.toJSONString());;
+                .append("] 🍉🍉 关注列表:").append(followingsList.toJSONString());;
 
         LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
 
