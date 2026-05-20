@@ -26,7 +26,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.*;
 
 /**
  * @author BanqiJane
@@ -425,7 +425,14 @@ public class HttpRoomData {
         return dynData;
     }
 
+    // 用户 用户动态冷却调用
+   static   ScheduledExecutorService schedulerDynamicService = new ScheduledThreadPoolExecutor(1);
+   static  boolean schedulerDynamicColdWait = false;
 
+
+    // 用户 卡片信息冷却调用
+    static   ScheduledExecutorService schedulerCardInfoService = new ScheduledThreadPoolExecutor(1);
+    static  boolean schedulerCardInfoColdWait = false;
     /**
      * 处理用户关注列表：判断可见性，输出结果，如果可见且有关注数据则写入文件
      */
@@ -435,6 +442,15 @@ public class HttpRoomData {
          * 1. 本地黑白名单判断
          * 2. 获取用户关注列表
          * 3. 获取用户卡片信息
+         *
+         * 只有黑白名单里的能跳过
+         * 获取关注列表
+         * 	不可见：获取动态
+         * 	可见：打分
+         * 分数为0：获取用户卡片信息
+         * 返回结果（卡片信息 和关注列表）
+         *
+         * 为了数据格式化，减少按条件的输入输出
          */
 
         long total = 0;
@@ -450,6 +466,7 @@ public class HttpRoomData {
         int currentLevel = -1;
 
         StringBuilder logSb = new StringBuilder(100);
+        StringBuilder logSbEnd = new StringBuilder(100);
         logSb.append(new SimpleDateFormat("HH:mm:ss").format(System.currentTimeMillis()))
                 .append(" ")
                 .append("https://space.bilibili.com/")
@@ -469,7 +486,7 @@ public class HttpRoomData {
         }
 
 
-        // 2。 用户关注数判断，该api没有限制
+        // 2. 用户关注数判断，该api没有限制
         JSONObject firstPage = httpGetFollowings(vmid, 1, 50);
         short code = firstPage != null ? firstPage.getShort("code") : -1;
         JSONObject data = firstPage != null && code == 0 ? firstPage.getJSONObject("data") : null;
@@ -481,43 +498,56 @@ public class HttpRoomData {
         JSONArray matchedList = new JSONArray();
 
         // 关注列表不可见
-        if (firstPage == null || code != 0 || data == null || total == 0) {
-            // 通过空间动态判断
-            String dynData = httpGetUserDynamic(vmid);
+        if (firstPage == null || code != 0 || data == null || total == 0 ) {
+            // 大约一分钟20次调用，且不固定
+            if(!schedulerDynamicColdWait){
+                // 通过空间动态判断
+                String dynData = httpGetUserDynamic(vmid);
+                String  resultStartStr = "{\"code\":0,\"message\":\"OK\""; //  部分： {"code":0,"message":"OK","ttl":1,"data":{"has_more":0,"cards":null,"next_offset":0}}
 
-            if (dynData.length() < 1000) {
-                //关注不可见，且没有动态，直接拉黑     无法查看返回的字符串是84或122长度 。 内容：{"code":0,"message":"OK","ttl":1,"data":{"has_more":0,"cards":null,"next_offset":0}
-                blackWhiteScore = -2;
-                blackWhiteType = "[拉黑:关注不可见且没有动态]";
-                logSb.append(blackWhiteType);
+                LogFileTools.getlogFileTools().logTestFile(  logSb +dynData.substring(0, 84) );
 
-                // 添加日志，如果返回的是 api 返回的错误信息，则添加日志
-                LogFileTools.getlogFileTools().logTestFile(  new SimpleDateFormat("HH:mm:ss").format(System.currentTimeMillis()) + " "+  dynData);
-            } else if (dynData.length() > 1000) {  // 至少有个动态的字符长度大约是1723字符
-                // 动态判断：使用黑名单姬的自定义屏蔽名字，包含匹配，匹配母串为dynData
-                if (PublicDataConf.centerSetConf.getBlack() != null) {
-                    for (String s : PublicDataConf.centerSetConf.getBlack().getNames()) {
-                        if (StringUtils.isBlank(s)) continue;
-                        if (StringUtils.contains(dynData, s)) {
-                            blackWhiteScore = -2;
-                            blackWhiteType = "[拉黑:动态含违禁词:" + s + "]";
-                            logSb.append(blackWhiteType);
-                            SelfTools.appendAt(logSb, 130, blackWhiteType);
-                            break;
+                if (dynData.contains( resultStartStr )) {
+                    if (dynData.length() < 200) {
+                        //关注不可见，且没有动态，直接拉黑     无法查看返回的字符串是84或122长度 。 内容：{"code":0,"message":"OK","ttl":1,"data":{"has_more":0,"cards":null,"next_offset":0}
+                        blackWhiteScore = -2;
+                        blackWhiteType = "[白板账号]";
+                        logSb.append(blackWhiteType).append(" [拉黑] ");
+
+                    }
+                    // 动态判断：使用黑名单姬的自定义屏蔽名字，包含匹配，匹配母串为dynData
+                    if (PublicDataConf.centerSetConf.getBlack() != null) {
+                        for (String s : PublicDataConf.centerSetConf.getBlack().getNames()) {
+                            if (StringUtils.isBlank(s)) continue;
+                            if (StringUtils.contains(dynData, s)) {
+                                blackWhiteScore = -2;
+                                blackWhiteType = "[动态含违禁词:" + s + "]";
+                                logSb.append(blackWhiteType).append(" [拉黑] ");
+                                break;
+                            }
                         }
                     }
+                } else {
+                    schedulerDynamicColdWait = true;
+                    System.out.println("字符串不包含目标片段。 API 调用超过频次，建议主动限制");
+
+                    schedulerDynamicService.schedule(() -> {
+                        schedulerDynamicColdWait = false;
+                        // 这里编写 11 分钟后需要执行的逻辑  3分钟不得行
+                        System.out.println("11分钟延迟已到，开始执行任务！当前时间：" + System.currentTimeMillis());
+                    }, 11, TimeUnit.MINUTES); // 参数：任务、延迟时间、时间单位
+
+                    LogFileTools.getlogFileTools().logTestFile(  logSb +" 用户动态API 调用超过频次，建议主动限制");
                 }
-            } else {
-                logSb.append(" [error:不应该出现本记录，需要修复]");
+
+                if(blackWhiteScore != 0){
+                    // 拉黑：关注不可见且没有动态，用户动态未回
+                    LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
+                    return Pair.of(blackWhiteScore, blackWhiteType);
+                }else {
+                    logSbEnd.append(" [成份:关注隐藏, 需要确认] ");
+                }
             }
-
-            if(blackWhiteScore != 0){
-                LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
-
-                return Pair.of(blackWhiteScore, blackWhiteType);
-            }
-
-            logSb.append("关注列表不可见");
         } else {
             JSONArray list = firstPage.getJSONObject("data").getJSONArray("list");
 
@@ -539,27 +569,43 @@ public class HttpRoomData {
                     }
                 }
             }
-            bwCount = blackCount * whiteCount;
-            if(bwCount != 0){
-                logSb.append(" [分裂度:").append(bwCount).append("]");
-            }
+
 
             if (blackWhiteScore > 0) {
-                SelfTools.appendAt(logSb, 140, "[成分:己方偏多]");
+                logSbEnd.append("[成分:关注正面]");
             } else if (blackWhiteScore < 0) {
-                blackWhiteType = "[拉黑:关注野猪偏多]";
-                SelfTools.appendAt(logSb, 130, "[成分:野猪偏多]");
+                blackWhiteType = "[关注野猪偏多]";
+                logSb.append(blackWhiteType).append(" [拉黑] ");
+                logSbEnd.append("[成分:关注负面]");
+            }else {
+                logSbEnd.append("[成分:关注普通, 需要确认]");
             }
 
-            if (blackWhiteScore != 0) { // 说明已经经过了判断
-                // 日志打印
-                logSb.append(" [黑白分:").append(blackWhiteScore)
+            bwCount = blackCount * whiteCount;
+            // 日志打印
+
+            if(blackWhiteScore != 0 || bwCount != 0){
+                logSbEnd.append(" [黑白分:").append(blackWhiteScore)
+                        .append("] [分裂度:").append(bwCount)
                         .append("] [匹配数:").append(matchedList.size())
-                        .append("] 黑白名单:").append(matchedList.toJSONString())
-                        .append(" 🍉🍉 关注列表:").append(followingsList.toJSONString());
-                LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
+                        .append("] 黑白名单:").append(matchedList.toJSONString());
+            }
+            logSbEnd.append(" 🍉🍉 关注列表:").append(followingsList.toJSONString());
+
+            if (blackWhiteScore != 0) { // 说明已经经过了判断
+                SelfTools.appendAt(logSb, 140, logSbEnd.toString());
+                LogFileTools.getlogFileTools().logFollowingsFile( logSb.toString() );
+
                 return Pair.of(blackWhiteScore, blackWhiteType);
             }
+        }
+
+
+        if (schedulerCardInfoColdWait){
+            SelfTools.appendAt(logSb, 140, logSbEnd.toString());
+            LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
+
+             return Pair.of(blackWhiteScore, blackWhiteType);
         }
 
         // 3  用户卡片信息 判断   这个api 有调用次数限制，估计 1分钟100词限制，放到最后
@@ -580,26 +626,11 @@ public class HttpRoomData {
                         currentLevel = levelInfo.getIntValue("current_level");
                     }
                 }
-
                 following = dataCard.getBooleanValue("following");
                 archiveCount = dataCard.getLongValue("archive_count");
                 likeNum = dataCard.getLongValue("like_num");
 
-                // 条件判断
-                if (following) {  // 哔哩哔哩 已关注
-                    blackWhiteScore = 2;
-                    blackWhiteType = "[已关注]";
-                    logSb.append(blackWhiteType);
-                } else if (fans < 50 && attention > 4000) {
-                    //疑似人机，拉黑处理
-                    blackWhiteScore = -2;
-                    blackWhiteType = "[拉黑:疑似人机]";
-                    logSb.append(blackWhiteType);
-                } else if (currentLevel < 2) {
-                    blackWhiteScore = -2;
-                    blackWhiteType = "[拉黑:LV:" + currentLevel + "]";
-                    logSb.append(blackWhiteType);
-                }
+                SelfTools.appendAt(logSb, 80, "");
                 // 日志打印
                 logSb.append(" [LV:").append(currentLevel)
                         .append("] [投稿:").append(archiveCount)
@@ -611,25 +642,36 @@ public class HttpRoomData {
                     //粉丝数高，投稿高，获赞高
                     logSb.append(" [KOL:").append(fans / 1000 + archiveCount / 100 + likeNum / 10_0000).append("]");
                 }
+                // 条件判断
+                if (following) {  // 哔哩哔哩 已关注
+                    blackWhiteScore = 2;
+                    blackWhiteType = "[已关注]";
+                    logSb.append(blackWhiteType);
+                } else if (fans < 50 && attention > 4000) {
+                    //疑似人机，拉黑处理
+                    blackWhiteScore = -2;
+                    blackWhiteType = "[疑似人机]";
+                    logSb.append(blackWhiteType).append(" [拉黑] ");
+                } else if (currentLevel < 2) {
+                    blackWhiteScore = -2;
+                    blackWhiteType = "[LV:" + currentLevel + "]";
+                    logSb.append(blackWhiteType).append(" [拉黑] ");
+                }
+
             } else {
                 logSb.append("[用户信息解析异常]");
             }
         } else {
-            logSb.append("[用户API error]");
+            schedulerCardInfoColdWait = true;
+            schedulerCardInfoService.schedule(() -> {
+                schedulerCardInfoColdWait = false;
+                // 这里编写 11 分钟后需要执行的逻辑
+                System.out.println("11分钟延迟已到，开始执行任务！当前时间：" + System.currentTimeMillis());
+            }, 11, TimeUnit.MINUTES); // 参数：任务、延迟时间、时间单位
+            LogFileTools.getlogFileTools().logTestFile(  logSb +" 用户卡片信息API 调用超过频次，建议主动限制");
         }
 
-        if (blackWhiteScore > 0) {
-            SelfTools.appendAt(logSb, 140, "[成分:己方偏多]");
-        } else if (blackWhiteScore < 0) {
-            blackWhiteType = "[拉黑:关注野猪偏多]";
-            SelfTools.appendAt(logSb, 130, "[成分:野猪偏多]");
-        } else {
-            SelfTools.appendAt(logSb, 140, "[成分:路人]");
-        }
-
-        logSb.append(" [黑白分:").append(blackWhiteScore)
-                .append("] 🍉🍉 关注列表:").append(followingsList.toJSONString());;
-
+        SelfTools.appendAt(logSb, 140, logSbEnd.toString());
         LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
 
         return Pair.of(blackWhiteScore, blackWhiteType);
