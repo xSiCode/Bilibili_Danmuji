@@ -501,6 +501,13 @@ $(document).on('click', '.black_flag_parent', function () {
         $(".black_flag_child").prop('checked', true);
     }
 });
+$(document).on('click', '.white_flag_parent', function () {
+    if ($(this).is(':checked')) {
+        $(".white_flag_child").prop('checked', false);
+    } else {
+        $(".white_flag_child").prop('checked', true);
+    }
+});
 $(document).on('click', '.badlist_add_btn', function () {
     var uid = Number($(".badlist_uid").val());
     var uname = $(".badlist_uname").val() || '';
@@ -1240,8 +1247,18 @@ const method = {
         set.black.thank_welcome = $(".is_black_welcome").is(':checked');
         set.black.thank_follow = $(".is_black_follow").is(':checked');
         set.black.auto_reply = $(".is_black_reply").is(':checked');
+        set.black.is_dynamic = $(".is_black_dynamic").is(':checked');
         set.black.names = ($(".black_names").val() || '').split('\n').map(function(s) { return s.trim(); }).filter(function(s) { return s !== ''; });
         set.black.uids = ($(".black_uids").val() || '').split('\n').map(function(s) { return s.trim(); }).filter(function(s) { return s !== ''; });
+        if (!set.white) set.white = {};
+        set.white.all = $(".is_white_all").is(':checked');
+        set.white.thank_gift = $(".is_white_gift").is(':checked');
+        set.white.thank_welcome = $(".is_white_welcome").is(':checked');
+        set.white.thank_follow = $(".is_white_follow").is(':checked');
+        set.white.auto_reply = $(".is_white_reply").is(':checked');
+        set.white.is_dynamic = $(".is_white_dynamic").is(':checked');
+        set.white.names = ($(".white_names").val() || '').split('\n').map(function(s) { return s.trim(); }).filter(function(s) { return s !== ''; });
+        set.white.uids = ($(".white_uids").val() || '').split('\n').map(function(s) { return s.trim(); }).filter(function(s) { return s !== ''; });
         set.bad_list.bad_users = badListData;
         set.live_status.is_live_open = $(".livestatus_live_open").is(':checked');
         set.live_status.live_text = $(".livestatus_live_text").val();
@@ -1757,8 +1774,19 @@ const method = {
             $(".is_black_follow").prop('checked', set.black.thank_follow);
             $(".is_black_welcome").prop('checked', set.black.thank_welcome);
             $(".is_black_reply").prop('checked', set.black.auto_reply);
+            $(".is_black_dynamic").prop('checked', set.black.is_dynamic);
             $(".black_names").val(set.black.names ? set.black.names.join('\n') : '');
             $(".black_uids").val(set.black.uids ? set.black.uids.join('\n') : '');
+            if (set.white) {
+                $(".is_white_all").prop('checked', set.white.all);
+                $(".is_white_gift").prop('checked', set.white.thank_gift);
+                $(".is_white_follow").prop('checked', set.white.thank_follow);
+                $(".is_white_welcome").prop('checked', set.white.thank_welcome);
+                $(".is_white_reply").prop('checked', set.white.auto_reply);
+                $(".is_white_dynamic").prop('checked', set.white.is_dynamic);
+                $(".white_names").val(set.white.names ? set.white.names.join('\n') : '');
+                $(".white_uids").val(set.white.uids ? set.white.uids.join('\n') : '');
+            }
             if (set.bad_list && set.bad_list.bad_users) {
                 badListData = set.bad_list.bad_users;
             } else {
@@ -1982,8 +2010,17 @@ const method = {
                 $(".is_black_welcome").attr("disabled", true);
                 $(".is_black_follow").attr("disabled", true);
                 $(".is_black_reply").attr("disabled", true);
+                $(".is_black_dynamic").attr("disabled", true);
                 $(".black_names").attr("disabled", true);
                 $(".black_uids").attr("disabled", true);
+                $(".is_white_all").attr("disabled", true);
+                $(".is_white_gift").attr("disabled", true);
+                $(".is_white_welcome").attr("disabled", true);
+                $(".is_white_follow").attr("disabled", true);
+                $(".is_white_reply").attr("disabled", true);
+                $(".is_white_dynamic").attr("disabled", true);
+                $(".white_names").attr("disabled", true);
+                $(".white_uids").attr("disabled", true);
             }
         }
         return set;

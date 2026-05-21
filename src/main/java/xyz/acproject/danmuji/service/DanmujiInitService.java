@@ -104,6 +104,9 @@ public class DanmujiInitService {
             if (PublicDataConf.centerSetConf.getBlack() == null) {
                 PublicDataConf.centerSetConf.setBlack(new BlackListSetConf());
             }
+            if (PublicDataConf.centerSetConf.getWhite() == null) {
+                PublicDataConf.centerSetConf.setWhite(new WhiteListSetConf());
+            }
             if (PublicDataConf.centerSetConf.getLive_status() == null) {
                 PublicDataConf.centerSetConf.setLive_status(new LiveStatusSetConf());
             }
@@ -127,7 +130,7 @@ public class DanmujiInitService {
             // 此处无参初始化可以采用聚合根的思想
             PublicDataConf.centerSetConf = new CenterSetConf(new ThankGiftSetConf(), new AdvertSetConf(),
                     new ThankFollowSetConf(), new AutoReplySetConf(), new ClockInSetConf(), new ThankWelcomeSetConf(),
-                    new AutoSendGiftConf(), new PrivacySetConf(), new BlackListSetConf(), new LiveStatusSetConf(),
+                    new AutoSendGiftConf(), new PrivacySetConf(), new BlackListSetConf(), new WhiteListSetConf(), new LiveStatusSetConf(),
                     new TimerSetConf(), new DanmakuStoreSetConf(), new BadListSetConf(), new RectifierSetConf(), new GazeWelcomeSetConf(), new AutoBlockSetConf());
         }
 

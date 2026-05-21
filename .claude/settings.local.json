@@ -44,7 +44,10 @@
       "Bash(sed -n '263,298p' index.html)",
       "Bash(sed -n '299,348p' index.html)",
       "Bash(sed -i 's/tab-pane active\" id=\"tab-common-set\"/tab-pane\" id=\"tab-common-set\"/' /tmp/block_common.txt)",
-      "Bash(sed -i 's/tab-pane\" id=\"tab-account-set\"/tab-pane active\" id=\"tab-account-set\"/' /tmp/block_account.txt)"
+      "Bash(sed -i 's/tab-pane\" id=\"tab-account-set\"/tab-pane active\" id=\"tab-account-set\"/' /tmp/block_account.txt)",
+      "Bash(sed -i '285s/^t[\\\\t]*/\\\\t\\\\t\\\\t/' \"E:/claudeCode/Bilibili_Danmuji/src/main/java/xyz/acproject/danmuji/tools/ParseSetStatusTools.java\")",
+      "Bash(sed -i '286s/^\\\\t*/\\\\\\\\t\\\\\\\\t\\\\\\\\t\\\\\\\\t/' \"E:/claudeCode/Bilibili_Danmuji/src/main/java/xyz/acproject/danmuji/tools/ParseSetStatusTools.java\")",
+      "Bash(sed -i '287s/^\\\\t*/\\\\\\\\t\\\\\\\\t\\\\\\\\t/' \"E:/claudeCode/Bilibili_Danmuji/src/main/java/xyz/acproject/danmuji/tools/ParseSetStatusTools.java\")"
     ]
   }
 }

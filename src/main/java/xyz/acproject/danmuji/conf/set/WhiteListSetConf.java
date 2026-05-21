@@ -9,13 +9,13 @@ import java.util.stream.Collectors;
 
 /**
  * @author Admin
- * @ClassName BlackListSetConf
+ * @ClassName WhiteListSetConf
  * @Description TODO
- * @date 2023/1/13 10:09
- * @Copyright:2023
+ * @date 2024/5/21 10:09
+ * @Copyright:2024
  */
 @Data
-public class BlackListSetConf{
+public class WhiteListSetConf{
 
     @JSONField(name = "all")
     private boolean all;

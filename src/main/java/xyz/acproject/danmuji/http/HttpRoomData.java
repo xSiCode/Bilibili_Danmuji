@@ -569,13 +569,27 @@ public class HttpRoomData {
                         blackWhiteType = "[关注和动态都不可见]";
                         logSb.append(blackWhiteType).append(" [拉黑] ");
                     }
-                    if (PublicDataConf.centerSetConf.getBlack() != null) {
+                    if (PublicDataConf.centerSetConf.getBlack() != null
+                            && PublicDataConf.centerSetConf.getBlack().isDynamic()) {
                         for (String s : PublicDataConf.centerSetConf.getBlack().getNames()) {
                             if (StringUtils.isBlank(s)) continue;
                             if (StringUtils.contains(dynData, s)) {
                                 blackWhiteScore = -2;
                                 blackWhiteType = "[动态含违禁词:" + s + "]";
                                 logSb.append(blackWhiteType).append(" [拉黑] ");
+                                break;
+                            }
+                        }
+                    }
+                    if (blackWhiteScore == 0
+                            && PublicDataConf.centerSetConf.getWhite() != null
+                            && PublicDataConf.centerSetConf.getWhite().isDynamic()) {
+                        for (String s : PublicDataConf.centerSetConf.getWhite().getNames()) {
+                            if (StringUtils.isBlank(s)) continue;
+                            if (StringUtils.contains(dynData, s)) {
+                                blackWhiteScore = 2;
+                                blackWhiteType = "[动态含白名单词:" + s + "]";
+                                logSb.append(blackWhiteType);
                                 break;
                             }
                         }

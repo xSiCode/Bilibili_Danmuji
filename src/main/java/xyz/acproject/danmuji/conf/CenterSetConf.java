@@ -140,6 +140,9 @@ public class CenterSetConf implements Serializable {
     //全局黑名单
     @JSONField(name="black")
     private BlackListSetConf black;
+    //全局白名单
+    @JSONField(name="white")
+    private WhiteListSetConf white;
     //直播状态姬
     @JSONField(name="live_status")
     private LiveStatusSetConf live_status;
@@ -182,6 +185,7 @@ public class CenterSetConf implements Serializable {
         centerSetConf.setAuto_gift(new AutoSendGiftConf());
         centerSetConf.setPrivacy(new PrivacySetConf());
         centerSetConf.setBlack(new BlackListSetConf());
+        centerSetConf.setWhite(new WhiteListSetConf());
         centerSetConf.setLive_status(new LiveStatusSetConf());
         centerSetConf.setTimer(new TimerSetConf());
         centerSetConf.setDanmaku_store(new DanmakuStoreSetConf());
@@ -194,7 +198,7 @@ public class CenterSetConf implements Serializable {
 
 
     public CenterSetConf(ThankGiftSetConf thank_gift, AdvertSetConf advert,
-                         ThankFollowSetConf follow, AutoReplySetConf reply, ClockInSetConf clock_in, ThankWelcomeSetConf welcome, AutoSendGiftConf auto_gift, PrivacySetConf privacy,BlackListSetConf black,LiveStatusSetConf live_status,TimerSetConf timer,DanmakuStoreSetConf danmaku_store,BadListSetConf badList,RectifierSetConf rectifier,GazeWelcomeSetConf gaze_welcome, AutoBlockSetConf auto_block) {
+                         ThankFollowSetConf follow, AutoReplySetConf reply, ClockInSetConf clock_in, ThankWelcomeSetConf welcome, AutoSendGiftConf auto_gift, PrivacySetConf privacy,BlackListSetConf black,WhiteListSetConf white,LiveStatusSetConf live_status,TimerSetConf timer,DanmakuStoreSetConf danmaku_store,BadListSetConf badList,RectifierSetConf rectifier,GazeWelcomeSetConf gaze_welcome, AutoBlockSetConf auto_block) {
         super();
         this.thank_gift = thank_gift;
         this.advert = advert;
@@ -205,6 +209,7 @@ public class CenterSetConf implements Serializable {
         this.auto_gift= auto_gift;
         this.privacy = privacy;
         this.black= black;
+        this.white= white;
         this.live_status = live_status;
         this.timer = timer;
         this.danmaku_store = danmaku_store;
