@@ -2505,6 +2505,24 @@ const method = {
                             $(".ab-next").prop('disabled', autoBlockData.page >= totalPages);
                         }
                     }
+                    // Sync to badlist table
+                    var r = data.result;
+                    if (r.uid) {
+                        var found = false;
+                        for (var i = 0; i < badListData.length; i++) {
+                            if (badListData[i].uid === r.uid) {
+                                badListData[i].uname = r.uname;
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (!found) {
+                            badListData.push({uid: r.uid, uname: r.uname || ''});
+                        }
+                        if ($("#tab-badlist-set").hasClass("active")) {
+                            method.renderBadListTable();
+                        }
+                    }
                 }
             };
             self._autoBlockWs.onclose = function () {

@@ -53,15 +53,19 @@ public class DanmuWebsocket {
 		LOGGER.error(error);
 	}
 
-	public void sendMessage(String message) throws IOException {
-		// 使用异步发送，避免慢客户端阻塞主消息处理线程
+	public void sendMessage(String message) {
 		for(DanmuWebsocket danmuWebsocket:webSocketServers) {
 			if (danmuWebsocket.session.isOpen()) {
-				danmuWebsocket.session.getAsyncRemote().sendText(message);
+				synchronized (danmuWebsocket.session) {
+					try {
+						danmuWebsocket.session.getAsyncRemote().sendText(message);
+					} catch (Exception e) {
+						LOGGER.error("WebSocket发送消息失败", e);
+					}
+				}
 			}
 		}
 	}
-	
 	public Session getSession() {
 		return session;
 	}

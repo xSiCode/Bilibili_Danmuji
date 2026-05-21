@@ -13,6 +13,7 @@ import xyz.acproject.danmuji.component.black.BlackParseComponent;
 import xyz.acproject.danmuji.conf.CacheConf;
 import xyz.acproject.danmuji.conf.CenterSetConf;
 import xyz.acproject.danmuji.conf.PublicDataConf;
+import xyz.acproject.danmuji.conf.set.BadListSetConf;
 import xyz.acproject.danmuji.conf.set.GazeWelcomeSet;
 import xyz.acproject.danmuji.conf.set.GazeWelcomeSetConf;
 import xyz.acproject.danmuji.conf.set.RectifierSetConf;
@@ -1134,6 +1135,31 @@ public class ParseMessageThread extends Thread {
                                                     if (!withinInterval) {
                                                         short code = HttpUserData.httpPostAddBadList(_follow_uid);
                                                         if (code == 0) {
+                                                            // Sync to badlist config so UI reflects the blocked user
+                                                            try {
+                                                                if (PublicDataConf.centerSetConf.getBadList() != null) {
+                                                                    List<BadListSetConf.BadUser> badUsers = PublicDataConf.centerSetConf.getBadList().getBadUsers();
+                                                                    if (badUsers == null) {
+                                                                        badUsers = new java.util.ArrayList<>();
+                                                                        PublicDataConf.centerSetConf.getBadList().setBadUsers(badUsers);
+                                                                    }
+                                                                    boolean exists = false;
+                                                                    for (BadListSetConf.BadUser bu : badUsers) {
+                                                                        if (bu.getUid() != null && bu.getUid().equals(_follow_uid)) {
+                                                                            bu.setUname(_follow_uname);
+                                                                            exists = true;
+                                                                            break;
+                                                                        }
+                                                                    }
+                                                                    if (!exists) {
+                                                                        badUsers.add(new BadListSetConf.BadUser(_follow_uid, _follow_uname));
+                                                                    }
+                                                                }
+                                                            } catch (Exception e) {
+                                                                LOGGER.error("auto_block sync badlist error", e);
+                                                            }
+                                                            Exception saveError = null;
+                                                            JSONObject record = null;
                                                             try {
                                                                 java.text.SimpleDateFormat sdf = DATE_TIME_FORMAT.get();
                                                                 String timeStr = sdf.format(new Date());
@@ -1149,15 +1175,27 @@ public class ParseMessageThread extends Thread {
                                                                             fsb.append(line);
                                                                         }
                                                                     }
-                                                                    data = JSONObject.parseObject(fsb.toString());
-                                                                    records = data.getJSONArray("records");
+                                                                    try {
+                                                                        data = JSONObject.parseObject(fsb.toString());
+                                                                        records = data.getJSONArray("records");
+                                                                        if (records == null) {
+                                                                            records = new com.alibaba.fastjson.JSONArray();
+                                                                            data.put("records", records);
+                                                                        }
+                                                                    } catch (Exception pe) {
+                                                                        LOGGER.error("负黑自动拉黑记录.json 文件损坏，将重建", pe);
+                                                                        data = new JSONObject();
+                                                                        data.put("type", "负黑自动拉黑记录");
+                                                                        records = new com.alibaba.fastjson.JSONArray();
+                                                                        data.put("records", records);
+                                                                    }
                                                                 } else {
                                                                     data = new JSONObject();
                                                                     data.put("type", "负黑自动拉黑记录");
                                                                     records = new com.alibaba.fastjson.JSONArray();
                                                                     data.put("records", records);
                                                                 }
-                                                                JSONObject record = new JSONObject();
+                                                                record = new JSONObject();
                                                                 record.put("time", timeStr);
                                                                 record.put("uid", _follow_uid);
                                                                 record.put("uname", _follow_uname);
@@ -1169,14 +1207,17 @@ public class ParseMessageThread extends Thread {
                                                                 try (java.io.BufferedWriter writer = new java.io.BufferedWriter(new java.io.OutputStreamWriter(new java.io.FileOutputStream(file), "UTF-8"))) {
                                                                     writer.write(com.alibaba.fastjson.JSON.toJSONString(data, true));
                                                                 }
-                                                                // push to frontend for real-time refresh
+                                                            } catch (Exception e) {
+                                                                saveError = e;
+                                                                LOGGER.error("auto_block record save error", e);
+                                                            }
+                                                            // push to frontend for real-time refresh (always, even if file save fails)
+                                                            if (record != null) {
                                                                 try {
                                                                     danmuWebsocket.sendMessage(WsPackage.toJson("auto_block", (short) 0, record));
                                                                 } catch (Exception e) {
                                                                     LOGGER.error("auto_block ws push error", e);
                                                                 }
-                                                            } catch (Exception e) {
-                                                                LOGGER.error("auto_block record save error", e);
                                                             }
                                                         }
                                                     }
