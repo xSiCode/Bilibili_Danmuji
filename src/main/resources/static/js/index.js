@@ -735,10 +735,7 @@ $(document).on('change', '.auto-block-score', function () {
 $(document).on('change', '.auto-block-interval', function () {
     method.saveSet();
 });
-// 负黑自动拉黑姬 - 面板展开时重新加载数据
-$('#autoBlock-set').on('shown.bs.collapse', function () {
-    method.loadAutoBlockList();
-});
+// 负黑自动拉黑姬 - 面板展开时重新加载数据（已改为tab切换触发，见switchTab函数）
 // 直播状态姬发送按钮
 $(document).on('click', '.livestatus-live-send', function () {
     method.sendLiveStatusBarrage($(".livestatus_live_text").val());
@@ -2431,7 +2428,8 @@ const method = {
     _autoBlockWs: null,
     _connectAutoBlockWs: function () {
         var self = this;
-        var wsUrl = (publicData.set && publicData.set.connect_docket) ? publicData.set.connect_docket : ('ws://' + window.location.host + '/danmu/sub');
+        // 自动拉黑WebSocket始终连接当前服务器地址，不受弹幕显示地址输入框影响
+        var wsUrl = 'ws://' + window.location.host + '/danmu/sub';
         if (self._autoBlockWs) {
             try { self._autoBlockWs.close(); } catch (e) {}
         }
@@ -2444,7 +2442,7 @@ const method = {
                     if (autoBlockData.list.length > 100) {
                         autoBlockData.list = autoBlockData.list.slice(0, 100);
                     }
-                    if ($("#autoBlock-set").hasClass("show")) {
+                    if ($("#tab-autoBlock-set").hasClass("active")) {
                         if (autoBlockData.page === 1) {
                             method.renderAutoBlockTable();
                         } else {
@@ -2639,6 +2637,32 @@ function openSocket(ip, sliceh) {
             console.log("连接到弹幕服务器发生了错误，网页显示弹幕失败 但不影响其他功能使用");
         }
     }
+
+}
+
+// 设置面板侧边栏导航切换（全局函数，onclick直接调用）
+function switchTab(tabId, el) {
+    if (!tabId) return;
+    // 切换侧边栏active状态
+    $('.sidebar-link').removeClass('active');
+    if (el) $(el).addClass('active');
+    // 切换内容面板
+    $('.settings-content .tab-pane').removeClass('active').hide();
+    var targetPane = $('#tab-' + tabId);
+    targetPane.addClass('active').show();
+    // 自动调整textarea高度
+    targetPane.find('textarea.form-control').each(function () {
+        $(this).css('height', this.scrollHeight + 'px');
+    });
+    // 切换到负黑自动拉黑姬时重新加载数据
+    if (tabId === 'autoBlock-set') {
+        method.loadAutoBlockList();
+    }
+}
+
+// 侧边栏分组折叠/展开
+function toggleSidebarSection(el) {
+    $(el).closest('.sidebar-section').toggleClass('collapsed');
 }
 
 function sendMessage() {

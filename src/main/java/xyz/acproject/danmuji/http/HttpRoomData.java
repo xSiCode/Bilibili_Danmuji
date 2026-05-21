@@ -566,7 +566,7 @@ public class HttpRoomData {
                 if (dynData.contains(resultStartStr)) {
                     if (dynData.length() < 200) {
                         blackWhiteScore = -2;
-                        blackWhiteType = "[白板账号]";
+                        blackWhiteType = "[关注和动态都不可见]";
                         logSb.append(blackWhiteType).append(" [拉黑] ");
                     }
                     if (PublicDataConf.centerSetConf.getBlack() != null) {

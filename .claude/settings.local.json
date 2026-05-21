@@ -25,7 +25,21 @@
       "mcp__ide__getDiagnostics",
       "Bash(where mvn *)",
       "Bash(where mvnw *)",
-      "Bash(./gradlew compileJava --info)"
+      "Bash(./gradlew compileJava --info)",
+      "Bash(iconv -f GBK -t UTF-8 /tmp/build2.log)",
+      "Bash(dir *)",
+      "Bash(curl -s http://localhost:21212/)",
+      "Bash(curl -s http://localhost:21212/js/index-bcbd69d41e82c55745b4242f4915eae6.js)",
+      "Bash(curl -s http://localhost:21212/css/style-9d8ebb448bec52dff4fd56340d080c6d.css)",
+      "Bash(grep -E \"^a[\\\\.\\\\s,{]|^a\\\\[\")",
+      "Bash(jar tf *)",
+      "Bash(unzip -p \"build/libs/BiliBili_Danmuji-2.7.0.6beta.jar\" \"templates/index.html\")",
+      "Bash(unzip -p \"build/libs/BiliBili_Danmuji-2.7.0.6beta.jar\" \"BOOT-INF/classes/templates/index.html\")",
+      "Bash(unzip -p \"build/libs/BiliBili_Danmuji-2.7.0.6beta.jar\" \"BOOT-INF/classes/static/js/index.js\")",
+      "Bash(curl -s http://localhost:21212/getAutoBlockRecords)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"http://localhost:21212/danmu/sub\")",
+      "Bash(curl -s \"http://localhost:21212/js/index-bcbd69d41e82c55745b4242f4915eae6.js\")",
+      "Bash(curl -s \"http://localhost:21212/js/index-2d12c42d1e2b50f2370ba45f7c3fb286.js\")"
     ]
   }
 }

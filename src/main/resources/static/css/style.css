@@ -1295,3 +1295,168 @@ div .link-popup-panel .popup-content-ctnr p {
         line-height: 90px;
     }
 }
+
+/* ========== 设置面板侧边栏布局 ========== */
+.settings-container {
+    display: flex;
+    gap: 0;
+    min-height: 60vh;
+}
+
+.settings-sidebar {
+    background: #f0f2f5;
+    border-right: 1px solid #dee2e6;
+    border-radius: 4px 0 0 4px;
+    padding: 0;
+    overflow-y: auto;
+    max-height: 80vh;
+    position: sticky;
+    top: 10px;
+    min-width: 200px;
+}
+
+.sidebar-section {
+    padding: 0;
+    border-bottom: 1px solid #e0e3e7;
+}
+
+.sidebar-section:last-child {
+    border-bottom: none;
+}
+
+.sidebar-section-header {
+    display: block;
+    padding: 10px 28px 6px 16px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    background: transparent;
+    margin: 0;
+    position: relative;
+    user-select: none;
+    -webkit-user-select: none;
+}
+.sidebar-section-header::after {
+    content: '';
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    margin-top: -3px;
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 6px solid #6c757d;
+    transition: transform 0.2s ease;
+}
+.sidebar-section-header:hover {
+    color: #495057;
+    background: #e9ecef;
+}
+/* 折叠状态 */
+.sidebar-section.collapsed .sidebar-section-header::after {
+    transform: rotate(-90deg);
+}
+.sidebar-section.collapsed .sidebar-link {
+    display: none;
+}
+
+.sidebar-link {
+    display: block;
+    padding: 8px 16px 8px 24px;
+    color: #495057;
+    text-decoration: none;
+    font-size: 14px;
+    border-left: 3px solid transparent;
+    transition: all 0.15s ease;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    white-space: nowrap;
+}
+
+.sidebar-link:hover {
+    background: #e9ecef;
+    color: #212529;
+    text-decoration: none;
+}
+
+.sidebar-link.active {
+    background: #fff;
+    color: #0d6efd;
+    border-left-color: #0d6efd;
+    font-weight: 600;
+}
+
+.settings-content {
+    background: #fff;
+    border-radius: 0 4px 4px 0;
+    padding: 20px 24px;
+    min-height: 60vh;
+}
+
+.settings-content .tab-pane {
+    display: none;
+}
+
+.settings-content .tab-pane.active {
+    display: block;
+}
+
+.settings-content .tab-pane .input-group.mb-1 h5 {
+    margin-top: 0;
+}
+
+/* 响应式：小屏幕下侧边栏收起 */
+@media screen and (max-width: 768px) {
+    .settings-container {
+        flex-direction: column;
+    }
+
+    .settings-sidebar {
+        position: static;
+        max-height: none;
+        border-right: none;
+        border-bottom: 1px solid #dee2e6;
+        border-radius: 4px 4px 0 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2px;
+        padding: 8px;
+        min-width: auto;
+    }
+
+    .sidebar-section {
+        border-bottom: none;
+    }
+
+    .sidebar-section-header {
+        display: none;
+    }
+    .sidebar-section.collapsed .sidebar-link {
+        display: inline-block;
+    }
+
+    .sidebar-link {
+        display: inline-block;
+        padding: 4px 10px;
+        font-size: 12px;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        border-left: 1px solid #dee2e6;
+    }
+
+    .sidebar-link.active {
+        border-left-color: #0d6efd;
+        background: #0d6efd;
+        color: #fff;
+    }
+
+    .settings-content {
+        border-radius: 0 0 4px 4px;
+        padding: 12px;
+    }
+}

@@ -243,12 +243,52 @@
                     </div>
                     <!--设置-->
                     <div class="collapse multi-collapse" id="set">
+                        <div class="settings-container">
+                            <!-- 侧边栏导航 -->
+                            <div class="settings-sidebar" style="width:220px;flex-shrink:0;">
+                                <div class="sidebar-section">
+                                    <span class="sidebar-section-header" onclick="toggleSidebarSection(this);return false;">基本设置</span>
+                                    <a href="javascript:void(0)" class="sidebar-link active" data-tab="common-set" onclick="switchTab('common-set', this);return false;">通用设置</a>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="cmd-set" onclick="switchTab('cmd-set', this);return false;">显示设置</a>
+                                </div>
+                                <div class="sidebar-section">
+                                    <span class="sidebar-section-header" onclick="toggleSidebarSection(this);return false;">自动化</span>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="liveStatus-set" onclick="switchTab('liveStatus-set', this);return false;">状态姬</a>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="timer-set" onclick="switchTab('timer-set', this);return false;">定时姬</a>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="danmakuStore-set" onclick="switchTab('danmakuStore-set', this);return false;">暂存姬</a>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="advert-set" onclick="switchTab('advert-set', this);return false;">广告姬</a>
+                                </div>
+                                <div class="sidebar-section">
+                                    <span class="sidebar-section-header" onclick="toggleSidebarSection(this);return false;">互动</span>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="thankGift-set" onclick="switchTab('thankGift-set', this);return false;">礼物姬</a>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="thankFollow-set" onclick="switchTab('thankFollow-set', this);return false;">关注姬</a>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="welcome-set" onclick="switchTab('welcome-set', this);return false;">欢迎姬</a>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="gazeWelcome-set" onclick="switchTab('gazeWelcome-set', this);return false;">欢迎凝视姬</a>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="autoReply-set" onclick="switchTab('autoReply-set', this);return false;">自动回复姬</a>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="autoGift-set" onclick="switchTab('autoGift-set', this);return false;">礼物自动赠送姬</a>
+                                </div>
+                                <div class="sidebar-section">
+                                    <span class="sidebar-section-header" onclick="toggleSidebarSection(this);return false;">管理</span>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="positiveWhite-set" onclick="switchTab('positiveWhite-set', this);return false;">负黑正白姬</a>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="autoBlock-set" onclick="switchTab('autoBlock-set', this);return false;">负黑自动拉黑姬</a>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="black-set" onclick="switchTab('black-set', this);return false;">黑名单姬</a>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="badlist-set" onclick="switchTab('badlist-set', this);return false;">拉黑姬</a>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="rectifier-set" onclick="switchTab('rectifier-set', this);return false;">整流回复姬</a>
+                                </div>
+                                <div class="sidebar-section">
+                                    <span class="sidebar-section-header" onclick="toggleSidebarSection(this);return false;">其他</span>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="managerLogin-set" onclick="switchTab('managerLogin-set', this);return false;">安全设置</a>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="privacy-set" onclick="switchTab('privacy-set', this);return false;">隐私模式</a>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="othser-set" onclick="switchTab('othser-set', this);return false;">实验性设置</a>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="testmode-set" onclick="switchTab('testmode-set', this);return false;">开发人员设置</a>
+                                </div>
+                            </div>
+                            <!-- 内容面板 -->
+                            <div class="settings-content flex-grow-1">
+                                <div class="tab-pane active" id="tab-common-set">
                         <!-- 通用设置开始 -->
-                        <a data-bs-toggle="collapse" data-target="#common-set"
-                           href="#common-set"><div class="input-group mb-1" >
-                             <h5>通用设置</h5>
-                        </div></a>
-                        <div class="row input-group mb-3 common-set collapse" id="common-set">
+                        <div class="input-group mb-1"><h5>通用设置</h5></div>
+                        <div class="row input-group mb-3 common-set" id="common-set">
                             <div class="col-auto">
                                 <label class="form-check-label"> <input class="form-check-input auto_save_set"
                                                                         type="checkbox"> <span
@@ -294,11 +334,11 @@
                             </div>
                         </div>
                         <!-- 通用设置结束 -->
+                                </div>
+                                <div class="tab-pane" id="tab-cmd-set">
                         <!-- 弹幕设置开始 -->
-                        <a data-bs-toggle="collapse" data-target="#cmd-set" href="#cmd-set"><div class="input-group mb-1">
-                            <h5>显示设置</h5>
-                        </div></a>
-                        <div class="row input-group mb-3 cmd-set collapse" id="cmd-set">
+                        <div class="input-group mb-1"><h5>显示设置</h5></div>
+                        <div class="row input-group mb-3 cmd-set" id="cmd-set">
                             <div class="input-group mb-1">
                                 <h6>主要显示</h6>
                             </div>
@@ -450,12 +490,11 @@
                             </div>
                         </div>
                         <!-- 弹幕设置结束 -->
+                                </div>
+                                <div class="tab-pane" id="tab-liveStatus-set">
                         <!-- 直播状态姬设置开始 -->
-                        <a data-bs-toggle="collapse" data-target="#liveStatus-set"
-                           href="#liveStatus-set"><div class="input-group mb-1">
-                            <h5>状态姬</h5>
-                        </div></a>
-                        <div class="input-group mb-3 liveStatus-set collapse" id="liveStatus-set">
+                        <div class="input-group mb-1"><h5>状态姬</h5></div>
+                        <div class="input-group mb-3 liveStatus-set" id="liveStatus-set">
                             <div class="header-set">
                                 <!-- 上播 -->
                                 <div class="row align-items-center" style="margin-bottom:5px;--bs-gutter-x:5px">
@@ -545,12 +584,11 @@
                             </div>
                         </div>
                         <!-- 直播状态姬设置结束 -->
+                                </div>
+                                <div class="tab-pane" id="tab-timer-set">
                         <!-- 定时姬设置开始 -->
-                        <a data-bs-toggle="collapse" data-target="#timer-set"
-                           href="#timer-set"><div class="input-group mb-1">
-                            <h5>定时姬</h5>
-                        </div></a>
-                        <div class="input-group mb-3 timer-set collapse" id="timer-set">
+                        <div class="input-group mb-1"><h5>定时姬</h5></div>
+                        <div class="input-group mb-3 timer-set" id="timer-set">
                             <div class="header-set">
                                 <div class="row align-items-center" style="margin-bottom:5px;--bs-gutter-x:5px">
                                     <div class="col-auto">
@@ -571,12 +609,11 @@
                             </div>
                         </div>
                         <!-- 定时姬设置结束 -->
+                                </div>
+                                <div class="tab-pane" id="tab-danmakuStore-set">
                         <!-- 弹幕暂存姬设置开始 -->
-                        <a data-bs-toggle="collapse" data-target="#danmakuStore-set"
-                           href="#danmakuStore-set"><div class="input-group mb-1">
-                            <h5>暂存姬</h5>
-                        </div></a>
-                        <div class="input-group mb-3 danmakuStore-set collapse" id="danmakuStore-set">
+                        <div class="input-group mb-1"><h5>暂存姬</h5></div>
+                        <div class="input-group mb-3 danmakuStore-set" id="danmakuStore-set">
                             <div class="header-set">
                                 <div class="row align-items-center" style="margin-bottom:5px;--bs-gutter-x:5px">
                                     <div class="col-auto">
@@ -590,12 +627,11 @@
                             </div>
                         </div>
                         <!-- 弹幕暂存姬设置结束 -->
+                                </div>
+                                <div class="tab-pane" id="tab-advert-set">
                         <!-- 广告姬设置开始 -->
-                        <a data-bs-toggle="collapse" data-target="#advert-set"
-                           href="#advert-set"><div class="input-group mb-1">
-                            <h5>广告姬</h5>
-                        </div></a>
-                        <div class="input-group mb-3 advert-set collapse" id="advert-set">
+                        <div class="input-group mb-1"><h5>广告姬</h5></div>
+                        <div class="input-group mb-3 advert-set" id="advert-set">
                             <div class="header-set">
                                 <div class="row align-items-center">
                                     <div class="col-auto">
@@ -653,12 +689,11 @@
                             </div>
                         </div>
                         <!-- 广告姬设置结束 -->
+                                </div>
+                                <div class="tab-pane" id="tab-thankGift-set">
                         <!-- 送礼姬设置开始 -->
-                        <a data-bs-toggle="collapse" data-target="#thankGift-set"
-                           href="#thankGift-set"><div class="input-group mb-1">
-                            <h5>礼物姬</h5>
-                        </div></a>
-                        <div class="input-group mb-3 thankGift-set collapse" id="thankGift-set">
+                        <div class="input-group mb-1"><h5>礼物姬</h5></div>
+                        <div class="input-group mb-3 thankGift-set" id="thankGift-set">
                             <div class="header-set">
                                 <div class="row align-items-center">
                                     <div class="col-auto">
@@ -856,12 +891,11 @@
                             </div>
                         </div>
                         <!-- 送礼姬设置结束 -->
+                                </div>
+                                <div class="tab-pane" id="tab-thankFollow-set">
                         <!-- 关注姬设置开始 -->
-                        <a data-bs-toggle="collapse" data-target="#thankFollow-set"
-                           href="#thankFollow-set"><div class="input-group mb-1">
-                            <h5>关注姬</h5>
-                        </div></a>
-                        <div class="input-group mb-3 thankFollow-set collapse" id="thankFollow-set">
+                        <div class="input-group mb-1"><h5>关注姬</h5></div>
+                        <div class="input-group mb-3 thankFollow-set" id="thankFollow-set">
                             <div class="header-set">
                                 <div class="row align-items-center">
                                     <div class="col-auto">
@@ -929,12 +963,11 @@
                             </div>
                         </div>
                         <!--关注姬设置结束 -->
+                                </div>
+                                <div class="tab-pane" id="tab-welcome-set">
                         <!-- 欢迎姬设置开始 -->
-                        <a data-bs-toggle="collapse" data-target="#welcome-set"
-                           href="#welcome-set"><div class="input-group mb-1">
-                            <h5>欢迎姬</h5>
-                        </div></a>
-                        <div class="input-group mb-3 thankFollow-set collapse" id="welcome-set">
+                        <div class="input-group mb-1"><h5>欢迎姬</h5></div>
+                        <div class="input-group mb-3 thankFollow-set" id="welcome-set">
                             <div class="header-set">
                                 <div class="row align-items-center">
                                     <div class="col-auto">
@@ -1021,12 +1054,11 @@
                             </div>
                         </div>
                         <!-- 欢迎姬设置结束 -->
+                                </div>
+                                <div class="tab-pane" id="tab-gazeWelcome-set">
                         <!-- 欢迎凝视姬设置开始 -->
-                        <a data-bs-toggle="collapse" data-target="#gazeWelcome-set"
-                           href="#gazeWelcome-set"><div class="input-group mb-1">
-                            <h5>欢迎凝视姬</h5>
-                        </div></a>
-                        <div class="input-group mb-3 gazeWelcome-set collapse" id="gazeWelcome-set">
+                        <div class="input-group mb-1"><h5>欢迎凝视姬</h5></div>
+                        <div class="input-group mb-3 gazeWelcome-set" id="gazeWelcome-set">
                             <div class="header-set">
                                 <div class="row align-items-center" style="margin-bottom:5px;--bs-gutter-x:5px">
                                     <div class="col-auto">
@@ -1047,12 +1079,11 @@
                             </div>
                         </div>
                         <!-- 欢迎凝视姬设置结束 -->
+                                </div>
+                                <div class="tab-pane" id="tab-autoReply-set">
                         <!-- 自动回复姬设置开始 -->
-                        <a data-bs-toggle="collapse" data-target="#autoReply-set"
-                           href="#autoReply-set"><div class="input-group mb-1">
-                            <h5>自动回复姬</h5>
-                        </div></a>
-                        <div class="input-group mb-3 autoReply-set collapse" id="autoReply-set">
+                        <div class="input-group mb-1"><h5>自动回复姬</h5></div>
+                        <div class="input-group mb-3 autoReply-set" id="autoReply-set">
                             <div class="header-set">
                                 <div class="row align-items-center">
                                     <div class="col-auto">
@@ -1121,6 +1152,7 @@
                             </div>
                         </div>
                         <!-- 自动回复姬设置结束 -->
+                                </div>
                         <!-- 自动回复姬-自定义自动回复编辑窗体 -->
                         <div class="modal" id="reply-model-edit">
                             <div class="modal-dialog modal-fullscreen">
@@ -1177,12 +1209,10 @@
                                 </div>
                             </div>
                         </div>
+                                <div class="tab-pane" id="tab-autoGift-set">
                         <!-- 礼物自动赠送姬设置开始 -->
-                        <a data-bs-toggle="collapse" data-target="#autoGift-set"
-                           href="#autoGift-set"><div class="input-group mb-1">
-                            <h5>礼物自动赠送姬</h5>
-                        </div></a>
-                        <div class="input-group mb-3 autoGift-set collapse" id="autoGift-set">
+                        <div class="input-group mb-1"><h5>礼物自动赠送姬</h5></div>
+                        <div class="input-group mb-3 autoGift-set" id="autoGift-set">
                             <div class="header-set">
                                 <div class="row align-items-center">
                                     <div class="col-auto">
@@ -1213,12 +1243,11 @@
                             </div>
                         </div>
                         <!-- 礼物自动赠送姬设置结束 -->
+                                </div>
+                                <div class="tab-pane" id="tab-positiveWhite-set">
                         <!-- 正白负黑姬设置开始 -->
-                        <a data-bs-toggle="collapse" data-target="#positiveWhite-set"
-                           href="#positiveWhite-set"><div class="input-group mb-1">
-                            <h5>负黑正白姬</h5>
-                        </div></a>
-                        <div class="input-group mb-3 positiveWhite-set collapse" id="positiveWhite-set">
+                        <div class="input-group mb-1"><h5>负黑正白姬</h5></div>
+                        <div class="input-group mb-3 positiveWhite-set" id="positiveWhite-set">
                             <div class="header-set">
                                 <div class="row align-items-center" style="margin-bottom:5px;--bs-gutter-x:5px">
                                     <div class="col-auto">
@@ -1250,12 +1279,11 @@
                             </div>
                         </div>
                         <!-- 正白负黑姬设置结束 -->
+                                </div>
+                                <div class="tab-pane" id="tab-autoBlock-set">
                         <!-- 负黑自动拉黑姬设置开始 -->
-                        <a data-bs-toggle="collapse" data-target="#autoBlock-set"
-                           href="#autoBlock-set"><div class="input-group mb-1">
-                            <h5>负黑自动拉黑姬</h5>
-                        </div></a>
-                        <div class="input-group mb-3 autoBlock-set collapse" id="autoBlock-set">
+                        <div class="input-group mb-1"><h5>负黑自动拉黑姬</h5></div>
+                        <div class="input-group mb-3 autoBlock-set" id="autoBlock-set">
                             <div class="header-set">
                                 <div class="row align-items-center" style="margin-bottom:5px;--bs-gutter-x:5px">
                                     <div class="col-auto">
@@ -1298,12 +1326,11 @@
                             </div>
                         </div>
                         <!-- 负黑自动拉黑姬设置结束 -->
+                                </div>
+                                <div class="tab-pane" id="tab-black-set">
                         <!-- 黑名单模式设置开始 -->
-                        <a data-bs-toggle="collapse" data-target="#black-set"
-                           href="#black-set"><div class="input-group mb-1">
-                            <h5>黑名单姬</h5>
-                        </div></a>
-                        <div class="input-group mb-3 black-set collapse" id="black-set">
+                        <div class="input-group mb-1"><h5>黑名单姬</h5></div>
+                        <div class="input-group mb-3 black-set" id="black-set">
                             <div class="header-set">
                                 <div class="row align-items-center">
                                     <!-- 全局 -->
@@ -1370,12 +1397,11 @@
                                 ></textarea>
                             </div>
                         </div>
+                                </div>
+                                <div class="tab-pane" id="tab-badlist-set">
                         <!-- 拉黑姬设置开始 -->
-                        <a data-bs-toggle="collapse" data-target="#badlist-set"
-                           href="#badlist-set"><div class="input-group mb-1">
-                            <h5>拉黑姬</h5>
-                        </div></a>
-                        <div class="input-group mb-3 badlist-set collapse" id="badlist-set">
+                        <div class="input-group mb-1"><h5>拉黑姬</h5></div>
+                        <div class="input-group mb-3 badlist-set" id="badlist-set">
                             <div class="header-set">
                                 <div class="row align-items-center mb-2">
                                     <div class="col-auto">
@@ -1434,13 +1460,11 @@
                                 <small class="text-muted">拉黑为B站用户层面的黑名单，非直播间禁言。需要登录后操作。</small>
                             </div>
                         </div>
-
+                                </div>
+                                <div class="tab-pane" id="tab-rectifier-set">
                         <!-- 整流回复姬设置开始 -->
-                        <a data-bs-toggle="collapse" data-target="#rectifier-set"
-                           href="#rectifier-set"><div class="input-group mb-1">
-                            <h5>整流回复姬</h5>
-                        </div></a>
-                        <div class="input-group mb-3 rectifier-set collapse" id="rectifier-set">
+                        <div class="input-group mb-1"><h5>整流回复姬</h5></div>
+                        <div class="input-group mb-3 rectifier-set" id="rectifier-set">
                             <div class="header-set">
                                 <div class="row align-items-center" style="margin-bottom:5px;--bs-gutter-x:5px">
                                     <div class="col-auto">
@@ -1499,12 +1523,11 @@
                             </div>
                         </div>
                         <!-- 整流回复姬设置结束 -->
+                                </div>
+                                <div class="tab-pane" id="tab-managerLogin-set">
                         <!-- 弹幕姬登录设置开始 -->
-                        <a data-bs-toggle="collapse" data-target="#managerLogin-set"
-                           href="#managerLogin-set"><div class="input-group mb-1">
-                            <h5>弹幕姬web网页操作面板安全设置</h5>
-                        </div></a>
-                        <div class="input-group mb-3 managerLogin-set collapse" id="managerLogin-set">
+                        <div class="input-group mb-1"><h5>弹幕姬web网页操作面板安全设置</h5></div>
+                        <div class="input-group mb-3 managerLogin-set" id="managerLogin-set">
                             <div class="header-set">
                                 <div class="row align-items-center">
                                     <div class="col-auto">
@@ -1540,12 +1563,11 @@
                             </div>
                         </div>
                         <!-- 弹幕姬登录设置结束 -->
+                                </div>
+                                <div class="tab-pane" id="tab-privacy-set">
                         <!-- 隐私模式设置开始 -->
-                        <a data-bs-toggle="collapse" data-target="#privacy-set"
-                           href="#privacy-set"><div class="input-group mb-1">
-                            <h5>隐私模式</h5>
-                        </div></a>
-                        <div class="input-group mb-3 privacy-set collapse" id="privacy-set">
+                        <div class="input-group mb-1"><h5>隐私模式</h5></div>
+                        <div class="input-group mb-3 privacy-set" id="privacy-set">
                             <div class="header-set">
                                 <div class="row align-items-center">
                                     <div class="col-auto">
@@ -1568,12 +1590,11 @@
                             </div>
                         </div>
                         <!-- 隐私模式设置结束 -->
+                                </div>
+                                <div class="tab-pane" id="tab-othser-set">
                         <!-- 实验性设置开始 -->
-                        <a data-bs-toggle="collapse" data-target="#othser-set"
-                           href="#othser-set"><div class="input-group mb-1">
-                            <h5>实验性设置</h5>
-                        </div></a>
-                        <div class="input-group mb-3 othser-set collapse" id="othser-set">
+                        <div class="input-group mb-1"><h5>实验性设置</h5></div>
+                        <div class="input-group mb-3 othser-set" id="othser-set">
                             <div class="row align-items-center">
                                 <div class="col-auto">
                                     <label class="form-check-label"> <input class="form-check-input is_dosign live-save"
@@ -1631,12 +1652,11 @@
                             </div>
                         </div>
                         <!-- 实验性设置结束 -->
+                                </div>
+                                <div class="tab-pane" id="tab-testmode-set">
                         <!-- 开发人员设置开始 -->
-                        <a data-bs-toggle="collapse" data-target="#testmode-set"
-                           href="#testmode-set"><div class="input-group mb-1">
-                            <h5>开发人员设置</h5>
-                        </div></a>
-                        <div class="input-group mb-3 testmode-set collapse" id="testmode-set">
+                        <div class="input-group mb-1"><h5>开发人员设置</h5></div>
+                        <div class="input-group mb-3 testmode-set" id="testmode-set">
                             <div class="row align-items-center">
                                 <div class="col-auto">
                                     <label class="form-check-label"> <input class="form-check-input is_test_mode live-save"
@@ -1650,14 +1670,8 @@
                             </div>
                         </div>
                         <!-- 开发人员设置结束 -->
+                                </div>
                         <!-- 底部按钮开始 -->
-<!--                        <div class="input-group mb-3 set-control">
-                            <div class="col-auto">
-                                <button class="btn btn-danger set-hold" type="button">保存设置</button>
-                            </div>
-&lt;!&ndash;                            <div class="col-auto"><span class="notice-message">成功</span> <span&ndash;&gt;
-&lt;!&ndash;                                    class="success-message">成功</span></div>&ndash;&gt;
-                        </div>-->
                         <div class="input-group mb-3 set-control">
                             <div class="col-auto">
                                 <input id="file" style="display: none;" type="file" value="上传文件"/>
@@ -1673,6 +1687,8 @@
                             </div>
                         </div>
                         <!-- 底部按钮结束 -->
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <!-- 底部展示开始 -->

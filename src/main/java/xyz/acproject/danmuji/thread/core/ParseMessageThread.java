@@ -78,6 +78,8 @@ public class ParseMessageThread extends Thread {
 
     private static final ThreadLocal<SimpleDateFormat> TIME_FORMAT =
             ThreadLocal.withInitial(() -> new SimpleDateFormat("HH:mm:ss"));
+    private static final ThreadLocal<SimpleDateFormat> DATE_TIME_FORMAT =
+            ThreadLocal.withInitial(() -> new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"));
 
     public volatile boolean FLAG = false;
     private DanmuWebsocket danmuWebsocket = SpringUtils.getBean(DanmuWebsocket.class);
@@ -87,6 +89,7 @@ public class ParseMessageThread extends Thread {
     private ThreadComponent threadComponent = SpringUtils.getBean(ThreadComponent.class);
     private HashSet<ThankGiftRuleSet> thankGiftRuleSets;
     private CenterSetConf centerSetConf;
+    private final ConcurrentHashMap<String, Pattern> regexCache = new ConcurrentHashMap<>();
 
 
     @Override
@@ -321,8 +324,8 @@ public class ParseMessageThread extends Thread {
 
                         // 上舰
                         case "GUARD_BUY":
+                            guard = JSONObject.parseObject(jsonObject.getString("data"), Guard.class);
                             if (getCenterSetConf().is_gift()) {
-                                guard = JSONObject.parseObject(jsonObject.getString("data"), Guard.class);
                                 stringBuilder.append(JodaTimeUtils.formatDateTime(guard.getStart_time() * 1000));
                                 stringBuilder.append(":有人上船:");
                                 stringBuilder.append(guard.getUsername());
@@ -357,7 +360,6 @@ public class ParseMessageThread extends Thread {
                             }
                             if (getCenterSetConf().getThank_gift().is_giftThank() || isRectifierActive("gift")) {
                                 if (PublicDataConf.parsethankGiftThread != null && !PublicDataConf.parsethankGiftThread.TFLAG) {
-                                    guard = JSONObject.parseObject(jsonObject.getString("data"), Guard.class);
                                     gift = new Gift();
                                     gift.setGiftName(guard.getGift_name());
                                     gift.setNum(guard.getNum());
@@ -384,7 +386,6 @@ public class ParseMessageThread extends Thread {
                             }
                             //开启舰长存放本地
                             if (getCenterSetConf().getThank_gift().is_guard_local()) {
-                                guard = JSONObject.parseObject(jsonObject.getString("data"), Guard.class);
                                 Map<Long, String> guardMap_local = GuardFileTools.read();
                                 if (guardMap_local == null) {
                                     guardMap_local = new ConcurrentHashMap<Long, String>();
@@ -395,14 +396,11 @@ public class ParseMessageThread extends Thread {
 
                                 }
                             }
-                            // 发送上舰私聊
+                            // 发送上舰私聊（异步执行，避免同步HTTP阻塞主消息处理线程）
                             if (getCenterSetConf().getThank_gift().is_guard_report()) {
-                                guard = JSONObject.parseObject(jsonObject.getString("data"), Guard.class);
                                 short guard_level = guard.getGuard_level();
                                 String report = StringUtils.replace(getCenterSetConf().getThank_gift().getReport(), "\n", "\\n");
-                                //替换名称
                                 report = StringUtils.replace(report, "%uName%", guard.getUsername());
-                                //替换舰队级别
                                 if (guard_level == 1) {
                                     report = StringUtils.replace(report, "%guardLevel%", "总督");
                                 } else if (guard_level == 2) {
@@ -412,30 +410,35 @@ public class ParseMessageThread extends Thread {
                                 } else {
                                     report = StringUtils.replace(report, "%guardLevel%", "上船");
                                 }
-                                //礼品码
                                 if (getCenterSetConf().getThank_gift().is_gift_code()
                                         && !CollectionUtils.isEmpty(getCenterSetConf().getThank_gift().getCodeStrings())) {
                                     report = StringUtils.replace(report, "%giftCode%", this.sendCode(guard_level));
                                 } else {
                                     report = StringUtils.replace(report, "%giftCode%", "");
                                 }
-                                try {
-                                    if (!PublicDataConf.centerSetConf.isTest_mode()) {
-                                        if (StringUtils.isNotBlank(getCenterSetConf().getThank_gift().getReport_barrage().trim())) {
-                                            if (HttpUserData.httpPostSendMsg(guard.getUid(), report) == 0) {
-                                                PublicDataConf.barrageString.offer(getCenterSetConf().getThank_gift().getReport_barrage());
+                                final long _guard_uid = guard.getUid();
+                                final String _report = report;
+                                final boolean _test_mode = PublicDataConf.centerSetConf.isTest_mode();
+                                final String _report_barrage = getCenterSetConf().getThank_gift().getReport_barrage();
+                                MESSAGE_EXECUTOR.execute(() -> {
+                                    try {
+                                        if (!_test_mode) {
+                                            String rb = _report_barrage != null ? _report_barrage.trim() : "";
+                                            if (StringUtils.isNotBlank(rb)) {
+                                                if (HttpUserData.httpPostSendMsg(_guard_uid, _report) == 0) {
+                                                    PublicDataConf.barrageString.offer(rb);
+                                                }
+                                            } else {
+                                                HttpUserData.httpPostSendMsg(_guard_uid, _report);
                                             }
                                         } else {
-                                            HttpUserData.httpPostSendMsg(guard.getUid(), report);
+                                            LOGGER.info("私信姬：发送的弹幕:{}", _report_barrage);
+                                            LOGGER.info("私信姬：发送的私聊:{}", _report);
                                         }
-                                    } else {
-                                        LOGGER.info("私信姬：发送的弹幕:{}", getCenterSetConf().getThank_gift().getReport_barrage());
-                                        LOGGER.info("私信姬：发送的私聊:{}", report);
+                                    } catch (Exception e) {
+                                        LOGGER.error("发送舰长私信失败，原因：" + e);
                                     }
-                                } catch (Exception e) {
-                                    // TODO: handle exception
-                                    LOGGER.error("发送舰长私信失败，原因：" + e);
-                                }
+                                });
                             }
 //                            LOGGER.info("有人上舰长啦:::" + message);
                             break;
@@ -971,7 +974,7 @@ public class ParseMessageThread extends Thread {
 
 
                         case "INTERACT_WORD_V2":
-                            // LOGGER.info(":" + getCenterSetConf().toJson());
+                            final CenterSetConf conf = getCenterSetConf();
                             try {
                                 String pbBase64 = jsonObject.getJSONObject("data").getString("pb");
                                 INTERACTWORDV2.InteractWordV2 interactWordV2 = INTERACTWORDV2.InteractWordV2.parseFrom(Base64.getDecoder().decode(pbBase64));
@@ -1008,13 +1011,13 @@ public class ParseMessageThread extends Thread {
                                 }
                                 // 关注
                                 //控制台打印处理
-                                if (getCenterSetConf().is_follow_dm()) {
+                                if (conf.is_follow_dm()) {
                                     if (msg_type == 2) {
                                         stringBuilder.append(TIME_FORMAT.get().format(System.currentTimeMillis()))
                                                 .append(" [直接关注] ")
                                                 .append(_follow_uname);
                                         //控制台打印
-                                        if (getCenterSetConf().is_cmd()) {
+                                        if (conf.is_cmd()) {
                                             System.out.println(stringBuilder.toString());
                                         }
                                         //日志
@@ -1039,9 +1042,9 @@ public class ParseMessageThread extends Thread {
                                         handleRectifierFollow(interact);
                                     }
                                 }
-                                if (!followHandledByRectifier && getCenterSetConf().getFollow().is_followThank()) {
+                                if (!followHandledByRectifier && conf.getFollow().is_followThank()) {
                                     //天选屏蔽&&红包屏蔽
-                                    if (!getCenterSetConf().getFollow()
+                                    if (!conf.getFollow()
                                             .boolTxAndRdShield(
                                                     CacheConf.existTx(PublicDataConf.ROOMID), CacheConf.existRedPackageCache(PublicDataConf.ROOMID))) {
                                         if (msg_type == 2) {
@@ -1067,7 +1070,7 @@ public class ParseMessageThread extends Thread {
                                         PublicDataConf.logString.offer(stringBuilder.toString());
                                     }
 
-                                    if (getCenterSetConf().is_welcome_all()) {
+                                    if (conf.is_welcome_all()) {
                                         try {
                                             danmuWebsocket.sendMessage(WsPackage.toJson("welcome", (short) 0, interact));
                                         } catch (Exception e) {
@@ -1077,7 +1080,7 @@ public class ParseMessageThread extends Thread {
 
                                     stringBuilder.delete(0, stringBuilder.length());
                                     // followings.txt log
-                                    if (getCenterSetConf().is_watcher_log()) {
+                                    if (conf.is_watcher_log()) {
                                         // 异步获取用户详细信息 + 关注列表分析，避免阻塞主消息处理线程
                                         WATCHER_EXECUTOR.execute(() -> {
                                             HttpRoomData.processFollowings(_follow_uid, _follow_uname)
@@ -1086,12 +1089,12 @@ public class ParseMessageThread extends Thread {
                                                     String blackWhiteType = blackWhiteResult.getRight();
 
                                             // 负黑自动拉黑姬
-                                            if (getCenterSetConf().getAuto_block() != null && getCenterSetConf().getAuto_block().is_auto_block()) {
-                                                int blockScore = getCenterSetConf().getAuto_block().getBlock_score();
+                                            if (conf.getAuto_block() != null && conf.getAuto_block().is_auto_block()) {
+                                                int blockScore = conf.getAuto_block().getBlock_score();
                                                 if (blackWhiteScore <= blockScore) {
                                                     // check if this uid was already blocked within the interval
                                                     boolean withinInterval = false;
-                                                    int blockInterval = getCenterSetConf().getAuto_block().getBlock_interval();
+                                                    int blockInterval = conf.getAuto_block().getBlock_interval();
                                                     try {
                                                         FileTools fileTools = new FileTools();
                                                         java.io.File file = new java.io.File(fileTools.getBaseJarPath(), "负黑自动拉黑记录.json");
@@ -1106,7 +1109,7 @@ public class ParseMessageThread extends Thread {
                                                             JSONObject existing = JSONObject.parseObject(fsb.toString());
                                                             com.alibaba.fastjson.JSONArray existingRecords = existing.getJSONArray("records");
                                                             if (existingRecords != null) {
-                                                                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                                                                java.text.SimpleDateFormat sdf = DATE_TIME_FORMAT.get();
                                                                 long now = System.currentTimeMillis();
                                                                 for (int i = 0; i < existingRecords.size(); i++) {
                                                                     JSONObject r = existingRecords.getJSONObject(i);
@@ -1132,7 +1135,7 @@ public class ParseMessageThread extends Thread {
                                                         short code = HttpUserData.httpPostAddBadList(_follow_uid);
                                                         if (code == 0) {
                                                             try {
-                                                                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                                                                java.text.SimpleDateFormat sdf = DATE_TIME_FORMAT.get();
                                                                 String timeStr = sdf.format(new Date());
                                                                 FileTools fileTools = new FileTools();
                                                                 java.io.File file = new java.io.File(fileTools.getBaseJarPath(), "负黑自动拉黑记录.json");
@@ -1197,9 +1200,9 @@ public class ParseMessageThread extends Thread {
                                         handleRectifierWelcome(interact);
                                     }
                                 }
-                                if (!welcomeHandledByRectifier && getCenterSetConf().getWelcome().is_welcomeThank()) {
+                                if (!welcomeHandledByRectifier && conf.getWelcome().is_welcomeThank()) {
                                     //天选屏蔽&&红包屏蔽
-                                    if (!getCenterSetConf().getWelcome()
+                                    if (!conf.getWelcome()
                                             .boolTxAndRdShield(
                                                     CacheConf.existTx(PublicDataConf.ROOMID), CacheConf.existRedPackageCache(PublicDataConf.ROOMID))) {
                                         if (msg_type == 1) {
@@ -1847,12 +1850,16 @@ public class ParseMessageThread extends Thread {
         if (StringUtils.isBlank(pattern)) return false;
         if (pattern.length() >= 2 && pattern.startsWith("`") && pattern.endsWith("`")) {
             String regex = pattern.substring(1, pattern.length() - 1);
-            try {
-                return Pattern.compile(regex).matcher(uname).find();
-            } catch (Exception e) {
-                LOGGER.warn("invalid regex pattern: {}", regex);
-                return false;
-            }
+            Pattern compiled = regexCache.computeIfAbsent(regex, k -> {
+                try {
+                    return Pattern.compile(k);
+                } catch (Exception e) {
+                    LOGGER.warn("invalid regex pattern: {}", k);
+                    return null;
+                }
+            });
+            if (compiled == null) return false;
+            return compiled.matcher(uname).find();
         }
         return uname.contains(pattern);
     }
