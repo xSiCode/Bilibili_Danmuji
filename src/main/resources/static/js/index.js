@@ -51,6 +51,7 @@ $(function () {
     publicData.set = method.initSet(method.getSet());
     method.loadPNList();
     method.loadAutoBlockList();
+    method.loadDanmakuStoreList();
     // 负黑自动拉黑姬：建立WebSocket连接接收实时推送
     method._connectAutoBlockWs();
     $('.thankgift_thank_status')
@@ -855,14 +856,17 @@ $(document).on('click', '.gazeWelcome-send-btn', function () {
     var text = $(this).closest('li').find('.gazeWelcome-text').val();
     method.sendLiveStatusBarrage(text);
 });
-// 弹幕暂存姬
+// 弹幕话术姬
 $(document).on('click', '.danmakuStore-add-btn', function () {
     method.addDanmakuStoreRow();
+});
+$(document).on('click', '.danmakuStore-sort-btn', function () {
+    method.sortDanmakuStoreRows();
 });
 $(document).on('click', '.danmakuStore-delete-btn', function () {
     $(this).closest('li').remove();
     if ($(".auto_save_set").is(':checked')) {
-        method.saveSet();
+        method.saveDanmakuStoreList();
     }
 });
 $(document).on('click', '.danmakuStore-copy-btn', function () {
@@ -1116,6 +1120,10 @@ const autoBlockData = {
     page: 1,
     pageSize: 10,
 }
+const danmakuStoreData = {
+    list: [],
+    sortAsc: true
+}
 const method = {
     saveSet: function () {
         let c1 = false;
@@ -1128,7 +1136,6 @@ const method = {
         let c8 = false;
         let c9 = false;
         let c10 = false;
-        let c11 = false;
         let set = {
             "thank_gift": {
                 "giftStrings": [],
@@ -1140,7 +1147,6 @@ const method = {
             "reply": {"autoReplySets": []},
             "clock_in": {},
             "welcome": {},
-            "auto_gift": {},
             "privacy": {},
             "black": {
                 "names": [],
@@ -1148,7 +1154,6 @@ const method = {
             },
             "live_status": {},
             "timer": {},
-            "danmaku_store": {},
             "bad_list": {
                 "bad_users": []
             },
@@ -1284,9 +1289,6 @@ const method = {
         set.clock_in.is_open = $(".is_clockin").is(':checked');
         set.clock_in.time = method.time_parse($(".clockin_time").val());
         set.clock_in.barrage = $(".clockin_barrage").val();
-        set.auto_gift.is_open = $(".is_autoGift_open").is(':checked');
-        set.auto_gift.time = method.time_parse($(".autoGift_time").val());
-        set.auto_gift.room_id = $(".autoGift_roomids").val();
         set.privacy.is_open = $(".is_privacy_open").is(':checked');
         set.privacy.small_heart_url = $(".privacy_heart_url").val();
         set.black.all = $(".is_black_all").is(':checked');
@@ -1343,18 +1345,6 @@ const method = {
                 gazeSet.text = $(this).find(".gazeWelcome-text").val();
                 set.gaze_welcome.gazeWelcomeSets.push(gazeSet);
                 gazeSet = {};
-            });
-        }
-        set.danmaku_store.items = [];
-        if ($("#danmakuStore-ul li").length > 0) {
-            $("#danmakuStore-ul li").each(function (i, v) {
-                var text = $(this).find(".danmakuStore-text").val();
-                if (text && text.trim() !== '') {
-                    set.danmaku_store.items.push(text);
-                }
-            });
-            set.danmaku_store.items.sort(function(a, b) {
-                return a.localeCompare(b);
             });
         }
         set.rectifier.is_open = $(".rectifier_is_open").is(':checked');
@@ -1447,19 +1437,14 @@ const method = {
 
             }
         });
-        if ($(".is_autoGift_open").is(':checked')) {
-            if ($(".autoGift_roomids").val() == null || $(".autoGift_roomids").val().trim() === "") {
-                c11 = true;
-                showMessage("礼物自动赠送姬房间号不能为空！配置保存失败!", "danger",3);
-            }
-        }
         if ($(".card-body").find(".logined").length > 0) {
-            if (!c1 && !c2 && !c3 && !c4 && !c5 && !c6 && !c7 && !c8 && !c9 && !c10 && !c11) {
+            if (!c1 && !c2 && !c3 && !c4 && !c5 && !c6 && !c7 && !c8 && !c9 && !c10) {
                 publicData.set = method.initSet(set);
                 var edition = $("#checkupdate").attr("data-version");
                 set.edition = edition;
                 var result = method.sendSet(set);
                 if (result==1) {
+                    method.saveDanmakuStoreList(true);
                     if (!publicData.set.auto_save_set) {
                         showMessage("保存配置成功!", "success",3);
                     }else{
@@ -1469,14 +1454,8 @@ const method = {
                     location.reload();
                 }else {
                     showMessage("修改配置失败!", "danger",3);
-                    // if (!publicData.set.auto_save_set) {
-                    //     alert("修改配置失败");
-                    // }
                 }
             } else {
-                // if (!publicData.set.auto_save_set) {
-                //     alert("修改配置失败")
-                // }
                 showMessage("修改配置失败!", "danger",3);
             }
         } else {
@@ -1485,6 +1464,7 @@ const method = {
             set.edition = edition;
             var result = method.sendSet(set);
             if (result == 1) {
+                method.saveDanmakuStoreList(true);
                 showMessage("保存配置成功!", "success",3);
             }else if(result==2){
                 location.reload();
@@ -1647,14 +1627,23 @@ const method = {
         if (!str) return '';
         return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     },
-    addDanmakuStoreRow: function (text) {
+    addDanmakuStoreRow: function (text, type) {
         var txt = text || '';
+        // 兼容旧格式：如果 text 是对象则解包
+        if (typeof txt === 'object' && txt !== null) {
+            type = txt.type || '';
+            txt = txt.text || '';
+        }
+        var typ = type || '';
         var len = txt.length;
         var dangerClass = len > 40 ? ' text-danger' : '';
         var li = '<li style="margin-bottom:5px">' +
             '<div class="row align-items-center" style="--bs-gutter-x:5px">' +
+            '<div class="col-auto">' +
+            '<input class="form-control form-control-sm danmakuStore-type live-save" placeholder="类型" value="' + method._escapeHtml(typ) + '" style="width:80px">' +
+            '</div>' +
             '<div class="col">' +
-            '<input class="form-control form-control-sm danmakuStore-text live-save" placeholder="暂存的弹幕内容" value="' + method._escapeHtml(txt) + '">' +
+            '<input class="form-control form-control-sm danmakuStore-text live-save" placeholder="暂存的话术弹幕内容" value="' + method._escapeHtml(txt) + '">' +
             '</div>' +
             '<div class="col-auto">' +
             '<span class="danmakuStore-count' + dangerClass + '" style="min-width:40px;display:inline-block;text-align:center">' + len + '</span>' +
@@ -1678,6 +1667,97 @@ const method = {
         for (var i = 0; i < items.length; i++) {
             method.addDanmakuStoreRow(items[i]);
         }
+    },
+    sortDanmakuStoreRows: function () {
+        danmakuStoreData.sortAsc = !danmakuStoreData.sortAsc;
+        var $btn = $(".danmakuStore-sort-btn");
+        $btn.text(danmakuStoreData.sortAsc ? '按类型排序 ▲' : '按类型排序 ▼');
+        var $ul = $("#danmakuStore-ul");
+        var $lis = $ul.find("li").get();
+        $lis.sort(function (a, b) {
+            var ta = $(a).find(".danmakuStore-type").val() || '';
+            var tb = $(b).find(".danmakuStore-type").val() || '';
+            var cmp = ta.localeCompare(tb);
+            return danmakuStoreData.sortAsc ? cmp : -cmp;
+        });
+        $.each($lis, function (i, v) {
+            $ul.append(v);
+        });
+        if ($(".auto_save_set").is(':checked')) {
+            method.saveDanmakuStoreList();
+        }
+    },
+    loadDanmakuStoreList: function () {
+        $.ajax({
+            url: '../getDanmakuStore',
+            async: false,
+            cache: false,
+            type: 'GET',
+            dataType: 'json',
+            success: function (data) {
+                if (data.code == "200" && data.result && data.result.items && data.result.items.length > 0) {
+                    danmakuStoreData.list = data.result.items;
+                    // 兼容旧版字符串格式
+                    for (var i = 0; i < danmakuStoreData.list.length; i++) {
+                        if (typeof danmakuStoreData.list[i] === 'string') {
+                            danmakuStoreData.list[i] = {type: '', text: danmakuStoreData.list[i]};
+                        }
+                    }
+                } else {
+                    // 迁移：检查set.json中的旧数据
+                    if (publicData.set && publicData.set.danmaku_store && publicData.set.danmaku_store.items && publicData.set.danmaku_store.items.length > 0) {
+                        danmakuStoreData.list = publicData.set.danmaku_store.items;
+                        for (var i = 0; i < danmakuStoreData.list.length; i++) {
+                            if (typeof danmakuStoreData.list[i] === 'string') {
+                                danmakuStoreData.list[i] = {type: '', text: danmakuStoreData.list[i]};
+                            }
+                        }
+                        // 自动保存到独立文件
+                        method.saveDanmakuStoreList();
+                    } else {
+                        danmakuStoreData.list = [];
+                    }
+                }
+            }
+        });
+        method.renderDanmakuStoreRows(danmakuStoreData.list);
+    },
+    saveDanmakuStoreList: function (silent) {
+        var list = [];
+        $("#danmakuStore-ul li").each(function (i, v) {
+            var text = $(this).find(".danmakuStore-text").val();
+            var type = $(this).find(".danmakuStore-type").val() || '';
+            if (text && text.trim() !== '') {
+                list.push({type: type, text: text});
+            }
+        });
+        list.sort(function(a, b) {
+            return (a.type || '').localeCompare(b.type || '') || (a.text || '').localeCompare(b.text || '');
+        });
+        danmakuStoreData.list = list;
+        var payload = { type: "话术", items: list };
+        var result = 0;
+        $.ajax({
+            url: '../saveDanmakuStore',
+            async: false,
+            cache: false,
+            type: 'POST',
+            data: { data: JSON.stringify(payload) },
+            dataType: 'json',
+            success: function (data) {
+                if (data.code == "200") {
+                    result = data.result;
+                }
+            }
+        });
+        if (!silent) {
+            if (result === 0) {
+                showMessage("话术列表保存成功!", "success", 3);
+            } else {
+                showMessage("话术列表保存失败!", "danger", 3);
+            }
+        }
+        method.renderDanmakuStoreRows(danmakuStoreData.list);
     },
     sendDanmakuStoreBarrage: function (text) {
         if (text.length > 40) {
@@ -1811,9 +1891,6 @@ const method = {
             $(".is_clockin").prop('checked', set.clock_in.is_open);
             $(".clockin_time").val(set.clock_in.time);
             $(".clockin_barrage").val(set.clock_in.barrage);
-            $(".is_autoGift_open").prop('checked', set.auto_gift.is_open);
-            $(".autoGift_time").val(set.auto_gift.time);
-            $(".autoGift_roomids").val(set.auto_gift.room_id);
             $(".is_privacy_open").prop('checked', set.privacy.is_open);
             $(".privacy_heart_url").val(set.privacy.small_heart_url);
             $(".is_black_all").prop('checked', set.black.all);
@@ -1867,12 +1944,6 @@ const method = {
                 if (set.gaze_welcome.gazeWelcomeSets) {
                     method.renderGazeWelcomeRows(set.gaze_welcome.gazeWelcomeSets);
                 }
-            }
-            if (set.danmaku_store && set.danmaku_store.items) {
-                set.danmaku_store.items.sort(function(a, b) {
-                    return a.localeCompare(b);
-                });
-                method.renderDanmakuStoreRows(set.danmaku_store.items);
             }
             if (set.rectifier) {
                 $(".rectifier_is_open").prop('checked', set.rectifier.is_open);
@@ -2049,9 +2120,6 @@ const method = {
                 $(".is_clockin").attr("disabled", true);
                 $(".clockin_time").attr("disabled", true);
                 $(".clockin_barrage").attr("disabled", true);
-                $(".is_autoGift_open").attr("disabled", true);
-                $(".autoGift_time").attr("disabled", true);
-                $(".autoGift_roomids").attr("disabled", true);
                 $(".is_black_all").attr("disabled", true);
                 $(".is_black_gift").attr("disabled", true);
                 $(".is_black_welcome").attr("disabled", true);
@@ -2252,7 +2320,7 @@ const method = {
         window.open(window.location.origin + "/setExportWeb");
     },
     fileExport: function (fileType) {
-        var url = fileType === 'pn' ? '../pnExport' : '../abExport';
+        var url = fileType === 'pn' ? '../pnExport' : fileType === 'ab' ? '../abExport' : '../dsExport';
         $.ajax({
             url: url,
             async: false,
@@ -2269,7 +2337,7 @@ const method = {
         });
     },
     fileExportWeb: function (fileType) {
-        var url = fileType === 'pn' ? '/pnExportWeb' : '/abExportWeb';
+        var url = fileType === 'pn' ? '/pnExportWeb' : fileType === 'ab' ? '/abExportWeb' : '/dsExportWeb';
         window.open(window.location.origin + url);
     },
 //导入附件
@@ -2280,6 +2348,8 @@ const method = {
             url = "../pnImport";
         } else if (fileType === 'ab') {
             url = "../abImport";
+        } else if (fileType === 'ds') {
+            url = "../dsImport";
         } else {
             url = "../setImport";
         }
@@ -2298,6 +2368,8 @@ const method = {
                         method.loadPNList();
                     } else if (fileType === 'ab') {
                         method.loadAutoBlockList();
+                    } else if (fileType === 'ds') {
+                        method.loadDanmakuStoreList();
                     } else {
                         setTimeout(function () { location.reload(); }, 1200);
                     }

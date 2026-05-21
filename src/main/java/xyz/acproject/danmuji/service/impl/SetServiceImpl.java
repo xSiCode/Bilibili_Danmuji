@@ -183,7 +183,6 @@ public class SetServiceImpl implements SetService {
         synchronized (centerSetConf) {
             SchedulingRunnableUtil task = new SchedulingRunnableUtil("dosignTask", "dosign");
             SchedulingRunnableUtil dakatask = new SchedulingRunnableUtil("dosignTask", "clockin");
-            SchedulingRunnableUtil autoSendGiftTask = new SchedulingRunnableUtil("dosignTask", "autosendgift");
             //每日签到
             if (PublicDataConf.centerSetConf.is_dosign()) {
                 //判断签到
@@ -210,19 +209,6 @@ public class SetServiceImpl implements SetService {
             } else {
                 try {
                     taskRegisterComponent.removeTask(dakatask);
-                } catch (Exception e) {
-                    // TODO 自动生成的 catch 块
-                    LOGGER.error("清理定时任务错误：" + e);
-                }
-            }
-            //每日定时自动送礼
-            if (centerSetConf.getAuto_gift().is_open()) {
-                if (!taskRegisterComponent.hasTask(autoSendGiftTask)) {
-                    taskRegisterComponent.addTask(autoSendGiftTask, CurrencyTools.dateStringToCron(centerSetConf.getAuto_gift().getTime()));
-                }
-            } else {
-                try {
-                    taskRegisterComponent.removeTask(autoSendGiftTask);
                 } catch (Exception e) {
                     // TODO 自动生成的 catch 块
                     LOGGER.error("清理定时任务错误：" + e);

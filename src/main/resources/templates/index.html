@@ -182,20 +182,19 @@
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="liveStatus-set" onclick="switchTab('liveStatus-set', this);return false;">状态姬</a>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="timer-set" onclick="switchTab('timer-set', this);return false;">定时姬</a>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="advert-set" onclick="switchTab('advert-set', this);return false;">广告姬</a>
-                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="autoGift-set" onclick="switchTab('autoGift-set', this);return false;">礼物自动赠送姬</a>
                                 </div>
                                 <div class="sidebar-section">
                                     <span class="sidebar-section-header" onclick="toggleSidebarSection(this);return false;">观众</span>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="gazeWelcome-set" onclick="switchTab('gazeWelcome-set', this);return false;">欢迎凝视姬</a>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="welcome-set" onclick="switchTab('welcome-set', this);return false;">欢迎姬</a>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="thankFollow-set" onclick="switchTab('thankFollow-set', this);return false;">关注姬</a>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="thankGift-set" onclick="switchTab('thankGift-set', this);return false;">礼物姬</a>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="rectifier-set" onclick="switchTab('rectifier-set', this);return false;">整流回复姬</a>
-                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="gazeWelcome-set" onclick="switchTab('gazeWelcome-set', this);return false;">欢迎凝视姬</a>
-                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="autoReply-set" onclick="switchTab('autoReply-set', this);return false;">自动回复姬</a>
                                 </div>
                                 <div class="sidebar-section">
-                                    <span class="sidebar-section-header" onclick="toggleSidebarSection(this);return false;">互动</span>
+                                    <span class="sidebar-section-header" onclick="toggleSidebarSection(this);return false;">弹幕</span>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="danmakuStore-set" onclick="switchTab('danmakuStore-set', this);return false;">话术姬</a>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="autoReply-set" onclick="switchTab('autoReply-set', this);return false;">自动回复姬</a>
                                 </div>
                                 <div class="sidebar-section">
                                     <span class="sidebar-section-header" onclick="toggleSidebarSection(this);return false;">小黑屋</span>
@@ -636,13 +635,16 @@
                         <!-- 定时姬设置结束 -->
                                 </div>
                                 <div class="tab-pane" id="tab-danmakuStore-set">
-                        <!-- 弹幕暂存姬设置开始 -->
-                        <div class="input-group mb-1"><h5>暂存姬</h5></div>
+                        <!-- 弹幕话术姬设置开始 -->
+                        <div class="input-group mb-1"><h5>话术姬</h5></div>
                         <div class="input-group mb-3 danmakuStore-set" id="danmakuStore-set">
                             <div class="header-set">
                                 <div class="row align-items-center" style="margin-bottom:5px;--bs-gutter-x:5px">
                                     <div class="col-auto">
                                         <button class="btn btn-sm btn-success danmakuStore-add-btn">添加</button>
+                                    </div>
+                                    <div class="col-auto">
+                                        <button class="btn btn-sm btn-info danmakuStore-sort-btn">按类型排序</button>
                                     </div>
                                 </div>
                                 <div class="danmakuStore-list">
@@ -651,7 +653,23 @@
                                 </div>
                             </div>
                         </div>
-                        <!-- 弹幕暂存姬设置结束 -->
+                        <!-- 底部按钮开始 -->
+                        <div class="input-group mb-3 set-control" data-file="ds">
+                            <div class="col-auto">
+                                <input class="import-file-input" style="display: none;" type="file" value="上传文件"/>
+                                <button class="btn btn-warning export-set"
+                                        title="导出设置到本地，弹幕姬配置文件夹set底下"
+                                        type="button">导出
+                                </button>
+                                <button class="btn btn-success export-set-web" title="网页实时下载配置" type="button">
+                                    下载
+                                </button>
+                                <button class="btn btn-info import-set" title="导入配置文件" type="button">导入"话术.json"
+                                </button>
+                            </div>
+                        </div>
+                        <!-- 底部按钮结束 -->
+                        <!-- 弹幕话术姬设置结束 -->
                                 </div>
                                 <div class="tab-pane" id="tab-advert-set">
                         <!-- 广告姬设置开始 -->
@@ -1234,41 +1252,6 @@
                                 </div>
                             </div>
                         </div>
-                                <div class="tab-pane" id="tab-autoGift-set">
-                        <!-- 礼物自动赠送姬设置开始 -->
-                        <div class="input-group mb-1"><h5>礼物自动赠送姬</h5></div>
-                        <div class="input-group mb-3 autoGift-set" id="autoGift-set">
-                            <div class="header-set">
-                                <div class="row align-items-center">
-                                    <div class="col-auto">
-                                        <label class="form-check-label"> <input
-                                                class="form-check-input is_autoGift_open live-save" type="checkbox">
-                                            <span class="_description" data-bs-html="true"
-                                                  data-bs-placement="top" data-bs-toggle="tooltip"
-                                                  title="是否打开礼物自动赠送">开关</span>
-                                        </label>
-                                    </div>
-                                    <div class="col-auto">
-                                        <input class="big-input autoGift_time live-save" data-bs-html="true"
-                                               data-bs-placement="top"
-                                               data-bs-toggle="tooltip"
-                                               pattern="[0-9]{2}:[0-9]{2}"
-                                               title="每天自动赠送礼物的时间(默认：晚上11：45)"
-                                               type="time">
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="form-group footer-set">
-                                <input
-                                        class="form-control input-margin-b autoGift_roomids live-save"
-                                        data-bs-html="true" data-bs-placement="top"
-                                        data-bs-toggle="tooltip"
-                                        placeholder="要赠送礼物的房间号集"
-                                        title="要赠送礼物的房间号，多房间号以<span class='red-font'>中文逗号(，)</span>隔开(短号长号都可以,尽量使用短号-避免去请求)">
-                            </div>
-                        </div>
-                        <!-- 礼物自动赠送姬设置结束 -->
-                                </div>
                                 <div class="tab-pane" id="tab-positiveWhite-set">
                         <!-- 正白负黑姬设置开始 -->
                         <div class="input-group mb-1"><h5>负黑正白姬</h5></div>

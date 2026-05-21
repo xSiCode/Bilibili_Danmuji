@@ -56,14 +56,6 @@ public class DoSignTask {
         }
     }
 
-    public void autosendgift() {
-        if (StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
-            CurrencyTools.autoSendGift();
-        } else {
-            LOGGER.error("定时任务抛出： 未登录 自动送礼失败");
-        }
-    }
-
     public void sendTimerDanmaku() {
         if (StringUtils.isBlank(PublicDataConf.USERCOOKIE)) return;
         if (PublicDataConf.centerSetConf == null || PublicDataConf.centerSetConf.getTimer() == null) return;

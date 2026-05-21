@@ -7,7 +7,6 @@ import xyz.acproject.danmuji.entity.auto_reply.AutoReply;
 import xyz.acproject.danmuji.entity.danmu_data.Gift;
 import xyz.acproject.danmuji.entity.danmu_data.Interact;
 import xyz.acproject.danmuji.entity.room_data.MedalInfoAnchor;
-import xyz.acproject.danmuji.entity.user_data.AutoSendGift;
 import xyz.acproject.danmuji.entity.user_data.User;
 import xyz.acproject.danmuji.entity.user_data.UserCookie;
 
@@ -184,8 +183,6 @@ public class PublicDataConf {
 //	//房间礼物集合
 //	public static Map<Integer, RoomGift> roomGiftConcurrentHashMap = new ConcurrentHashMap<Integer, RoomGift>(300);
 //
-	//可以赠送礼物集合 要初始化
-	public static volatile Map<Integer,AutoSendGift> autoSendGiftMap = null;
 
 
 	//方法区
