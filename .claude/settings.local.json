@@ -39,7 +39,12 @@
       "Bash(curl -s http://localhost:21212/getAutoBlockRecords)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"http://localhost:21212/danmu/sub\")",
       "Bash(curl -s \"http://localhost:21212/js/index-bcbd69d41e82c55745b4242f4915eae6.js\")",
-      "Bash(curl -s \"http://localhost:21212/js/index-2d12c42d1e2b50f2370ba45f7c3fb286.js\")"
+      "Bash(curl -s \"http://localhost:21212/js/index-2d12c42d1e2b50f2370ba45f7c3fb286.js\")",
+      "Bash(sed -n '213,262p' index.html)",
+      "Bash(sed -n '263,298p' index.html)",
+      "Bash(sed -n '299,348p' index.html)",
+      "Bash(sed -i 's/tab-pane active\" id=\"tab-common-set\"/tab-pane\" id=\"tab-common-set\"/' /tmp/block_common.txt)",
+      "Bash(sed -i 's/tab-pane\" id=\"tab-account-set\"/tab-pane active\" id=\"tab-account-set\"/' /tmp/block_account.txt)"
     ]
   }
 }

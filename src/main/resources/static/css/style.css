@@ -1296,6 +1296,43 @@ div .link-popup-panel .popup-content-ctnr p {
     }
 }
 
+/* ========== 顶部状态栏 ========== */
+.status-bar {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    padding: 6px 16px;
+    margin-bottom: 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    line-height: 22px;
+}
+.status-bar-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px;
+}
+.status-bar-label {
+    opacity: 0.85;
+    font-size: 12px;
+}
+.status-bar-sep {
+    opacity: 0.4;
+    margin: 0 4px;
+}
+.status-bar a {
+    color: #fff;
+    text-decoration: none;
+}
+.status-bar a:hover {
+    text-decoration: underline;
+    color: #ffd700;
+}
+.status-bar .text-muted {
+    color: rgba(255,255,255,0.6) !important;
+    font-size: 12px;
+}
+
 /* ========== 设置面板侧边栏布局 ========== */
 .settings-container {
     display: flex;

@@ -79,6 +79,8 @@ public class WebController {
         model.addAttribute("HROOMID", PublicDataConf.centerSetConf.getRoomid());
         model.addAttribute("POPU", PublicDataConf.ROOM_POPULARITY);
         model.addAttribute("ROOM_WATCHER", PublicDataConf.ROOM_WATCHER);
+        model.addAttribute("LIVE_STATUS", PublicDataConf.lIVE_STATUS);
+        model.addAttribute("ROOM_LIKE", PublicDataConf.ROOM_LIKE);
 
         if (PublicDataConf.USER != null) {
             model.addAttribute("USER", PublicDataConf.USER);
@@ -229,7 +231,11 @@ public class WebController {
     @ResponseBody
     @GetMapping(value = "/heartBeat")
     public Response<?> heartBeat(HttpServletRequest req) {
-        return Response.success(PublicDataConf.ROOM_POPULARITY, req);
+        JSONObject data = new JSONObject();
+        data.put("popu", PublicDataConf.ROOM_POPULARITY);
+        data.put("live_status", PublicDataConf.lIVE_STATUS);
+        data.put("room_like", PublicDataConf.ROOM_LIKE);
+        return Response.success(data, req);
     }
 
 

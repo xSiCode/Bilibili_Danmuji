@@ -15,15 +15,31 @@ $(function () {
             dataType: 'json',
             success: function (data) {
                 if (data.code == "200") {
-                    let popu = data.result;
-                    if ($(".popu").length > 0) {
-                        if (popu != null) {
-                            $(".popu").html(popu);
+                    // 兼容新旧格式：新格式为对象{popu, live_status, room_like}，旧格式为数字
+                    var result = data.result;
+                    if (typeof result === 'object' && result !== null) {
+                        // 新格式
+                        if ($(".popu").length > 0 && result.popu != null) {
+                            $(".popu").html(result.popu);
+                        }
+                        if ($(".status-live").length > 0 && result.live_status != null) {
+                            var statusText = result.live_status == 1 ? '<span style="color:#4eff4e;">●直播中</span>' : '<span style="color:#ff6b6b;">●未开播</span>';
+                            $(".status-live").html(statusText);
+                        }
+                        if ($(".status-like").length > 0 && result.room_like != null) {
+                            $(".status-like").html(method.fmtNum(result.room_like));
+                        }
+                    } else {
+                        // 旧格式兼容
+                        if ($(".popu").length > 0) {
+                            if (result != null) {
+                                $(".popu").html(result);
+                            } else {
+                                clearInterval(time);
+                            }
                         } else {
                             clearInterval(time);
                         }
-                    } else {
-                        clearInterval(time);
                     }
                 }
             }
