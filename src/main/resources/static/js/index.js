@@ -45,8 +45,8 @@ $(function () {
             }
         });
     };
-    $("#file").change(function () {
-        method.importDfFile();
+    $(document).on('change', '.import-file-input', function () {
+        method.importDfFile(this);
     });
     publicData.set = method.initSet(method.getSet());
     method.loadPNList();
@@ -204,13 +204,24 @@ $(document).on('click', '.is_guard_code_click', function () {
     }
 });
 $(document).on('click', '.import-set', function () {
-    $('#file').click();
+    var setControl = $(this).closest('.set-control');
+    setControl.find('.import-file-input').data('fileType', setControl.attr('data-file') || null).click();
 });
 $(document).on('click', '.export-set', function () {
-    method.setExprot();
+    var fileType = $(this).closest('.set-control').attr('data-file');
+    if (fileType) {
+        method.fileExport(fileType);
+    } else {
+        method.setExprot();
+    }
 });
 $(document).on('click', '.export-set-web', function () {
-    method.setExprotWeb();
+    var fileType = $(this).closest('.set-control').attr('data-file');
+    if (fileType) {
+        method.fileExportWeb(fileType);
+    } else {
+        method.setExprotWeb();
+    }
 });
 $(document).on('click', '.is_clockin', function () {
     if ($(".is_clockin").is(':checked')) {
@@ -532,7 +543,7 @@ $(document).on('click', '.badlist_add_btn', function () {
                 if (!found) {
                     badListData.push({uid: uid, uname: uname});
                 }
-                method.renderBadListTable();
+                method.renderBadListTable(1);
                 method.saveSet();
             }
         },
@@ -633,6 +644,31 @@ $(document).on('click', '.badlist-result-select', function () {
 });
 $(document).on('click', '.badlist-result-close', function () {
     $(".badlist-search-results").hide();
+});
+$(document).on('click', '.badlist-prev', function () {
+    method.renderBadListTable(badListState.page - 1);
+});
+$(document).on('click', '.badlist-next', function () {
+    method.renderBadListTable(badListState.page + 1);
+});
+$(document).on('click', '.bili-badlist-load', function () {
+    var $btn = $(this);
+    $btn.prop('disabled', true).text('加载中...');
+    method.loadBiliBadList(1, function () {
+        $btn.prop('disabled', false).text('刷新列表');
+    });
+});
+$(document).on('click', '.bili-badlist-prev', function () {
+    method.loadBiliBadList(biliBadListState.page - 1);
+});
+$(document).on('click', '.bili-badlist-next', function () {
+    method.loadBiliBadList(biliBadListState.page + 1);
+});
+$(document).on('click', '.bili-avatar-click', function () {
+    var faceUrl = $(this).data('face');
+    $('#avatar-modal-img').attr('src', faceUrl);
+    var avatarModal = new bootstrap.Modal(document.getElementById('avatar-modal'));
+    avatarModal.show();
 });
 
 $(document).on('click', '.pn-add-btn', function () {
@@ -1052,6 +1088,17 @@ const publicData = {
     set: {},
 }
 let badListData = [];
+const badListState = {
+    page: 1,
+    pageSize: 10,
+    maxPages: 10
+};
+const biliBadListState = {
+    page: 1,
+    pageSize: 10,
+    total: 0,
+    list: []
+};
 const pnData = {
     list: [],
     page: 1,
@@ -1792,7 +1839,7 @@ const method = {
             } else {
                 badListData = [];
             }
-            method.renderBadListTable();
+            method.renderBadListTable(1);
             if (set.live_status) {
                 $(".livestatus_live_open").prop('checked', set.live_status.is_live_open);
                 $(".livestatus_live_text").val(set.live_status.live_text);
@@ -2204,31 +2251,68 @@ const method = {
     setExprotWeb: function () {
         window.open(window.location.origin + "/setExportWeb");
     },
-//导入附件
-    importDfFile: function () {
-        let formData = new FormData();
-        // 获取上传文件的数据
-        formData.append('file', $("#file")[0].files[0]);
+    fileExport: function (fileType) {
+        var url = fileType === 'pn' ? '../pnExport' : '../abExport';
         $.ajax({
-            url: "../setImport",
+            url: url,
+            async: false,
+            cache: false,
+            type: 'GET',
+            dataType: 'json',
+            success: function (data) {
+                if (data.result == 0) {
+                    showMessage("导出成功!位置位于弹幕姬目录set文件夹下", "success",2);
+                } else {
+                    showMessage("导出失败!", "danger",3);
+                }
+            }
+        });
+    },
+    fileExportWeb: function (fileType) {
+        var url = fileType === 'pn' ? '/pnExportWeb' : '/abExportWeb';
+        window.open(window.location.origin + url);
+    },
+//导入附件
+    importDfFile: function (fileInput) {
+        var fileType = $(fileInput).data('fileType');
+        var url;
+        if (fileType === 'pn') {
+            url = "../pnImport";
+        } else if (fileType === 'ab') {
+            url = "../abImport";
+        } else {
+            url = "../setImport";
+        }
+        let formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+        $.ajax({
+            url: url,
             type: 'post',
             async: false,
-            processData: false,// 将数据转换成对象，不对数据做处理，故 processData: false
-            contentType: false,    // 不设置数据类型
+            processData: false,
+            contentType: false,
             data: formData,
             success: function (data) {
                 if (data.result == 0) {
-                    showMessage("配置导入成功!", "success",2);
+                    if (fileType === 'pn') {
+                        method.loadPNList();
+                    } else if (fileType === 'ab') {
+                        method.loadAutoBlockList();
+                    } else {
+                        setTimeout(function () { location.reload(); }, 1200);
+                    }
+                    showMessage("导入成功!", "success",2);
                 } else if (data.result == 2) {
-                    showMessage("配置导入失败文件名称应为.json结尾!", "danger",3);
+                    showMessage("导入失败文件名称应为.json结尾!", "danger",3);
                 } else {
-                    showMessage("配置导入失败!未知原因", "danger",3);
+                    showMessage("导入失败!请检查文件是否正确", "danger",3);
                 }
             },
             error: function (data) {
             }
         })
-        $("#file").val("");
+        $(fileInput).val("");
+        $(fileInput).removeData('fileType');
     },
 
     replaceThanko: function (s) {
@@ -2595,17 +2679,32 @@ const method = {
         }
         $container.show();
     },
-    renderBadListTable: function () {
+    renderBadListTable: function (page) {
         var $tbody = $(".badlist-tbody");
         var $table = $(".badlist-table");
+        var $pagination = $(".badlist-pagination");
         if (!badListData || badListData.length === 0) {
             $table.hide();
+            $pagination.hide();
             return;
         }
+        // 时间降序: 最新添加的在末尾，反转后最新在前
+        var sorted = badListData.slice().reverse();
+        var totalItems = sorted.length;
+        var maxItems = badListState.pageSize * badListState.maxPages;
+        var displayItems = sorted.slice(0, maxItems);
+        var totalPages = Math.ceil(displayItems.length / badListState.pageSize);
+        if (!page || page < 1) page = 1;
+        if (page > totalPages) page = totalPages;
+        badListState.page = page;
+        var start = (page - 1) * badListState.pageSize;
+        var end = Math.min(start + badListState.pageSize, displayItems.length);
+        var pageItems = displayItems.slice(start, end);
+
         $table.show();
         $tbody.empty();
-        for (var i = 0; i < badListData.length; i++) {
-            var bu = badListData[i];
+        for (var i = 0; i < pageItems.length; i++) {
+            var bu = pageItems[i];
             var $tr = $("<tr>");
             $tr.append($("<td>").text(bu.uid || ''));
             $tr.append($("<td>").text(bu.uname || ''));
@@ -2615,6 +2714,87 @@ const method = {
                 .text("取消拉黑");
             $tr.append($("<td>").append($delBtn));
             $tbody.append($tr);
+        }
+
+        if (totalPages > 1) {
+            $pagination.show();
+            $(".badlist-page-info").text("第" + page + "页/共" + totalPages + "页 (" + displayItems.length + "条)");
+            $(".badlist-prev").prop("disabled", page <= 1);
+            $(".badlist-next").prop("disabled", page >= totalPages);
+        } else {
+            $pagination.hide();
+        }
+    },
+    loadBiliBadList: function (page, callback) {
+        if (!page || page < 1) page = 1;
+        $.ajax({
+            url: '../getBiliBadList',
+            type: 'GET',
+            data: {pn: page, ps: biliBadListState.pageSize},
+            dataType: 'json',
+            success: function (data) {
+                if (data.code == "200" && data.result) {
+                    biliBadListState.total = data.result.total || 0;
+                    biliBadListState.list = data.result.list || [];
+                    biliBadListState.page = page;
+                    method.renderBiliBadList();
+                } else {
+                    var errMsg = (data.result && data.result.error) ? data.result.error : '获取失败，请确认已登录B站账号';
+                    showMessage(errMsg, "warning", 3);
+                }
+            },
+            error: function () {
+                showMessage("网络异常，获取B站拉黑列表失败", "danger", 3);
+            },
+            complete: function () {
+                if (callback) callback();
+            }
+        });
+    },
+    renderBiliBadList: function () {
+        var $tbody = $(".bili-badlist-tbody");
+        var $table = $(".bili-badlist-table");
+        var $total = $(".bili-badlist-total");
+        var $pagination = $(".bili-badlist-pagination");
+        var list = biliBadListState.list;
+        var total = biliBadListState.total;
+        var page = biliBadListState.page;
+        var pageSize = biliBadListState.pageSize;
+        var totalPages = Math.ceil(total / pageSize) || 1;
+        if (page > totalPages) page = totalPages;
+        $total.text("共" + total + "人");
+        if (!list || list.length === 0) {
+            $table.hide();
+            $pagination.hide();
+            if (total === 0) $total.text("暂无拉黑记录");
+            return;
+        }
+        $table.show();
+        $tbody.empty();
+        for (var i = 0; i < list.length; i++) {
+            var user = list[i];
+            var $tr = $("<tr>");
+            var faceHtml = user.face
+                ? '<img src="' + user.face + '" class="bili-avatar-click" data-face="' + user.face + '" style="width:24px;height:24px;border-radius:50%;cursor:pointer;" title="点击查看原图" onerror="this.style.display=\'none\'">'
+                : '';
+            $tr.append($("<td>").html(faceHtml));
+            $tr.append($("<td>").text(user.mid || ''));
+            var nameHtml = user.mid
+                ? '<a href="https://space.bilibili.com/' + user.mid + '" target="_blank" title="查看用户主页">' + (user.uname || '') + '</a>'
+                : (user.uname || '');
+            $tr.append($("<td>").html(nameHtml));
+            $tr.append($("<td>").text(user.sign || '').css({'max-width':'200px','overflow':'hidden','text-overflow':'ellipsis','white-space':'nowrap'}));
+            var timeStr = user.mtime ? new Date(user.mtime * 1000).toLocaleString() : '';
+            $tr.append($("<td>").text(timeStr));
+            $tbody.append($tr);
+        }
+        if (totalPages > 1) {
+            $pagination.show();
+            $(".bili-badlist-page-info").text("第" + page + "页/共" + totalPages + "页 (共" + total + "条)");
+            $(".bili-badlist-prev").prop("disabled", page <= 1);
+            $(".bili-badlist-next").prop("disabled", page >= totalPages);
+        } else {
+            $pagination.hide();
         }
     },
 };

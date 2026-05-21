@@ -1184,6 +1184,65 @@ public class HttpUserData {
     }
 
     /**
+     * 获取B站拉黑列表(小黑屋)
+     * @param pn 页码
+     * @param ps 每页条数
+     * @return JSONObject {total, list: [{mid, uname, face, sign, mtime}]}
+     */
+    public static JSONObject httpGetBiliBadList(int pn, int ps) {
+        JSONObject result = new JSONObject();
+        result.put("total", 0);
+        result.put("list", new JSONArray());
+        if (PublicDataConf.COOKIE == null) {
+            result.put("error", "未登录，请先登录B站账号");
+            return result;
+        }
+        Map<String, String> headers = new HashMap<>(4);
+        headers.put("user-agent",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36");
+        headers.put("referer", "https://space.bilibili.com/");
+        if (StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
+            headers.put("cookie", PublicDataConf.USERCOOKIE);
+        }
+        Map<String, String> params = new HashMap<>(2);
+        params.put("pn", String.valueOf(pn));
+        params.put("ps", String.valueOf(ps));
+        try {
+            String data = OkHttp3Utils.getHttp3Utils()
+                    .httpGet("https://api.bilibili.com/x/relation/blacks", headers, params)
+                    .body().string();
+            JSONObject jsonObject = JSONObject.parseObject(data);
+            short code = jsonObject.getShort("code");
+            if (code == 0) {
+                JSONObject dataObj = jsonObject.getJSONObject("data");
+                result.put("total", dataObj.getInteger("total"));
+                JSONArray list = dataObj.getJSONArray("list");
+                JSONArray simplified = new JSONArray();
+                if (list != null) {
+                    for (int i = 0; i < list.size(); i++) {
+                        JSONObject user = list.getJSONObject(i);
+                        JSONObject item = new JSONObject();
+                        item.put("mid", user.getLong("mid"));
+                        item.put("uname", user.getString("uname"));
+                        item.put("face", user.getString("face"));
+                        item.put("sign", user.getString("sign"));
+                        item.put("mtime", user.getLong("mtime"));
+                        simplified.add(item);
+                    }
+                }
+                result.put("list", simplified);
+            } else {
+                result.put("error", jsonObject.getString("message"));
+                LOGGER.error("获取B站拉黑列表失败:{}", jsonObject.getString("message"));
+            }
+        } catch (Exception e) {
+            LOGGER.error("获取B站拉黑列表异常", e);
+            result.put("error", "网络异常");
+        }
+        return result;
+    }
+
+    /**
      * 解除禁言
      *
      * @param uid 被禁言用户uid

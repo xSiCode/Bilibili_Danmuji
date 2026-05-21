@@ -621,6 +621,20 @@ public class WebController {
 
 
     @ResponseBody
+    @GetMapping(value = "/getBiliBadList")
+    public Response<?> getBiliBadList(@RequestParam(defaultValue = "1") int pn,
+                                      @RequestParam(defaultValue = "10") int ps,
+                                      HttpServletRequest req) {
+        try {
+            JSONObject result = HttpUserData.httpGetBiliBadList(pn, ps);
+            return Response.success(result, req);
+        } catch (Exception e) {
+            LOGGER.error("getBiliBadList error", e);
+            return Response.success(null, req);
+        }
+    }
+
+    @ResponseBody
     @GetMapping(value = "/getNegativeBlackPositiveWhite")
     public Response<?> getNegativeBlackPositiveWhite(HttpServletRequest req) {
         try {
@@ -790,6 +804,169 @@ public class WebController {
             }
         }
         return Response.success(code, req);
+    }
+
+    // ========== 负黑正白姬 导出/下载/导入 ==========
+
+    @ResponseBody
+    @GetMapping(value = "/pnExport")
+    public Response<?> pnExport(HttpServletRequest req) {
+        try {
+            FileTools fileTools = new FileTools();
+            File srcFile = new File(fileTools.getBaseJarPath(), "负黑正白判定表.json");
+            if (!srcFile.exists()) {
+                return Response.success(1, req);
+            }
+            String destDir = fileTools.getBaseJarPath() + "/set/";
+            File destDirFile = new File(destDir);
+            if (!destDirFile.exists()) {
+                destDirFile.mkdirs();
+            }
+            String timestamp = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+            File destFile = new File(destDir, "负黑正白判定表-" + timestamp + ".json");
+            java.nio.file.Files.copy(srcFile.toPath(), destFile.toPath());
+            return Response.success(0, req);
+        } catch (Exception e) {
+            LOGGER.error("pnExport error", e);
+            return Response.success(1, req);
+        }
+    }
+
+    @ResponseBody
+    @GetMapping(value = "/pnExportWeb")
+    public void pnExportWeb(HttpServletResponse response) throws Exception {
+        FileTools fileTools = new FileTools();
+        File file = new File(fileTools.getBaseJarPath(), "负黑正白判定表.json");
+        if (!file.exists()) {
+            file.createNewFile();
+            try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"))) {
+                JSONObject empty = new JSONObject();
+                empty.put("type", "负黑正白判定表");
+                empty.put("followings_list", new JSONArray());
+                writer.write(com.alibaba.fastjson.JSON.toJSONString(empty, true));
+            }
+        }
+        FileInputStream fileInputStream = new FileInputStream(file);
+        BufferedInputStream fis = new BufferedInputStream(fileInputStream);
+        byte[] buffer = new byte[fis.available()];
+        fis.read(buffer);
+        fis.close();
+        response.reset();
+        response.setCharacterEncoding("UTF-8");
+        response.addHeader("Content-Disposition", "attachment;filename=" + URLEncoder.encode("负黑正白判定表.json", "UTF-8"));
+        response.addHeader("Content-Length", "" + file.length());
+        OutputStream outputStream = new BufferedOutputStream(response.getOutputStream());
+        response.setContentType("application/octet-stream");
+        outputStream.write(buffer);
+        outputStream.flush();
+    }
+
+    @ResponseBody
+    @PostMapping(value = "/pnImport")
+    public Response<?> pnImport(@RequestParam("file") MultipartFile file, HttpServletRequest req) {
+        try {
+            String originalFilename = file.getOriginalFilename();
+            if (originalFilename == null || !originalFilename.endsWith(".json")) {
+                return Response.success(2, req);
+            }
+            String jsonString = new BufferedReader(new InputStreamReader(file.getInputStream(), "utf-8"))
+                    .lines().collect(Collectors.joining(System.lineSeparator()));
+            JSONObject jsonObject = JSONObject.parseObject(jsonString);
+            if (jsonObject == null || !"负黑正白判定表".equals(jsonObject.getString("type"))) {
+                return Response.success(1, req);
+            }
+            FileTools fileTools = new FileTools();
+            File destFile = new File(fileTools.getBaseJarPath(), "负黑正白判定表.json");
+            try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(destFile), "UTF-8"))) {
+                writer.write(com.alibaba.fastjson.JSON.toJSONString(jsonObject, true));
+            }
+            HttpRoomData.reloadPnScoreMap();
+            return Response.success(0, req);
+        } catch (Exception e) {
+            LOGGER.error("pnImport error", e);
+            return Response.success(1, req);
+        }
+    }
+
+    // ========== 负黑自动拉黑姬 导出/下载/导入 ==========
+
+    @ResponseBody
+    @GetMapping(value = "/abExport")
+    public Response<?> abExport(HttpServletRequest req) {
+        try {
+            FileTools fileTools = new FileTools();
+            File srcFile = new File(fileTools.getBaseJarPath(), "负黑自动拉黑记录.json");
+            if (!srcFile.exists()) {
+                return Response.success(1, req);
+            }
+            String destDir = fileTools.getBaseJarPath() + "/set/";
+            File destDirFile = new File(destDir);
+            if (!destDirFile.exists()) {
+                destDirFile.mkdirs();
+            }
+            String timestamp = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+            File destFile = new File(destDir, "负黑自动拉黑记录-" + timestamp + ".json");
+            java.nio.file.Files.copy(srcFile.toPath(), destFile.toPath());
+            return Response.success(0, req);
+        } catch (Exception e) {
+            LOGGER.error("abExport error", e);
+            return Response.success(1, req);
+        }
+    }
+
+    @ResponseBody
+    @GetMapping(value = "/abExportWeb")
+    public void abExportWeb(HttpServletResponse response) throws Exception {
+        FileTools fileTools = new FileTools();
+        File file = new File(fileTools.getBaseJarPath(), "负黑自动拉黑记录.json");
+        if (!file.exists()) {
+            file.createNewFile();
+            try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"))) {
+                JSONObject empty = new JSONObject();
+                empty.put("type", "负黑自动拉黑记录");
+                empty.put("records", new JSONArray());
+                writer.write(com.alibaba.fastjson.JSON.toJSONString(empty, true));
+            }
+        }
+        FileInputStream fileInputStream = new FileInputStream(file);
+        BufferedInputStream fis = new BufferedInputStream(fileInputStream);
+        byte[] buffer = new byte[fis.available()];
+        fis.read(buffer);
+        fis.close();
+        response.reset();
+        response.setCharacterEncoding("UTF-8");
+        response.addHeader("Content-Disposition", "attachment;filename=" + URLEncoder.encode("负黑自动拉黑记录.json", "UTF-8"));
+        response.addHeader("Content-Length", "" + file.length());
+        OutputStream outputStream = new BufferedOutputStream(response.getOutputStream());
+        response.setContentType("application/octet-stream");
+        outputStream.write(buffer);
+        outputStream.flush();
+    }
+
+    @ResponseBody
+    @PostMapping(value = "/abImport")
+    public Response<?> abImport(@RequestParam("file") MultipartFile file, HttpServletRequest req) {
+        try {
+            String originalFilename = file.getOriginalFilename();
+            if (originalFilename == null || !originalFilename.endsWith(".json")) {
+                return Response.success(2, req);
+            }
+            String jsonString = new BufferedReader(new InputStreamReader(file.getInputStream(), "utf-8"))
+                    .lines().collect(Collectors.joining(System.lineSeparator()));
+            JSONObject jsonObject = JSONObject.parseObject(jsonString);
+            if (jsonObject == null || !"负黑自动拉黑记录".equals(jsonObject.getString("type"))) {
+                return Response.success(1, req);
+            }
+            FileTools fileTools = new FileTools();
+            File destFile = new File(fileTools.getBaseJarPath(), "负黑自动拉黑记录.json");
+            try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(destFile), "UTF-8"))) {
+                writer.write(com.alibaba.fastjson.JSON.toJSONString(jsonObject, true));
+            }
+            return Response.success(0, req);
+        } catch (Exception e) {
+            LOGGER.error("abImport error", e);
+            return Response.success(1, req);
+        }
     }
 
     @Autowired

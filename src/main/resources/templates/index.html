@@ -178,28 +178,32 @@
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="other-set" onclick="switchTab('other-set', this);return false;">其他设置</a>
                                 </div>
                                 <div class="sidebar-section">
-                                    <span class="sidebar-section-header" onclick="toggleSidebarSection(this);return false;">自动化</span>
+                                    <span class="sidebar-section-header" onclick="toggleSidebarSection(this);return false;">直播间</span>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="liveStatus-set" onclick="switchTab('liveStatus-set', this);return false;">状态姬</a>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="timer-set" onclick="switchTab('timer-set', this);return false;">定时姬</a>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="advert-set" onclick="switchTab('advert-set', this);return false;">广告姬</a>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="autoGift-set" onclick="switchTab('autoGift-set', this);return false;">礼物自动赠送姬</a>
+                                </div>
+                                <div class="sidebar-section">
+                                    <span class="sidebar-section-header" onclick="toggleSidebarSection(this);return false;">观众</span>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="welcome-set" onclick="switchTab('welcome-set', this);return false;">欢迎姬</a>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="thankFollow-set" onclick="switchTab('thankFollow-set', this);return false;">关注姬</a>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="thankGift-set" onclick="switchTab('thankGift-set', this);return false;">礼物姬</a>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="rectifier-set" onclick="switchTab('rectifier-set', this);return false;">整流回复姬</a>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="gazeWelcome-set" onclick="switchTab('gazeWelcome-set', this);return false;">欢迎凝视姬</a>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="autoReply-set" onclick="switchTab('autoReply-set', this);return false;">自动回复姬</a>
                                 </div>
                                 <div class="sidebar-section">
                                     <span class="sidebar-section-header" onclick="toggleSidebarSection(this);return false;">互动</span>
-                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="danmakuStore-set" onclick="switchTab('danmakuStore-set', this);return false;">暂存姬</a>
-                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="gazeWelcome-set" onclick="switchTab('gazeWelcome-set', this);return false;">欢迎凝视姬</a>
-                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="autoReply-set" onclick="switchTab('autoReply-set', this);return false;">自动回复姬</a>
-                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="autoGift-set" onclick="switchTab('autoGift-set', this);return false;">礼物自动赠送姬</a>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="danmakuStore-set" onclick="switchTab('danmakuStore-set', this);return false;">话术姬</a>
                                 </div>
                                 <div class="sidebar-section">
-                                    <span class="sidebar-section-header" onclick="toggleSidebarSection(this);return false;">管理</span>
+                                    <span class="sidebar-section-header" onclick="toggleSidebarSection(this);return false;">小黑屋</span>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="positiveWhite-set" onclick="switchTab('positiveWhite-set', this);return false;">负黑正白姬</a>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="autoBlock-set" onclick="switchTab('autoBlock-set', this);return false;">负黑自动拉黑姬</a>
-                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="black-set" onclick="switchTab('black-set', this);return false;">黑白名单姬</a>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="badlist-set" onclick="switchTab('badlist-set', this);return false;">拉黑姬</a>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="bili-badlist-set" onclick="switchTab('bili-badlist-set', this);return false;">Bili小黑屋</a>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="black-set" onclick="switchTab('black-set', this);return false;">过滤姬</a>
                                 </div>
                             </div>
                             <!-- 内容面板 -->
@@ -342,7 +346,7 @@
                         <!-- 底部按钮开始 -->
                         <div class="input-group mb-3 set-control">
                             <div class="col-auto">
-                                <input id="file" style="display: none;" type="file" value="上传文件"/>
+                                <input class="import-file-input" style="display: none;" type="file" value="上传文件"/>
                                 <button class="btn btn-warning export-set"
                                         title="导出设置到本地，弹幕姬配置文件夹set底下"
                                         type="button">导出设置
@@ -1300,6 +1304,22 @@
                             </div>
                         </div>
                         <!-- 正白负黑姬设置结束 -->
+                        <!-- 底部按钮开始 -->
+                        <div class="input-group mb-3 set-control" data-file="pn">
+                            <div class="col-auto">
+                                <input class="import-file-input" style="display: none;" type="file" value="上传文件"/>
+                                <button class="btn btn-warning export-set"
+                                        title="导出设置到本地，弹幕姬配置文件夹set底下"
+                                        type="button">导出
+                                </button>
+                                <button class="btn btn-success export-set-web" title="网页实时下载配置" type="button">
+                                    下载
+                                </button>
+                                <button class="btn btn-info import-set" title="导入配置文件" type="button">导入"负黑正白判定表.json"
+                                </button>
+                            </div>
+                        </div>
+                        <!-- 底部按钮结束 -->
                                 </div>
                                 <div class="tab-pane" id="tab-autoBlock-set">
                         <!-- 负黑自动拉黑姬设置开始 -->
@@ -1347,6 +1367,22 @@
                             </div>
                         </div>
                         <!-- 负黑自动拉黑姬设置结束 -->
+                        <!-- 底部按钮开始 -->
+                        <div class="input-group mb-3 set-control" data-file="ab">
+                            <div class="col-auto">
+                                <input class="import-file-input" style="display: none;" type="file" value="上传文件"/>
+                                <button class="btn btn-warning export-set"
+                                        title="导出设置到本地，弹幕姬配置文件夹set底下"
+                                        type="button">导出
+                                </button>
+                                <button class="btn btn-success export-set-web" title="网页实时下载配置" type="button">
+                                    下载
+                                </button>
+                                <button class="btn btn-info import-set" title="导入配置文件" type="button">导入"负黑自动拉黑记录.json"
+                                </button>
+                            </div>
+                        </div>
+                        <!-- 底部按钮结束 -->
                                 </div>
                                 <div class="tab-pane" id="tab-black-set">
                         <!-- 黑白名单模式设置开始 -->
@@ -1571,9 +1607,36 @@
                                     </thead>
                                     <tbody class="badlist-tbody"></tbody>
                                 </table>
+                                <div class="badlist-pagination d-flex justify-content-center align-items-center mt-2" style="display:none;">
+                                    <button class="btn btn-sm btn-outline-secondary badlist-prev">上一页</button>
+                                    <span class="badlist-page-info mx-2">第1页</span>
+                                    <button class="btn btn-sm btn-outline-secondary badlist-next">下一页</button>
+                                </div>
                                 <small class="text-muted">拉黑为B站用户层面的黑名单，非直播间禁言。需要登录后操作。</small>
                             </div>
                         </div>
+                                </div>
+                                <div class="tab-pane" id="tab-bili-badlist-set">
+                        <!-- Bili小黑屋开始 -->
+                        <div class="input-group mb-1"><h5>Bili小黑屋 <small class="text-muted">(B站端拉黑列表)</small></h5></div>
+                        <div class="input-group mb-3 bili-badlist-wrap">
+                            <div class="d-flex align-items-center mb-2">
+                                <button class="btn btn-sm btn-outline-primary bili-badlist-load">刷新列表</button>
+                                <span class="bili-badlist-total ms-2 text-muted" style="font-size:12px;"></span>
+                            </div>
+                            <table class="table table-sm table-striped bili-badlist-table" style="display:none;">
+                                <thead>
+                                    <tr><th>头像</th><th>UID</th><th>用户名</th><th>签名</th><th>拉黑时间</th></tr>
+                                </thead>
+                                <tbody class="bili-badlist-tbody"></tbody>
+                            </table>
+                            <div class="bili-badlist-pagination d-flex justify-content-center align-items-center mt-2" style="display:none;">
+                                <button class="btn btn-sm btn-outline-secondary bili-badlist-prev">上一页</button>
+                                <span class="bili-badlist-page-info mx-2">第1页</span>
+                                <button class="btn btn-sm btn-outline-secondary bili-badlist-next">下一页</button>
+                            </div>
+                        </div>
+                        <!-- Bili小黑屋结束 -->
                                 </div>
                                 <div class="tab-pane" id="tab-rectifier-set">
                         <!-- 整流回复姬设置开始 -->
@@ -1893,6 +1956,17 @@
                     </div>
 
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bili小黑屋-头像弹窗 -->
+<div class="modal fade" id="avatar-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background:transparent;border:none;">
+            <div class="modal-body text-center p-0">
+                <img id="avatar-modal-img" src="" style="max-width:100%;border-radius:50%;">
             </div>
         </div>
     </div>
