@@ -81,6 +81,7 @@ public class WebController {
         model.addAttribute("ROOM_WATCHER", PublicDataConf.ROOM_WATCHER);
         model.addAttribute("LIVE_STATUS", PublicDataConf.lIVE_STATUS);
         model.addAttribute("ROOM_LIKE", PublicDataConf.ROOM_LIKE);
+        model.addAttribute("ROOM_TITLE", PublicDataConf.ROOM_TITLE);
 
         if (PublicDataConf.USER != null) {
             model.addAttribute("USER", PublicDataConf.USER);

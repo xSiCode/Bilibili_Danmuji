@@ -72,6 +72,9 @@ public class ClientServiceImpl implements ClientService {
         //房间详细信息获取 目前仅处理勋章
         RoomInfoAnchor roomInfoAnchor = HttpRoomData.httpGetRoomInfo();
         PublicDataConf.MEDALINFOANCHOR = roomInfoAnchor.getMedalInfoAnchor();
+        if (roomInfoAnchor.getRoomInfo() != null) {
+            PublicDataConf.ROOM_TITLE = roomInfoAnchor.getRoomInfo().getTitle();
+        }
         //公共信息处理
         PublicDataConf.AUID = roomInit.getUid();
         PublicDataConf.FANSNUM = HttpRoomData.httpGetFollowersNum();

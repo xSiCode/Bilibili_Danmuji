@@ -46,6 +46,8 @@ public class PublicDataConf {
 	public static volatile Long AUID = null;
 	//主播粉丝数
 	public static volatile Long FANSNUM =null;
+	//直播间标题
+	public static volatile String ROOM_TITLE = null;
 	//主播名称
 	public static volatile String ANCHOR_NAME = null;
 	//主播勋章信息
@@ -232,6 +234,7 @@ public class PublicDataConf {
 		PublicDataConf.ISSHIELDFOLLOW=false;
 		PublicDataConf.ROOMID = null;
 		PublicDataConf.ANCHOR_NAME = null;
+		PublicDataConf.ROOM_TITLE = null;
 		PublicDataConf.AUID = null;
 		PublicDataConf.FANSNUM = null;
 		PublicDataConf.SHORTROOMID = null;

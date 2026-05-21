@@ -61,7 +61,7 @@
                             <span class="status-bar-label">房间：</span>
                             <span th:if="${ROOMID}==null" class="text-muted" style="margin:0 12px 0 0;">未连接</span>
                             <span th:if="${ROOMID}!=null" style="margin:0 12px 0 0;">
-                                <a class="room-id window-open-x" th:text="${ROOMID}" th:href="@{'https://live.bilibili.com/'+${ROOMID}}" target="_blank" style="font-weight:600;"></a>
+                                <a class="window-open-x" th:text="${ROOM_TITLE}" th:href="@{'https://live.bilibili.com/'+${ROOMID}}" target="_blank" style="font-weight:600;color:#fff;text-decoration:none;" th:title="'房间号：'+${ROOMID}"></a>
                             </span>
                             <span class="status-bar-sep">|</span>
                             <span class="status-bar-label">主播：</span>
