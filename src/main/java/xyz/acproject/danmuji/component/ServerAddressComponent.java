@@ -4,7 +4,6 @@ import org.springframework.boot.web.context.WebServerInitializedEvent;
 import org.springframework.context.ApplicationListener;
 import org.springframework.stereotype.Component;
 import xyz.acproject.danmuji.conf.PublicDataConf;
-import xyz.acproject.danmuji.http.HttpOtherData;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -38,11 +37,10 @@ public class ServerAddressComponent implements ApplicationListener<WebServerInit
 	 * @return
 	 */
 	public String getRemoteAddress() {
-		String ip = HttpOtherData.httpGetIp();
 		if(PublicDataConf.centerSetConf.getPrivacy().is_open()){
-			ip = "隐私模式禁止获取对公ip";
+			return "http://隐私模式禁止获取对公ip:"+this.serverPort;
 		}
-		return "http://"+ ip +":"+this.serverPort;
+		return "http://远程地址不可用:"+this.serverPort;
 	}
 	@Override
 	public void onApplicationEvent(WebServerInitializedEvent event) {

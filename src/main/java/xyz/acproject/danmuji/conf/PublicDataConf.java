@@ -7,7 +7,6 @@ import xyz.acproject.danmuji.entity.auto_reply.AutoReply;
 import xyz.acproject.danmuji.entity.danmu_data.Gift;
 import xyz.acproject.danmuji.entity.danmu_data.Interact;
 import xyz.acproject.danmuji.entity.room_data.MedalInfoAnchor;
-import xyz.acproject.danmuji.entity.user_data.AutoSendGift;
 import xyz.acproject.danmuji.entity.user_data.User;
 import xyz.acproject.danmuji.entity.user_data.UserCookie;
 
@@ -18,7 +17,6 @@ import xyz.acproject.danmuji.thread.core.ParseMessageThread;
 import xyz.acproject.danmuji.thread.core.ReConnThread;
 import xyz.acproject.danmuji.thread.online.HeartBeatThread;
 import xyz.acproject.danmuji.thread.online.HeartBeatsThread;
-import xyz.acproject.danmuji.thread.online.SmallHeartThread;
 import xyz.acproject.danmuji.thread.online.UserOnlineHeartThread;
 
 import java.util.Map;
@@ -148,9 +146,7 @@ public class PublicDataConf {
 	public static volatile HeartBeatThread heartBeatThread;
 	public static volatile HeartBeatsThread heartBeatsThread;
 	public static volatile UserOnlineHeartThread userOnlineHeartThread;
-	//小心心线程
-	public static volatile SmallHeartThread smallHeartThread;
-	//签到线程
+//签到线程
 
 	//是否显示人气
 	public static volatile Boolean IS_ROOM_POPULARITY =false;
@@ -159,15 +155,10 @@ public class PublicDataConf {
 //	public static SchedulingRunnableUtil dosigntask = null;
 
 	public static volatile Long ROOMID_LONG = null;
-	public static volatile String SMALLHEART_ADRESS = null;
 	public static volatile boolean is_sign= false;
 
 	public static volatile String VERSION ="";
 
-	public static volatile String NEW_VERSION ="";
-	public static volatile String NEW_VERSION_DOWNLOAD_URL ="";
-
-	public static volatile String ANNOUNCE = null;
 
 	public final static String PROFILE_NAME = "DanmujiProfile";
 	public final static String PROFILE_SET_NAME = "set";
@@ -176,16 +167,12 @@ public class PublicDataConf {
 	//整流回复姬冷却时间戳(毫秒)
 	public static volatile long rectifierCooldownUntil = 0L;
 
-	public static volatile boolean INIT_CHECK_EDITION = false;
-	public static volatile boolean INIT_CHECK_ANNOUNCE = false;
 	public static volatile int manager_login_size=0;
 
 //	//view
 //	//房间礼物集合
 //	public static Map<Integer, RoomGift> roomGiftConcurrentHashMap = new ConcurrentHashMap<Integer, RoomGift>(300);
 //
-	//可以赠送礼物集合 要初始化
-	public static volatile Map<Integer,AutoSendGift> autoSendGiftMap = null;
 
 
 	//方法区
@@ -245,9 +232,5 @@ public class PublicDataConf {
 	@Value("${danmuji.version}")
 	public void setVERSION(String VERSION) {
 		PublicDataConf.VERSION = VERSION;
-	}
-	@Value("${danmuji.version}")
-	public void setNewVersion(String newVersion) {
-		PublicDataConf.NEW_VERSION = newVersion;
 	}
 }

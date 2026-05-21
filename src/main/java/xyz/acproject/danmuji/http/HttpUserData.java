@@ -1317,8 +1317,6 @@ public class HttpUserData {
         jsonObject = JSONObject.parseObject(data);
         if (jsonObject.getShort("code") == 0) {
 
-            System.out.println(" 根据UID获取用户名 1 ytf:"+ jsonObject.toJSONString());
-
             return jsonObject.getJSONObject("data").getString("name");
         }
         return null;
@@ -1378,7 +1376,6 @@ public class HttpUserData {
             enriched.put("face", item.getString("upic"));
             enriched.put("fans", item.getLong("fans") != null ? item.getLong("fans") : 0);
 
-            System.out.println("根据用户名搜索最多前3位用户，按粉丝数降序排列，补充card和upstat数据 2 ytf:"+ enriched.toJSONString());
             // 获取关注数和播放/获赞数
             enrichUserStats(mid, enriched, headers);
             retList.add(enriched);

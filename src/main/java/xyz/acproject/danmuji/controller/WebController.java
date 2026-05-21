@@ -19,10 +19,6 @@ import xyz.acproject.danmuji.conf.set.*;
 import xyz.acproject.danmuji.entity.base.Response;
 import xyz.acproject.danmuji.entity.login_data.LoginData;
 import xyz.acproject.danmuji.entity.login_data.Qrcode;
-import xyz.acproject.danmuji.entity.other.EditionResult;
-import xyz.acproject.danmuji.entity.other.InitCheckServerParam;
-
-import xyz.acproject.danmuji.http.HttpOtherData;
 import xyz.acproject.danmuji.http.HttpRoomData;
 import xyz.acproject.danmuji.http.HttpUserData;
 import xyz.acproject.danmuji.service.ClientService;
@@ -74,7 +70,6 @@ public class WebController {
         model.addAttribute("ANAME", PublicDataConf.ANCHOR_NAME);
         model.addAttribute("AUID", PublicDataConf.AUID);
         model.addAttribute("EDITION", PublicDataConf.VERSION);
-        model.addAttribute("NEW_EDITION", PublicDataConf.NEW_VERSION);
         model.addAttribute("ROOMID", PublicDataConf.ROOMID);
         model.addAttribute("HROOMID", PublicDataConf.centerSetConf.getRoomid());
         model.addAttribute("POPU", PublicDataConf.ROOM_POPULARITY);
@@ -270,13 +265,6 @@ public class WebController {
                 taskRegisterComponent.removeTask(dakatask);
                 taskRegisterComponent.addTask(dakatask, CurrencyTools.dateStringToCron(centerSetConf.getClock_in().getTime()));
             }
-            //自动送礼时间
-            if(centerSetConf.getAuto_gift()!=null&&centerSetConf.getAuto_gift().is_open()&&
-                    !centerSetConf.getAuto_gift().getTime().equals(PublicDataConf.centerSetConf.getAuto_gift().getTime())){
-                SchedulingRunnableUtil autoSendGiftTask = new SchedulingRunnableUtil("dosignTask","autosendgift");
-                taskRegisterComponent.removeTask(autoSendGiftTask);
-                taskRegisterComponent.addTask(autoSendGiftTask, CurrencyTools.dateStringToCron(centerSetConf.getAuto_gift().getTime()));
-            }
             //更改
             //公告
             if(centerSetConf.getAdvert()==null&&PublicDataConf.centerSetConf.getAdvert()!=null){
@@ -320,13 +308,6 @@ public class WebController {
             if(centerSetConf.getWelcome()==null&&PublicDataConf.centerSetConf.getWelcome()==null){
                 centerSetConf.setWelcome(new ThankWelcomeSetConf());
             }
-            //自动送礼
-            if(centerSetConf.getAuto_gift()==null&&PublicDataConf.centerSetConf.getAuto_gift()!=null){
-                centerSetConf.setAuto_gift(PublicDataConf.centerSetConf.getAuto_gift());
-            }
-            if(centerSetConf.getAuto_gift()==null&&PublicDataConf.centerSetConf.getAuto_gift()==null){
-                centerSetConf.setAuto_gift(new AutoSendGiftConf());
-            }
             //隐私模式
             if(centerSetConf.getPrivacy()==null&&PublicDataConf.centerSetConf.getPrivacy()!=null){
                 centerSetConf.setPrivacy(PublicDataConf.centerSetConf.getPrivacy());
@@ -355,7 +336,7 @@ public class WebController {
             if(centerSetConf.getTimer()==null&&PublicDataConf.centerSetConf.getTimer()==null){
                 centerSetConf.setTimer(new TimerSetConf());
             }
-            //弹幕暂存姬
+            //弹幕话术姬
             if(centerSetConf.getDanmaku_store()==null&&PublicDataConf.centerSetConf.getDanmaku_store()!=null){
                 centerSetConf.setDanmaku_store(PublicDataConf.centerSetConf.getDanmaku_store());
             }
@@ -419,72 +400,6 @@ public class WebController {
 //
 //    }
 
-    @ResponseBody
-    @GetMapping("/checkWebInit")
-    public Response<?> checkWebInit(HttpServletRequest req){
-        InitCheckServerParam param = new InitCheckServerParam();
-        param.setInit_edition(PublicDataConf.INIT_CHECK_EDITION);
-        param.setInit_announce(PublicDataConf.INIT_CHECK_ANNOUNCE);
-        return Response.success(param,req);
-    }
-
-    @ResponseBody
-    @GetMapping("/checkNewAnnounce")
-    public Response<?> checkNewAnnounce(HttpServletRequest req){
-        try {
-            PublicDataConf.INIT_CHECK_ANNOUNCE=true;
-            return Response.success(StringUtils.isNotBlank(PublicDataConf.ANNOUNCE)?StringUtils.replace(PublicDataConf.ANNOUNCE,"\r\n","<br/>"):"公告获取失败",req);
-        } finally {
-            //一次性公告清除了
-            PublicDataConf.ANNOUNCE = null;
-        }
-    }
-
-    @ResponseBody
-    @GetMapping(value = "/checkupdate")
-    public Response<?> checkUpdate(HttpServletRequest req) {
-        String edition = PublicDataConf.centerSetConf.getPrivacy().is_open()?PublicDataConf.VERSION : HttpOtherData.httpGetNewEditionV2ByGitHub();
-        EditionResult editionResult = new EditionResult();
-        editionResult.setEdition(edition);
-        if (StringUtils.isNotBlank(edition)) {
-            if (edition.equals("获取公告失败")) {
-                editionResult.setStatus(2);
-                return Response.success(editionResult, req);
-            } else {
-                PublicDataConf.INIT_CHECK_EDITION=true;
-                if (!edition.equals(PublicDataConf.VERSION)) {
-                    editionResult.setStatus(0);
-                    editionResult.setUrl(PublicDataConf.NEW_VERSION_DOWNLOAD_URL);
-                    return Response.success(editionResult, req);
-                } else {
-                    editionResult.setStatus(1);
-                    return Response.success(editionResult, req);
-                }
-            }
-        } else {
-            editionResult.setStatus(2);
-            return Response.success(editionResult, req);
-        }
-    }
-
-    @ResponseBody
-    @GetMapping(value = "/getNewEdition")
-    public Response<?> getNewEdition(HttpServletRequest req) {
-        String edition = PublicDataConf.centerSetConf.getPrivacy().is_open()?PublicDataConf.VERSION :HttpOtherData.httpGetNewEditionV2ByGitHub();
-        if (StringUtils.isNotBlank(edition)) {
-            if (edition.equals("获取公告失败")) {
-                return Response.success(-1, req);
-            } else {
-                if (!edition.equals(PublicDataConf.VERSION)) {
-                    return Response.success(edition, req);
-                } else {
-                    return Response.success(-1, req);
-                }
-            }
-        } else {
-            return Response.success(-1, req);
-        }
-    }
 
     @ResponseBody
     @GetMapping(value = "/block")
@@ -965,6 +880,155 @@ public class WebController {
             return Response.success(0, req);
         } catch (Exception e) {
             LOGGER.error("abImport error", e);
+            return Response.success(1, req);
+        }
+    }
+
+    // ========== 弹幕话术姬 导出/下载/导入 ==========
+
+    @ResponseBody
+    @GetMapping(value = "/getDanmakuStore")
+    public Response<?> getDanmakuStore(HttpServletRequest req) {
+        try {
+            FileTools fileTools = new FileTools();
+            File file = new File(fileTools.getBaseJarPath(), "话术.json");
+            if (!file.exists()) {
+                JSONObject empty = new JSONObject();
+                empty.put("type", "话术");
+                empty.put("items", new com.alibaba.fastjson.JSONArray());
+                return Response.success(empty, req);
+            }
+            StringBuilder sb = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    sb.append(line);
+                }
+            }
+            JSONObject jsonObject = JSONObject.parseObject(sb.toString());
+            return Response.success(jsonObject, req);
+        } catch (Exception e) {
+            LOGGER.error("getDanmakuStore error", e);
+            return Response.success(null, req);
+        }
+    }
+
+    @ResponseBody
+    @PostMapping(value = "/saveDanmakuStore")
+    public Response<?> saveDanmakuStore(@RequestParam("data") String data, HttpServletRequest req) {
+        try {
+            FileTools fileTools = new FileTools();
+            File file = new File(fileTools.getBaseJarPath(), "话术.json");
+            JSONObject inputData = JSONObject.parseObject(data);
+            com.alibaba.fastjson.JSONArray inputList = inputData.getJSONArray("items");
+
+            JSONObject result = new JSONObject();
+            result.put("type", "话术");
+            com.alibaba.fastjson.JSONArray resultList = new com.alibaba.fastjson.JSONArray();
+
+            if (inputList != null) {
+                for (int i = 0; i < inputList.size(); i++) {
+                    JSONObject entry = inputList.getJSONObject(i);
+                    if (entry != null) {
+                        String text = entry.getString("text");
+                        if (text != null && !text.trim().isEmpty()) {
+                            resultList.add(entry);
+                        }
+                    }
+                }
+            }
+
+            result.put("items", resultList);
+
+            if (!file.getParentFile().exists()) {
+                file.getParentFile().mkdirs();
+            }
+            try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"))) {
+                writer.write(com.alibaba.fastjson.JSON.toJSONString(result, true));
+            }
+
+            return Response.success(0, req);
+        } catch (Exception e) {
+            LOGGER.error("saveDanmakuStore error", e);
+            return Response.success(1, req);
+        }
+    }
+
+    @ResponseBody
+    @GetMapping(value = "/dsExport")
+    public Response<?> dsExport(HttpServletRequest req) {
+        try {
+            FileTools fileTools = new FileTools();
+            File srcFile = new File(fileTools.getBaseJarPath(), "话术.json");
+            if (!srcFile.exists()) {
+                return Response.success(1, req);
+            }
+            String destDir = fileTools.getBaseJarPath() + "/set/";
+            File destDirFile = new File(destDir);
+            if (!destDirFile.exists()) {
+                destDirFile.mkdirs();
+            }
+            String timestamp = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+            File destFile = new File(destDir, "话术-" + timestamp + ".json");
+            java.nio.file.Files.copy(srcFile.toPath(), destFile.toPath());
+            return Response.success(0, req);
+        } catch (Exception e) {
+            LOGGER.error("dsExport error", e);
+            return Response.success(1, req);
+        }
+    }
+
+    @ResponseBody
+    @GetMapping(value = "/dsExportWeb")
+    public void dsExportWeb(HttpServletResponse response) throws Exception {
+        FileTools fileTools = new FileTools();
+        File file = new File(fileTools.getBaseJarPath(), "话术.json");
+        if (!file.exists()) {
+            file.createNewFile();
+            try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"))) {
+                JSONObject empty = new JSONObject();
+                empty.put("type", "话术");
+                empty.put("items", new JSONArray());
+                writer.write(com.alibaba.fastjson.JSON.toJSONString(empty, true));
+            }
+        }
+        FileInputStream fileInputStream = new FileInputStream(file);
+        BufferedInputStream fis = new BufferedInputStream(fileInputStream);
+        byte[] buffer = new byte[fis.available()];
+        fis.read(buffer);
+        fis.close();
+        response.reset();
+        response.setCharacterEncoding("UTF-8");
+        response.addHeader("Content-Disposition", "attachment;filename=" + URLEncoder.encode("话术.json", "UTF-8"));
+        response.addHeader("Content-Length", "" + file.length());
+        OutputStream outputStream = new BufferedOutputStream(response.getOutputStream());
+        response.setContentType("application/octet-stream");
+        outputStream.write(buffer);
+        outputStream.flush();
+    }
+
+    @ResponseBody
+    @PostMapping(value = "/dsImport")
+    public Response<?> dsImport(@RequestParam("file") MultipartFile file, HttpServletRequest req) {
+        try {
+            String originalFilename = file.getOriginalFilename();
+            if (originalFilename == null || !originalFilename.endsWith(".json")) {
+                return Response.success(2, req);
+            }
+            String jsonString = new BufferedReader(new InputStreamReader(file.getInputStream(), "utf-8"))
+                    .lines().collect(Collectors.joining(System.lineSeparator()));
+            JSONObject jsonObject = JSONObject.parseObject(jsonString);
+            if (jsonObject == null || !"话术".equals(jsonObject.getString("type"))) {
+                return Response.success(1, req);
+            }
+            FileTools fileTools = new FileTools();
+            File destFile = new File(fileTools.getBaseJarPath(), "话术.json");
+            try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(destFile), "UTF-8"))) {
+                writer.write(com.alibaba.fastjson.JSON.toJSONString(jsonObject, true));
+            }
+            return Response.success(0, req);
+        } catch (Exception e) {
+            LOGGER.error("dsImport error", e);
             return Response.success(1, req);
         }
     }

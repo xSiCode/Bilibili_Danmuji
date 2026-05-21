@@ -12,7 +12,6 @@ import xyz.acproject.danmuji.component.TaskRegisterComponent;
 import xyz.acproject.danmuji.component.ThreadComponent;
 import xyz.acproject.danmuji.conf.CenterSetConf;
 import xyz.acproject.danmuji.conf.PublicDataConf;
-import xyz.acproject.danmuji.http.HttpOtherData;
 import xyz.acproject.danmuji.service.ClientService;
 import xyz.acproject.danmuji.service.SetService;
 import xyz.acproject.danmuji.tools.BASE64Encoder;
@@ -47,28 +46,11 @@ public class SetServiceImpl implements SetService {
         System.out.println();
         System.out.println();
         System.out.println(
-                "参考本地浏览器进入设置页面地址: 1、http://127.0.0.1:" + serverAddressComponent.getPort() + ";2、http://localhost:"
-                        + serverAddressComponent.getPort() + ";3、" + serverAddressComponent.getAddress());
+                "参考本地浏览器进入设置页面地址: 1、http://127.0.0.1:" + serverAddressComponent.getPort() + " ; 2 http://localhost:"
+                        + serverAddressComponent.getPort() + " ; 3 " + serverAddressComponent.getAddress());
         System.out.println("参考局域网浏览器进入设置页面地址: 1、" + serverAddressComponent.getAddress());
         System.out.println("参考远程(无代理)浏览器进入设置页面地址: 1、" + serverAddressComponent.getRemoteAddress());
         System.out.println();
-        PublicDataConf.ANNOUNCE = PublicDataConf.centerSetConf.getPrivacy().is_open()?"隐私模式下不会获取最新公告": HttpOtherData.httpGetNewAnnounceV2ByGitHub();
-        System.out.println("最新公告：" +  PublicDataConf.ANNOUNCE);
-        if(!PublicDataConf.centerSetConf.getPrivacy().is_open()) {
-            String edition = HttpOtherData.httpGetNewEditionV2ByGitHub();
-            if (StringUtils.isNotBlank(edition)) {
-                if (!edition.equals(PublicDataConf.VERSION)) {
-                    System.out.println("查询最新版本：" + edition
-                            + "目前脚本有可用更新哦，请到github官网查看更新https://github.com/BanqiJane/Bilibili_Danmuji");
-                } else {
-                    System.out.println("查询最新版本：目前使用的版本为最新版本，暂无可用更新");
-                }
-            } else {
-                System.out.println("查询最新版本失败,目前版本：" + PublicDataConf.VERSION);
-            }
-        }else{
-            System.out.println("隐私模式下不会从服务器获取最新版本信息,目前版本：" + PublicDataConf.VERSION);
-        }
         System.out.println();
         // 自动连接
         if (PublicDataConf.centerSetConf.is_auto() && PublicDataConf.centerSetConf.getRoomid() > 0) {
@@ -183,7 +165,6 @@ public class SetServiceImpl implements SetService {
         synchronized (centerSetConf) {
             SchedulingRunnableUtil task = new SchedulingRunnableUtil("dosignTask", "dosign");
             SchedulingRunnableUtil dakatask = new SchedulingRunnableUtil("dosignTask", "clockin");
-            SchedulingRunnableUtil autoSendGiftTask = new SchedulingRunnableUtil("dosignTask", "autosendgift");
             //每日签到
             if (PublicDataConf.centerSetConf.is_dosign()) {
                 //判断签到
@@ -210,19 +191,6 @@ public class SetServiceImpl implements SetService {
             } else {
                 try {
                     taskRegisterComponent.removeTask(dakatask);
-                } catch (Exception e) {
-                    // TODO 自动生成的 catch 块
-                    LOGGER.error("清理定时任务错误：" + e);
-                }
-            }
-            //每日定时自动送礼
-            if (centerSetConf.getAuto_gift().is_open()) {
-                if (!taskRegisterComponent.hasTask(autoSendGiftTask)) {
-                    taskRegisterComponent.addTask(autoSendGiftTask, CurrencyTools.dateStringToCron(centerSetConf.getAuto_gift().getTime()));
-                }
-            } else {
-                try {
-                    taskRegisterComponent.removeTask(autoSendGiftTask);
                 } catch (Exception e) {
                     // TODO 自动生成的 catch 块
                     LOGGER.error("清理定时任务错误：" + e);

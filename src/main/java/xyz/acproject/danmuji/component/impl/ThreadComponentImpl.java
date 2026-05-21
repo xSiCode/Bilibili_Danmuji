@@ -6,13 +6,11 @@ import xyz.acproject.danmuji.component.ThreadComponent;
 import xyz.acproject.danmuji.conf.CenterSetConf;
 import xyz.acproject.danmuji.conf.PublicDataConf;
 import xyz.acproject.danmuji.conf.set.*;
-import xyz.acproject.danmuji.http.HttpOtherData;
 import xyz.acproject.danmuji.thread.*;
 import xyz.acproject.danmuji.thread.core.HeartByteThread;
 import xyz.acproject.danmuji.thread.core.ParseMessageThread;
 import xyz.acproject.danmuji.thread.online.HeartBeatThread;
 import xyz.acproject.danmuji.thread.online.HeartBeatsThread;
-import xyz.acproject.danmuji.thread.online.SmallHeartThread;
 import xyz.acproject.danmuji.thread.online.UserOnlineHeartThread;
 import xyz.acproject.danmuji.tools.ParseSetStatusTools;
 
@@ -46,7 +44,6 @@ public class ThreadComponentImpl implements ThreadComponent {
 		closeFollowShieldThread();
 		closeWelcomeShieldThread();
 		closeAutoReplyThread();
-		closeSmallHeartThread();
 		closeParseMessageThread();
 	}
 
@@ -63,7 +60,6 @@ public class ThreadComponentImpl implements ThreadComponent {
 		closeFollowShieldThread();
 		closeWelcomeShieldThread();
 		closeAutoReplyThread();
-		closeSmallHeartThread();
 		if (close) {
 			closeHeartByteThread();
 			closeParseMessageThread();
@@ -526,16 +522,6 @@ public class ThreadComponentImpl implements ThreadComponent {
 				&& !PublicDataConf.welcomeShieldThread.getState().toString().equals("TERMINATED")) {
 			PublicDataConf.welcomeShieldThread.FLAG = false;
 			PublicDataConf.welcomeShieldThread.interrupt();
-		}
-	}
-
-	@Override
-	public void closeSmallHeartThread() {
-		// TODO 自动生成的方法存根
-		if(PublicDataConf.smallHeartThread!=null) {
-			PublicDataConf.smallHeartThread.FLAG=true;
-			PublicDataConf.smallHeartThread.interrupt();
-			PublicDataConf.smallHeartThread=null;
 		}
 	}
 

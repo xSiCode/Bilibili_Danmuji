@@ -44,7 +44,6 @@ public class LoginController {
             LOGGER.error("来自Ip:{}的登录尝试到达上限",ip);
             Response.success(flag, req);
         }
-        LOGGER.error("暗号:{}",PublicDataConf.centerSetConf.getManager_key());
         if(key.equals(PublicDataConf.centerSetConf.getManager_key())){
            LOGGER.error("来自Ip:{}的登录成功",ip);
            flag =true;

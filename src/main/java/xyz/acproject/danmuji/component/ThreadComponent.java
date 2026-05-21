@@ -64,9 +64,6 @@ public interface ThreadComponent {
 	// 关闭心跳线程 core
 	void closeHeartByteThread();
 	
-	// 关闭用户心跳线程
-	void closeSmallHeartThread();
-
 	// 开启观众日志线程
 	boolean startWatcherLogThread();
 
