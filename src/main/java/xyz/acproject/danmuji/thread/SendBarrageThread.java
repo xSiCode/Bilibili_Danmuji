@@ -17,11 +17,13 @@ public class SendBarrageThread extends Thread {
     private Logger LOGGER = LogManager.getLogger(SendBarrageThread.class);
     public volatile boolean FLAG = false;
 
+    private static final long SEND_INTERVAL_MS = 1200;
+
     @Override
     public void run() {
-        // TODO 自动生成的方法存根
         super.run();
         String barrageStr = null;
+        long lastSendTime = 0;
         while (!FLAG) {
             if (FLAG) {
                 return;
@@ -31,15 +33,33 @@ public class SendBarrageThread extends Thread {
             }
             barrageStr = PublicDataConf.barrageString.poll();
             if (barrageStr != null && StringUtils.isNotBlank(barrageStr)) {
+                // Enforce minimum interval since last send
+                long elapsed = System.currentTimeMillis() - lastSendTime;
+                if (elapsed < SEND_INTERVAL_MS) {
+                    try {
+                        Thread.sleep(SEND_INTERVAL_MS - elapsed);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+
                 int strLength = barrageStr.length();
                 int maxLength = 20;
                 if (PublicDataConf.USERBARRAGEMESSAGE != null) {
                     maxLength = PublicDataConf.USERBARRAGEMESSAGE.getDanmu().getLength();
                 }
-                //大于就分割发送
                 if (strLength > maxLength) {
                     int num = (int) Math.ceil((float) strLength / (float) maxLength);
                     for (int i = 0; i < num; i++) {
+                        if (FLAG) return;
+                        // Enforce interval between split chunks
+                        if (i > 0) {
+                            try {
+                                Thread.sleep(SEND_INTERVAL_MS);
+                            } catch (InterruptedException e) {
+                                Thread.currentThread().interrupt();
+                            }
+                        }
                         try {
                             String barrageStr_split = StringUtils.substring(barrageStr, i * maxLength, strLength > maxLength * (i + 1) ? maxLength * (i + 1) : strLength);
                             if (!PublicDataConf.centerSetConf.isTest_mode()) {
@@ -54,22 +74,21 @@ public class SendBarrageThread extends Thread {
                         }
                     }
                 } else {
-
                     if (!PublicDataConf.centerSetConf.isTest_mode()) {
                         try {
                             HttpUserData.httpPostSendBarrage(barrageStr);
-
                         } catch (Exception e) {
                         }
                     } else {
                         LOGGER.info(barrageStr);
                     }
                 }
-
+                lastSendTime = System.currentTimeMillis();
             } else {
                 try {
                     Thread.sleep(500);
                 } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
                 }
             }
         }

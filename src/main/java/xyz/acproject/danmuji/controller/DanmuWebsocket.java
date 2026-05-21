@@ -56,12 +56,12 @@ public class DanmuWebsocket {
 	public void sendMessage(String message) {
 		for(DanmuWebsocket danmuWebsocket:webSocketServers) {
 			if (danmuWebsocket.session.isOpen()) {
-				synchronized (danmuWebsocket.session) {
-					try {
-						danmuWebsocket.session.getAsyncRemote().sendText(message);
-					} catch (Exception e) {
-						LOGGER.error("WebSocket发送消息失败", e);
-					}
+				try {
+					danmuWebsocket.session.getAsyncRemote().sendText(message);
+				} catch (IllegalStateException e) {
+					// Async write still in progress, discard this message
+				} catch (Exception e) {
+					LOGGER.error("WebSocket发送消息失败", e);
 				}
 			}
 		}
