@@ -64,9 +64,9 @@ public class ParseMessageThread extends Thread {
 
     // 观众详情异步处理线程池（访客卡片信息 + 关注列表分析）
     private static final ExecutorService WATCHER_EXECUTOR = new ThreadPoolExecutor(
-            2, 4, 60L, TimeUnit.SECONDS,
-            new LinkedBlockingQueue<>(200),
-            new ThreadPoolExecutor.DiscardOldestPolicy()
+            4, 8, 60L, TimeUnit.SECONDS,
+            new LinkedBlockingQueue<>(500),
+            new ThreadPoolExecutor.CallerRunsPolicy()
     );
 
     // 消息处理线程池（弹幕/礼物/上舰等高频消息的格式化+推送）
@@ -75,6 +75,9 @@ public class ParseMessageThread extends Thread {
             new LinkedBlockingQueue<>(1000),
             new ThreadPoolExecutor.CallerRunsPolicy()
     );
+
+    private static final ThreadLocal<SimpleDateFormat> TIME_FORMAT =
+            ThreadLocal.withInitial(() -> new SimpleDateFormat("HH:mm:ss"));
 
     public volatile boolean FLAG = false;
     private DanmuWebsocket danmuWebsocket = SpringUtils.getBean(DanmuWebsocket.class);
@@ -183,7 +186,7 @@ public class ParseMessageThread extends Thread {
                                         hbarrage.setManager((short) 2);
                                     }
                                     // 判断类型输出
-                                    stringBuilder.append(new SimpleDateFormat("HH:mm:ss").format(System.currentTimeMillis()));
+                                    stringBuilder.append(TIME_FORMAT.get().format(System.currentTimeMillis()));
                                     if (is_emoticon) {
                                         stringBuilder.append(":收到表情:");
                                     } else {
@@ -263,7 +266,7 @@ public class ParseMessageThread extends Thread {
                                     jsonObject.getLong("total_coin"), jsonObject.getObject("medal_info", MedalInfo.class));
                             if (getCenterSetConf().is_gift()) {
                                 if (getCenterSetConf().is_gift_free() || (!getCenterSetConf().is_gift_free() && gift_type == 1)) {
-                                    stringBuilder.append(new SimpleDateFormat("HH:mm:ss").format(System.currentTimeMillis()));
+                                    stringBuilder.append(TIME_FORMAT.get().format(System.currentTimeMillis()));
                                     stringBuilder.append(" [赠送礼物]");
                                     stringBuilder.append(gift.getUname());
                                     stringBuilder.append(" ");
@@ -1007,7 +1010,7 @@ public class ParseMessageThread extends Thread {
                                 //控制台打印处理
                                 if (getCenterSetConf().is_follow_dm()) {
                                     if (msg_type == 2) {
-                                        stringBuilder.append(new SimpleDateFormat("HH:mm:ss").format(System.currentTimeMillis()))
+                                        stringBuilder.append(TIME_FORMAT.get().format(System.currentTimeMillis()))
                                                 .append(" [直接关注] ")
                                                 .append(_follow_uname);
                                         //控制台打印
@@ -1053,7 +1056,7 @@ public class ParseMessageThread extends Thread {
                                 }
                                 //欢迎进入直播间 + 观众记录
                                 if (msg_type == 1) {
-                                    stringBuilder.append(new SimpleDateFormat("HH:mm:ss").format(System.currentTimeMillis()))
+                                    stringBuilder.append(TIME_FORMAT.get().format(System.currentTimeMillis()))
                                             .append(" [新的访客] ")
                                             .append("https://space.bilibili.com/")
                                             .append(_follow_uid)
@@ -1077,11 +1080,10 @@ public class ParseMessageThread extends Thread {
                                     if (getCenterSetConf().is_watcher_log()) {
                                         // 异步获取用户详细信息 + 关注列表分析，避免阻塞主消息处理线程
                                         WATCHER_EXECUTOR.execute(() -> {
-
-                                            Pair<Integer, String> blackWhiteResult = HttpRoomData.processFollowings(_follow_uid, _follow_uname);
-
-                                            int blackWhiteScore = blackWhiteResult.getLeft();
-                                            String blackWhiteType = blackWhiteResult.getRight();
+                                            HttpRoomData.processFollowings(_follow_uid, _follow_uname)
+                                                .thenAccept(blackWhiteResult -> {
+                                                    int blackWhiteScore = blackWhiteResult.getLeft();
+                                                    String blackWhiteType = blackWhiteResult.getRight();
 
                                             // 负黑自动拉黑姬
                                             if (getCenterSetConf().getAuto_block() != null && getCenterSetConf().getAuto_block().is_auto_block()) {
@@ -1178,6 +1180,7 @@ public class ParseMessageThread extends Thread {
                                                 }
                                             }
 
+                                                });
                                         });
                                     }
 

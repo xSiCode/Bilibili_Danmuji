@@ -20,6 +20,7 @@ import xyz.acproject.danmuji.utils.*;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -27,6 +28,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.Response;
 
 /**
  * @author BanqiJane
@@ -38,6 +45,8 @@ import java.util.concurrent.*;
 public class HttpRoomData {
     private static Logger LOGGER = LogManager.getLogger(HttpRoomData.class);
     private static volatile Map<Long, Integer> pnScoreMap = loadNegativeBlackPositiveWhiteScores();
+    private static final ThreadLocal<SimpleDateFormat> TIME_FORMAT =
+            ThreadLocal.withInitial(() -> new SimpleDateFormat("HH:mm:ss"));
 
     /**
      * 获取连接目标房间websocket端口 接口
@@ -427,47 +436,86 @@ public class HttpRoomData {
 
     // 用户 用户动态冷却调用
    static final ScheduledExecutorService schedulerDynamicService = new ScheduledThreadPoolExecutor(1);
-   static volatile boolean schedulerDynamicColdWait = false;
+   static final AtomicBoolean schedulerDynamicColdWait = new AtomicBoolean(false);
 
 
     // 用户 卡片信息冷却调用
     static final ScheduledExecutorService schedulerCardInfoService = new ScheduledThreadPoolExecutor(1);
-    static volatile boolean schedulerCardInfoColdWait = false;
+    static final AtomicBoolean schedulerCardInfoColdWait = new AtomicBoolean(false);
+
+    // ---- 异步 HTTP 辅助方法 ----
+
+    private static CompletableFuture<String> asyncHttpGetBody(String url, Map<String, String> headers, Map<String, String> datas) {
+        CompletableFuture<String> future = new CompletableFuture<>();
+        OkHttp3Utils.getHttp3Utils().httpGetAsync(url, headers, datas, new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                LOGGER.error(e);
+                future.complete(null);
+            }
+            @Override
+            public void onResponse(Call call, Response response) {
+                try {
+                    future.complete(response.body() != null ? response.body().string() : null);
+                } catch (IOException e) {
+                    LOGGER.error(e);
+                    future.complete(null);
+                } finally {
+                    response.close();
+                }
+            }
+        });
+        return future;
+    }
+
+    private static CompletableFuture<JSONObject> asyncHttpGetFollowings(long vmid, int page, int pageSize) {
+        Map<String, String> headers = new HashMap<>(3);
+        headers.put("referer", "https://space.bilibili.com/" + vmid + "/");
+        headers.put("user-agent",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36");
+        if (StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
+            headers.put("cookie", PublicDataConf.USERCOOKIE);
+        }
+        Map<String, String> datas = new HashMap<>(3);
+        datas.put("vmid", String.valueOf(vmid));
+        datas.put("pn", String.valueOf(page));
+        datas.put("ps", String.valueOf(pageSize));
+        return asyncHttpGetBody("https://api.bilibili.com/x/relation/followings", headers, datas)
+                .thenApply(body -> body != null ? JSONObject.parseObject(body) : null);
+    }
+
+    private static CompletableFuture<String> asyncHttpGetUserDynamic(long mid) {
+        Map<String, String> headers = new HashMap<>(3);
+        headers.put("referer", "https://space.bilibili.com/" + mid);
+        headers.put("user-agent",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36");
+        if (StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
+            headers.put("cookie", PublicDataConf.USERCOOKIE);
+        }
+        return asyncHttpGetBody("https://api.vc.bilibili.com/dynamic_svr/v1/dynamic_svr/space_history?host_uid=" + mid + "&offset_dynamic_id=0&need_top=1", headers, null);
+    }
+
+    private static CompletableFuture<JSONObject> asyncHttpGetUserCard(long mid) {
+        Map<String, String> headers = new HashMap<>(3);
+        headers.put("referer", "https://space.bilibili.com/" + mid + "/");
+        headers.put("user-agent",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36");
+        if (StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
+            headers.put("cookie", PublicDataConf.USERCOOKIE);
+        }
+        Map<String, String> params = new HashMap<>(1);
+        params.put("mid", String.valueOf(mid));
+        return asyncHttpGetBody("https://api.bilibili.com/x/web-interface/card", headers, params)
+                .thenApply(body -> body != null ? JSONObject.parseObject(body) : null);
+    }
+
     /**
      * 处理用户关注列表：判断可见性，输出结果，如果可见且有关注数据则写入文件
      */
-    public static Pair<Integer, String> processFollowings(long vmid, String uname) {
-        /**
-         * 步骤：
-         * 1. 本地黑白名单判断
-         * 2. 获取用户关注列表
-         * 3. 获取用户卡片信息
-         *
-         * 只有黑白名单里的能跳过
-         * 获取关注列表
-         * 	不可见：获取动态
-         * 	可见：打分
-         * 分数为0：获取用户卡片信息
-         * 返回结果（卡片信息 和关注列表）
-         *
-         * 为了数据格式化，减少按条件的输入输出
-         */
-
-        long total = 0;
-        int tempScore = 0;
-        int blackWhiteScore = 0;
-        String blackWhiteType = null;
-
-        long fans = -1;
-        long attention = -1;
-        long archiveCount = -1;
-        long likeNum = -1;
-        boolean following = false;
-        int currentLevel = -1;
-
+    public static CompletableFuture<Pair<Integer, String>> processFollowings(long vmid, String uname) {
+        // 日志前缀（同步构建）
         StringBuilder logSb = new StringBuilder(100);
-        StringBuilder logSbEnd = new StringBuilder(100);
-        logSb.append(new SimpleDateFormat("HH:mm:ss").format(System.currentTimeMillis()))
+        logSb.append(TIME_FORMAT.get().format(System.currentTimeMillis()))
                 .append(" ")
                 .append("https://space.bilibili.com/")
                 .append(vmid)
@@ -478,45 +526,49 @@ public class HttpRoomData {
         // 1 当前观众就在本地黑白名单里
         Integer pnScore = pnScoreMap.get(vmid);
         if (pnScore != null) {
-            blackWhiteScore = pnScore;
-            blackWhiteType = "[已在名单: " + blackWhiteScore + "]";
+            String blackWhiteType = "[已在名单: " + pnScore + "]";
             logSb.append(blackWhiteType);
             LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb.append(" [跳过]")));
-
-            return Pair.of(blackWhiteScore, blackWhiteType);
+            return CompletableFuture.completedFuture(Pair.of(pnScore, blackWhiteType));
         }
 
+        // 2. 异步获取用户关注列表
+        return asyncHttpGetFollowings(vmid, 1, 50).thenCompose(firstPage -> {
+            short code = firstPage != null ? firstPage.getShort("code") : -1;
+            JSONObject data = firstPage != null && code == 0 ? firstPage.getJSONObject("data") : null;
+            long total = data != null ? data.getLongValue("total") : 0;
 
-        // 2. 用户关注数判断，该api没有限制
-        JSONObject firstPage = httpGetFollowings(vmid, 1, 50);
-        short code = firstPage != null ? firstPage.getShort("code") : -1;
-        JSONObject data = firstPage != null && code == 0 ? firstPage.getJSONObject("data") : null;
-        total = data != null ? data.getLongValue("total") : 0;
-        int blackCount = 0;
-        int whiteCount = 0;
-        int bwCount = 0;
-        JSONArray followingsList = new JSONArray();
-        JSONArray matchedList = new JSONArray();
+            if (firstPage == null || code != 0 || data == null || total == 0) {
+                return processHiddenFollowings(vmid, logSb);
+            } else {
+                return processVisibleFollowings(vmid, logSb, firstPage);
+            }
+        });
+    }
 
-        // 关注列表不可见
-        if (firstPage == null || code != 0 || data == null || total == 0 ) {
-            // 大约一分钟20次调用，且不固定
-            if(!schedulerDynamicColdWait){
-                // 通过空间动态判断
-                String dynData = httpGetUserDynamic(vmid);
-                String  resultStartStr = "{\"code\":0,\"message\":\"OK\""; //  部分： {"code":0,"message":"OK","ttl":1,"data":{"has_more":0,"cards":null,"next_offset":0}}
+    /** 关注列表不可见 → 通过空间动态判断 */
+    private static CompletableFuture<Pair<Integer, String>> processHiddenFollowings(long vmid, StringBuilder logSb) {
+        StringBuilder logSbEnd = new StringBuilder(100);
 
-                LogFileTools.getlogFileTools().logTestFile(  logSb +dynData.substring(0, 84) );
+        if (!schedulerDynamicColdWait.get()) {
+            return asyncHttpGetUserDynamic(vmid).thenCompose(dynData -> {
+                if (dynData == null) {
+                    logSbEnd.append(" [成份:关注隐藏, 需要确认] ");
+                    return proceedToCardCheck(vmid, logSb, logSbEnd, 0, null);
+                }
 
-                if (dynData.contains( resultStartStr )) {
+                String resultStartStr = "{\"code\":0,\"message\":\"OK\"";
+                LogFileTools.getlogFileTools().logTestFile(logSb + dynData.substring(0, Math.min(84, dynData.length())));
+
+                int blackWhiteScore = 0;
+                String blackWhiteType = null;
+
+                if (dynData.contains(resultStartStr)) {
                     if (dynData.length() < 200) {
-                        //关注不可见，且没有动态，直接拉黑     无法查看返回的字符串是84或122长度 。 内容：{"code":0,"message":"OK","ttl":1,"data":{"has_more":0,"cards":null,"next_offset":0}
                         blackWhiteScore = -2;
                         blackWhiteType = "[白板账号]";
                         logSb.append(blackWhiteType).append(" [拉黑] ");
-
                     }
-                    // 动态判断：使用黑名单姬的自定义屏蔽名字，包含匹配，匹配母串为dynData
                     if (PublicDataConf.centerSetConf.getBlack() != null) {
                         for (String s : PublicDataConf.centerSetConf.getBlack().getNames()) {
                             if (StringUtils.isBlank(s)) continue;
@@ -529,156 +581,158 @@ public class HttpRoomData {
                         }
                     }
                 } else {
-                    schedulerDynamicColdWait = true;
-                    System.out.println("字符串不包含目标片段。 API 调用超过频次，建议主动限制");
-
-                    schedulerDynamicService.schedule(() -> {
-                        schedulerDynamicColdWait = false;
-                        // 这里编写 11 分钟后需要执行的逻辑  3分钟不得行
-                        System.out.println("11分钟延迟已到，开始执行任务！当前时间：" + System.currentTimeMillis());
-                    }, 11, TimeUnit.MINUTES); // 参数：任务、延迟时间、时间单位
-
-                    LogFileTools.getlogFileTools().logTestFile(  logSb +" 用户动态API 调用超过频次，建议主动限制");
-                }
-
-                if(blackWhiteScore != 0){
-                    // 拉黑：关注不可见且没有动态，用户动态未回
-                    LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
-                    return Pair.of(blackWhiteScore, blackWhiteType);
-                }else {
-                    logSbEnd.append(" [成份:关注隐藏, 需要确认] ");
-                }
-            }else {
-                logSbEnd.append(" [成份:关注隐藏, 需要确认] ");
-            }
-        } else {
-            JSONArray list = firstPage.getJSONObject("data").getJSONArray("list");
-
-            // 判断与每个关注人的关系，并计算总分
-            for (Object obj : list) {
-                JSONObject user = (JSONObject) obj;
-                long mid = user.getLong("mid");
-                String followedName = user.getString("uname");
-                followingsList.add(followedName + ":" + mid);
-                Integer score = pnScoreMap.get(mid);
-                if (score != null) {
-                    tempScore = score;
-                    blackWhiteScore += tempScore;
-                    matchedList.add(followedName + ":" + tempScore);
-
-                    if (tempScore < 0) {
-                        blackCount++;
-                    } else {
-                        whiteCount++;
+                    if (schedulerDynamicColdWait.compareAndSet(false, true)) {
+                        System.out.println("字符串不包含目标片段。 API 调用超过频次，建议主动限制");
+                        schedulerDynamicService.schedule(() -> {
+                            schedulerDynamicColdWait.set(false);
+                            System.out.println("11分钟延迟已到，开始执行任务！当前时间：" + System.currentTimeMillis());
+                        }, 11, TimeUnit.MINUTES);
                     }
+                    LogFileTools.getlogFileTools().logTestFile(logSb + " 用户动态API 调用超过频次，建议主动限制");
                 }
-            }
 
+                if (blackWhiteScore != 0) {
+                    LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
+                    return CompletableFuture.completedFuture(Pair.of(blackWhiteScore, blackWhiteType));
+                }
 
-            if (blackWhiteScore > 0) {
-                logSbEnd.append("[成分:关注正面]");
-            } else if (blackWhiteScore < 0) {
-                blackWhiteType = "[关注野猪偏多]";
-                logSb.append(blackWhiteType).append(" [拉黑] ");
-                logSbEnd.append("[成分:关注负面]");
-            }else {
-                logSbEnd.append("[成分:关注普通, 需要确认]");
-            }
+                logSbEnd.append(" [成份:关注隐藏, 需要确认] ");
+                return proceedToCardCheck(vmid, logSb, logSbEnd, 0, null);
+            });
+        } else {
+            logSbEnd.append(" [成份:关注隐藏, 需要确认] ");
+            return proceedToCardCheck(vmid, logSb, logSbEnd, 0, null);
+        }
+    }
 
-            bwCount = blackCount * whiteCount;
-            // 日志打印
+    /** 关注列表可见 → 逐关注人打分 */
+    private static CompletableFuture<Pair<Integer, String>> processVisibleFollowings(long vmid, StringBuilder logSb, JSONObject firstPage) {
+        StringBuilder logSbEnd = new StringBuilder(100);
+        JSONArray list = firstPage.getJSONObject("data").getJSONArray("list");
 
-            if(blackWhiteScore != 0 || bwCount != 0){
-                logSbEnd.append(" [黑白分:").append(blackWhiteScore)
-                        .append("] [分裂度:").append(bwCount)
-                        .append("] [匹配数:").append(matchedList.size())
-                        .append("] 黑白名单:").append(matchedList.toJSONString());
-            }
-            logSbEnd.append(" 🍉🍉 关注列表:").append(followingsList.toJSONString());
+        int blackWhiteScore = 0;
+        int blackCount = 0;
+        int whiteCount = 0;
+        JSONArray followingsList = new JSONArray();
+        JSONArray matchedList = new JSONArray();
 
-            if (blackWhiteScore != 0) { // 说明已经经过了判断
-                SelfTools.appendAt(logSb, 140, logSbEnd.toString());
-                LogFileTools.getlogFileTools().logFollowingsFile( logSb.toString() );
-
-                return Pair.of(blackWhiteScore, blackWhiteType);
+        for (Object obj : list) {
+            JSONObject user = (JSONObject) obj;
+            long mid = user.getLong("mid");
+            String followedName = user.getString("uname");
+            followingsList.add(followedName + ":" + mid);
+            Integer score = pnScoreMap.get(mid);
+            if (score != null) {
+                blackWhiteScore += score;
+                matchedList.add(followedName + ":" + score);
+                if (score < 0) {
+                    blackCount++;
+                } else {
+                    whiteCount++;
+                }
             }
         }
 
+        String blackWhiteType = null;
+        if (blackWhiteScore > 0) {
+            logSbEnd.append("[成分:关注正面]");
+        } else if (blackWhiteScore < 0) {
+            blackWhiteType = "[关注野猪偏多]";
+            logSb.append(blackWhiteType).append(" [拉黑] ");
+            logSbEnd.append("[成分:关注负面]");
+        } else {
+            logSbEnd.append("[成分:关注普通, 需要确认]");
+        }
 
-        if (schedulerCardInfoColdWait){
+        int bwCount = blackCount * whiteCount;
+        if (blackWhiteScore != 0 || bwCount != 0) {
+            logSbEnd.append(" [黑白分:").append(blackWhiteScore)
+                    .append("] [分裂度:").append(bwCount)
+                    .append("] [匹配数:").append(matchedList.size())
+                    .append("] 黑白名单:").append(matchedList.toJSONString());
+        }
+        logSbEnd.append(" 🍉🍉 关注列表:").append(followingsList.toJSONString());
+
+        if (blackWhiteScore != 0) {
+            SelfTools.appendAt(logSb, 140, logSbEnd.toString());
+            LogFileTools.getlogFileTools().logFollowingsFile(logSb.toString());
+            return CompletableFuture.completedFuture(Pair.of(blackWhiteScore, blackWhiteType));
+        }
+
+        return proceedToCardCheck(vmid, logSb, logSbEnd, blackWhiteScore, blackWhiteType);
+    }
+
+    /** 3. 用户卡片信息判断 → 最终打分 */
+    private static CompletableFuture<Pair<Integer, String>> proceedToCardCheck(long vmid, StringBuilder logSb, StringBuilder logSbEnd,
+                                                                               int blackWhiteScore, String blackWhiteType) {
+        if (schedulerCardInfoColdWait.get()) {
             SelfTools.appendAt(logSb, 140, logSbEnd.toString());
             LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
-
-             return Pair.of(blackWhiteScore, blackWhiteType);
+            return CompletableFuture.completedFuture(Pair.of(blackWhiteScore, blackWhiteType));
         }
 
-        // 3  用户卡片信息 判断   这个api 有调用次数限制，估计 1分钟100词限制，放到最后
-        JSONObject dataX = httpGetUserCard(vmid);
-        if (dataX != null && dataX.getShort("code") == 0) {
-            JSONObject dataCard = dataX.getJSONObject("data");
+        return asyncHttpGetUserCard(vmid).thenApply(dataX -> {
+            int score = blackWhiteScore;
+            String type = blackWhiteType;
+            if (dataX != null && dataX.getShort("code") == 0) {
+                JSONObject dataCard = dataX.getJSONObject("data");
+                if (dataCard != null) {
+                    JSONObject cardInfo = dataCard.getJSONObject("card");
 
-            if (dataCard != null) {
-                //数据获取
-                JSONObject cardInfo = dataCard.getJSONObject("card");
-
-                fans = cardInfo != null ? cardInfo.getLongValue("fans") : -2;
-                attention = cardInfo != null ? cardInfo.getLongValue("attention") : -2;
-
-                if (cardInfo != null) {
-                    JSONObject levelInfo = cardInfo.getJSONObject("level_info");
-                    if (levelInfo != null) {
-                        currentLevel = levelInfo.getIntValue("current_level");
+                    long fans = cardInfo != null ? cardInfo.getLongValue("fans") : -2;
+                    long attention = cardInfo != null ? cardInfo.getLongValue("attention") : -2;
+                    int currentLevel = -1;
+                    if (cardInfo != null) {
+                        JSONObject levelInfo = cardInfo.getJSONObject("level_info");
+                        if (levelInfo != null) {
+                            currentLevel = levelInfo.getIntValue("current_level");
+                        }
                     }
-                }
-                following = dataCard.getBooleanValue("following");
-                archiveCount = dataCard.getLongValue("archive_count");
-                likeNum = dataCard.getLongValue("like_num");
+                    boolean following = dataCard.getBooleanValue("following");
+                    long archiveCount = dataCard.getLongValue("archive_count");
+                    long likeNum = dataCard.getLongValue("like_num");
 
-                SelfTools.appendAt(logSb, 80, "");
-                // 日志打印
-                logSb.append(" [LV:").append(currentLevel)
-                        .append("] [投稿:").append(archiveCount)
-                        .append("] [关注:").append(attention)
-                        .append("] [粉丝:").append(fans)
-                        .append("] [获赞:").append(likeNum)
-                        .append("]");
-                if (fans > 1000 || archiveCount > 100 || likeNum > 10_0000) {
-                    //粉丝数高，投稿高，获赞高
-                    logSb.append(" [KOL:").append(fans / 1000 + archiveCount / 100 + likeNum / 10_0000).append("]");
-                }
-                // 条件判断
-                if (following) {  // 哔哩哔哩 已关注
-                    blackWhiteScore = 2;
-                    blackWhiteType = "[已关注]";
-                    logSb.append(blackWhiteType);
-                } else if (fans < 50 && attention > 4000) {
-                    //疑似人机，拉黑处理
-                    blackWhiteScore = -2;
-                    blackWhiteType = "[疑似人机]";
-                    logSb.append(blackWhiteType).append(" [拉黑] ");
-                } else if (currentLevel < 2) {
-                    blackWhiteScore = -2;
-                    blackWhiteType = "[LV:" + currentLevel + "]";
-                    logSb.append(blackWhiteType).append(" [拉黑] ");
-                }
+                    SelfTools.appendAt(logSb, 80, "");
+                    logSb.append(" [LV:").append(currentLevel)
+                            .append("] [投稿:").append(archiveCount)
+                            .append("] [关注:").append(attention)
+                            .append("] [粉丝:").append(fans)
+                            .append("] [获赞:").append(likeNum)
+                            .append("]");
+                    if (fans > 1000 || archiveCount > 100 || likeNum > 10_0000) {
+                        logSb.append(" [KOL:").append(fans / 1000 + archiveCount / 100 + likeNum / 10_0000).append("]");
+                    }
 
+                    if (following) {
+                        score = 2;
+                        type = "[已关注]";
+                        logSb.append(type);
+                    } else if (fans < 50 && attention > 4000) {
+                        score = -2;
+                        type = "[疑似人机]";
+                        logSb.append(type).append(" [拉黑] ");
+                    } else if (currentLevel < 2) {
+                        score = -2;
+                        type = "[LV:" + currentLevel + "]";
+                        logSb.append(type).append(" [拉黑] ");
+                    }
+                } else {
+                    logSb.append("[用户信息解析异常]");
+                }
             } else {
-                logSb.append("[用户信息解析异常]");
+                if (schedulerCardInfoColdWait.compareAndSet(false, true)) {
+                    schedulerCardInfoService.schedule(() -> {
+                        schedulerCardInfoColdWait.set(false);
+                        System.out.println("11分钟延迟已到，开始执行任务！当前时间：" + System.currentTimeMillis());
+                    }, 11, TimeUnit.MINUTES);
+                }
+                LogFileTools.getlogFileTools().logTestFile(logSb + " 用户卡片信息API 调用超过频次，建议主动限制");
             }
-        } else {
-            schedulerCardInfoColdWait = true;
-            schedulerCardInfoService.schedule(() -> {
-                schedulerCardInfoColdWait = false;
-                // 这里编写 11 分钟后需要执行的逻辑
-                System.out.println("11分钟延迟已到，开始执行任务！当前时间：" + System.currentTimeMillis());
-            }, 11, TimeUnit.MINUTES); // 参数：任务、延迟时间、时间单位
-            LogFileTools.getlogFileTools().logTestFile(  logSb +" 用户卡片信息API 调用超过频次，建议主动限制");
-        }
 
-        SelfTools.appendAt(logSb, 140, logSbEnd.toString());
-        LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
-
-        return Pair.of(blackWhiteScore, blackWhiteType);
+            SelfTools.appendAt(logSb, 140, logSbEnd.toString());
+            LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
+            return Pair.of(score, type);
+        });
     }
 
     /**

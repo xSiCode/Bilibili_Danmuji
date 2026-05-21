@@ -104,6 +104,30 @@ public class OkHttp3Utils {
 //		}
 		return response;
 	}
+	public void httpGetAsync(String url, Map<String, String> headers, Map<String, String> datas, Callback callback) {
+		Headers hearderHeaders = null;
+		StringBuilder stringBuilder = null;
+		if (datas != null && datas.size() > 0) {
+			stringBuilder = new StringBuilder(100);
+			stringBuilder.append("?");
+			for (Entry<String, String> entry : datas.entrySet()) {
+				stringBuilder.append(entry.getKey()).append("=").append(entry.getValue()).append("&");
+			}
+			stringBuilder.delete(stringBuilder.length() - 1, stringBuilder.length());
+		}
+		if (stringBuilder != null) {
+			url = stringBuilder.insert(0, url).toString();
+		}
+		Request request;
+		if (headers != null && headers.size() > 0) {
+			hearderHeaders = Headers.of(headers);
+			request = new Request.Builder().url(url).headers(hearderHeaders).get().build();
+		} else {
+			request = new Request.Builder().url(url).get().build();
+		}
+		okHttpClient.newCall(request).enqueue(callback);
+	}
+
 	public Response httpPostForm(String url, Map<String, String> headers, Map<String, String> params) throws Exception {
 		Request request=null;
 		StringBuilder content = new StringBuilder();
