@@ -175,19 +175,21 @@
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="room-set" onclick="switchTab('room-set', this);return false;">房间设置</a>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="common-set" onclick="switchTab('common-set', this);return false;">通用设置</a>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="cmd-set" onclick="switchTab('cmd-set', this);return false;">显示设置</a>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="other-set" onclick="switchTab('other-set', this);return false;">其他设置</a>
                                 </div>
                                 <div class="sidebar-section">
                                     <span class="sidebar-section-header" onclick="toggleSidebarSection(this);return false;">自动化</span>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="liveStatus-set" onclick="switchTab('liveStatus-set', this);return false;">状态姬</a>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="timer-set" onclick="switchTab('timer-set', this);return false;">定时姬</a>
-                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="danmakuStore-set" onclick="switchTab('danmakuStore-set', this);return false;">暂存姬</a>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="advert-set" onclick="switchTab('advert-set', this);return false;">广告姬</a>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="welcome-set" onclick="switchTab('welcome-set', this);return false;">欢迎姬</a>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="thankFollow-set" onclick="switchTab('thankFollow-set', this);return false;">关注姬</a>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="thankGift-set" onclick="switchTab('thankGift-set', this);return false;">礼物姬</a>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="rectifier-set" onclick="switchTab('rectifier-set', this);return false;">整流回复姬</a>
                                 </div>
                                 <div class="sidebar-section">
                                     <span class="sidebar-section-header" onclick="toggleSidebarSection(this);return false;">互动</span>
-                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="thankGift-set" onclick="switchTab('thankGift-set', this);return false;">礼物姬</a>
-                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="thankFollow-set" onclick="switchTab('thankFollow-set', this);return false;">关注姬</a>
-                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="welcome-set" onclick="switchTab('welcome-set', this);return false;">欢迎姬</a>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="danmakuStore-set" onclick="switchTab('danmakuStore-set', this);return false;">暂存姬</a>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="gazeWelcome-set" onclick="switchTab('gazeWelcome-set', this);return false;">欢迎凝视姬</a>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="autoReply-set" onclick="switchTab('autoReply-set', this);return false;">自动回复姬</a>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="autoGift-set" onclick="switchTab('autoGift-set', this);return false;">礼物自动赠送姬</a>
@@ -198,14 +200,6 @@
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="autoBlock-set" onclick="switchTab('autoBlock-set', this);return false;">负黑自动拉黑姬</a>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="black-set" onclick="switchTab('black-set', this);return false;">黑白名单姬</a>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="badlist-set" onclick="switchTab('badlist-set', this);return false;">拉黑姬</a>
-                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="rectifier-set" onclick="switchTab('rectifier-set', this);return false;">整流回复姬</a>
-                                </div>
-                                <div class="sidebar-section">
-                                    <span class="sidebar-section-header" onclick="toggleSidebarSection(this);return false;">其他</span>
-                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="managerLogin-set" onclick="switchTab('managerLogin-set', this);return false;">安全设置</a>
-                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="privacy-set" onclick="switchTab('privacy-set', this);return false;">隐私模式</a>
-                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="othser-set" onclick="switchTab('othser-set', this);return false;">实验性设置</a>
-                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="testmode-set" onclick="switchTab('testmode-set', this);return false;">开发人员设置</a>
                                 </div>
                             </div>
                             <!-- 内容面板 -->
@@ -345,6 +339,22 @@
                             </div>
                         </div>
                         <!-- 通用设置结束 -->
+                        <!-- 底部按钮开始 -->
+                        <div class="input-group mb-3 set-control">
+                            <div class="col-auto">
+                                <input id="file" style="display: none;" type="file" value="上传文件"/>
+                                <button class="btn btn-warning export-set"
+                                        title="导出设置到本地，弹幕姬配置文件夹set底下"
+                                        type="button">导出设置
+                                </button>
+                                <button class="btn btn-success export-set-web" title="网页实时下载配置" type="button">
+                                    下载设置
+                                </button>
+                                <button class="btn btn-info import-set" title="导入配置文件" type="button">导入设置
+                                </button>
+                            </div>
+                        </div>
+                        <!-- 底部按钮结束 -->
                                 </div>
                                 <div class="tab-pane" id="tab-cmd-set">
                         <!-- 弹幕设置开始 -->
@@ -1628,8 +1638,8 @@
                         </div>
                         <!-- 整流回复姬设置结束 -->
                                 </div>
-                                <div class="tab-pane" id="tab-managerLogin-set">
-                        <!-- 弹幕姬登录设置开始 -->
+                                <div class="tab-pane" id="tab-other-set">
+                        <!-- 安全设置开始 -->
                         <div class="input-group mb-1"><h5>弹幕姬web网页操作面板安全设置</h5></div>
                         <div class="input-group mb-3 managerLogin-set" id="managerLogin-set">
                             <div class="header-set">
@@ -1666,9 +1676,7 @@
                                         title="暗号本体(初始为123)；注:使用md5加密<br/>只要进入设置页面就可以随便改<br/>忘记密码目前唯一方式只能删除弹幕姬配置文件(或者查看弹幕姬日志去解密网站)">
                             </div>
                         </div>
-                        <!-- 弹幕姬登录设置结束 -->
-                                </div>
-                                <div class="tab-pane" id="tab-privacy-set">
+                        <!-- 安全设置结束 -->
                         <!-- 隐私模式设置开始 -->
                         <div class="input-group mb-1"><h5>隐私模式</h5></div>
                         <div class="input-group mb-3 privacy-set" id="privacy-set">
@@ -1694,8 +1702,6 @@
                             </div>
                         </div>
                         <!-- 隐私模式设置结束 -->
-                                </div>
-                                <div class="tab-pane" id="tab-othser-set">
                         <!-- 实验性设置开始 -->
                         <div class="input-group mb-1"><h5>实验性设置</h5></div>
                         <div class="input-group mb-3 othser-set" id="othser-set">
@@ -1756,8 +1762,6 @@
                             </div>
                         </div>
                         <!-- 实验性设置结束 -->
-                                </div>
-                                <div class="tab-pane" id="tab-testmode-set">
                         <!-- 开发人员设置开始 -->
                         <div class="input-group mb-1"><h5>开发人员设置</h5></div>
                         <div class="input-group mb-3 testmode-set" id="testmode-set">
@@ -1775,22 +1779,6 @@
                         </div>
                         <!-- 开发人员设置结束 -->
                                 </div>
-                        <!-- 底部按钮开始 -->
-                        <div class="input-group mb-3 set-control">
-                            <div class="col-auto">
-                                <input id="file" style="display: none;" type="file" value="上传文件"/>
-                                <button class="btn btn-warning export-set"
-                                        title="导出设置到本地，弹幕姬配置文件夹set底下"
-                                        type="button">导出设置
-                                </button>
-                                <button class="btn btn-success export-set-web" title="网页实时下载配置" type="button">
-                                    下载设置
-                                </button>
-                                <button class="btn btn-info import-set" title="导入配置文件" type="button">导入设置
-                                </button>
-                            </div>
-                        </div>
-                        <!-- 底部按钮结束 -->
                             </div>
                         </div>
                     </div>
@@ -1916,19 +1904,6 @@
 </div>
 <div aria-atomic="true" aria-live="polite" class="position-relative">
     <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 3">
-        <div aria-atomic="true" aria-live="assertive" class="toast hide" data-bs-autohide="false" id="announceEle"
-             role="alert"
-             style="z-index: 9999;">
-            <div class="toast-header">
-                <img class="rounded me-2" src="../../img/tips_head.png" style="width:20px;height:20px;"
-                     th:src="@{/img/tips_head.png}">
-                <strong class="me-auto">最新公告</strong>
-                <small class="text-muted">编写:Jane</small><!--先写死.. 反正....-->
-                <button aria-label="Close" class="btn-close" data-bs-dismiss="toast" type="button"></button>
-            </div>
-            <div class="toast-body" id="announce_content">
-            </div>
-        </div>
         <!-- Then put toasts within -->
         <div aria-atomic="true" aria-live="assertive" class="toast hide" data-bs-delay="7000" id="updateEle"
              role="alert" style="z-index: 9999;">
@@ -1974,18 +1949,6 @@
                 }, 10)
             }
         });
-        //检查公告和版本更新
-        let initWebCheck = method.checkWebInit();
-        if (!initWebCheck.init_announce) {
-            let init_announce = method.getAnnounce();
-            $("#announce_content").html(init_announce);
-            var announceEle = document.getElementById('announceEle')
-            var announceToast = bootstrap.Toast.getInstance(announceEle)
-            announceToast.show()
-        }
-        if (!initWebCheck.init_edition) {
-            $("#checkupdate").click();
-        }
         // open new window not tab
         function customOpen(event) {
             event.preventDefault();

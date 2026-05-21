@@ -2263,39 +2263,6 @@ const method = {
         });
         return deferred.promise();
     },
-    checkWebInit: function () {
-        let content = {init_edition: false, init_announce: false};
-        $.ajax({
-            url: '../checkWebInit',
-            async: false,
-            cache: false,
-            type: 'GET',
-            dataType: 'json',
-            success: function (data) {
-                if (data.code == "200") {
-                    content.init_edition = data.result.init_edition;
-                    content.init_announce = data.result.init_announce;
-                }
-            }
-        });
-        return content;
-    },
-    getAnnounce: function () {
-        let content = "";
-        $.ajax({
-            url: '../checkNewAnnounce',
-            async: false,
-            cache: false,
-            type: 'GET',
-            dataType: 'json',
-            success: function (data) {
-                if (data.code == "200") {
-                    content = data.result;
-                }
-            }
-        });
-        return content;
-    },
     block: function (uid, time) {
         let code = null;
         $.ajax({

@@ -600,7 +600,7 @@ public class HttpRoomData {
                         schedulerDynamicService.schedule(() -> {
                             schedulerDynamicColdWait.set(false);
                             System.out.println("11分钟延迟已到，开始执行任务！当前时间：" + System.currentTimeMillis());
-                        }, 11, TimeUnit.MINUTES);
+                        }, 3, TimeUnit.MINUTES);
                     }
                     LogFileTools.getlogFileTools().logTestFile(logSb + " 用户动态API 调用超过频次，建议主动限制");
                 }
@@ -738,7 +738,7 @@ public class HttpRoomData {
                     schedulerCardInfoService.schedule(() -> {
                         schedulerCardInfoColdWait.set(false);
                         System.out.println("11分钟延迟已到，开始执行任务！当前时间：" + System.currentTimeMillis());
-                    }, 11, TimeUnit.MINUTES);
+                    }, 5, TimeUnit.MINUTES);
                 }
                 LogFileTools.getlogFileTools().logTestFile(logSb + " 用户卡片信息API 调用超过频次，建议主动限制");
             }
