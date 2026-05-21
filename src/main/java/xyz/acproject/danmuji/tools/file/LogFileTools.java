@@ -14,8 +14,33 @@ import java.util.concurrent.TimeUnit;
 
 public class LogFileTools {
 	private volatile static LogFileTools logFileTools;
-	private static final LogFileTools instance = new LogFileTools();
-	private final Object fileLock = new Object();
+
+	// ---- 路径缓存，避免每次调用都重复计算 ----
+	private static volatile String baseDirPath;
+
+	private static String getBaseDirPath() {
+		String p = baseDirPath;
+		if (p == null) {
+			try {
+				p = URLDecoder.decode(new FileTools().getBaseJarPath().toString(), "utf-8") + "/Danmuji_log/";
+				new File(p).mkdirs();
+				baseDirPath = p;
+			} catch (Exception e) {
+				throw new RuntimeException(e);
+			}
+		}
+		return p;
+	}
+
+	// 各日志方法的路径缓存
+	private volatile String filePathCache;
+	private volatile String filePathKey;
+	private volatile String watcherPathCache;
+	private volatile String watcherPathKey;
+	private volatile String followingsPathCache;
+	private volatile String followingsPathKey;
+	private volatile String testPathCache;
+	private volatile String testPathKey;
 
 	// 批量日志写入条目
 	private static class LogEntry {
@@ -83,123 +108,50 @@ public class LogFileTools {
 	}
 
 	public void logFile(String msg) {
-		String path = System.getProperty("user.dir");
-		FileTools fileTools = new FileTools();
-		StringBuilder stringBuilder = new StringBuilder();
-		try {
-			path = URLDecoder.decode(fileTools.getBaseJarPath().toString(), "utf-8");
-		} catch (Exception e1) {
-			e1.printStackTrace();
+		String dateStr = JodaTimeUtils.getCurrentDateString();
+		String key = dateStr + "(" + PublicDataConf.ROOMID + ")";
+		String fp = filePathCache;
+		if (fp == null || !key.equals(filePathKey)) {
+			fp = getBaseDirPath() + key + ".txt";
+			filePathCache = fp;
+			filePathKey = key;
 		}
-		try {
-			path = path + "/Danmuji_log/";
-			File file = new File(path);
-			if (file.exists() == false)
-				file.mkdirs();
-			stringBuilder.append(JodaTimeUtils.getCurrentDateString());
-			stringBuilder.append("(");
-			stringBuilder.append(PublicDataConf.ROOMID);
-			stringBuilder.append(")");
-			file = new File(path + stringBuilder.toString() + ".txt");
-			stringBuilder.delete(0, stringBuilder.length());
-			if (file.exists() == false)
-				try {
-					file.createNewFile();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			batchQueue.offer(new LogEntry(file.getAbsolutePath(), msg));
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+		batchQueue.offer(new LogEntry(fp, msg));
 	}
 
 	public void logWatcherFile(String msg) {
-		String path = System.getProperty("user.dir");
-		FileTools fileTools = new FileTools();
-		StringBuilder stringBuilder = new StringBuilder();
-		try {
-			path = URLDecoder.decode(fileTools.getBaseJarPath().toString(), "utf-8");
-		} catch (Exception e1) {
-			e1.printStackTrace();
+		String dateStr = JodaTimeUtils.getCurrentDateString();
+		String key = dateStr + "(" + PublicDataConf.ROOMID + ")viewers";
+		String fp = watcherPathCache;
+		if (fp == null || !key.equals(watcherPathKey)) {
+			fp = getBaseDirPath() + key + ".txt";
+			watcherPathCache = fp;
+			watcherPathKey = key;
 		}
-		try {
-			path = path + "/Danmuji_log/";
-			File file = new File(path);
-			if (file.exists() == false)
-				file.mkdirs();
-			stringBuilder.append(JodaTimeUtils.getCurrentDateString());
-			stringBuilder.append("(");
-			stringBuilder.append(PublicDataConf.ROOMID);
-			stringBuilder.append(")");
-			stringBuilder.append("viewers");
-			file = new File(path + stringBuilder.toString() + ".txt");
-			stringBuilder.delete(0, stringBuilder.length());
-			if (file.exists() == false)
-				try {
-					file.createNewFile();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			batchQueue.offer(new LogEntry(file.getAbsolutePath(), msg));
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+		batchQueue.offer(new LogEntry(fp, msg));
 	}
 
 	public void logFollowingsFile(String msg) {
-		synchronized (fileLock) {
-			String path = System.getProperty("user.dir");
-			FileTools fileTools = new FileTools();
-			try {
-				path = URLDecoder.decode(fileTools.getBaseJarPath().toString(), "utf-8");
-			} catch (Exception e1) {
-				e1.printStackTrace();
-			}
-			path = path + "/Danmuji_log/";
-			File dir = new File(path);
-			if (!dir.exists()) {
-				dir.mkdirs();
-			}
-			StringBuilder stringBuilder = new StringBuilder();
-			stringBuilder.append(JodaTimeUtils.getCurrentDateString());
-			stringBuilder.append("(").append(PublicDataConf.ROOMID).append(")");
-			stringBuilder.append("followings");
-			File file = new File(path + stringBuilder.toString() + ".txt");
-			batchQueue.offer(new LogEntry(file.getAbsolutePath(), msg));
+		String dateStr = JodaTimeUtils.getCurrentDateString();
+		String key = dateStr + "(" + PublicDataConf.ROOMID + ")followings";
+		String fp = followingsPathCache;
+		if (fp == null || !key.equals(followingsPathKey)) {
+			fp = getBaseDirPath() + key + ".txt";
+			followingsPathCache = fp;
+			followingsPathKey = key;
 		}
+		batchQueue.offer(new LogEntry(fp, msg));
 	}
 
-	public synchronized void logTestFile(String msg) {
-		String path = System.getProperty("user.dir");
-		FileTools fileTools = new FileTools();
-		StringBuilder stringBuilder = new StringBuilder();
-		try {
-			path = URLDecoder.decode(fileTools.getBaseJarPath().toString(), "utf-8");
-		} catch (Exception e1) {
-			e1.printStackTrace();
+	public void logTestFile(String msg) {
+		String dateStr = JodaTimeUtils.getCurrentDateString();
+		String key = dateStr + "(" + PublicDataConf.ROOMID + ")testLog";
+		String fp = testPathCache;
+		if (fp == null || !key.equals(testPathKey)) {
+			fp = getBaseDirPath() + key + ".txt";
+			testPathCache = fp;
+			testPathKey = key;
 		}
-		try {
-			path = path + "/Danmuji_log/";
-			File file = new File(path);
-			if (file.exists() == false)
-				file.mkdirs();
-			stringBuilder.append(JodaTimeUtils.getCurrentDateString());
-			stringBuilder.append("(");
-			stringBuilder.append(PublicDataConf.ROOMID);
-			stringBuilder.append(")");
-			stringBuilder.append("testLog");
-			file = new File(path + stringBuilder.toString() + ".txt");
-			stringBuilder.delete(0, stringBuilder.length());
-			if (file.exists() == false)
-				try {
-					file.createNewFile();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			batchQueue.offer(new LogEntry(file.getAbsolutePath(), msg));
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+		batchQueue.offer(new LogEntry(fp, msg));
 	}
 }
