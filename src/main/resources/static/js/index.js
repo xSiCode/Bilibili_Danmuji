@@ -662,6 +662,39 @@ $(document).on('click', '.pn-delete-btn', function () {
     }
     method.renderPNTable();
 });
+$(document).on('click', '.pn-name-link', function (e) {
+    e.preventDefault();
+    var uid = $(this).closest('tr').data('uid');
+    if (uid) {
+        window.open('https://space.bilibili.com/' + uid, '_blank');
+    }
+});
+$(document).on('dblclick', '.pn-name-link', function () {
+    var cell = $(this).parent('.pn-col-name');
+    var link = $(this);
+    var input = cell.find('.pn-name');
+    link.hide();
+    input.show().focus().select();
+});
+$(document).on('blur', '.pn-col-name .pn-name', function () {
+    var cell = $(this).parent('.pn-col-name');
+    var input = $(this);
+    var link = cell.find('.pn-name-link');
+    var val = input.val().trim();
+    if (link.length) {
+        if (val) {
+            link.text(val).show();
+        } else {
+            link.text('(未命名)').show();
+        }
+        input.hide();
+    }
+});
+$(document).on('keydown', '.pn-col-name .pn-name', function (e) {
+    if (e.key === 'Enter') {
+        $(this).blur();
+    }
+});
 $(document).on('click', '.pn-prev', function () {
     if (pnData.page > 1) {
         method._syncPNPage();
@@ -686,6 +719,10 @@ $(document).on('click', '.pn-sortable', function () {
     pnData.page = 1;
     method.renderPNTable();
 });
+$(document).on('input', '.pn-search-input', function () {
+    pnData.page = 1;
+    method.renderPNTable();
+});
 // 负黑自动拉黑姬 - 上一页
 $(document).on('click', '.ab-prev', function () {
     if (autoBlockData.page > 1) {
@@ -700,6 +737,11 @@ $(document).on('click', '.ab-next', function () {
         autoBlockData.page++;
         method.renderAutoBlockTable();
     }
+});
+// 负黑自动拉黑姬 - 搜索
+$(document).on('input', '.ab-search-input', function () {
+    autoBlockData.page = 1;
+    method.renderAutoBlockTable();
 });
 // 负黑自动拉黑姬 - 解除拉黑
 $(document).on('click', '.ab-unblock-btn', function () {
@@ -2428,23 +2470,45 @@ const method = {
         tbody.empty();
         method._applyPNSort();
         method._updatePNSortIcons();
+        var query = ($(".pn-search-input").val() || '').trim().toLowerCase();
+        var filtered = pnData.list;
+        if (query) {
+            filtered = pnData.list.filter(function(item) {
+                return (String(item.uid || '').toLowerCase().indexOf(query) !== -1) ||
+                       (String(item.name || '').toLowerCase().indexOf(query) !== -1) ||
+                       (String(item.score || 0).toLowerCase().indexOf(query) !== -1);
+            });
+        }
+        var totalFiltered = filtered.length;
+        var totalPages = Math.max(1, Math.ceil(totalFiltered / pnData.pageSize));
+        if (pnData.page > totalPages) pnData.page = totalPages;
         var start = (pnData.page - 1) * pnData.pageSize;
-        var end = Math.min(start + pnData.pageSize, pnData.list.length);
-        var pageItems = pnData.list.slice(start, end);
+        var end = Math.min(start + pnData.pageSize, totalFiltered);
+        var pageItems = filtered.slice(start, end);
         for (var i = 0; i < pageItems.length; i++) {
             var item = pageItems[i];
+            var nameHtml = (item.uid && item.name) ?
+                '<a href="javascript:;" class="pn-name-link" title="点击打开B站空间，双击可编辑">' + method._escHtml(item.name) + '</a><input class="form-control form-control-sm pn-name" type="text" value="' + method._escHtml(item.name || '') + '" style="display:none;">' :
+                '<input class="form-control form-control-sm pn-name" type="text" value="' + (item.name || '') + '">';
             var row = '<tr data-uid="' + (item.uid || '') + '">' +
                 '<td class="pn-col-uid"><input class="form-control form-control-sm pn-uid" type="number" value="' + (item.uid || '') + '"></td>' +
-                '<td class="pn-col-name"><input class="form-control form-control-sm pn-name" type="text" value="' + (item.name || '') + '"></td>' +
+                '<td class="pn-col-name">' + nameHtml + '</td>' +
                 '<td class="pn-col-score"><input class="form-control form-control-sm pn-score" type="number" value="' + (item.score || 0) + '"></td>' +
                 '<td class="pn-col-action"><button class="btn btn-sm btn-danger pn-delete-btn">删除</button></td>' +
                 '</tr>';
             tbody.append(row);
         }
-        var totalPages = Math.max(1, Math.ceil(pnData.list.length / pnData.pageSize));
-        $(".pn-page-info").text("第" + pnData.page + "页/共" + totalPages + "页");
+        if (query) {
+            $(".pn-page-info").text("第" + pnData.page + "页/共" + totalPages + "页 (匹配" + totalFiltered + "/共" + pnData.list.length + "条)");
+        } else {
+            $(".pn-page-info").text("第" + pnData.page + "页/共" + totalPages + "页");
+        }
         $(".pn-prev").prop('disabled', pnData.page <= 1);
         $(".pn-next").prop('disabled', pnData.page >= totalPages);
+    },
+    _escHtml: function (str) {
+        if (!str) return '';
+        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     },
     savePNList: function () {
         method._syncPNPage();
@@ -2624,9 +2688,21 @@ const method = {
     renderAutoBlockTable: function () {
         var tbody = $(".auto-block-tbody");
         tbody.empty();
+        var query = ($(".ab-search-input").val() || '').trim().toLowerCase();
+        var filtered = autoBlockData.list;
+        if (query) {
+            filtered = autoBlockData.list.filter(function(item) {
+                return (String(item.uid || '').toLowerCase().indexOf(query) !== -1) ||
+                       (String(item.uname || '').toLowerCase().indexOf(query) !== -1) ||
+                       (String(item.score || 0).toLowerCase().indexOf(query) !== -1);
+            });
+        }
+        var totalFiltered = filtered.length;
+        var totalPages = Math.max(1, Math.min(10, Math.ceil(totalFiltered / autoBlockData.pageSize)));
+        if (autoBlockData.page > totalPages) autoBlockData.page = totalPages;
         var start = (autoBlockData.page - 1) * autoBlockData.pageSize;
-        var end = Math.min(start + autoBlockData.pageSize, autoBlockData.list.length);
-        var pageItems = autoBlockData.list.slice(start, end);
+        var end = Math.min(start + autoBlockData.pageSize, totalFiltered);
+        var pageItems = filtered.slice(start, end);
         for (var i = 0; i < pageItems.length; i++) {
             var item = pageItems[i];
             var uname = item.uname || '';
@@ -2642,8 +2718,11 @@ const method = {
                 '</tr>';
             tbody.append(row);
         }
-        var totalPages = Math.max(1, Math.min(10, Math.ceil(autoBlockData.list.length / autoBlockData.pageSize)));
-        $(".ab-page-info").text("第" + autoBlockData.page + "页/共" + totalPages + "页");
+        if (query) {
+            $(".ab-page-info").text("第" + autoBlockData.page + "页/共" + totalPages + "页 (匹配" + totalFiltered + "/共" + autoBlockData.list.length + "条)");
+        } else {
+            $(".ab-page-info").text("第" + autoBlockData.page + "页/共" + totalPages + "页");
+        }
         $(".ab-prev").prop('disabled', autoBlockData.page <= 1);
         $(".ab-next").prop('disabled', autoBlockData.page >= totalPages);
     },

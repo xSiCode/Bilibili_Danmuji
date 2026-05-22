@@ -1496,4 +1496,14 @@ div .link-popup-panel .popup-content-ctnr p {
         border-radius: 0 0 4px 4px;
         padding: 12px;
     }
+
+    .pn-name-link {
+        color: #00a1d6;
+        cursor: pointer;
+        text-decoration: none;
+    }
+    .pn-name-link:hover {
+        color: #ff6699;
+        text-decoration: underline;
+    }
 }
