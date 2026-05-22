@@ -61,9 +61,9 @@
             /> <Logger name="org.apache.tomcat.util.net.NioSelectorPool" level="WARN" 
             /> -->
         <logger name="org.springframework" level="INFO"/>
-        <logger name="xyz.acproject" level="DEBUG"/>
+        <logger name="xyz.acproject" level="INFO"/>
         <Logger name="org.thymeleaf" level="INFO"/>
-        <Root level="DEBUG">
+        <Root level="INFO">
             <appender-ref  ref="console"/>
             <appender-ref ref="RollingFileInfo"/>
             <appender-ref ref="ErrorRollingFileInfo"/>

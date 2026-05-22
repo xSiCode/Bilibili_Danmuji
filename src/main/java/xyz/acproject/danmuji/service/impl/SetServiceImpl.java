@@ -15,6 +15,7 @@ import xyz.acproject.danmuji.conf.PublicDataConf;
 import xyz.acproject.danmuji.service.ClientService;
 import xyz.acproject.danmuji.service.SetService;
 import xyz.acproject.danmuji.tools.BASE64Encoder;
+import xyz.acproject.danmuji.tools.CookieEncryptUtils;
 import xyz.acproject.danmuji.tools.CurrencyTools;
 import xyz.acproject.danmuji.tools.ParseSetStatusTools;
 import xyz.acproject.danmuji.tools.file.ProFileTools;
@@ -58,7 +59,7 @@ public class SetServiceImpl implements SetService {
                 clientService.startConnService(PublicDataConf.centerSetConf.getRoomid());
             } catch (Exception e) {
                 // TODO 自动生成的 catch 块
-                e.printStackTrace();
+                LOGGER.error(e);
             }
         }
         // 默认浏览器打开网页
@@ -88,7 +89,7 @@ public class SetServiceImpl implements SetService {
             Map<String, String> profileMap = new ConcurrentHashMap<>();
             BASE64Encoder base64Encoder = new BASE64Encoder();
             if (PublicDataConf.USER != null) {
-                profileMap.put(cookies, base64Encoder.encode(PublicDataConf.USERCOOKIE.getBytes()));
+                profileMap.put(cookies, CookieEncryptUtils.encrypt(PublicDataConf.USERCOOKIE));
             }
             profileMap.put("set", base64Encoder.encode(centerSetConf.toJson().getBytes()));
             ProFileTools.write(profileMap, "DanmujiProfile");
@@ -111,7 +112,7 @@ public class SetServiceImpl implements SetService {
             Map<String, String> profileMap = new ConcurrentHashMap<>();
             BASE64Encoder base64Encoder = new BASE64Encoder();
             if (PublicDataConf.USER != null) {
-                profileMap.put(cookies, base64Encoder.encode(PublicDataConf.USERCOOKIE.getBytes()));
+                profileMap.put(cookies, CookieEncryptUtils.encrypt(PublicDataConf.USERCOOKIE));
             }
             profileMap.put("set", base64Encoder.encode(centerSetConf.toJson().getBytes()));
             ProFileTools.write(profileMap, "DanmujiProfile");
@@ -135,7 +136,7 @@ public class SetServiceImpl implements SetService {
             Map<String, String> profileMap = new ConcurrentHashMap<>();
             BASE64Encoder base64Encoder = new BASE64Encoder();
             if (PublicDataConf.USER != null) {
-                profileMap.put(cookies, base64Encoder.encode(PublicDataConf.USERCOOKIE.getBytes()));
+                profileMap.put(cookies, CookieEncryptUtils.encrypt(PublicDataConf.USERCOOKIE));
             }
             profileMap.put("set", base64Encoder.encode(centerSetConf.toJson().getBytes()));
             ProFileTools.write(profileMap, "DanmujiProfile");

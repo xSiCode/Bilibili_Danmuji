@@ -1,9 +1,11 @@
 package xyz.acproject.danmuji.controller;
 
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.stereotype.Controller;
+import xyz.acproject.danmuji.conf.PublicDataConf;
 import xyz.acproject.danmuji.http.HttpUserData;
 
 import javax.websocket.*;
@@ -41,6 +43,10 @@ public class DanmuWebsocket {
 	public void onMessage(String message) throws IOException {
 		//反向发送 23333333333 (滑稽
 		// 主动向房间发送消息需要调用http请求. (https://api.live.bilibili.com/msg/send)
+		if (StringUtils.isBlank(PublicDataConf.USERCOOKIE)) {
+			LOGGER.warn("WebSocket onMessage: 用户未登录，忽略弹幕发送请求");
+			return;
+		}
 		HttpUserData.httpPostSendBarrage(message);
 //		for(DanmuWebsocket danmuWebsocket:webSocketServers) {
 //			danmuWebsocket.session.getBasicRemote().sendText(message);

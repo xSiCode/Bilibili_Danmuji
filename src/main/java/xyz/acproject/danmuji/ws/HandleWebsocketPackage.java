@@ -66,7 +66,7 @@ public class HandleWebsocketPackage {
 						PublicDataConf.ROOM_POPULARITY = ByteUtils.byteslong(bs);
 					} catch (Exception e) {
 						// TODO 自动生成的 catch 块
-						e.printStackTrace();
+						LOGGER.error(e);
 					}
 				} else if (data_type == 8) {
 					// 返回{code 0} 验证头消息成功后返回
@@ -74,7 +74,7 @@ public class HandleWebsocketPackage {
 						resultStr = new String(bs, "utf-8");
 					} catch (Exception e) {
 						// TODO 自动生成的 catch 块
-						e.printStackTrace();
+						LOGGER.error(e);
 					}
 					LOGGER.info("服务器验证信息返回:"+resultStr);
 				}
@@ -90,7 +90,7 @@ public class HandleWebsocketPackage {
 					}
 				} catch (Exception e) {
 					// TODO 自动生成的 catch 块
-					e.printStackTrace();
+					LOGGER.error(e);
 				}
 //				resultStr = ByteUtils.unicodeToString(resultStr);
 			}
@@ -153,7 +153,7 @@ public class HandleWebsocketPackage {
 						PublicDataConf.ROOM_POPULARITY = ByteUtils.byteslong(bs);
 					} catch (Exception e) {
 						// TODO 自动生成的 catch 块
-						e.printStackTrace();
+						LOGGER.error(e);
 					}
 //					LOGGER.info(resultStr);
 				}
@@ -169,7 +169,7 @@ public class HandleWebsocketPackage {
 					}
 				} catch (Exception e) {
 					// TODO 自动生成的 catch 块
-					e.printStackTrace();
+					LOGGER.error(e);
 				}
 //				resultStr = ByteUtils.unicodeToString(resultStr);
 
@@ -202,7 +202,7 @@ public class HandleWebsocketPackage {
 			JavaStruct.unpack(barrageHeadHandle, bytes);
 		} catch (StructException e) {
 			// TODO 自动生成的 catch 块
-			e.printStackTrace();
+			LOGGER.error(e);
 		}
 		return barrageHeadHandle;
 	}
@@ -220,7 +220,7 @@ public class HandleWebsocketPackage {
 			b=JavaStruct.pack(barrageHeadHandle);
 		} catch (StructException e) {
 			// TODO 自动生成的 catch 块
-			e.printStackTrace();
+			LOGGER.error(e);
 		}
 		return b;
 	}

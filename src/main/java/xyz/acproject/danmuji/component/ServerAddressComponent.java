@@ -8,8 +8,12 @@ import xyz.acproject.danmuji.conf.PublicDataConf;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 @Component
 public class ServerAddressComponent implements ApplicationListener<WebServerInitializedEvent>{
+	private static final Logger LOGGER = LogManager.getLogger(ServerAddressComponent.class);
 	private int serverPort;
 	
 	
@@ -24,7 +28,7 @@ public class ServerAddressComponent implements ApplicationListener<WebServerInit
 			addressStr = address.getHostAddress();
 		} catch (UnknownHostException e) {
 			// TODO 自动生成的 catch 块
-			e.printStackTrace();
+			LOGGER.error(e);
 			addressStr = "获取失败";
 		}
 		return "http://"+ addressStr +":"+this.serverPort;

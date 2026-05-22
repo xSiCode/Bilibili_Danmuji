@@ -176,7 +176,7 @@ public class CurrencyTools {
                     try {
                         Thread.sleep(4050);
                     } catch (InterruptedException e) {
-                        e.printStackTrace();
+                        LOGGER.error(e);
                     }
                     String barrge = handleEnterStr(PublicDataConf.centerSetConf.getClock_in().getBarrage());
                     //   short code = 0;
@@ -184,14 +184,14 @@ public class CurrencyTools {
                     try {
                         Thread.sleep(2050);
                     } catch (InterruptedException e) {
-                        e.printStackTrace();
+                        LOGGER.error(e);
                     }
 
                     LOGGER.info("第{}次打卡{},直播间:{},up主:{},发送弹幕:{}", max + 1, code == 0 ? "成功" : "失败", userMedal.getRoomid(), userMedal.getTarget_name(), barrge);
                     max++;
                 } catch (Exception e) {
                     LOGGER.info("第{}次打卡{},直播间:{},up主:{},发送弹幕:{}", max + 1, "异常", userMedal.getRoomid(), userMedal.getTarget_name(), "未能成功发送");
-//                    e.printStackTrace();
+//                    LOGGER.error(e);
                 }
             }
         }

@@ -3,6 +3,9 @@ package xyz.acproject.danmuji.entity.high_level_danmu;
 import lombok.Data;
 import xyz.acproject.danmuji.entity.danmu_data.Barrage;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.Serializable;
 
 /**
@@ -18,6 +21,7 @@ public class Hbarrage implements Serializable, Cloneable {
      *
      */
     private static Hbarrage hbarrage = new Hbarrage();
+    private static final Logger LOGGER = LogManager.getLogger(Hbarrage.class);
     private static final long serialVersionUID = -699907643016533390L;
     // 用户uid() 位置info[2][0]
     private Long uid;
@@ -57,7 +61,7 @@ public class Hbarrage implements Serializable, Cloneable {
             return (Hbarrage) hbarrage.clone();
         } catch (Exception e) {
             // TODO 自动生成的 catch 块
-//			e.printStackTrace();
+//			LOGGER.error(e);
         }
         return new Hbarrage();
     }
@@ -82,7 +86,7 @@ public class Hbarrage implements Serializable, Cloneable {
             return h;
         } catch (Exception e) {
             // TODO 自动生成的 catch 块
-            e.printStackTrace();
+            LOGGER.error(e);
         }
         return new Hbarrage();
     }
@@ -106,7 +110,7 @@ public class Hbarrage implements Serializable, Cloneable {
             return h;
         } catch (Exception e) {
             // TODO 自动生成的 catch 块
-            e.printStackTrace();
+            LOGGER.error(e);
         }
         return new Hbarrage();
     }

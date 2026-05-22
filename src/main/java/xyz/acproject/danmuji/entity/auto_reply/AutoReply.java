@@ -2,6 +2,9 @@ package xyz.acproject.danmuji.entity.auto_reply;
 
 import lombok.Data;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.Serializable;
 
 /**
@@ -17,6 +20,7 @@ public class AutoReply implements Serializable,Cloneable{
 	/**
 	 * 
 	 */
+	private static final Logger LOGGER = LogManager.getLogger(AutoReply.class);
 	private static AutoReply autoReply = new AutoReply();
 	private static final long serialVersionUID = -4026920122195895200L;
 	private Long uid;
@@ -33,7 +37,7 @@ public class AutoReply implements Serializable,Cloneable{
 			return (AutoReply) autoReply.clone();
 		} catch (CloneNotSupportedException e) {
 			// TODO 自动生成的 catch 块
-			e.printStackTrace();
+			LOGGER.error(e);
 		}
 		return new AutoReply();
 	}
@@ -47,7 +51,7 @@ public class AutoReply implements Serializable,Cloneable{
 			return ar;
 		} catch (CloneNotSupportedException e) {
 			// TODO 自动生成的 catch 块
-			e.printStackTrace();
+			LOGGER.error(e);
 		}
 		return new AutoReply();
 	}

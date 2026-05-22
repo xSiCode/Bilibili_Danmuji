@@ -12,6 +12,7 @@ import xyz.acproject.danmuji.entity.user_data.UserCookie;
 import xyz.acproject.danmuji.http.HttpUserData;
 import xyz.acproject.danmuji.service.impl.SetServiceImpl;
 import xyz.acproject.danmuji.tools.BASE64Encoder;
+import xyz.acproject.danmuji.tools.CookieEncryptUtils;
 import xyz.acproject.danmuji.tools.RequestHeaderTools;
 import xyz.acproject.danmuji.tools.file.ProFileTools;
 
@@ -40,12 +41,11 @@ public class DanmujiInitService {
     public void init() {
         Map<String, String> profileMap = new ConcurrentHashMap<>();
         String cookieString = null;
-        BASE64Encoder base64Encoder = new BASE64Encoder();
         // 读取本地cookie
         try {
             profileMap.putAll(ProFileTools.read(PublicDataConf.PROFILE_NAME));
             cookieString = !StringUtils.isEmpty(profileMap.get(PublicDataConf.PROFILE_COOKIE_NAME))
-                    ? new String(base64Encoder.decode(profileMap.get(PublicDataConf.PROFILE_COOKIE_NAME)))
+                    ? CookieEncryptUtils.decrypt(profileMap.get(PublicDataConf.PROFILE_COOKIE_NAME))
                     : null;
         } catch (Exception e) {
             // TODO 自动生成的 catch 块
@@ -63,7 +63,7 @@ public class DanmujiInitService {
             if (StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
                 PublicDataConf.COOKIE = HttpUserData.httpBuvid34(new UserCookie().parse(PublicDataConf.USERCOOKIE));
                 PublicDataConf.USERCOOKIE = PublicDataConf.COOKIE.getCookie();
-                profileMap.put(PublicDataConf.PROFILE_COOKIE_NAME, base64Encoder.encode(PublicDataConf.USERCOOKIE.getBytes()));
+                profileMap.put(PublicDataConf.PROFILE_COOKIE_NAME, CookieEncryptUtils.encrypt(PublicDataConf.USERCOOKIE));
             }
         }
 
@@ -132,6 +132,7 @@ public class DanmujiInitService {
         }
 
         //初始化配置文件结束
+        BASE64Encoder base64Encoder = new BASE64Encoder();
         profileMap.put(PublicDataConf.PROFILE_SET_NAME, base64Encoder.encode(PublicDataConf.centerSetConf.toJson().getBytes()));
         ProFileTools.write(profileMap, PublicDataConf.PROFILE_NAME);
         // 下方解析操作逻辑冗余, 可以清除

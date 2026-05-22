@@ -1,6 +1,8 @@
 package xyz.acproject.danmuji.utils;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import javax.servlet.http.HttpServletRequest;
 import java.io.UnsupportedEncodingException;
@@ -13,6 +15,7 @@ import java.io.UnsupportedEncodingException;
  * @Copyright:2021
  */
 public class UrlUtils {
+	private static final Logger LOGGER = LogManager.getLogger(UrlUtils.class);
 
 
     public static String URLEncoderString(String str,String charset) {
@@ -26,7 +29,7 @@ public class UrlUtils {
         try {
             result = java.net.URLEncoder.encode(str, charset);
         } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
+            LOGGER.error(e);
         }
         return result;
     }

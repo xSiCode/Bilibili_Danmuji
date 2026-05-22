@@ -188,7 +188,7 @@ public class WebController {
                 clientService.startConnService(roomid);
             } catch (Exception e) {
                 // TODO 自动生成的 catch 块
-                e.printStackTrace();
+                LOGGER.error(e);
             }
             if (PublicDataConf.ROOMID != null) {
                 PublicDataConf.centerSetConf.setRoomid(PublicDataConf.ROOMID);
@@ -359,7 +359,7 @@ public class WebController {
             }
             checkService.changeSet(centerSetConf,true);
         } catch (Exception e) {
-            e.printStackTrace();
+            LOGGER.error(e);
             // TODO: handle exception
             return Response.success(0, req);
         }

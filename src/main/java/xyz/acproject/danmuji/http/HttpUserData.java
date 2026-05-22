@@ -53,11 +53,11 @@ public class HttpUserData {
         jsonObject = JSONObject.parseObject(data);
         short code = jsonObject.getShort("code");
         if (code == 0) {
-            LOGGER.info("已经登录:" + jsonObject.toString());
+            LOGGER.info("已经登录");
         } else if (code == -101) {
-            LOGGER.info("未登录:" + jsonObject.toString());
+            LOGGER.info("未登录");
         } else {
-            LOGGER.error("未知错误,原因未知" + jsonObject.toString());
+            LOGGER.error("未知错误,原因:{}", jsonObject.getString("message"));
         }
     }
 
@@ -103,7 +103,7 @@ public class HttpUserData {
                 }
             }
         }  else {
-            LOGGER.error("获取用户nav信息失败：" + jsonObject.toString());
+            LOGGER.error("获取用户nav信息失败,原因:{}", jsonObject.getString("message"));
         }
         return userNav;
     }
@@ -138,7 +138,7 @@ public class HttpUserData {
         if (code == 0) {
             qrcode = JSONObject.parseObject(jsonObject.getString("data"), Qrcode.class);
         } else {
-            LOGGER.error("获取二维码失败,未知错误,原因未知" + jsonObject.toString());
+            LOGGER.error("获取二维码失败,原因:{}", jsonObject.getString("message"));
         }
         return qrcode;
     }
@@ -167,7 +167,7 @@ public class HttpUserData {
         if (code == 0) {
             qrcode = JSONObject.parseObject(jsonObject.getString("data"), Qrcode.class);
         } else {
-            LOGGER.error("获取二维码失败,未知错误,原因未知" + jsonObject.toString());
+            LOGGER.error("获取二维码失败,原因:{}", jsonObject.getString("message"));
         }
         return qrcode;
     }
@@ -322,7 +322,7 @@ public class HttpUserData {
             userCookie.setBuvid3(jsonObject.getJSONObject("data").getString("b_3"));
             userCookie.setBuvid4(jsonObject.getJSONObject("data").getString("b_4"));
         } else {
-            LOGGER.error("获取buvid34,未知错误,原因未知" + jsonObject.toString());
+            LOGGER.error("获取buvid34失败,原因:{}", jsonObject.getString("message"));
         }
         return userCookie;
     }
@@ -389,11 +389,11 @@ public class HttpUserData {
             PublicDataConf.USER = JSONObject.parseObject(jsonObject.getString("data"), User.class);
             LOGGER.info("已经登录，获取信息成功");
         } else if (jsonObject.getShort("code") == -500) {
-            LOGGER.info("未登录，请登录:{}", jsonObject.toString());
+            LOGGER.info("未登录，请登录,原因:{}", jsonObject.getString("message"));
             PublicDataConf.USERCOOKIE = null;
             PublicDataConf.USER = null;
         } else {
-            LOGGER.error("未知错误,原因未知:{}" , jsonObject.toString());
+            LOGGER.error("未知错误,原因:{}", jsonObject.getString("message"));
             PublicDataConf.USERCOOKIE = null;
             PublicDataConf.USER = null;
         }
@@ -435,11 +435,11 @@ public class HttpUserData {
 
 
         } else if (code == -101) {
-            LOGGER.info("未登录，请登录:" + jsonObject.toString());
+            LOGGER.info("未登录，请登录");
         } else if (code == -400) {
-            LOGGER.info("房间号不存在或者未输入房间号:" + jsonObject.toString());
+            LOGGER.info("房间号不存在或者未输入房间号");
         } else {
-            LOGGER.error("未知错误,原因未知" + jsonObject.toString());
+            LOGGER.error("未知错误,原因:{}", jsonObject.getString("message"));
         }
     }
 
@@ -477,11 +477,11 @@ public class HttpUserData {
                     .parseObject((((JSONObject) jsonObject.get("data")).getString("property")), UserBarrageMsg.class);
             return barrageMsg;
         } else if (code == -101) {
-            LOGGER.info("未登录，请登录:" + jsonObject.toString());
+            LOGGER.info("未登录，请登录");
         } else if (code == -400) {
-            LOGGER.info("房间号不存在或者未输入房间号:" + jsonObject.toString());
+            LOGGER.info("房间号不存在或者未输入房间号");
         } else {
-            LOGGER.error("未知错误,原因未知" + jsonObject.toString());
+            LOGGER.error("未知错误,原因:{}", jsonObject.getString("message"));
         }
         return null;
     }
@@ -543,7 +543,6 @@ public class HttpUserData {
                     LOGGER.info("发送弹幕失败，尝试重新发送" + jsonObject.getString("message"));
                     PublicDataConf.barrageString.offer(msg);
                 } else {
-                    LOGGER.info(jsonObject.toString());
                     String message = jsonObject.getString("message");
                     if("f".equals(message)||"k".equals(message)) message="触发破站关键字，请检查发送弹幕是否含有破站屏蔽词或者非法词汇";
                     LOGGER.error("发送弹幕失败,原因:" + message);
@@ -556,7 +555,7 @@ public class HttpUserData {
             } else if (code == 11000) {
                 LOGGER.error("发送弹幕失败,原因:弹幕含有关键字或者弹幕颜色不存在:" + jsonObject.getString("message"));
             } else {
-                LOGGER.error("发送弹幕失败,未知错误,原因未知" + jsonObject.toString());
+                LOGGER.error("发送弹幕失败,原因:{}", jsonObject.getString("message"));
             }
         } else {
             return code;
@@ -617,7 +616,6 @@ public class HttpUserData {
                         || jsonObject.getString("message").equals("msg repeat")) {
                     LOGGER.info("发送弹幕失败，尝试重新发送" + jsonObject.getString("message"));
                 } else {
-                    LOGGER.info(jsonObject.toString());
                     LOGGER.error("发送弹幕失败,原因:" + jsonObject.getString("message"));
                     code = -402;
                 }
@@ -628,7 +626,7 @@ public class HttpUserData {
             } else if (code == 11000) {
                 LOGGER.error("发送弹幕失败,原因:弹幕含有关键字或者弹幕颜色不存在:" + jsonObject.getString("message"));
             } else {
-                LOGGER.error("发送弹幕失败,未知错误,原因未知" + jsonObject.toString());
+                LOGGER.error("发送弹幕失败,原因:{}", jsonObject.getString("message"));
             }
         } else {
             return code;
@@ -691,7 +689,7 @@ public class HttpUserData {
         if (code == 0) {
             // 发送私聊成功
         } else {
-            LOGGER.error("发送私聊失败,未知错误,原因未知" + jsonObject.toString());
+            LOGGER.error("发送私聊失败,原因:{}", jsonObject.getString("message"));
         }
         return code;
     }
@@ -755,7 +753,7 @@ public class HttpUserData {
             // 发送私聊成功
             LOGGER.info("赠送礼物成功,赠送房间:{},赠送主播id:{},送出礼物:{},个数:{},亲密度:{}",roomid,ruid,userBag.getGift_name(),userBag.getGift_num(),userBag.getFeed()*userBag.getGift_num());
         } else {
-            LOGGER.error("赠送礼物失败,未知错误,原因未知" + jsonObject.toString());
+            LOGGER.error("赠送礼物失败,原因:{}", jsonObject.getString("message"));
         }
 //        LOGGER.info("赠送礼物成功,赠送房间:{},赠送主播:{},送出礼物:{},个数:{},亲密度:{}",roomid,ruid,userBag.getGift_name(),userBag.getGift_num(),userBag.getFeed()*userBag.getGift_num());
         return 1;
@@ -988,7 +986,7 @@ public class HttpUserData {
         } else if (code == 1011040) {
             LOGGER.info(jsonObject.get("message"));
         } else {
-            LOGGER.error("签到失败，原因：" + jsonObject.toString());
+            LOGGER.error("签到失败，原因:{}", jsonObject.getString("message"));
         }
     }
 
@@ -1032,7 +1030,7 @@ public class HttpUserData {
                         break;
                     }
                 } else {
-                    LOGGER.error("获取勋章失败，原因：" + jsonObject.toString());
+                    LOGGER.error("获取勋章失败，原因:{}", jsonObject.getString("message"));
                     break;
                 }
                 nowPage++;
@@ -1083,7 +1081,7 @@ public class HttpUserData {
                 return userBagList;
             }
         } else {
-            LOGGER.error("获取礼物包失败，原因：" + jsonObject.toString());
+            LOGGER.error("获取礼物包失败，原因:{}", jsonObject.getString("message"));
         }
         return null;
     }

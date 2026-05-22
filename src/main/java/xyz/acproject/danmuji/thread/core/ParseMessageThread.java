@@ -167,7 +167,7 @@ public class ParseMessageThread extends Thread {
                             } catch (Exception e) {
                                 // TODO: handle exception
                                 LOGGER.error("弹幕体解析抛出解析异常体:{}" ,message);
-                                e.printStackTrace();
+                                LOGGER.error(e);
                                 break;
                             }
                             //是否开启弹幕
@@ -232,7 +232,7 @@ public class ParseMessageThread extends Thread {
                                         danmuWebsocket.sendMessage(WsPackage.toJson("danmu", (short) 0, hbarrage));
                                     } catch (Exception e) {
                                         // TODO 自动生成的 catch 块
-                                        e.printStackTrace();
+                                        LOGGER.error(e);
                                     }
                                     //日志处理
                                     if (PublicDataConf.logThread != null && !PublicDataConf.logThread.FLAG) {
@@ -287,7 +287,7 @@ public class ParseMessageThread extends Thread {
                                         danmuWebsocket.sendMessage(WsPackage.toJson("gift", (short) 0, gift));
                                     } catch (Exception e) {
                                         // TODO 自动生成的 catch 块
-                                        e.printStackTrace();
+                                        LOGGER.error(e);
                                     }
                                     if (PublicDataConf.logThread != null && !PublicDataConf.logThread.FLAG) {
                                         PublicDataConf.logString.offer(stringBuilder.toString());
@@ -306,7 +306,7 @@ public class ParseMessageThread extends Thread {
                                         parseGiftSetting(gift);
                                     } catch (Exception e) {
                                         // TODO 自动生成的 catch 块
-                                        e.printStackTrace();
+                                        LOGGER.error(e);
                                     }
                                 }
                             }
@@ -352,7 +352,7 @@ public class ParseMessageThread extends Thread {
                                     danmuWebsocket.sendMessage(WsPackage.toJson("gift", (short) 0, gift));
                                 } catch (Exception e) {
                                     // TODO 自动生成的 catch 块
-                                    e.printStackTrace();
+                                    LOGGER.error(e);
                                 }
                                 if (PublicDataConf.logThread != null && !PublicDataConf.logThread.FLAG) {
                                     PublicDataConf.logString.offer(stringBuilder.toString());
@@ -379,7 +379,7 @@ public class ParseMessageThread extends Thread {
                                                 parseGiftSetting(gift);
                                             } catch (Exception e) {
                                                 // TODO 自动生成的 catch 块
-                                                e.printStackTrace();
+                                                LOGGER.error(e);
                                             }
                                         }
                                     }
@@ -477,7 +477,7 @@ public class ParseMessageThread extends Thread {
                                     danmuWebsocket.sendMessage(WsPackage.toJson("superchat", (short) 0, superChat));
                                 } catch (Exception e) {
                                     // TODO 自动生成的 catch 块
-                                    e.printStackTrace();
+                                    LOGGER.error(e);
                                 }
                                 if (PublicDataConf.logThread != null && !PublicDataConf.logThread.FLAG) {
                                     PublicDataConf.logString.offer(stringBuilder.toString());
@@ -511,7 +511,7 @@ public class ParseMessageThread extends Thread {
                                                 parseGiftSetting(gift);
                                             } catch (Exception e) {
                                                 // TODO 自动生成的 catch 块
-                                                e.printStackTrace();
+                                                LOGGER.error(e);
                                             }
                                         }
                                     }
@@ -555,7 +555,7 @@ public class ParseMessageThread extends Thread {
                                     danmuWebsocket.sendMessage(WsPackage.toJson("welcomeVip", (short) 0, welcomeVip));
                                 } catch (Exception e) {
                                     // TODO 自动生成的 catch 块
-                                    e.printStackTrace();
+                                    LOGGER.error(e);
                                 }
                                 if (PublicDataConf.logThread != null && !PublicDataConf.logThread.FLAG) {
                                     PublicDataConf.logString.offer(stringBuilder.toString());
@@ -593,7 +593,7 @@ public class ParseMessageThread extends Thread {
                                     danmuWebsocket.sendMessage(WsPackage.toJson("welcomeGuard", (short) 0, welcomeGuard));
                                 } catch (Exception e) {
                                     // TODO 自动生成的 catch 块
-                                    e.printStackTrace();
+                                    LOGGER.error(e);
                                 }
                                 if (PublicDataConf.logThread != null && !PublicDataConf.logThread.FLAG) {
                                     PublicDataConf.logString.offer(stringBuilder.toString());
@@ -635,7 +635,7 @@ public class ParseMessageThread extends Thread {
                                     danmuWebsocket.sendMessage(WsPackage.toJson("block", (short) 0, blockMessage));
                                 } catch (Exception e) {
                                     // TODO 自动生成的 catch 块
-                                    e.printStackTrace();
+                                    LOGGER.error(e);
                                 }
                                 if (PublicDataConf.logThread != null && !PublicDataConf.logThread.FLAG) {
                                     PublicDataConf.logString.offer(stringBuilder.toString());
@@ -725,7 +725,7 @@ public class ParseMessageThread extends Thread {
 
                                 } catch (Exception e) {
                                     // TODO: handle exception
-                                    e.printStackTrace();
+                                    LOGGER.error(e);
                                 }
                             }
                             //					LOGGER.info("本房间主播开启了天选时刻:::" + message);
@@ -1030,7 +1030,7 @@ public class ParseMessageThread extends Thread {
                                             danmuWebsocket.sendMessage(WsPackage.toJson("follow", (short) 0, interact));
                                         } catch (Exception e) {
                                             // TODO 自动生成的 catch 块
-                                            e.printStackTrace();
+                                            LOGGER.error(e);
                                         }
                                         stringBuilder.delete(0, stringBuilder.length());
                                     }
@@ -1053,7 +1053,7 @@ public class ParseMessageThread extends Thread {
                                                 parseFollowSetting(interact);
                                             } catch (Exception e) {
                                                 // TODO 自动生成的 catch 块
-                                                e.printStackTrace();
+                                                LOGGER.error(e);
                                             }
                                         }
                                     }
@@ -1075,7 +1075,7 @@ public class ParseMessageThread extends Thread {
                                         try {
                                             danmuWebsocket.sendMessage(WsPackage.toJson("welcome", (short) 0, interact));
                                         } catch (Exception e) {
-                                            e.printStackTrace();
+                                            LOGGER.error(e);
                                         }
                                     }
 
@@ -1251,13 +1251,13 @@ public class ParseMessageThread extends Thread {
                                                 parseWelcomeSetting(interact);
                                             } catch (Exception e) {
                                                 // TODO 自动生成的 catch 块
-                                                e.printStackTrace();
+                                                LOGGER.error(e);
                                             }
                                         }
                                     }
                                 }
                             } catch (Exception e) {
-                                e.printStackTrace();
+                                LOGGER.error(e);
                             }
                             break;
                         // 礼物bag bot
@@ -1346,7 +1346,7 @@ public class ParseMessageThread extends Thread {
                                     danmuWebsocket.sendMessage(WsPackage.toJson("gift", (short) 0, gift));
                                 } catch (Exception e) {
                                     // TODO 自动生成的 catch 块
-                                    e.printStackTrace();
+                                    LOGGER.error(e);
                                 }
                                 if (PublicDataConf.logThread != null && !PublicDataConf.logThread.FLAG) {
                                     PublicDataConf.logString.offer(stringBuilder.toString());
@@ -1375,7 +1375,7 @@ public class ParseMessageThread extends Thread {
                                                 parseGiftSetting(gift);
                                             } catch (Exception e) {
                                                 // TODO 自动生成的 catch 块
-                                                e.printStackTrace();
+                                                LOGGER.error(e);
                                             }
                                         }
                                     }
@@ -1512,7 +1512,7 @@ public class ParseMessageThread extends Thread {
                     }
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                LOGGER.error(e);
                 LOGGER.error(e.getMessage());
             }
         }

@@ -1,6 +1,10 @@
 package xyz.acproject.danmuji.utils;
 
 import javax.servlet.http.HttpServletRequest;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.LineNumberReader;
@@ -15,6 +19,7 @@ import java.net.UnknownHostException;
  * @Copyright:2021
  */
 public final class IpUtils {
+	private static final Logger LOGGER = LogManager.getLogger(IpUtils.class);
     private IpUtils() {
     }
 
@@ -40,7 +45,7 @@ public final class IpUtils {
                 try {
                     inet = InetAddress.getLocalHost();
                 } catch (UnknownHostException e) {
-                    e.printStackTrace();
+                    LOGGER.error(e);
                 }
                 ipAddress = inet.getHostAddress();
             }

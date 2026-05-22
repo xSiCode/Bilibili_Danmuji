@@ -3,6 +3,9 @@ package xyz.acproject.danmuji.tools.file;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.serializer.SerializerFeature;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import xyz.acproject.danmuji.utils.JodaTimeUtils;
 
 import java.io.File;
@@ -20,6 +23,7 @@ import java.util.Date;
  * @Copyright:2021
  */
 public class JsonFileTools {
+	private static final Logger LOGGER = LogManager.getLogger(JsonFileTools.class);
 
     /**
      * 生成.json格式文件
@@ -32,7 +36,7 @@ public class JsonFileTools {
             path = URLDecoder.decode(fileTools.getBaseJarPath().toString(), "utf-8");
         } catch (Exception e1) {
             // TODO 自动生成的 catch 块
-            e1.printStackTrace();
+            LOGGER.error(e1);
         }
 
         // 生成json格式文件
@@ -59,7 +63,7 @@ public class JsonFileTools {
             write.close();
         } catch (Exception e) {
             flag = false;
-            e.printStackTrace();
+            LOGGER.error(e);
         }
 
         // 返回是否成功的标记
@@ -77,7 +81,7 @@ public class JsonFileTools {
             path = URLDecoder.decode(fileTools.getBaseJarPath().toString(), "utf-8");
         } catch (Exception e1) {
             // TODO 自动生成的 catch 块
-            e1.printStackTrace();
+            LOGGER.error(e1);
         }
 
         // 生成json格式文件
@@ -103,7 +107,7 @@ public class JsonFileTools {
             write.flush();
             write.close();
         } catch (Exception e) {
-            e.printStackTrace();
+            LOGGER.error(e);
         }
         // 返回是否成功的标记
         return file;

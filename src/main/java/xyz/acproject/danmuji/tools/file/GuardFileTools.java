@@ -1,5 +1,8 @@
 package xyz.acproject.danmuji.tools.file;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import xyz.acproject.danmuji.conf.PublicDataConf;
 
 import java.io.*;
@@ -16,6 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * @Copyright:2020 blogs.acproject.xyz Inc. All rights reserved.
  */
 public class GuardFileTools {
+	private static final Logger LOGGER = LogManager.getLogger(GuardFileTools.class);
 	public static Map<Long, String> read() {
 		String path = System.getProperty("user.dir");
 		FileTools fileTools = new FileTools();
@@ -24,7 +28,7 @@ public class GuardFileTools {
 			path = URLDecoder.decode(fileTools.getBaseJarPath().toString(), "utf-8");
 		} catch (Exception e1) {
 			// TODO 自动生成的 catch 块
-			e1.printStackTrace();
+			LOGGER.error(e1);
 		}
 		path = path +"/guardFile/";
 		File file = new File(path);
@@ -38,7 +42,7 @@ public class GuardFileTools {
 				file.createNewFile();
 			} catch (IOException e) {
 				// TODO 自动生成的 catch 块
-				e.printStackTrace();
+				LOGGER.error(e);
 			}
 		BufferedReader bufReader = null;
 		try {
@@ -50,14 +54,14 @@ public class GuardFileTools {
 			}
 		} catch (IOException e) {
 			// TODO 自动生成的 catch 块
-			e.printStackTrace();
+			LOGGER.error(e);
 		} finally {
 			try {
 				if (bufReader != null)
 					bufReader.close();
 			} catch (IOException e) {
 				// TODO 自动生成的 catch 块
-				e.printStackTrace();
+				LOGGER.error(e);
 			}
 		}
 		return guardMap;
@@ -74,7 +78,7 @@ public class GuardFileTools {
 			path = URLDecoder.decode(fileTools.getBaseJarPath().toString(), "utf-8");
 		} catch (Exception e1) {
 			// TODO 自动生成的 catch 块
-			e1.printStackTrace();
+			LOGGER.error(e1);
 		}
 		try {
 			// 如果文件存在，则追加内容；如果文件不存在，则创建文件
@@ -90,7 +94,7 @@ public class GuardFileTools {
 					file.createNewFile();
 				} catch (IOException e) {
 					// TODO 自动生成的 catch 块
-					e.printStackTrace();
+					LOGGER.error(e);
 				}
 			os = new OutputStreamWriter(new FileOutputStream(file,true),"utf-8");
 			bw = new BufferedWriter(os);
@@ -101,14 +105,14 @@ public class GuardFileTools {
 			bw.flush();
 			pw.flush();
 		} catch (Exception e) {
-			e.printStackTrace();
+			LOGGER.error(e);
 		} finally {
 			if (os != null) {
 				try {
 					os.close();
 				} catch (IOException e) {
 					// TODO 自动生成的 catch 块
-					e.printStackTrace();
+					LOGGER.error(e);
 				}
 			}
 			if (bw != null) {
@@ -116,7 +120,7 @@ public class GuardFileTools {
 					bw.close();
 				} catch (IOException e) {
 					// TODO 自动生成的 catch 块
-					e.printStackTrace();
+					LOGGER.error(e);
 				}
 			}
 			if (pw != null) {
@@ -127,7 +131,7 @@ public class GuardFileTools {
 //					fw.close();
 //				} catch (IOException e) {
 //					// TODO 自动生成的 catch 块
-//					e.printStackTrace();
+//					LOGGER.error(e);
 //				}
 //			}
 		}

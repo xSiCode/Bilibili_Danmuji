@@ -78,7 +78,7 @@ public class ProFileTools {
 			file.createNewFile();
 		} catch (IOException e) {
 			// TODO 自动生成的 catch 块
-			e.printStackTrace();
+			log.error(e.getMessage(), e);
 		}
 		BufferedWriter bufferedWriter = null;
 		try (OutputStreamWriter os = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8)){
@@ -95,7 +95,7 @@ public class ProFileTools {
 			bufferedWriter.flush();
 		} catch (IOException e) {
 			// TODO 自动生成的 catch 块
-			e.printStackTrace();
+			log.error(e.getMessage(), e);
 		}
 	}
 }

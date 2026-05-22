@@ -599,8 +599,8 @@ public class HttpRoomData {
                         System.out.println("字符串不包含目标片段。 API 调用超过频次，建议主动限制");
                         schedulerDynamicService.schedule(() -> {
                             schedulerDynamicColdWait.set(false);
-                            System.out.println("11分钟延迟已到，开始执行任务！当前时间：" + System.currentTimeMillis());
-                        }, 3, TimeUnit.MINUTES);
+                            System.out.println("15分钟延迟已到，开始执行任务！当前时间：" + System.currentTimeMillis());
+                        }, 15, TimeUnit.MINUTES);
                     }
                     LogFileTools.getlogFileTools().logTestFile(logSb + " 用户动态API 调用超过频次，建议主动限制");
                 }
@@ -737,7 +737,7 @@ public class HttpRoomData {
                 if (schedulerCardInfoColdWait.compareAndSet(false, true)) {
                     schedulerCardInfoService.schedule(() -> {
                         schedulerCardInfoColdWait.set(false);
-                        System.out.println("11分钟延迟已到，开始执行任务！当前时间：" + System.currentTimeMillis());
+                        System.out.println("5分钟延迟已到，开始执行任务！当前时间：" + System.currentTimeMillis());
                     }, 5, TimeUnit.MINUTES);
                 }
                 LogFileTools.getlogFileTools().logTestFile(logSb + " 用户卡片信息API 调用超过频次，建议主动限制");
@@ -834,7 +834,7 @@ public class HttpRoomData {
                         Thread.sleep(1);
                     } catch (InterruptedException e) {
                         // TODO 自动生成的 catch 块
-                        e.printStackTrace();
+                        LOGGER.error(e);
                     }
                     guardMap.put(((JSONObject) object).getLong("uid"), ((JSONObject) object).getString("username"));
                 }

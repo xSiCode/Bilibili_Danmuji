@@ -3,6 +3,9 @@ package xyz.acproject.danmuji.entity;
 import struct.StructClass;
 import struct.StructField;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.Serializable;
 
 /**
@@ -19,6 +22,7 @@ public class BarrageHeadHandle implements Serializable,Cloneable {
 	 * 
 	 */
 	private static final long serialVersionUID = -8552333200751773861L;
+	private static final Logger LOGGER = LogManager.getLogger(BarrageHeadHandle.class);
 	private static BarrageHeadHandle barrageHeadHandle = new BarrageHeadHandle();
 	// 数据包长度 为int
 	@StructField(order = 0)
@@ -51,7 +55,7 @@ public class BarrageHeadHandle implements Serializable,Cloneable {
 			return (BarrageHeadHandle)barrageHeadHandle.clone();
 		} catch (CloneNotSupportedException e) {
 			// TODO 自动生成的 catch 块
-			e.printStackTrace();
+			LOGGER.error(e);
 		}
 		return new BarrageHeadHandle();
 	}
@@ -68,7 +72,7 @@ public class BarrageHeadHandle implements Serializable,Cloneable {
 			return b;
 		} catch (CloneNotSupportedException e) {
 			// TODO 自动生成的 catch 块
-			e.printStackTrace();
+			LOGGER.error(e);
 		}
 		return new BarrageHeadHandle(packageLength,packageHeadLength,packageVersion,packageType,packageOther);
 	}

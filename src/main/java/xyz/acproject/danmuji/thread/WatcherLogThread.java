@@ -1,10 +1,14 @@
 package xyz.acproject.danmuji.thread;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import xyz.acproject.danmuji.conf.PublicDataConf;
 import xyz.acproject.danmuji.tools.file.LogFileTools;
 
 public class WatcherLogThread extends Thread {
+	private static final Logger LOGGER = LogManager.getLogger(WatcherLogThread.class);
 	public volatile boolean FLAG = false;
 
 	@Override
@@ -30,7 +34,7 @@ public class WatcherLogThread extends Thread {
 			try {
 				Thread.sleep(10);
 			} catch (InterruptedException e) {
-				e.printStackTrace();
+				LOGGER.error(e);
 			}
 		}
 	}

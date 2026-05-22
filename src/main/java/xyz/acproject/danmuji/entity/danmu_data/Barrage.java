@@ -2,6 +2,9 @@ package xyz.acproject.danmuji.entity.danmu_data;
 
 import lombok.Data;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.Serializable;
 
 /**
@@ -24,6 +27,7 @@ public class Barrage implements Serializable,Cloneable {
 	/**
 	 * 
 	 */
+	private static final Logger LOGGER = LogManager.getLogger(Barrage.class);
 	private static Barrage barrage  =new Barrage();
 	private static final long serialVersionUID = 434878878226926991L;
 	//用户uid() 位置info[2][0]
@@ -82,7 +86,7 @@ public class Barrage implements Serializable,Cloneable {
 			return (Barrage)barrage.clone();
 		} catch (CloneNotSupportedException e) {
 			// TODO 自动生成的 catch 块
-			e.printStackTrace();
+			LOGGER.error(e);
 		}
 		return new Barrage();
 	}
@@ -116,7 +120,7 @@ public class Barrage implements Serializable,Cloneable {
 			return b;
 		} catch (CloneNotSupportedException e) {
 			// TODO 自动生成的 catch 块
-			e.printStackTrace();
+			LOGGER.error(e);
 		}
     	return new Barrage();
     }

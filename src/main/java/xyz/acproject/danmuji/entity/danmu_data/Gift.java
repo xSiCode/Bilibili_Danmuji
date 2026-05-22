@@ -3,6 +3,9 @@ package xyz.acproject.danmuji.entity.danmu_data;
 import lombok.Data;
 import xyz.acproject.danmuji.entity.superchat.MedalInfo;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.Serializable;
 
 /**
@@ -19,6 +22,7 @@ public class Gift implements Serializable,Cloneable{
 	/**
 	 * 
 	 */
+	private static final Logger LOGGER = LogManager.getLogger(Gift.class);
 	private static final long serialVersionUID = 5959529631245949132L;
 	/*
 	 * 经典辣条json格式
@@ -76,7 +80,7 @@ public class Gift implements Serializable,Cloneable{
 			return (Gift) gift.clone();
 		} catch (CloneNotSupportedException e) {
 			// TODO 自动生成的 catch 块
-			e.printStackTrace();
+			LOGGER.error(e);
 		}
 		return new Gift();
 	}
@@ -103,7 +107,7 @@ public class Gift implements Serializable,Cloneable{
 			return g;
 		} catch (CloneNotSupportedException e) {
 			// TODO 自动生成的 catch 块
-			e.printStackTrace();
+			LOGGER.error(e);
 		}
 		return new Gift();
 	}

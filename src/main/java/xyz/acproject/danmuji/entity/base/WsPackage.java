@@ -3,6 +3,9 @@ package xyz.acproject.danmuji.entity.base;
 import lombok.Data;
 import xyz.acproject.danmuji.utils.FastJsonUtils;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.io.Serializable;
 @Data
 public class WsPackage implements Serializable,Cloneable{
@@ -11,6 +14,7 @@ public class WsPackage implements Serializable,Cloneable{
 	 * 
 	 */
 	private static final long serialVersionUID = 4807973278850564054L;
+	private static final Logger LOGGER = LogManager.getLogger(WsPackage.class);
 	private static WsPackage wsPackage = new WsPackage();
 	private String cmd;
 	private Short status;
@@ -23,7 +27,7 @@ public class WsPackage implements Serializable,Cloneable{
 			return (WsPackage) wsPackage.clone();
 		} catch (Exception e) {
 			// TODO 自动生成的 catch 块
-			e.printStackTrace();
+			LOGGER.error(e);
 		}
 		return new WsPackage();
 	}
@@ -36,7 +40,7 @@ public class WsPackage implements Serializable,Cloneable{
 			return ws;
 		} catch (Exception e) {
 			// TODO 自动生成的 catch 块
-			e.printStackTrace();
+			LOGGER.error(e);
 		}
 		return new WsPackage();
 	}
@@ -49,7 +53,7 @@ public class WsPackage implements Serializable,Cloneable{
 			return FastJsonUtils.toJson(ws);
 		} catch (Exception e) {
 			// TODO 自动生成的 catch 块
-			e.printStackTrace();
+			LOGGER.error(e);
 		}
 		return "";
 	}

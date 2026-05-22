@@ -1,6 +1,8 @@
 package xyz.acproject.danmuji.utils;
 
 import okhttp3.*;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.util.Iterator;
@@ -18,6 +20,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class OkHttp3Utils {
 
+	private static final Logger LOGGER = LogManager.getLogger(OkHttp3Utils.class);
 	private volatile static OkHttp3Utils okHttp3Utils;
 	private OkHttpClient okHttpClient;
 	// MEDIA_TYPE <==> Content-Type
@@ -75,7 +78,7 @@ public class OkHttp3Utils {
 		try {
 			response = okHttpClient.newCall(request).execute();
 		} catch (Exception e) {
-			e.printStackTrace();
+			LOGGER.error("HTTP request failed", e);
 		}
 //		finally {
 //			if(headers!=null)headers.clear();
@@ -97,7 +100,7 @@ public class OkHttp3Utils {
 		try {
 			response = okHttpClient.newCall(request).execute();
 		} catch (IOException e) {
-			e.printStackTrace();
+			LOGGER.error("HTTP request failed", e);
 		}
 //		finally {
 //			if(headers!=null)headers.clear();
@@ -153,7 +156,7 @@ public class OkHttp3Utils {
 		try {
 			response = okHttpClient.newCall(request).execute();
 		} catch (IOException e) {
-			e.printStackTrace();
+			LOGGER.error("HTTP request failed", e);
 		}
 //		finally {
 //			if(headers!=null)headers.clear();

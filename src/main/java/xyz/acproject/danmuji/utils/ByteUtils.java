@@ -2,6 +2,8 @@ package xyz.acproject.danmuji.utils;
 
 
 import org.apache.commons.compress.compressors.brotli.BrotliCompressorInputStream;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -18,6 +20,7 @@ import java.util.zip.InflaterOutputStream;
  * @Copyright:2020 blogs.acproject.xyz Inc. All rights reserved.
  */
 public class ByteUtils {
+	private static final Logger LOGGER = LogManager.getLogger(ByteUtils.class);
 	public static final int UNICODE_LEN = 2;
 
 	/**
@@ -59,7 +62,7 @@ public class ByteUtils {
 			}
 			b = bos.toByteArray();
 		} catch (IOException e) {
-			e.printStackTrace();
+			LOGGER.error(e);
 		}
 		return b;
 	}
@@ -81,13 +84,13 @@ public class ByteUtils {
 			b = bos.toByteArray();
 			return b;
 		} catch (Exception ex) {
-			ex.printStackTrace();
+			LOGGER.error(ex);
 		}finally {
 			if(bos!=null){
 				try {
 					bos.close();
 				} catch (IOException e) {
-					e.printStackTrace();
+					LOGGER.error(e);
 				}
 			}
 		}

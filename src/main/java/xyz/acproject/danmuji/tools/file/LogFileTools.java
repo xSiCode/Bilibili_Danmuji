@@ -1,5 +1,8 @@
 package xyz.acproject.danmuji.tools.file;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import xyz.acproject.danmuji.conf.PublicDataConf;
 import xyz.acproject.danmuji.utils.JodaTimeUtils;
 
@@ -13,6 +16,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 public class LogFileTools {
+	private static final Logger LOGGER = LogManager.getLogger(LogFileTools.class);
 	private volatile static LogFileTools logFileTools;
 
 	// ---- 路径缓存，避免每次调用都重复计算 ----
@@ -80,7 +84,7 @@ public class LogFileTools {
 									bw.newLine();
 								}
 							} catch (Exception e) {
-								e.printStackTrace();
+								LOGGER.error(e);
 							}
 						}
 					}

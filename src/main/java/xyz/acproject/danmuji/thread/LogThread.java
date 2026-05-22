@@ -1,6 +1,9 @@
 package xyz.acproject.danmuji.thread;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import xyz.acproject.danmuji.conf.PublicDataConf;
 import xyz.acproject.danmuji.tools.file.LogFileTools;
 
@@ -13,6 +16,7 @@ import xyz.acproject.danmuji.tools.file.LogFileTools;
  * @Copyright:2020 blogs.acproject.xyz Inc. All rights reserved.
  */
 public class LogThread extends Thread{
+	private static final Logger LOGGER = LogManager.getLogger(LogThread.class);
 //	@SuppressWarnings("unused")
 //	private Logger LOGGER = LogManager.getLogger(LogThread.class);
 	public volatile boolean FLAG = false;
@@ -41,7 +45,7 @@ public class LogThread extends Thread{
 				Thread.sleep(10);
 			} catch (InterruptedException e) {
 				// TODO 自动生成的 catch 块
-				e.printStackTrace();
+				LOGGER.error(e);
 			}
 		}
 	}

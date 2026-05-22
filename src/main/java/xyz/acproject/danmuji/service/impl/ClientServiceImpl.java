@@ -1,6 +1,8 @@
 package xyz.acproject.danmuji.service.impl;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import xyz.acproject.danmuji.client.WebSocketProxy;
@@ -38,6 +40,8 @@ import java.util.UUID;
  */
 @Service
 public class ClientServiceImpl implements ClientService {
+    private static final Logger LOGGER = LogManager.getLogger(ClientServiceImpl.class);
+
     private SetService setService;
     private ThreadComponent threadComponent;
 
@@ -220,7 +224,7 @@ public class ClientServiceImpl implements ClientService {
                         PublicDataConf.webSocketProxy.closeBlocking();
                     } catch (InterruptedException e) {
                         // TODO 自动生成的 catch 块
-                        e.printStackTrace();
+                        LOGGER.error(e);
                     }
                     PublicDataConf.webSocketProxy.closeConnection(1000, "手动关闭");
                     PublicDataConf.webSocketProxy = null;

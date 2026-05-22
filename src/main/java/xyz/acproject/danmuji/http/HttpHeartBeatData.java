@@ -55,10 +55,10 @@ public class HttpHeartBeatData {
 			if (jsonObject.getString("msg").equals("success")) {
 //				LOGGER.info("在线心跳包get发送成功"+jsonObject.getString("data"));
 			} else {
-				LOGGER.error("在线心跳包get发送失败" + jsonObject.toString());
+				LOGGER.error("在线心跳包get发送失败,原因:{}", jsonObject.getString("msg"));
 			}
 		} else {
-			LOGGER.error("在线心跳包get发送失败" + jsonObject.toString());
+			LOGGER.error("在线心跳包get发送失败,原因:{}", jsonObject.getString("msg"));
 		}
 	}
 
@@ -97,10 +97,10 @@ public class HttpHeartBeatData {
 			if (jsonObject.getString("message").equals("0")) {
 //				LOGGER.info("心跳包post发送成功" + jsonObject.getString("data"));
 			} else {
-				LOGGER.error("心跳包post发送失败,未知错误,原因未知v" + jsonObject.toString());
+				LOGGER.error("心跳包post发送失败,未知错误,原因:{}", jsonObject.getString("message"));
 			}
 		} else {
-			LOGGER.error("发跳包post发送失败,未知错误,原因未知" + jsonObject.toString());
+			LOGGER.error("发跳包post发送失败,未知错误,原因:{}", jsonObject.getString("message"));
 		}
 	}
 

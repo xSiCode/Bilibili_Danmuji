@@ -1,5 +1,8 @@
 package xyz.acproject.danmuji.thread.core;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import xyz.acproject.danmuji.conf.PublicDataConf;
 import xyz.acproject.danmuji.service.impl.ClientServiceImpl;
 import xyz.acproject.danmuji.utils.SpringUtils;
@@ -14,6 +17,7 @@ import xyz.acproject.danmuji.utils.SpringUtils;
  */
 public class ReConnThread extends Thread {
 	public volatile boolean RFLAG = false;
+	private static final Logger LOGGER = LogManager.getLogger(ReConnThread.class);
 	private volatile Integer num =0;
 	private ClientServiceImpl clientService = SpringUtils.getBean(ClientServiceImpl.class); 
 	private int TIME = 10000;
@@ -27,7 +31,7 @@ public class ReConnThread extends Thread {
 				Thread.sleep(TIME);
 			} catch (InterruptedException e) {
 				// TODO 自动生成的 catch 块
-				e.printStackTrace();
+				LOGGER.error(e);
 			}
 			if(RFLAG) {
 				return;
@@ -43,7 +47,7 @@ public class ReConnThread extends Thread {
 					clientService.reConnService();
 				} catch (Exception e) {
 					// TODO 自动生成的 catch 块
-					e.printStackTrace();
+					LOGGER.error(e);
 				}
 				num++;
 			System.out.println("每"+this.TIME/1000+"秒,进行重连第"+num+"次(來源於綫程重連機制beta1.2)");

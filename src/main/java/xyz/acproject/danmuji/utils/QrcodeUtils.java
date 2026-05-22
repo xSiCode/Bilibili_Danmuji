@@ -7,6 +7,9 @@ import com.google.zxing.WriterException;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import javax.imageio.ImageIO;
 import javax.servlet.http.HttpServletResponse;
 import java.awt.image.BufferedImage;
@@ -15,6 +18,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class QrcodeUtils {
+	private static final Logger LOGGER = LogManager.getLogger(QrcodeUtils.class);
 	
 	
 	 @SuppressWarnings({ "rawtypes", "unchecked" })
@@ -35,10 +39,10 @@ public class QrcodeUtils {
 //            BASE64Encoder encoder = new BASE64Encoder();
 //            binary = encoder.encodeBuffer(bytes).trim();
         } catch (WriterException e) { // TODO Auto-generated catch block
-            e.printStackTrace();
+            LOGGER.error(e);
         } catch (IOException e) {
             // TODO Auto-generated catch block
-            e.printStackTrace();
+            LOGGER.error(e);
         }
     }
 
