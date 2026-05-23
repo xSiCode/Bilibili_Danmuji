@@ -39,7 +39,7 @@ public class FollowingCountTools {
     private static void initCsvPath() {
         ApplicationHome home = new ApplicationHome(FollowingCountTools.class);
         File jarDir = home.getSource().getParentFile();
-        csvPath = new File(jarDir, "Danmuji_log/关注人信息_" + roomid() + ".csv").getAbsolutePath();
+        csvPath = new File(jarDir, "Danmuji_log/" + roomid() + "_6_关注人信息.csv").getAbsolutePath();
     }
 
     private static String roomid() {
@@ -80,10 +80,10 @@ public class FollowingCountTools {
         try {
             List<String> fields = parseCsvLine(line);
             if (fields.size() < 4) return null;
-            long uid = Long.parseLong(fields.get(0));
-            String name = fields.get(1);
-            int count = Integer.parseInt(fields.get(2));
-            String timeStr = fields.get(3);
+            String timeStr = fields.get(0);
+            long uid = Long.parseLong(fields.get(1));
+            String name = fields.get(2);
+            int count = Integer.parseInt(fields.get(3));
             long time = JodaTimeUtils.parse(timeStr, "yyyy-MM-dd HH:mm:ss").getTime();
             return new FollowingRecord(uid, name, count, time);
         } catch (Exception e) {
@@ -131,13 +131,13 @@ public class FollowingCountTools {
         }
         try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"))) {
             writer.write('﻿');
-            writer.write("id,名字,次数,最新时间");
+            writer.write("最新时间,id,名字,次数");
             writer.newLine();
             for (FollowingRecord r : records) {
+                writer.write(JodaTimeUtils.formatDateTime(r.latestTime) + ",");
                 writer.write(r.uid + ",");
                 writer.write(escapeCsv(r.name) + ",");
-                writer.write(r.count + ",");
-                writer.write(JodaTimeUtils.formatDateTime(r.latestTime));
+                writer.write(r.count);
                 writer.newLine();
             }
         } catch (Exception e) {

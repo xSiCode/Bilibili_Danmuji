@@ -39,7 +39,7 @@ public class MatchCountTools {
     private static void initCsvPath() {
         ApplicationHome home = new ApplicationHome(MatchCountTools.class);
         File jarDir = home.getSource().getParentFile();
-        csvPath = new File(jarDir, "Danmuji_log/匹配信息_" + roomid() + ".csv").getAbsolutePath();
+        csvPath = new File(jarDir, "Danmuji_log/" + roomid() + "_5_匹配信息.csv").getAbsolutePath();
     }
 
     private static String roomid() {
@@ -81,11 +81,11 @@ public class MatchCountTools {
         try {
             List<String> fields = parseCsvLine(line);
             if (fields.size() < 5) return null;
-            long uid = Long.parseLong(fields.get(0));
-            String name = fields.get(1);
-            int score = Integer.parseInt(fields.get(2));
-            int count = Integer.parseInt(fields.get(3));
-            String timeStr = fields.get(4);
+            String timeStr = fields.get(0);
+            long uid = Long.parseLong(fields.get(1));
+            String name = fields.get(2);
+            int score = Integer.parseInt(fields.get(3));
+            int count = Integer.parseInt(fields.get(4));
             long time = JodaTimeUtils.parse(timeStr, "yyyy-MM-dd HH:mm:ss").getTime();
             return new MatchRecord(uid, name, score, count, time);
         } catch (Exception e) {
@@ -133,14 +133,14 @@ public class MatchCountTools {
         }
         try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"))) {
             writer.write('﻿');
-            writer.write("匹配id,匹配名,匹配分,匹配次数,最近匹配");
+            writer.write("最近匹配,匹配id,匹配名,匹配分,匹配次数");
             writer.newLine();
             for (MatchRecord r : records) {
+                writer.write(JodaTimeUtils.formatDateTime(r.latestMatchTime) + ",");
                 writer.write(r.matchedUid + ",");
                 writer.write(escapeCsv(r.matchedName) + ",");
                 writer.write(r.score + ",");
-                writer.write(r.count + ",");
-                writer.write(JodaTimeUtils.formatDateTime(r.latestMatchTime));
+                writer.write(r.count);
                 writer.newLine();
             }
         } catch (Exception e) {

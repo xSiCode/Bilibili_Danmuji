@@ -39,7 +39,7 @@ public class VisitorCountTools {
     private static void initCsvPath() {
         ApplicationHome home = new ApplicationHome(VisitorCountTools.class);
         File jarDir = home.getSource().getParentFile();
-        csvPath = new File(jarDir, "Danmuji_log/观众信息_" + roomid() + ".csv").getAbsolutePath();
+        csvPath = new File(jarDir, "Danmuji_log/" + roomid() + "_4_观众信息.csv").getAbsolutePath();
     }
 
     private static String roomid() {
@@ -82,12 +82,12 @@ public class VisitorCountTools {
         try {
             List<String> fields = parseCsvLine(line);
             if (fields.size() < 6) return null;
-            long uid = Long.parseLong(fields.get(0));
-            String uname = fields.get(1);
-            int score = Integer.parseInt(fields.get(2));
-            String scoreType = fields.get(3);
-            int count = Integer.parseInt(fields.get(4));
-            String timeStr = fields.get(5);
+            String timeStr = fields.get(0);
+            long uid = Long.parseLong(fields.get(1));
+            String uname = fields.get(2);
+            int score = Integer.parseInt(fields.get(3));
+            String scoreType = fields.get(4);
+            int count = Integer.parseInt(fields.get(5));
             long time = JodaTimeUtils.parse(timeStr, "yyyy-MM-dd HH:mm:ss").getTime();
             return new VisitorRecord(uid, uname, score, scoreType, count, time);
         } catch (Exception e) {
@@ -135,15 +135,15 @@ public class VisitorCountTools {
         }
         try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"))) {
             writer.write('﻿');
-            writer.write("id,观众,打分,打分类型,次数,最近");
+            writer.write("最近,id,观众,打分,打分类型,次数");
             writer.newLine();
             for (VisitorRecord r : records) {
+                writer.write(JodaTimeUtils.formatDateTime(r.latestEntryTime) + ",");
                 writer.write(r.uid + ",");
                 writer.write(escapeCsv(r.uname) + ",");
                 writer.write(r.score + ",");
                 writer.write(escapeCsv(r.scoreType) + ",");
-                writer.write(r.count + ",");
-                writer.write(JodaTimeUtils.formatDateTime(r.latestEntryTime));
+                writer.write(r.count);
                 writer.newLine();
             }
         } catch (Exception e) {

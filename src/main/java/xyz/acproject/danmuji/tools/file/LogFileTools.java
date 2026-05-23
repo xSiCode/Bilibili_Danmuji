@@ -113,7 +113,7 @@ public class LogFileTools {
 
 	public void logFile(String msg) {
 		String dateStr = JodaTimeUtils.getCurrentDateString();
-		String key = dateStr + "(" + PublicDataConf.ROOMID + ")";
+		String key = PublicDataConf.ROOMID + "_" + dateStr + "_";
 		String fp = filePathCache;
 		if (fp == null || !key.equals(filePathKey)) {
 			fp = getBaseDirPath() + key + ".txt";
@@ -125,7 +125,7 @@ public class LogFileTools {
 
 	public void logWatcherFile(String msg) {
 		String dateStr = JodaTimeUtils.getCurrentDateString();
-		String key = dateStr + "(" + PublicDataConf.ROOMID + ")viewers";
+		String key = PublicDataConf.ROOMID + "_" + dateStr + "_viewers";
 		String fp = watcherPathCache;
 		if (fp == null || !key.equals(watcherPathKey)) {
 			fp = getBaseDirPath() + key + ".txt";
@@ -137,7 +137,7 @@ public class LogFileTools {
 
 	public void logFollowingsFile(String msg) {
 		String dateStr = JodaTimeUtils.getCurrentDateString();
-		String key = dateStr + "(" + PublicDataConf.ROOMID + ")followings";
+		String key = PublicDataConf.ROOMID + "_" + dateStr + "_followings";
 		String fp = followingsPathCache;
 		if (fp == null || !key.equals(followingsPathKey)) {
 			fp = getBaseDirPath() + key + ".txt";
@@ -149,7 +149,7 @@ public class LogFileTools {
 
 	public void logTestFile(String msg) {
 		String dateStr = JodaTimeUtils.getCurrentDateString();
-		String key = dateStr + "(" + PublicDataConf.ROOMID + ")testLog";
+		String key =PublicDataConf.ROOMID + "_" + dateStr + "_testLog";
 		String fp = testPathCache;
 		if (fp == null || !key.equals(testPathKey)) {
 			fp = getBaseDirPath() + key + ".txt";

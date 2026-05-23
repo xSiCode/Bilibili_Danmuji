@@ -58,7 +58,7 @@ public class RoomInfoLogTools {
         File jarDir = home.getSource().getParentFile();
         Long id = PublicDataConf.ROOMID;
         String room = id != null ? id.toString() : "unknown";
-        csvPath = new File(jarDir, "Danmuji_log/直播间信息_" + room + ".csv").getAbsolutePath();
+        csvPath = new File(jarDir, "Danmuji_log/" + room + "_1_直播间信息.csv").getAbsolutePath();
     }
 
     private static synchronized void tick() {

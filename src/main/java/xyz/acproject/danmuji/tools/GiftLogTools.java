@@ -41,7 +41,7 @@ public class GiftLogTools {
         File jarDir = home.getSource().getParentFile();
         Long id = PublicDataConf.ROOMID;
         String room = id != null ? id.toString() : "unknown";
-        csvPath = new File(jarDir, "Danmuji_log/礼物信息_" + room + ".csv").getAbsolutePath();
+        csvPath = new File(jarDir, "Danmuji_log/" + room + "_3_礼物信息.csv").getAbsolutePath();
     }
 
     private static String key(long uid, String giftName) {
@@ -85,12 +85,12 @@ public class GiftLogTools {
         try {
             List<String> fields = parseCsvLine(line);
             if (fields.size() < 6) return null;
-            long uid = Long.parseLong(fields.get(0));
-            String uname = fields.get(1);
-            String giftName = fields.get(2);
-            long totalPrice = Long.parseLong(fields.get(3));
-            int count = Integer.parseInt(fields.get(4));
-            String timeStr = fields.get(5);
+            String timeStr = fields.get(0);
+            long uid = Long.parseLong(fields.get(1));
+            String uname = fields.get(2);
+            String giftName = fields.get(3);
+            long totalPrice = Long.parseLong(fields.get(4));
+            int count = Integer.parseInt(fields.get(5));
             long time = JodaTimeUtils.parse(timeStr, "yyyy-MM-dd HH:mm:ss").getTime();
             return new GiftRecord(uid, uname, giftName, 0, totalPrice, count, time);
         } catch (Exception e) {
@@ -138,15 +138,15 @@ public class GiftLogTools {
         }
         try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"))) {
             writer.write('﻿');
-            writer.write("id,名字,赠送礼物名字,总金额,赠礼次数,最新时间");
+            writer.write("最新时间,id,名字,赠送礼物名字,总金额,赠礼次数");
             writer.newLine();
             for (GiftRecord r : records) {
+                writer.write(JodaTimeUtils.formatDateTime(r.latestTime) + ",");
                 writer.write(r.uid + ",");
                 writer.write(escapeCsv(r.uname) + ",");
                 writer.write(escapeCsv(r.giftName) + ",");
                 writer.write(r.totalPrice + ",");
-                writer.write(r.count + ",");
-                writer.write(JodaTimeUtils.formatDateTime(r.latestTime));
+                writer.write(r.count);
                 writer.newLine();
             }
         } catch (Exception e) {

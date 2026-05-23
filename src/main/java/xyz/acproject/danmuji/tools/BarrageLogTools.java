@@ -58,11 +58,11 @@ public class BarrageLogTools {
         File jarDir = home.getSource().getParentFile();
         Long id = PublicDataConf.ROOMID;
         String room = id != null ? id.toString() : "unknown";
-        csvPath = new File(jarDir, "Danmuji_log/弹幕信息_" + room + ".csv").getAbsolutePath();
+        csvPath = new File(jarDir, "Danmuji_log/" + room + "_2_弹幕信息.csv").getAbsolutePath();
     }
 
     public static void logBarrage(long uid, String uname, String msg, long timestamp) {
-        String line = uid + "," + escapeCsv(uname) + "," + escapeCsv(msg) + "," + JodaTimeUtils.formatDateTime(timestamp);
+        String line = JodaTimeUtils.formatDateTime(timestamp) + "," + uid + "," + escapeCsv(uname) + "," + escapeCsv(msg);
         batchQueue.offer(line);
     }
 
@@ -78,7 +78,7 @@ public class BarrageLogTools {
             }
             try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(fos, "UTF-8"), 8192)) {
                 if (needHeader) {
-                    writer.write("id,名字,弹幕,发送时间");
+                    writer.write("发送时间,id,名字,弹幕");
                     writer.newLine();
                     headerWritten = true;
                 }
