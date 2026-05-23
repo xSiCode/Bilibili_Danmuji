@@ -49,7 +49,8 @@
       "Bash(sed -i '286s/^\\\\t*/\\\\\\\\t\\\\\\\\t\\\\\\\\t\\\\\\\\t/' \"E:/claudeCode/Bilibili_Danmuji/src/main/java/xyz/acproject/danmuji/tools/ParseSetStatusTools.java\")",
       "Bash(sed -i '287s/^\\\\t*/\\\\\\\\t\\\\\\\\t\\\\\\\\t/' \"E:/claudeCode/Bilibili_Danmuji/src/main/java/xyz/acproject/danmuji/tools/ParseSetStatusTools.java\")",
       "Bash(node *)",
-      "Bash(grep -v \"^[[:space:]]*//\")"
+      "Bash(grep -v \"^[[:space:]]*//\")",
+      "Bash(\"/c/Program Files/JetBrains/IntelliJ IDEA 2025.3.1.1/plugins/maven/lib/maven3/bin/mvn\" compile -f E:/claudeCode/Bilibili_Danmuji/pom.xml -q)"
     ]
   }
 }

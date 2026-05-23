@@ -38,6 +38,7 @@ import xyz.acproject.danmuji.tools.CurrencyTools;
 import xyz.acproject.danmuji.tools.ParseIndentityTools;
 import xyz.acproject.danmuji.tools.ParseSetStatusTools;
 import xyz.acproject.danmuji.tools.ShieldGiftTools;
+import xyz.acproject.danmuji.tools.VisitorCountTools;
 import xyz.acproject.danmuji.tools.file.FileTools;
 import xyz.acproject.danmuji.tools.file.GuardFileTools;
 import xyz.acproject.danmuji.utils.JodaTimeUtils;
@@ -1082,6 +1083,8 @@ public class ParseMessageThread extends Thread {
                                                 .thenAccept(blackWhiteResult -> {
                                                     int blackWhiteScore = blackWhiteResult.getLeft();
                                                     String blackWhiteType = blackWhiteResult.getRight();
+
+                                                    VisitorCountTools.recordVisitor(_follow_uid, _follow_uname, blackWhiteScore, blackWhiteType);
 
                                             // 负黑自动拉黑姬
                                             if (conf.getAuto_block() != null && conf.getAuto_block().is_auto_block()) {

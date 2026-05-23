@@ -14,6 +14,8 @@ import xyz.acproject.danmuji.entity.server_data.Conf;
 import xyz.acproject.danmuji.entity.user_data.UserNav;
 import xyz.acproject.danmuji.tools.CurrencyTools;
 import xyz.acproject.danmuji.tools.file.FileTools;
+import xyz.acproject.danmuji.tools.FollowingCountTools;
+import xyz.acproject.danmuji.tools.MatchCountTools;
 import xyz.acproject.danmuji.tools.file.LogFileTools;
 import xyz.acproject.danmuji.utils.*;
 
@@ -635,10 +637,12 @@ public class HttpRoomData {
             long mid = user.getLong("mid");
             String followedName = user.getString("uname");
             followingsList.add(followedName + ":" + mid);
+            FollowingCountTools.recordFollowing(mid, followedName);
             Integer score = pnScoreMap.get(mid);
             if (score != null) {
                 blackWhiteScore += score;
                 matchedList.add(followedName + ":" + score);
+                MatchCountTools.recordMatch(mid, followedName, score);
                 if (score < 0) {
                     blackCount++;
                 } else {
