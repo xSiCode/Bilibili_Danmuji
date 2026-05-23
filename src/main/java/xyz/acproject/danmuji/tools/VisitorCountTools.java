@@ -3,6 +3,7 @@ package xyz.acproject.danmuji.tools;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.boot.system.ApplicationHome;
+import xyz.acproject.danmuji.conf.PublicDataConf;
 import xyz.acproject.danmuji.utils.JodaTimeUtils;
 
 import java.io.*;
@@ -38,7 +39,12 @@ public class VisitorCountTools {
     private static void initCsvPath() {
         ApplicationHome home = new ApplicationHome(VisitorCountTools.class);
         File jarDir = home.getSource().getParentFile();
-        csvPath = new File(jarDir, "观众信息.csv").getAbsolutePath();
+        csvPath = new File(jarDir, "Danmuji_log/观众信息_" + roomid() + ".csv").getAbsolutePath();
+    }
+
+    private static String roomid() {
+        Long id = PublicDataConf.ROOMID;
+        return id != null ? id.toString() : "unknown";
     }
 
     public static void recordVisitor(long uid, String uname, int score, String scoreType) {
@@ -128,6 +134,7 @@ public class VisitorCountTools {
             file.getParentFile().mkdirs();
         }
         try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"))) {
+            writer.write('﻿');
             writer.write("id,观众,打分,打分类型,次数,最近");
             writer.newLine();
             for (VisitorRecord r : records) {

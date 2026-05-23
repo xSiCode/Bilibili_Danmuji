@@ -29,6 +29,9 @@ $(function () {
                         if ($(".status-like").length > 0 && result.room_like != null) {
                             $(".status-like").html(method.fmtNum(result.room_like));
                         }
+                        if ($(".room-online").length > 0 && result.room_online != null) {
+                            $(".room-online").html(method.fmtNum(result.room_online));
+                        }
                     } else {
                         // 旧格式兼容
                         if ($(".popu").length > 0) {

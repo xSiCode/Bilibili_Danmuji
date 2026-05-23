@@ -3,6 +3,7 @@ package xyz.acproject.danmuji.tools;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.boot.system.ApplicationHome;
+import xyz.acproject.danmuji.conf.PublicDataConf;
 import xyz.acproject.danmuji.utils.JodaTimeUtils;
 
 import java.io.*;
@@ -38,7 +39,12 @@ public class FollowingCountTools {
     private static void initCsvPath() {
         ApplicationHome home = new ApplicationHome(FollowingCountTools.class);
         File jarDir = home.getSource().getParentFile();
-        csvPath = new File(jarDir, "关注人信息.csv").getAbsolutePath();
+        csvPath = new File(jarDir, "Danmuji_log/关注人信息_" + roomid() + ".csv").getAbsolutePath();
+    }
+
+    private static String roomid() {
+        Long id = PublicDataConf.ROOMID;
+        return id != null ? id.toString() : "unknown";
     }
 
     public static void recordFollowing(long followedUid, String followedName) {
@@ -124,6 +130,7 @@ public class FollowingCountTools {
             file.getParentFile().mkdirs();
         }
         try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"))) {
+            writer.write('﻿');
             writer.write("id,名字,次数,最新时间");
             writer.newLine();
             for (FollowingRecord r : records) {

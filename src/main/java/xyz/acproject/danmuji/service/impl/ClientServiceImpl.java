@@ -24,6 +24,7 @@ import xyz.acproject.danmuji.tools.CurrencyTools;
 import xyz.acproject.danmuji.tools.file.GuardFileTools;
 import xyz.acproject.danmuji.utils.ByteUtils;
 import xyz.acproject.danmuji.utils.HexUtils;
+import xyz.acproject.danmuji.tools.RoomInfoLogTools;
 import xyz.acproject.danmuji.utils.WbiSignUtils;
 import xyz.acproject.danmuji.ws.HandleWebsocketPackage;
 
@@ -113,6 +114,7 @@ public class ClientServiceImpl implements ClientService {
         PublicDataConf.webSocketProxy.send(HexUtils.fromHexString(PublicDataConf.heartByte));
         threadComponent.startHeartByteThread();
         setService.holdSet(PublicDataConf.centerSetConf);
+        RoomInfoLogTools.start();
         //检查红包+天选
         LotteryInfoWeb lotteryInfoWeb =null;
         //检查红包
@@ -230,6 +232,7 @@ public class ClientServiceImpl implements ClientService {
                     PublicDataConf.webSocketProxy = null;
                 }
                 threadComponent.closeAll();
+                RoomInfoLogTools.stop();
                 PublicDataConf.init_connect();
                 if (null == PublicDataConf.webSocketProxy || !PublicDataConf.webSocketProxy.isOpen()) {
                     flag = true;

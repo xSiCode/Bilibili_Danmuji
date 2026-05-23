@@ -85,6 +85,10 @@
                             <span class="room_watcher" th:text="${ROOM_WATCHER}" th:if="${ROOMID}!=null"></span>
                             <span th:if="${ROOMID}==null" class="text-muted">-</span>
                             <span class="status-bar-sep">|</span>
+                            <span class="status-bar-label">在线：</span>
+                            <span class="room-online" th:text="${ROOM_ONLINE}" th:if="${ROOMID}!=null"></span>
+                            <span th:if="${ROOMID}==null" class="text-muted">-</span>
+                            <span class="status-bar-sep">|</span>
                             <span class="status-bar-label">点赞：</span>
                             <span class="status-like" th:text="${ROOM_LIKE}" th:if="${ROOMID}!=null"></span>
                             <span th:if="${ROOMID}==null" class="text-muted">-</span>

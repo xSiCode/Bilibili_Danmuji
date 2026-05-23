@@ -49,6 +49,8 @@ public class PublicDataConf {
 	public static volatile MedalInfoAnchor MEDALINFOANCHOR = null;
 	//房间人气
 	public static volatile Long ROOM_POPULARITY =1L;
+	//在线人数
+	public static volatile Long ROOM_ONLINE__RANK_COUNT = 0L;
 	//房间观看人数（历史）
 	public static volatile Long ROOM_WATCHER = 0L;
 	//点赞数量

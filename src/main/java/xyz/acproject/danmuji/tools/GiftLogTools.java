@@ -14,12 +14,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-public class MatchCountTools {
-    private static final Logger LOGGER = LogManager.getLogger(MatchCountTools.class);
+public class GiftLogTools {
+    private static final Logger LOGGER = LogManager.getLogger(GiftLogTools.class);
 
-    private static final ConcurrentHashMap<Long, MatchRecord> matchMap = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, GiftRecord> giftMap = new ConcurrentHashMap<>();
     private static final ScheduledExecutorService flushScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
-        Thread t = new Thread(r, "match-csv-flush");
+        Thread t = new Thread(r, "gift-csv-flush");
         t.setDaemon(true);
         return t;
     });
@@ -29,33 +29,37 @@ public class MatchCountTools {
     static {
         initCsvPath();
         loadFromCsv();
-        flushScheduler.scheduleWithFixedDelay(MatchCountTools::flushToCsv, 30, 30, TimeUnit.SECONDS);
+        flushScheduler.scheduleWithFixedDelay(GiftLogTools::flushToCsv, 30, 30, TimeUnit.SECONDS);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             flushScheduler.shutdown();
             flushToCsv();
-        }, "match-csv-shutdown"));
+        }, "gift-csv-shutdown"));
     }
 
     private static void initCsvPath() {
-        ApplicationHome home = new ApplicationHome(MatchCountTools.class);
+        ApplicationHome home = new ApplicationHome(GiftLogTools.class);
         File jarDir = home.getSource().getParentFile();
-        csvPath = new File(jarDir, "Danmuji_log/匹配信息_" + roomid() + ".csv").getAbsolutePath();
-    }
-
-    private static String roomid() {
         Long id = PublicDataConf.ROOMID;
-        return id != null ? id.toString() : "unknown";
+        String room = id != null ? id.toString() : "unknown";
+        csvPath = new File(jarDir, "Danmuji_log/礼物信息_" + room + ".csv").getAbsolutePath();
     }
 
-    public static void recordMatch(long matchedUid, String matchedName, int score) {
-        matchMap.compute(matchedUid, (k, v) -> {
+    private static String key(long uid, String giftName) {
+        return uid + "_" + giftName;
+    }
+
+    public static void logGift(long uid, String uname, String giftName, long price, long timestamp) {
+        String k = key(uid, giftName);
+        giftMap.compute(k, (key, v) -> {
             if (v == null) {
-                return new MatchRecord(matchedUid, matchedName, score, 1, System.currentTimeMillis());
+                return new GiftRecord(uid, uname, giftName, price, price, 1, timestamp);
             }
-            v.matchedName = matchedName;
-            v.score = score;
+            v.uname = uname;
+            long singlePrice = price > 0 ? price : v.price;
+            v.price = singlePrice;
+            v.totalPrice += price;
             v.count++;
-            v.latestMatchTime = System.currentTimeMillis();
+            v.latestTime = timestamp;
             return v;
         });
     }
@@ -66,28 +70,29 @@ public class MatchCountTools {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
             String line = reader.readLine(); // skip header
             while ((line = reader.readLine()) != null) {
-                MatchRecord record = parseLine(line);
+                GiftRecord record = parseLine(line);
                 if (record != null) {
-                    matchMap.put(record.matchedUid, record);
+                    giftMap.put(key(record.uid, record.giftName), record);
                 }
             }
         } catch (Exception e) {
-            LOGGER.error("load match CSV failed", e);
+            LOGGER.error("load gift CSV failed", e);
         }
     }
 
-    private static MatchRecord parseLine(String line) {
+    private static GiftRecord parseLine(String line) {
         if (line == null || line.isEmpty()) return null;
         try {
             List<String> fields = parseCsvLine(line);
-            if (fields.size() < 5) return null;
+            if (fields.size() < 6) return null;
             long uid = Long.parseLong(fields.get(0));
-            String name = fields.get(1);
-            int score = Integer.parseInt(fields.get(2));
-            int count = Integer.parseInt(fields.get(3));
-            String timeStr = fields.get(4);
+            String uname = fields.get(1);
+            String giftName = fields.get(2);
+            long totalPrice = Long.parseLong(fields.get(3));
+            int count = Integer.parseInt(fields.get(4));
+            String timeStr = fields.get(5);
             long time = JodaTimeUtils.parse(timeStr, "yyyy-MM-dd HH:mm:ss").getTime();
-            return new MatchRecord(uid, name, score, count, time);
+            return new GiftRecord(uid, uname, giftName, 0, totalPrice, count, time);
         } catch (Exception e) {
             return null;
         }
@@ -126,25 +131,26 @@ public class MatchCountTools {
     }
 
     private static synchronized void flushToCsv() {
-        List<MatchRecord> records = new ArrayList<>(matchMap.values());
+        List<GiftRecord> records = new ArrayList<>(giftMap.values());
         File file = new File(csvPath);
         if (!file.getParentFile().exists()) {
             file.getParentFile().mkdirs();
         }
         try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"))) {
             writer.write('﻿');
-            writer.write("匹配id,匹配名,匹配分,匹配次数,最近匹配");
+            writer.write("id,名字,赠送礼物名字,总金额,赠礼次数,最新时间");
             writer.newLine();
-            for (MatchRecord r : records) {
-                writer.write(r.matchedUid + ",");
-                writer.write(escapeCsv(r.matchedName) + ",");
-                writer.write(r.score + ",");
+            for (GiftRecord r : records) {
+                writer.write(r.uid + ",");
+                writer.write(escapeCsv(r.uname) + ",");
+                writer.write(escapeCsv(r.giftName) + ",");
+                writer.write(r.totalPrice + ",");
                 writer.write(r.count + ",");
-                writer.write(JodaTimeUtils.formatDateTime(r.latestMatchTime));
+                writer.write(JodaTimeUtils.formatDateTime(r.latestTime));
                 writer.newLine();
             }
         } catch (Exception e) {
-            LOGGER.error("flush match CSV failed", e);
+            LOGGER.error("flush gift CSV failed", e);
         }
     }
 
@@ -156,19 +162,23 @@ public class MatchCountTools {
         return s;
     }
 
-    static class MatchRecord {
-        final long matchedUid;
-        volatile String matchedName;
-        volatile int score;
+    static class GiftRecord {
+        final long uid;
+        volatile String uname;
+        final String giftName;
+        volatile long price;
+        volatile long totalPrice;
         volatile int count;
-        volatile long latestMatchTime;
+        volatile long latestTime;
 
-        MatchRecord(long matchedUid, String matchedName, int score, int count, long latestMatchTime) {
-            this.matchedUid = matchedUid;
-            this.matchedName = matchedName;
-            this.score = score;
+        GiftRecord(long uid, String uname, String giftName, long price, long totalPrice, int count, long latestTime) {
+            this.uid = uid;
+            this.uname = uname;
+            this.giftName = giftName;
+            this.price = price;
+            this.totalPrice = totalPrice;
             this.count = count;
-            this.latestMatchTime = latestMatchTime;
+            this.latestTime = latestTime;
         }
     }
 }

@@ -760,7 +760,7 @@ public class HttpRoomData {
         Map<Long, Integer> map = new HashMap<>();
         try {
             FileTools fileTools = new FileTools();
-            File file = new File(fileTools.getBaseJarPath(), "负黑正白判定表.json");
+            File file = new File(fileTools.getBaseJarPath(), "set/负黑正白判定表.json");
             if (!file.exists()) return map;
             StringBuilder sb = new StringBuilder();
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
