@@ -288,9 +288,6 @@ public class ParseSetStatusTools {
 			if(centerSetConf.getBadList()==null){
 				centerSetConf.setBadList(new BadListSetConf());
 			}
-			if(centerSetConf.getRectifier()==null){
-				centerSetConf.setRectifier(new RectifierSetConf());
-			}
 			if(centerSetConf.getGaze_welcome()==null){
 				centerSetConf.setGaze_welcome(new GazeWelcomeSetConf());
 			}

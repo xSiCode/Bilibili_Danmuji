@@ -209,9 +209,6 @@ public class SetServiceImpl implements SetService {
                 // sendbarragethread
                 boolean liveStatusAnyOpen = PublicDataConf.centerSetConf.getLive_status() != null
                         && PublicDataConf.centerSetConf.getLive_status().anyOpen();
-                boolean rectifierAnyOpen = PublicDataConf.centerSetConf.getRectifier() != null
-                        && PublicDataConf.centerSetConf.getRectifier().is_open()
-                        && PublicDataConf.centerSetConf.getRectifier().anyActionOpen();
                 boolean gazeWelcomeOpen = PublicDataConf.centerSetConf.getGaze_welcome() != null
                         && PublicDataConf.centerSetConf.getGaze_welcome().is_open();
                 if (PublicDataConf.advertThread == null
@@ -220,7 +217,6 @@ public class SetServiceImpl implements SetService {
                         && !PublicDataConf.centerSetConf.getThank_gift().is_giftThank()
                         && PublicDataConf.autoReplyThread == null
                         && !liveStatusAnyOpen
-                        && !rectifierAnyOpen
                         && !gazeWelcomeOpen) {
                     threadComponent.closeSendBarrageThread();
                     PublicDataConf.init_send();

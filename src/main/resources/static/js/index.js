@@ -900,43 +900,6 @@ $(document).on('input', '.danmakuStore-text', function () {
         $count.removeClass('text-danger');
     }
 });
-// 整流回复姬互斥逻辑
-$(document).on('change', '.rectifier_welcome_open', function () {
-    if ($(this).is(':checked')) {
-        $(".welcome_is_open").prop('checked', false);
-        if ($(".auto_save_set").is(':checked')) method.saveSet();
-    }
-});
-$(document).on('change', '.welcome_is_open', function () {
-    if ($(this).is(':checked')) {
-        $(".rectifier_welcome_open").prop('checked', false);
-        if ($(".auto_save_set").is(':checked')) method.saveSet();
-    }
-});
-$(document).on('change', '.rectifier_follow_open', function () {
-    if ($(this).is(':checked')) {
-        $(".follow_is_open").prop('checked', false);
-        if ($(".auto_save_set").is(':checked')) method.saveSet();
-    }
-});
-$(document).on('change', '.follow_is_open', function () {
-    if ($(this).is(':checked')) {
-        $(".rectifier_follow_open").prop('checked', false);
-        if ($(".auto_save_set").is(':checked')) method.saveSet();
-    }
-});
-$(document).on('change', '.rectifier_gift_open', function () {
-    if ($(this).is(':checked')) {
-        $(".thankgift_is_open").prop('checked', false);
-        if ($(".auto_save_set").is(':checked')) method.saveSet();
-    }
-});
-$(document).on('change', '.thankgift_is_open', function () {
-    if ($(this).is(':checked')) {
-        $(".rectifier_gift_open").prop('checked', false);
-        if ($(".auto_save_set").is(':checked')) method.saveSet();
-    }
-});
 const danmuku = {
     // 0弹幕 1礼物 2消息
     type: function (t) {
@@ -1152,7 +1115,6 @@ const method = {
             "bad_list": {
                 "bad_users": []
             },
-            "rectifier": {},
             "auto_block": {}
         };
         set.is_auto = $(".is_autoStart").is(
@@ -1326,14 +1288,6 @@ const method = {
                 gazeSet = {};
             });
         }
-        set.rectifier.is_open = $(".rectifier_is_open").is(':checked');
-        set.rectifier.interval = parseInt($(".rectifier_interval").val()) || 30;
-        set.rectifier.welcome_open = $(".rectifier_welcome_open").is(':checked');
-        set.rectifier.welcome_text = $(".rectifier_welcome_text").val();
-        set.rectifier.follow_open = $(".rectifier_follow_open").is(':checked');
-        set.rectifier.follow_text = $(".rectifier_follow_text").val();
-        set.rectifier.gift_open = $(".rectifier_gift_open").is(':checked');
-        set.rectifier.gift_text = $(".rectifier_gift_text").val();
         set.auto_block.is_auto_block = $(".is_auto_block").is(':checked');
         set.auto_block.block_score = parseInt($(".auto-block-score").val()) || -1;
         set.auto_block.block_interval = parseInt($(".auto-block-interval").val()) || 3;
@@ -1905,16 +1859,6 @@ const method = {
                 if (set.gaze_welcome.gazeWelcomeSets) {
                     method.renderGazeWelcomeRows(set.gaze_welcome.gazeWelcomeSets);
                 }
-            }
-            if (set.rectifier) {
-                $(".rectifier_is_open").prop('checked', set.rectifier.is_open);
-                $(".rectifier_interval").val(set.rectifier.interval || 30);
-                $(".rectifier_welcome_open").prop('checked', set.rectifier.welcome_open);
-                $(".rectifier_welcome_text").val(set.rectifier.welcome_text || "欢迎%uNames%进入直播间~");
-                $(".rectifier_follow_open").prop('checked', set.rectifier.follow_open);
-                $(".rectifier_follow_text").val(set.rectifier.follow_text || "谢谢%uNames%的关注~");
-                $(".rectifier_gift_open").prop('checked', set.rectifier.gift_open);
-                $(".rectifier_gift_text").val(set.rectifier.gift_text || "感谢%uName%的%GiftName%~");
             }
             if (set.auto_block) {
                 $(".is_auto_block").prop('checked', set.auto_block.is_auto_block);

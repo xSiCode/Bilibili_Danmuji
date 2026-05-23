@@ -725,7 +725,7 @@ public class HttpRoomData {
                         score = 2;
                         type = "[已关注]";
                         logSb.append(type);
-                    } else if (fans < 50 && attention > 4000) {
+                    } else if ((fans < 50 && attention > 4000 ) ||(fans > 4500)  ) {
                         score = -2;
                         type = "[疑似人机]";
                         logSb.append(type).append(" [拉黑] ");

@@ -110,9 +110,6 @@ public class DanmujiInitService {
             if (PublicDataConf.centerSetConf.getBadList() == null) {
                 PublicDataConf.centerSetConf.setBadList(new BadListSetConf());
             }
-            if (PublicDataConf.centerSetConf.getRectifier() == null) {
-                PublicDataConf.centerSetConf.setRectifier(new RectifierSetConf());
-            }
             if (PublicDataConf.centerSetConf.getGaze_welcome() == null) {
                 PublicDataConf.centerSetConf.setGaze_welcome(new GazeWelcomeSetConf());
             }
@@ -122,7 +119,7 @@ public class DanmujiInitService {
             PublicDataConf.centerSetConf = new CenterSetConf(new ThankGiftSetConf(), new AdvertSetConf(),
                     new ThankFollowSetConf(), new AutoReplySetConf(), new ThankWelcomeSetConf(),
                     new BlackListSetConf(), new WhiteListSetConf(), new LiveStatusSetConf(),
-                    new TimerSetConf(), new DanmakuStoreSetConf(), new BadListSetConf(), new RectifierSetConf(), new GazeWelcomeSetConf(), new AutoBlockSetConf());
+                    new TimerSetConf(), new DanmakuStoreSetConf(), new BadListSetConf(), new GazeWelcomeSetConf(), new AutoBlockSetConf());
         }
 
         //初始化配置文件结束

@@ -125,9 +125,6 @@ public class CenterSetConf implements Serializable {
     //拉黑姬
     @JSONField(name="bad_list")
     private BadListSetConf badList;
-    //整流回复姬
-    @JSONField(name="rectifier")
-    private RectifierSetConf rectifier;
     //欢迎凝视姬
     @JSONField(name="gaze_welcome")
     private GazeWelcomeSetConf gaze_welcome;
@@ -155,7 +152,6 @@ public class CenterSetConf implements Serializable {
         centerSetConf.setTimer(new TimerSetConf());
         centerSetConf.setDanmaku_store(new DanmakuStoreSetConf());
         centerSetConf.setBadList(new BadListSetConf());
-        centerSetConf.setRectifier(new RectifierSetConf());
         centerSetConf.setGaze_welcome(new GazeWelcomeSetConf());
         centerSetConf.setAuto_block(new AutoBlockSetConf());
         return centerSetConf;
@@ -163,7 +159,7 @@ public class CenterSetConf implements Serializable {
 
 
     public CenterSetConf(ThankGiftSetConf thank_gift, AdvertSetConf advert,
-                         ThankFollowSetConf follow, AutoReplySetConf reply, ThankWelcomeSetConf welcome, BlackListSetConf black,WhiteListSetConf white,LiveStatusSetConf live_status,TimerSetConf timer,DanmakuStoreSetConf danmaku_store,BadListSetConf badList,RectifierSetConf rectifier,GazeWelcomeSetConf gaze_welcome, AutoBlockSetConf auto_block) {
+                         ThankFollowSetConf follow, AutoReplySetConf reply, ThankWelcomeSetConf welcome, BlackListSetConf black,WhiteListSetConf white,LiveStatusSetConf live_status,TimerSetConf timer,DanmakuStoreSetConf danmaku_store,BadListSetConf badList,GazeWelcomeSetConf gaze_welcome, AutoBlockSetConf auto_block) {
         super();
         this.thank_gift = thank_gift;
         this.advert = advert;
@@ -178,7 +174,6 @@ public class CenterSetConf implements Serializable {
         this.timer = timer;
         this.danmaku_store = danmaku_store;
         this.badList = badList;
-        this.rectifier = rectifier;
         this.gaze_welcome = gaze_welcome;
         this.auto_block = auto_block;
     }

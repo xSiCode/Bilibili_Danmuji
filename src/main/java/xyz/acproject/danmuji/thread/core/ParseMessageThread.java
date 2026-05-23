@@ -16,7 +16,6 @@ import xyz.acproject.danmuji.conf.PublicDataConf;
 import xyz.acproject.danmuji.conf.set.BadListSetConf;
 import xyz.acproject.danmuji.conf.set.GazeWelcomeSet;
 import xyz.acproject.danmuji.conf.set.GazeWelcomeSetConf;
-import xyz.acproject.danmuji.conf.set.RectifierSetConf;
 import xyz.acproject.danmuji.conf.set.ThankGiftRuleSet;
 import xyz.acproject.danmuji.controller.DanmuWebsocket;
 import xyz.acproject.danmuji.entity.Welcome.WelcomeGuard;
@@ -305,9 +304,7 @@ public class ParseMessageThread extends Thread {
                             }
                             // 感谢礼物处理
                             if (gift != null) {
-                                if (handleRectifierGift(gift)) {
-                                    // handled by rectifier
-                                } else if (getCenterSetConf().getThank_gift().is_giftThank()) {
+                                if (getCenterSetConf().getThank_gift().is_giftThank()) {
                                     try {
                                         parseGiftSetting(gift);
                                     } catch (Exception e) {
@@ -365,7 +362,7 @@ public class ParseMessageThread extends Thread {
                                 }
                                 stringBuilder.delete(0, stringBuilder.length());
                             }
-                            if (getCenterSetConf().getThank_gift().is_giftThank() || isRectifierActive("gift")) {
+                            if (getCenterSetConf().getThank_gift().is_giftThank()) {
                                 if (PublicDataConf.parsethankGiftThread != null && !PublicDataConf.parsethankGiftThread.TFLAG) {
                                     gift = new Gift();
                                     gift.setGiftName(guard.getGift_name());
@@ -378,15 +375,11 @@ public class ParseMessageThread extends Thread {
                                     gift.setUname(guard.getUsername());
                                     gift.setUid(guard.getUid());
                                     if (gift != null) {
-                                        if (handleRectifierGift(gift)) {
-                                            // handled by rectifier
-                                        } else if (getCenterSetConf().getThank_gift().is_giftThank()) {
-                                            try {
-                                                parseGiftSetting(gift);
-                                            } catch (Exception e) {
-                                                // TODO 自动生成的 catch 块
-                                                LOGGER.error(e);
-                                            }
+                                        try {
+                                            parseGiftSetting(gift);
+                                        } catch (Exception e) {
+                                            // TODO 自动生成的 catch 块
+                                            LOGGER.error(e);
                                         }
                                     }
                                 }
@@ -485,7 +478,7 @@ public class ParseMessageThread extends Thread {
 
                                 stringBuilder.delete(0, stringBuilder.length());
                             }
-                            if (getCenterSetConf().getThank_gift().is_giftThank() || isRectifierActive("gift")) {
+                            if (getCenterSetConf().getThank_gift().is_giftThank()) {
                                 if (PublicDataConf.parsethankGiftThread != null && !PublicDataConf.parsethankGiftThread.TFLAG) {
                                     superChat = JSONObject.parseObject(jsonObject.getString("data"), SuperChat.class);
                                     gift = new Gift();
@@ -504,15 +497,11 @@ public class ParseMessageThread extends Thread {
                                     gift.setUid(superChat.getUid());
                                     gift.setMedal_info(superChat.getMedal_info());
                                     if (gift != null) {
-                                        if (handleRectifierGift(gift)) {
-                                            // handled by rectifier
-                                        } else if (getCenterSetConf().getThank_gift().is_giftThank()) {
-                                            try {
-                                                parseGiftSetting(gift);
-                                            } catch (Exception e) {
-                                                // TODO 自动生成的 catch 块
-                                                LOGGER.error(e);
-                                            }
+                                        try {
+                                            parseGiftSetting(gift);
+                                        } catch (Exception e) {
+                                            // TODO 自动生成的 catch 块
+                                            LOGGER.error(e);
                                         }
                                     }
                                 }
@@ -1036,14 +1025,7 @@ public class ParseMessageThread extends Thread {
                                     }
                                 }
                                 //关注感谢
-                                boolean followHandledByRectifier = false;
-                                if (isRectifierActive("follow")) {
-                                    followHandledByRectifier = true;
-                                    if (msg_type == 2) {
-                                        handleRectifierFollow(interact);
-                                    }
-                                }
-                                if (!followHandledByRectifier && conf.getFollow().is_followThank()) {
+                                if (conf.getFollow().is_followThank()) {
                                     //天选屏蔽&&红包屏蔽
                                     if (!conf.getFollow()
                                             .boolTxAndRdShield(
@@ -1236,14 +1218,7 @@ public class ParseMessageThread extends Thread {
                                     handleGazeWelcome(interact);
                                 }
                                 //欢迎感谢
-                                boolean welcomeHandledByRectifier = false;
-                                if (isRectifierActive("welcome")) {
-                                    welcomeHandledByRectifier = true;
-                                    if (msg_type == 1) {
-                                        handleRectifierWelcome(interact);
-                                    }
-                                }
-                                if (!welcomeHandledByRectifier && conf.getWelcome().is_welcomeThank()) {
+                                if (conf.getWelcome().is_welcomeThank()) {
                                     //天选屏蔽&&红包屏蔽
                                     if (!conf.getWelcome()
                                             .boolTxAndRdShield(
@@ -1357,7 +1332,7 @@ public class ParseMessageThread extends Thread {
                                 }
                                 stringBuilder.delete(0, stringBuilder.length());
                             }
-                            if (getCenterSetConf().getThank_gift().is_giftThank() || isRectifierActive("gift")) {
+                            if (getCenterSetConf().getThank_gift().is_giftThank()) {
                                 if (PublicDataConf.parsethankGiftThread != null && !PublicDataConf.parsethankGiftThread.TFLAG) {
                                     redPackage = JSONObject.parseObject(jsonObject.getString("data"), RedPackage.class);
                                     gift = new Gift();
@@ -1372,15 +1347,11 @@ public class ParseMessageThread extends Thread {
                                     gift.setUid(redPackage.getUid());
                                     gift.setMedal_info(redPackage.getMedal_info());
                                     if (gift != null) {
-                                        if (handleRectifierGift(gift)) {
-                                            // handled by rectifier
-                                        } else if (getCenterSetConf().getThank_gift().is_giftThank()) {
-                                            try {
-                                                parseGiftSetting(gift);
-                                            } catch (Exception e) {
-                                                // TODO 自动生成的 catch 块
-                                                LOGGER.error(e);
-                                            }
+                                        try {
+                                            parseGiftSetting(gift);
+                                        } catch (Exception e) {
+                                            // TODO 自动生成的 catch 块
+                                            LOGGER.error(e);
                                         }
                                     }
                                 }
@@ -1817,59 +1788,6 @@ public class ParseMessageThread extends Thread {
         return cmd;
     }
 
-    private boolean isRectifierActive(String actionType) {
-        RectifierSetConf r = getCenterSetConf().getRectifier();
-        if (r == null || !r.is_open()) return false;
-        switch (actionType) {
-            case "gift": return r.isGift_open();
-            case "follow": return r.isFollow_open();
-            case "welcome": return r.isWelcome_open();
-            default: return false;
-        }
-    }
-
-    private boolean handleRectifierWelcome(Interact interact) {
-        if (!isRectifierActive("welcome")) return false;
-        long now = System.currentTimeMillis();
-        if (now < PublicDataConf.rectifierCooldownUntil) return true;
-        String text = getCenterSetConf().getRectifier().getWelcome_text();
-        if (StringUtils.isNotBlank(text) && interact != null) {
-            text = text.replace("%uNames%", interact.getUname() != null ? interact.getUname() : "");
-            sendRectifierBarrage(text);
-        }
-        PublicDataConf.rectifierCooldownUntil = now + (getCenterSetConf().getRectifier().getInterval() * 1000L);
-        return true;
-    }
-
-    private boolean handleRectifierFollow(Interact interact) {
-        if (!isRectifierActive("follow")) return false;
-        long now = System.currentTimeMillis();
-        if (now < PublicDataConf.rectifierCooldownUntil) return true;
-        String text = getCenterSetConf().getRectifier().getFollow_text();
-        if (StringUtils.isNotBlank(text) && interact != null) {
-            text = text.replace("%uNames%", interact.getUname() != null ? interact.getUname() : "");
-            sendRectifierBarrage(text);
-        }
-        PublicDataConf.rectifierCooldownUntil = now + (getCenterSetConf().getRectifier().getInterval() * 1000L);
-        return true;
-    }
-
-    private boolean handleRectifierGift(Gift gift) {
-        if (!isRectifierActive("gift")) return false;
-        long now = System.currentTimeMillis();
-        if (now < PublicDataConf.rectifierCooldownUntil) return true;
-        String text = getCenterSetConf().getRectifier().getGift_text();
-        if (StringUtils.isNotBlank(text) && gift != null) {
-            text = text.replace("%uName%", gift.getUname() != null ? gift.getUname() : "");
-            text = text.replace("%GiftName%", gift.getGiftName() != null ? gift.getGiftName() : "");
-            text = text.replace("%Num%", gift.getNum() != null ? gift.getNum().toString() : "");
-            text = text.replace("%Type%", gift.getAction() != null ? gift.getAction() : "");
-            sendRectifierBarrage(text);
-        }
-        PublicDataConf.rectifierCooldownUntil = now + (getCenterSetConf().getRectifier().getInterval() * 1000L);
-        return true;
-    }
-
     private void handleGazeWelcome(Interact interact) {
         GazeWelcomeSetConf gazeConf = getCenterSetConf().getGaze_welcome();
         if (gazeConf == null || !gazeConf.is_open() || interact == null) return;
@@ -1909,11 +1827,4 @@ public class ParseMessageThread extends Thread {
         return uname.contains(pattern);
     }
 
-    private void sendRectifierBarrage(String text) {
-        ThreadComponent tc = SpringUtils.getBean(ThreadComponent.class);
-        tc.startSendBarrageThread();
-        if (PublicDataConf.sendBarrageThread != null && !PublicDataConf.sendBarrageThread.FLAG) {
-            PublicDataConf.barrageString.offer(text);
-        }
-    }
 }
