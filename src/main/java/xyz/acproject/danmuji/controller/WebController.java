@@ -10,6 +10,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import xyz.acproject.danmuji.component.ServerAddressComponent;
 import xyz.acproject.danmuji.component.TaskRegisterComponent;
 import xyz.acproject.danmuji.component.ThreadComponent;
 import xyz.acproject.danmuji.conf.CenterSetConf;
@@ -56,6 +57,8 @@ public class WebController {
     private ClientService clientService;
     @Resource
     private DanmujiInitService danmujiInitService;
+    @Resource
+    private ServerAddressComponent serverAddressComponent;
     private TaskRegisterComponent taskRegisterComponent;
     private static final Logger LOGGER = LogManager.getLogger(WebController.class);
 
@@ -82,6 +85,8 @@ public class WebController {
             model.addAttribute("USER", PublicDataConf.USER);
         }
 
+        model.addAttribute("SERVER_PORT", serverAddressComponent.getPort());
+        model.addAttribute("ROOM_INFO", PublicDataConf.ROOM_INFO);
         model.addAttribute("BUILD_TIME", getBuildTime());
 
         return "index";

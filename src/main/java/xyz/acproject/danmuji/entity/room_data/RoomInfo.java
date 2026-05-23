@@ -34,6 +34,11 @@ public class RoomInfo implements Serializable{
 	private Integer parent_area_id;
 	private String parent_area_name;
 	private String area_name;
+	private String cover;
+	private String keyframe;
+	private String face;
+	private String description;
+	private String tags;
 
 	
 	

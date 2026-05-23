@@ -219,10 +219,9 @@
                                     <div class="room-set">
                                         <ul class="ps-1">
                                             <li class="ps-1 py-1">
-                                                <a data-bs-toggle="collapse" data-target="#connect-room"
-                                                   href="#connect-room">房间连接</a>
+                                                <span style="font-weight:600;">房间连接</span>
                                             </li>
-                                            <li class="ps-1 py-1 collapse" id="connect-room">
+                                            <li class="ps-1 py-1" id="connect-room">
                                                 <div class="input-group">
                                                     <div class="input-group-append">
                                                         <span class="input-group-text">房间号</span>
@@ -245,17 +244,46 @@
                                                                 target="_blank"></a>
                                             </li>
                                             <li class="ps-1 py-1" th:if="${ROOMID}!=null">
-                                                <a data-bs-toggle="collapse" data-target="#web-danmu-show"
-                                                   href="#web-danmu-show">网页实时弹幕显示</a>
+                                                <span style="font-weight:600;">房间信息</span>
                                             </li>
-                                            <li class="ps-1 py-1 collapse" th:if="${ROOMID}!=null" id="web-danmu-show">
+                                            <li class="ps-1 py-1" th:if="${ROOMID}!=null and ${ROOM_INFO}!=null">
+                                                <div class="card bg-dark text-white" style="max-width:400px;">
+                                                    <div class="row g-0" style="align-items:center;">
+                                                        <div class="col-auto" style="padding:8px;">
+                                                            <img th:src="${ROOM_INFO.cover}" alt="封面"
+                                                                 style="width:100px;height:63px;object-fit:cover;border-radius:4px;"
+                                                                 onerror="this.style.display='none'">
+                                                        </div>
+                                                        <div class="col">
+                                                            <div style="padding:8px 8px 8px 0;font-size:13px;">
+                                                                <div style="font-weight:600;margin-bottom:4px;" th:text="${ROOM_INFO.title}"></div>
+                                                                <div style="color:#aaa;">主播：<span th:text="${ANAME}"></span></div>
+                                                                <div style="color:#aaa;" th:if="${ROOM_INFO.area_name} != null">
+                                                                    分区：<span th:text="${ROOM_INFO.parent_area_name} + ' · ' + ${ROOM_INFO.area_name}"></span>
+                                                                </div>
+                                                                <div style="margin-top:4px;">
+                                                                    <span th:if="${LIVE_STATUS}==1" style="color:#4eff4e;font-size:12px;">●直播中</span>
+                                                                    <span th:if="${LIVE_STATUS}!=1" style="color:#ff6b6b;font-size:12px;">●未开播</span>
+                                                                    <span style="color:#aaa;font-size:12px;margin-left:8px;" th:if="${ROOM_INFO.live_start_time} != null and ${ROOM_INFO.live_start_time} > 0">
+                                                                        开播：<span th:text="${#dates.format(new java.util.Date(ROOM_INFO.live_start_time * 1000), 'MM-dd HH:mm')}"></span>
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                            <li class="ps-1 py-1" th:if="${ROOMID}!=null">
+                                                <span style="font-weight:600;">网页实时弹幕显示</span>
+                                            </li>
+                                            <li class="ps-1 py-1" th:if="${ROOMID}!=null" id="web-danmu-show">
                                                 <div class="input-group">
                                                     <div class="form-group connect-set">
                                                         <input class="form-control connect-docket"
                                                                data-bs-html="true" data-bs-placement="top"
                                                                data-bs-toggle="tooltip" placeholder="要连接的端口地址"
                                                                title="连接网页显示弹幕服务器：通常本地为127.0.0.1或localhost<br/>远程服务器请以远程服务器ip替换"
-                                                               value="ws://localhost:23333/danmu/sub">
+                                                               th:value="'ws://localhost:' + ${SERVER_PORT} + '/danmu/sub'">
                                                     </div>
                                                     <div class="form-group connect-button">
                                                         <button class="btn btn-primary btn-connect-d" type="button">

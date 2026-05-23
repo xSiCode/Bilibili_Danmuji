@@ -7,6 +7,7 @@ import xyz.acproject.danmuji.entity.auto_reply.AutoReply;
 import xyz.acproject.danmuji.entity.danmu_data.Gift;
 import xyz.acproject.danmuji.entity.danmu_data.Interact;
 import xyz.acproject.danmuji.entity.room_data.MedalInfoAnchor;
+import xyz.acproject.danmuji.entity.room_data.RoomInfo;
 import xyz.acproject.danmuji.entity.user_data.User;
 import xyz.acproject.danmuji.entity.user_data.UserCookie;
 
@@ -47,6 +48,8 @@ public class PublicDataConf {
 	public static volatile String ANCHOR_NAME = null;
 	//主播勋章信息
 	public static volatile MedalInfoAnchor MEDALINFOANCHOR = null;
+	//房间详细信息
+	public static volatile RoomInfo ROOM_INFO = null;
 	//房间人气
 	public static volatile Long ROOM_POPULARITY =1L;
 	//在线人数

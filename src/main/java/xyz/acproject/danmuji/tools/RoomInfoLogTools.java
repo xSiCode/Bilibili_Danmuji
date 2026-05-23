@@ -66,7 +66,7 @@ public class RoomInfoLogTools {
     }
 
     private static String roomKey() {
-        Long id = PublicDataConf.ROOMID;
+        Long id = PublicDataConf.ROOMID  ;
         return id != null ? id.toString() : "unknown";
     }
 
