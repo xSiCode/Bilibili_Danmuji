@@ -267,14 +267,8 @@ public class ParseSetStatusTools {
 			if (centerSetConf.getReply() == null) {
 				centerSetConf.setReply(new AutoReplySetConf());
 			}
-			if (centerSetConf.getClock_in() == null) {
-				centerSetConf.setClock_in(new ClockInSetConf());
-			}
 			if (centerSetConf.getWelcome() == null) {
 				centerSetConf.setWelcome(new ThankWelcomeSetConf());
-			}
-			if(centerSetConf.getPrivacy()==null){
-				centerSetConf.setPrivacy(new PrivacySetConf());
 			}
 			if(centerSetConf.getBlack()==null){
 				centerSetConf.setBlack(new BlackListSetConf());

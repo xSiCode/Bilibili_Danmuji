@@ -85,7 +85,4 @@ public interface ThreadComponent {
 
 	void closeWelcomeShieldThread();
 
-	// 关闭用户在线线程
-	void closeUserOnlineThread();
-
 }

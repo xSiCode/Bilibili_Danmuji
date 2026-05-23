@@ -62,25 +62,17 @@ public class SendBarrageThread extends Thread {
                         }
                         try {
                             String barrageStr_split = StringUtils.substring(barrageStr, i * maxLength, strLength > maxLength * (i + 1) ? maxLength * (i + 1) : strLength);
-                            if (!PublicDataConf.centerSetConf.isTest_mode()) {
-                                if (HttpUserData.httpPostSendBarrage(barrageStr_split) != 0) {
-                                    break;
-                                }
-                            } else {
-                                LOGGER.info(barrageStr_split);
+                            if (HttpUserData.httpPostSendBarrage(barrageStr_split) != 0) {
+                                break;
                             }
                         } catch (Exception e) {
                             System.err.println("发送弹幕线程抛出:" + e);
                         }
                     }
                 } else {
-                    if (!PublicDataConf.centerSetConf.isTest_mode()) {
-                        try {
-                            HttpUserData.httpPostSendBarrage(barrageStr);
-                        } catch (Exception e) {
-                        }
-                    } else {
-                        LOGGER.info(barrageStr);
+                    try {
+                        HttpUserData.httpPostSendBarrage(barrageStr);
+                    } catch (Exception e) {
                     }
                 }
                 lastSendTime = System.currentTimeMillis();

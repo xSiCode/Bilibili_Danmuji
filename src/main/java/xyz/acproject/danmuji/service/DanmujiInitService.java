@@ -89,14 +89,8 @@ public class DanmujiInitService {
             if (PublicDataConf.centerSetConf.getReply() == null) {
                 PublicDataConf.centerSetConf.setReply(new AutoReplySetConf());
             }
-            if (PublicDataConf.centerSetConf.getClock_in() == null) {
-                PublicDataConf.centerSetConf.setClock_in(new ClockInSetConf(false, "签到"));
-            }
             if (PublicDataConf.centerSetConf.getWelcome() == null) {
                 PublicDataConf.centerSetConf.setWelcome(new ThankWelcomeSetConf());
-            }
-            if (PublicDataConf.centerSetConf.getPrivacy() == null) {
-                PublicDataConf.centerSetConf.setPrivacy(new PrivacySetConf());
             }
             if (PublicDataConf.centerSetConf.getBlack() == null) {
                 PublicDataConf.centerSetConf.setBlack(new BlackListSetConf());
@@ -126,8 +120,8 @@ public class DanmujiInitService {
             // 无效的本地配置集则初始化一份
             // 此处无参初始化可以采用聚合根的思想
             PublicDataConf.centerSetConf = new CenterSetConf(new ThankGiftSetConf(), new AdvertSetConf(),
-                    new ThankFollowSetConf(), new AutoReplySetConf(), new ClockInSetConf(), new ThankWelcomeSetConf(),
-                    new PrivacySetConf(), new BlackListSetConf(), new WhiteListSetConf(), new LiveStatusSetConf(),
+                    new ThankFollowSetConf(), new AutoReplySetConf(), new ThankWelcomeSetConf(),
+                    new BlackListSetConf(), new WhiteListSetConf(), new LiveStatusSetConf(),
                     new TimerSetConf(), new DanmakuStoreSetConf(), new BadListSetConf(), new RectifierSetConf(), new GazeWelcomeSetConf(), new AutoBlockSetConf());
         }
 

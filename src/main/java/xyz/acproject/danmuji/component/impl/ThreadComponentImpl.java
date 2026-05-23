@@ -9,9 +9,6 @@ import xyz.acproject.danmuji.conf.set.*;
 import xyz.acproject.danmuji.thread.*;
 import xyz.acproject.danmuji.thread.core.HeartByteThread;
 import xyz.acproject.danmuji.thread.core.ParseMessageThread;
-import xyz.acproject.danmuji.thread.online.HeartBeatThread;
-import xyz.acproject.danmuji.thread.online.HeartBeatsThread;
-import xyz.acproject.danmuji.thread.online.UserOnlineHeartThread;
 import xyz.acproject.danmuji.tools.ParseSetStatusTools;
 
 import java.util.HashSet;
@@ -35,7 +32,6 @@ public class ThreadComponentImpl implements ThreadComponent {
 	//关闭全部线程
 	public void closeAll(){
 		closeHeartByteThread();
-		closeUserOnlineThread();
 		closeAdvertThread();
 		closeSendBarrageThread();
 		closeLogThread();
@@ -51,7 +47,6 @@ public class ThreadComponentImpl implements ThreadComponent {
 	//关闭用户相关线程
 	public void closeUser(boolean close){
 
-		closeUserOnlineThread();
 		closeAdvertThread();
 		closeSendBarrageThread();
 		closeLogThread();
@@ -247,26 +242,6 @@ public class ThreadComponentImpl implements ThreadComponent {
 			return true;
 		}
 		return false;
-	}
-
-	@Override
-	public void closeUserOnlineThread() {
-		// TODO 自动生成的方法存根
-		if (PublicDataConf.userOnlineHeartThread != null) {
-			PublicDataConf.userOnlineHeartThread.FLAG = true;
-			PublicDataConf.userOnlineHeartThread.interrupt();
-			PublicDataConf.userOnlineHeartThread = null;
-		}
-		if (PublicDataConf.heartBeatThread != null) {
-			PublicDataConf.heartBeatThread.FLAG = true;
-			PublicDataConf.heartBeatThread.interrupt();
-			PublicDataConf.heartBeatThread = null;
-		}
-		if (PublicDataConf.heartBeatsThread != null) {
-			PublicDataConf.heartBeatsThread.FLAG = true;
-			PublicDataConf.heartBeatsThread.interrupt();
-			PublicDataConf.heartBeatsThread = null;
-		}
 	}
 
 	@Override

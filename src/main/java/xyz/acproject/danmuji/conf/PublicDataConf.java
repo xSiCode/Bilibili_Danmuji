@@ -15,9 +15,6 @@ import xyz.acproject.danmuji.thread.*;
 import xyz.acproject.danmuji.thread.core.HeartByteThread;
 import xyz.acproject.danmuji.thread.core.ParseMessageThread;
 import xyz.acproject.danmuji.thread.core.ReConnThread;
-import xyz.acproject.danmuji.thread.online.HeartBeatThread;
-import xyz.acproject.danmuji.thread.online.HeartBeatsThread;
-import xyz.acproject.danmuji.thread.online.UserOnlineHeartThread;
 
 import java.util.Map;
 import java.util.Vector;
@@ -142,11 +139,6 @@ public class PublicDataConf {
 	//自动回复线程
 	public static volatile AutoReplyThread autoReplyThread;
 
-	//用户在线线程集
-	public static volatile HeartBeatThread heartBeatThread;
-	public static volatile HeartBeatsThread heartBeatsThread;
-	public static volatile UserOnlineHeartThread userOnlineHeartThread;
-//签到线程
 
 	//是否显示人气
 	public static volatile Boolean IS_ROOM_POPULARITY =false;
@@ -167,7 +159,6 @@ public class PublicDataConf {
 	//整流回复姬冷却时间戳(毫秒)
 	public static volatile long rectifierCooldownUntil = 0L;
 
-	public static volatile int manager_login_size=0;
 
 //	//view
 //	//房间礼物集合

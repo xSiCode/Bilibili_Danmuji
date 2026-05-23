@@ -41,9 +41,6 @@ public class ServerAddressComponent implements ApplicationListener<WebServerInit
 	 * @return
 	 */
 	public String getRemoteAddress() {
-		if(PublicDataConf.centerSetConf.getPrivacy().is_open()){
-			return "http://隐私模式禁止获取对公ip:"+this.serverPort;
-		}
 		return "http://远程地址不可用:"+this.serverPort;
 	}
 	@Override

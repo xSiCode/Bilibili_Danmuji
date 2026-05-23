@@ -9,8 +9,6 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.springframework.web.servlet.resource.ContentVersionStrategy;
 import org.springframework.web.servlet.resource.ResourceUrlEncodingFilter;
 import org.springframework.web.servlet.resource.VersionResourceResolver;
-import xyz.acproject.danmuji.conf.PublicDataConf;
-import xyz.acproject.danmuji.interceptors.LoginInterceptor;
 import xyz.acproject.danmuji.service.DanmujiInitService;
 
 /**
@@ -29,12 +27,6 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         danmujiInitService.init();
-        if (PublicDataConf.centerSetConf.is_manager_login()) {
-            registry.addInterceptor(new LoginInterceptor()).addPathPatterns("/*")
-                    .excludePathPatterns("/manager/login", "/manager/logins","/test/**","/manager/test");
-        }else {
-        WebMvcConfigurer.super.addInterceptors(registry);
-        }
     }
 
     @Override

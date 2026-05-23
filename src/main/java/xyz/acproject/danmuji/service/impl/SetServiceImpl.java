@@ -16,7 +16,6 @@ import xyz.acproject.danmuji.service.ClientService;
 import xyz.acproject.danmuji.service.SetService;
 import xyz.acproject.danmuji.tools.BASE64Encoder;
 import xyz.acproject.danmuji.tools.CookieEncryptUtils;
-import xyz.acproject.danmuji.tools.CurrencyTools;
 import xyz.acproject.danmuji.tools.ParseSetStatusTools;
 import xyz.acproject.danmuji.tools.file.ProFileTools;
 import xyz.acproject.danmuji.utils.SchedulingRunnableUtil;
@@ -164,39 +163,6 @@ public class SetServiceImpl implements SetService {
      */
     public void holdSet(CenterSetConf centerSetConf) {
         synchronized (centerSetConf) {
-            SchedulingRunnableUtil task = new SchedulingRunnableUtil("dosignTask", "dosign");
-            SchedulingRunnableUtil dakatask = new SchedulingRunnableUtil("dosignTask", "clockin");
-            //每日签到
-            if (PublicDataConf.centerSetConf.is_dosign()) {
-                //判断签到
-                boolean isSign = CurrencyTools.signNow();
-                if (isSign) {
-                    changeSet(PublicDataConf.centerSetConf);
-                }
-                if (!taskRegisterComponent.hasTask(task)) {
-                    taskRegisterComponent.addTask(task, CurrencyTools.dateStringToCron(centerSetConf.getSign_time()));
-                }
-            } else {
-                try {
-                    taskRegisterComponent.removeTask(task);
-                } catch (Exception e) {
-                    // TODO 自动生成的 catch 块
-                    LOGGER.error("清理定时任务错误：" + e);
-                }
-            }
-            //每日打卡
-            if (centerSetConf.getClock_in().is_open()) {
-                if (!taskRegisterComponent.hasTask(dakatask)) {
-                    taskRegisterComponent.addTask(dakatask, CurrencyTools.dateStringToCron(centerSetConf.getClock_in().getTime()));
-                }
-            } else {
-                try {
-                    taskRegisterComponent.removeTask(dakatask);
-                } catch (Exception e) {
-                    // TODO 自动生成的 catch 块
-                    LOGGER.error("清理定时任务错误：" + e);
-                }
-            }
             //定时姬
             SchedulingRunnableUtil timerDanmakuTask = new SchedulingRunnableUtil("dosignTask", "sendTimerDanmaku");
             if (centerSetConf.getTimer() != null && centerSetConf.getTimer().is_open()) {

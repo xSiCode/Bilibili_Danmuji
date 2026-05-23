@@ -8,7 +8,6 @@ import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.util.DigestUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import xyz.acproject.danmuji.component.TaskRegisterComponent;
@@ -30,7 +29,6 @@ import xyz.acproject.danmuji.tools.file.FileTools;
 import xyz.acproject.danmuji.tools.file.JsonFileTools;
 import xyz.acproject.danmuji.utils.FastJsonUtils;
 import xyz.acproject.danmuji.utils.QrcodeUtils;
-import xyz.acproject.danmuji.utils.SchedulingRunnableUtil;
 import xyz.acproject.danmuji.utils.SpringUtils;
 
 import javax.annotation.Resource;
@@ -248,23 +246,6 @@ public class WebController {
             CenterSetConf centerSetConf = JSONObject.parseObject(set, CenterSetConf.class);
             //配置不一样 刷新页面
             if(!StringUtils.equals(centerSetConf.getEdition(),PublicDataConf.VERSION))return Response.success(2,req);
-            //登录设置
-            if (centerSetConf.is_manager_login() && StringUtils.isNotBlank(centerSetConf.getManager_key())) {
-                centerSetConf.setManager_key(DigestUtils.md5DigestAsHex(centerSetConf.getManager_key().getBytes()));
-            }else if(StringUtils.isBlank(centerSetConf.getManager_key())){
-                centerSetConf.setManager_key(PublicDataConf.centerSetConf.getManager_key());
-            }
-            //签到时间 & 打卡时间
-            if(centerSetConf.is_dosign()&&!centerSetConf.getSign_time().equals(PublicDataConf.centerSetConf.getSign_time())){
-                SchedulingRunnableUtil task = new SchedulingRunnableUtil("dosignTask", "dosign");
-                taskRegisterComponent.removeTask(task);
-                taskRegisterComponent.addTask(task, CurrencyTools.dateStringToCron(centerSetConf.getSign_time()));
-            }
-            if(centerSetConf.getClock_in()!=null&&centerSetConf.getClock_in().is_open()&&!centerSetConf.getClock_in().getTime().equals(PublicDataConf.centerSetConf.getClock_in().getTime())){
-                SchedulingRunnableUtil dakatask = new SchedulingRunnableUtil("dosignTask", "clockin");
-                taskRegisterComponent.removeTask(dakatask);
-                taskRegisterComponent.addTask(dakatask, CurrencyTools.dateStringToCron(centerSetConf.getClock_in().getTime()));
-            }
             //更改
             //公告
             if(centerSetConf.getAdvert()==null&&PublicDataConf.centerSetConf.getAdvert()!=null){
@@ -294,26 +275,12 @@ public class WebController {
             if(centerSetConf.getReply()==null&&PublicDataConf.centerSetConf.getReply()==null){
                 centerSetConf.setReply(new AutoReplySetConf());
             }
-            //自动打卡
-            if(centerSetConf.getClock_in()==null&&PublicDataConf.centerSetConf.getClock_in()!=null){
-                centerSetConf.setClock_in(PublicDataConf.centerSetConf.getClock_in());
-            }
-            if(centerSetConf.getClock_in()==null&&PublicDataConf.centerSetConf.getClock_in()==null){
-                centerSetConf.setClock_in(new ClockInSetConf(false,"签到"));
-            }
             //欢迎
             if(centerSetConf.getWelcome()==null&&PublicDataConf.centerSetConf.getWelcome()!=null){
                 centerSetConf.setWelcome(PublicDataConf.centerSetConf.getWelcome());
             }
             if(centerSetConf.getWelcome()==null&&PublicDataConf.centerSetConf.getWelcome()==null){
                 centerSetConf.setWelcome(new ThankWelcomeSetConf());
-            }
-            //隐私模式
-            if(centerSetConf.getPrivacy()==null&&PublicDataConf.centerSetConf.getPrivacy()!=null){
-                centerSetConf.setPrivacy(PublicDataConf.centerSetConf.getPrivacy());
-            }
-            if(centerSetConf.getPrivacy()==null&&PublicDataConf.centerSetConf.getPrivacy()==null){
-                centerSetConf.setPrivacy(new PrivacySetConf());
             }
             //黑名单
             if(centerSetConf.getBlack()==null&&PublicDataConf.centerSetConf.getBlack()!=null){

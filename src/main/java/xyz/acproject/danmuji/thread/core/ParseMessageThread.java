@@ -419,22 +419,16 @@ public class ParseMessageThread extends Thread {
                                 }
                                 final long _guard_uid = guard.getUid();
                                 final String _report = report;
-                                final boolean _test_mode = PublicDataConf.centerSetConf.isTest_mode();
                                 final String _report_barrage = getCenterSetConf().getThank_gift().getReport_barrage();
                                 MESSAGE_EXECUTOR.execute(() -> {
                                     try {
-                                        if (!_test_mode) {
-                                            String rb = _report_barrage != null ? _report_barrage.trim() : "";
-                                            if (StringUtils.isNotBlank(rb)) {
-                                                if (HttpUserData.httpPostSendMsg(_guard_uid, _report) == 0) {
-                                                    PublicDataConf.barrageString.offer(rb);
-                                                }
-                                            } else {
-                                                HttpUserData.httpPostSendMsg(_guard_uid, _report);
+                                        String rb = _report_barrage != null ? _report_barrage.trim() : "";
+                                        if (StringUtils.isNotBlank(rb)) {
+                                            if (HttpUserData.httpPostSendMsg(_guard_uid, _report) == 0) {
+                                                PublicDataConf.barrageString.offer(rb);
                                             }
                                         } else {
-                                            LOGGER.info("私信姬：发送的弹幕:{}", _report_barrage);
-                                            LOGGER.info("私信姬：发送的私聊:{}", _report);
+                                            HttpUserData.httpPostSendMsg(_guard_uid, _report);
                                         }
                                     } catch (Exception e) {
                                         LOGGER.error("发送舰长私信失败，原因：" + e);

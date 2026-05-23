@@ -91,25 +91,7 @@ public class CenterSetConf implements Serializable {
     @JSONField(name = "auto_save_set")
     private boolean auto_save_set = false;
 
-    //是否开启登录
-    @JSONField(name = "is_manager_login")
-    private boolean is_manager_login = false;
-    //123
-    private String manager_key = "202cb962ac59075b964b07152d234b70";
-    //每次登录最大尝试次数
-    private int manager_maxSize = 10;
-
     private String connect_docket = "ws://localhost:23333/danmu/sub";
-
-    //-------------------------以下设置需要用户登录后----------------------------------------
-    //是否开启用户在线心跳线程
-    @JSONField(name = "is_online")
-    private boolean is_online = false;
-//是否开启用户自动签到
-    @JSONField(name = "is_dosign")
-    private boolean is_dosign = false;
-    //自定义的签到时间
-    private String sign_time = "00:30:00";
     //是否开启礼物感谢线程对象体 black
     @JSONField(name = "thank_gift")
     private ThankGiftSetConf thank_gift;
@@ -122,15 +104,9 @@ public class CenterSetConf implements Serializable {
     //是否开启自动回复线程对象体 black
     @JSONField(name = "reply")
     private AutoReplySetConf reply;
-    //开启自动打卡设置对象体
-    @JSONField(name = "clock_in")
-    private ClockInSetConf clock_in;
     //是否开启欢迎进入直播间线程对象体 black
     @JSONField(name = "welcome")
     private ThankWelcomeSetConf welcome;
-    //是否开启隐私模式 不再调用服务器
-    @JSONField(name = "privacy")
-    private PrivacySetConf privacy;
     //全局黑名单
     @JSONField(name="black")
     private BlackListSetConf black;
@@ -165,8 +141,6 @@ public class CenterSetConf implements Serializable {
 
 
 
-    @JSONField(name = "test_mode")
-    private boolean test_mode = false;
 
     public static CenterSetConf getInitCenterSetConf(){
         CenterSetConf centerSetConf = new CenterSetConf();
@@ -174,9 +148,7 @@ public class CenterSetConf implements Serializable {
         centerSetConf.setAdvert(new AdvertSetConf());
         centerSetConf.setFollow(new ThankFollowSetConf());
         centerSetConf.setReply(new AutoReplySetConf());
-        centerSetConf.setClock_in(new ClockInSetConf());
         centerSetConf.setWelcome(new ThankWelcomeSetConf());
-        centerSetConf.setPrivacy(new PrivacySetConf());
         centerSetConf.setBlack(new BlackListSetConf());
         centerSetConf.setWhite(new WhiteListSetConf());
         centerSetConf.setLive_status(new LiveStatusSetConf());
@@ -191,15 +163,15 @@ public class CenterSetConf implements Serializable {
 
 
     public CenterSetConf(ThankGiftSetConf thank_gift, AdvertSetConf advert,
-                         ThankFollowSetConf follow, AutoReplySetConf reply, ClockInSetConf clock_in, ThankWelcomeSetConf welcome, PrivacySetConf privacy,BlackListSetConf black,WhiteListSetConf white,LiveStatusSetConf live_status,TimerSetConf timer,DanmakuStoreSetConf danmaku_store,BadListSetConf badList,RectifierSetConf rectifier,GazeWelcomeSetConf gaze_welcome, AutoBlockSetConf auto_block) {
+                         ThankFollowSetConf follow, AutoReplySetConf reply, ThankWelcomeSetConf welcome, BlackListSetConf black,WhiteListSetConf white,LiveStatusSetConf live_status,TimerSetConf timer,DanmakuStoreSetConf danmaku_store,BadListSetConf badList,RectifierSetConf rectifier,GazeWelcomeSetConf gaze_welcome, AutoBlockSetConf auto_block) {
         super();
         this.thank_gift = thank_gift;
         this.advert = advert;
         this.follow = follow;
         this.reply = reply;
-        this.clock_in = clock_in;
+        
         this.welcome = welcome;
-        this.privacy = privacy;
+        
         this.black= black;
         this.white= white;
         this.live_status = live_status;

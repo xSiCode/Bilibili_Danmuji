@@ -4,18 +4,14 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.beans.BeanUtils;
 import org.springframework.util.CollectionUtils;
 import xyz.acproject.danmuji.conf.CacheConf;
 import xyz.acproject.danmuji.conf.CenterSetConf;
 import xyz.acproject.danmuji.conf.PublicDataConf;
 import xyz.acproject.danmuji.entity.BarrageHeadHandle;
 import xyz.acproject.danmuji.entity.room_data.LotteryInfoWeb;
-import xyz.acproject.danmuji.entity.room_data.RoomInit;
 import xyz.acproject.danmuji.entity.server_data.HostServer;
-import xyz.acproject.danmuji.entity.user_data.UserBag;
 import xyz.acproject.danmuji.entity.user_data.UserCookie;
-import xyz.acproject.danmuji.entity.user_data.UserMedal;
 import xyz.acproject.danmuji.http.HttpRoomData;
 import xyz.acproject.danmuji.http.HttpUserData;
 import xyz.acproject.danmuji.utils.ByteUtils;
@@ -139,64 +135,6 @@ public class CurrencyTools {
 
     }
 
-    public static List<UserMedal> getAllUserMedals() {
-        List<UserMedal> userMedals = HttpUserData.httpGetMedalList();
-        return userMedals;
-    }
-
-    public static String handleEnterStr(String enterStr) {
-        String enterStrs[] = null;
-        if (StringUtils.indexOf(enterStr, "\n") != -1) {
-            enterStrs = StringUtils.split(enterStr, "\n");
-        }
-        if (enterStrs != null && enterStrs.length > 1) {
-            return enterStrs[(int) Math.ceil(Math.random() * enterStrs.length) - 1];
-        }
-        return enterStr;
-    }
-
-    //打卡 保持其同步性
-    public synchronized static int clockIn(List<UserMedal> userMedals) {
-        //判定是否有签到
-        Date date = new Date();
-        int nowDay = JodaTimeUtils.formatToInt(date, "yyyyMMdd");
-        if (PublicDataConf.centerSetConf.getPrivacy().getClockInDay() == nowDay) {
-            return 0;
-        }
-
-        //逻辑开始
-        if (StringUtils.isBlank(PublicDataConf.centerSetConf.getClock_in().getBarrage())) return 0;
-        int max = 0;
-        RoomInit roomInit;
-        if (!CollectionUtils.isEmpty(userMedals)) {
-            for (UserMedal userMedal : userMedals) {
-                try {
-                    LOGGER.info("第{}次打卡开始,勋章数据", max + 1, userMedal);
-                    roomInit = HttpRoomData.httpGetRoomInit(userMedal.getRoomid());
-                    try {
-                        Thread.sleep(4050);
-                    } catch (InterruptedException e) {
-                        LOGGER.error(e);
-                    }
-                    String barrge = handleEnterStr(PublicDataConf.centerSetConf.getClock_in().getBarrage());
-                    //   short code = 0;
-                    short code = HttpUserData.httpPostSendBarrage(barrge, roomInit.getRoom_id());
-                    try {
-                        Thread.sleep(2050);
-                    } catch (InterruptedException e) {
-                        LOGGER.error(e);
-                    }
-
-                    LOGGER.info("第{}次打卡{},直播间:{},up主:{},发送弹幕:{}", max + 1, code == 0 ? "成功" : "失败", userMedal.getRoomid(), userMedal.getTarget_name(), barrge);
-                    max++;
-                } catch (Exception e) {
-                    LOGGER.info("第{}次打卡{},直播间:{},up主:{},发送弹幕:{}", max + 1, "异常", userMedal.getRoomid(), userMedal.getTarget_name(), "未能成功发送");
-//                    LOGGER.error(e);
-                }
-            }
-        }
-        return max;
-    }
 
 
     public static String sendGiftCode(short guardLevel) {
@@ -377,20 +315,6 @@ public class CurrencyTools {
     }
 
 
-    public static boolean signNow() {
-        Date date = new Date();
-        int nowDay = JodaTimeUtils.formatToInt(date, "yyyyMMdd");
-        if (PublicDataConf.centerSetConf.getPrivacy().getSignDay() != nowDay) {
-            HttpUserData.httpGetDoSign();
-            PublicDataConf.centerSetConf.getPrivacy().setSignDay(nowDay);
-            return true;
-        }
-        return false;
-    }
-
-    public static String dateStringToCron(String dateStr) {
-        return JodaTimeUtils.format(JodaTimeUtils.parse(dateStr, "HH:mm:ss"), "ss mm HH * * ?");
-    }
 
     public static void handleLotteryInfoWebByRedPackage(Long roomid,LotteryInfoWeb lotteryInfoWeb){
         if(lotteryInfoWeb==null)return;

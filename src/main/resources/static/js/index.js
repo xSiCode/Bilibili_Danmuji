@@ -224,24 +224,6 @@ $(document).on('click', '.export-set-web', function () {
         method.setExprotWeb();
     }
 });
-$(document).on('click', '.is_clockin', function () {
-    if ($(".is_clockin").is(':checked')) {
-        $(".clockin_barrage").show();
-        $(".clockin_time").attr("disabled", false);
-    } else {
-        $(".clockin_barrage").hide();
-        $(".clockin_time").attr("disabled", true);
-    }
-});
-$(document).on('click', '.is_dosign', function () {
-    if ($(".is_dosign").is(':checked')) {
-        $(".sign_time").attr("disabled", false);
-    } else {
-        $(".sign_time").attr("disabled", true);
-    }
-});
-$(document).on('click', '.is_online', function () {
-});
 $(document).on('click', '#gift-shield-btn', function () {
     // if (!$(".shieldgifts-mask").is(":visible")) {
     //     $(".shieldgifts-mask").show();
@@ -1157,9 +1139,7 @@ const method = {
             "advert": {},
             "follow": {},
             "reply": {"autoReplySets": []},
-            "clock_in": {},
             "welcome": {},
-            "privacy": {},
             "black": {
                 "names": [],
                 "uids": []
@@ -1195,17 +1175,7 @@ const method = {
         set.is_follow_dm = $(".is_follow").is(':checked');
         set.log = $(".is_log").is(':checked');
         set.is_watcher_log = $(".is_watcher_log").is(':checked');
-        set.is_online = $(".is_online").is(':checked');
-        /* 管理登录 */
-        set.is_manager_login = $(".is_manager_login").is(':checked');
-        set.manager_maxSize = Number($(".manager_maxSize").val());
         set.connect_docket = $(".connect-docket").val();
-        //密码就不set给前端了
-        set.manager_key = $(".manager_key").val();
-        /* 管理结束*/
-        set.test_mode = $(".is_test_mode").is(':checked');
-        set.is_dosign = $(".is_dosign").is(':checked');
-        set.sign_time = method.time_parse($(".sign_time").val());
         set.thank_gift.is_open = $(".thankgift_is_open").is(':checked');
         set.thank_gift.is_live_open = $(".thankgift_is_live_open").is(
             ':checked');
@@ -1297,10 +1267,6 @@ const method = {
         set.reply.time = Number($(".replys_time").val());
         set.reply.list_people_shield_status = Number($(".replys_list_people_shield_status")
             .find("option:selected").val()) - 1;
-        set.clock_in.is_open = $(".is_clockin").is(':checked');
-        set.clock_in.time = method.time_parse($(".clockin_time").val());
-        set.clock_in.barrage = $(".clockin_barrage").val();
-        set.privacy.is_open = $(".is_privacy_open").is(':checked');
         set.black.all = $(".is_black_all").is(':checked');
         set.black.thank_gift = $(".is_black_gift").is(':checked');
         set.black.thank_welcome = $(".is_black_welcome").is(':checked');
@@ -1368,10 +1334,6 @@ const method = {
         set.auto_block.is_auto_block = $(".is_auto_block").is(':checked');
         set.auto_block.block_score = parseInt($(".auto-block-score").val()) || -1;
         set.auto_block.block_interval = parseInt($(".auto-block-interval").val()) || 3;
-        /*处理验证?*/
-        if (set.clock_in.is_open) {
-            set.clock_in.sign_day = (new Date()).getTime();
-        }
         if ($(".follow_is_open").is(':checked')) {
             if ($(".follow_follows").val().trim() !== null
                 && $(".follow_follows").val().trim() !== "") {
@@ -1821,15 +1783,7 @@ const method = {
             $(".is_follow").prop('checked', set.is_follow_dm);
             $(".is_log").prop('checked', set.log);
             $(".is_watcher_log").prop('checked', set.is_watcher_log);
-            $(".is_test_mode").prop('checked', set.test_mode);
-            /* 登录暗号                                      */
-            $(".is_manager_login").prop('checked', set.is_manager_login);
-            $(".manager_maxSize").val(set.manager_maxSize);
             $(".connect-docket").val(set.connect_docket);
-            /**/
-            $(".is_online").prop('checked', set.is_online);
-            $(".is_dosign").prop('checked', set.is_dosign);
-            $(".sign_time").val(set.sign_time);
             $(".thankgift_is_open").prop('checked', set.thank_gift.is_open);
             $(".thankgift_is_live_open").prop('checked',
                 set.thank_gift.is_live_open);
@@ -1897,10 +1851,6 @@ const method = {
             $(".replys_time").val(set.reply.time);
             $(".replys_list_people_shield_status").find("option").eq(
                 set.reply.list_people_shield_status).prop('selected', true);
-            $(".is_clockin").prop('checked', set.clock_in.is_open);
-            $(".clockin_time").val(set.clock_in.time);
-            $(".clockin_barrage").val(set.clock_in.barrage);
-            $(".is_privacy_open").prop('checked', set.privacy.is_open);
             $(".is_black_all").prop('checked', set.black.all);
             $(".is_black_gift").prop('checked', set.black.thank_gift);
             $(".is_black_follow").prop('checked', set.black.thank_follow);
@@ -2051,94 +2001,6 @@ const method = {
                 $(".thankgift_codeStrings").show();
             } else {
                 $(".thankgift_codeStrings").hide();
-            }
-            if ($(".is_online").is(':checked')) {
-            } else {
-            }
-            if ($(".is_clockin").is(':checked')) {
-                $(".clockin_barrage").show();
-                $(".clockin_time").attr("disabled", false);
-            } else {
-                $(".clockin_barrage").hide();
-                $(".clockin_time").attr("disabled", true);
-            }
-            if ($(".is_dosign").is(':checked')) {
-                $(".sign_time").attr("disabled", false);
-            } else {
-                $(".sign_time").attr("disabled", true);
-            }
-            if (!$(".card-body").find(".logined").length > 0) {
-                $(".is_online").attr("disabled", true);
-                $(".is_dosign").attr("disabled", true);
-                $(".sign_time").attr("disabled", true);
-                $(".thankgift_is_open").attr("disabled", true);
-                $(".thankgift_is_live_open").attr("disabled", true);
-                $(".thankgift_is_open_self").attr("disabled", true);
-                $(".thankgift_is_tx_shield").attr("disabled", true);
-                $(".thankgift_shield_status").attr("disabled", true);
-                $(".thankgift_list_gift_shield_status").attr("disabled", true);
-                $(".thankgift_list_people_shield_status").attr("disabled", true);
-                $(".thankgift_shield").attr("disabled", true);
-                $(".thankgift_thankGiftRuleSets").attr("disabled", true);// test
-                $(".thankgift_thank_status").attr("disabled", true);
-                $(".thankgift_num").attr("disabled", true);
-                $(".thankgift_delaytime").attr("disabled", true);
-                $(".thankgift_thank").attr("disabled", true);
-                $(".thankgift_is_guard_report").attr("disabled", true);
-                $(".thankgift_is_gift_code").attr("disabled", true);
-                $(".thankgift_codeStrings").attr("disabled", true);
-                $(".thankgift_is_guard_local").attr("disabled", true);
-                $(".thankgift_report").attr("disabled", true);
-                $("#gift-shield-btn").attr("disabled", true);
-                $(".advert_is_open").attr("disabled", true);
-                $(".advert_is_live_open").attr("disabled", true);
-                $(".advert_status").attr("disabled", true);
-                $(".advert_time").attr("disabled", true);
-                $(".advert_time2").attr("disabled", true);
-                $(".advert_adverts").attr("disabled", true);
-                $(".follow_is_open").attr("disabled", true);
-                $(".follow_is_live_open").attr("disabled", true);
-                $(".follow_num").attr("disabled", true);
-                $(".follow_follows").attr("disabled", true);
-                $(".follow_tx_shield").attr("disabled", true);
-                $(".follow_rd_shield").attr("disabled", true);
-                $(".thankfollow_delaytime").attr("disabled", true);
-                $(".welcome_is_open").attr("disabled", true);
-                $(".welcome_is_live_open").attr("disabled", true);
-                $(".welcome_is_open_self").attr("disabled", true);
-                $(".welcome_num").attr("disabled", true);
-                $(".welcome_welcomes").attr("disabled", true);
-                $(".welcome_tx_shield").attr("disabled", true);
-                $(".welcome_rd_shield").attr("disabled", true);
-                $(".thankwelcome_delaytime").attr("disabled", true);
-                $(".welcome_list_people_shield_status").attr("disabled", true);
-                $(".shieldgift_delete").attr("disabled", true);
-                $(".thankgift_barrageReport").attr("disabled", true);
-                $(".thankgift_is_num").attr("disabled", true);
-                $(".replys_is_open").attr("disabled", true);
-                $(".replys_is_live_open").attr("disabled", true);
-                $(".replys_is_open_self").attr("disabled", true);
-                $(".replys_time").attr("disabled", true);
-                $(".replys_list_people_shield_status").attr("disabled", true);
-                $(".is_clockin").attr("disabled", true);
-                $(".clockin_time").attr("disabled", true);
-                $(".clockin_barrage").attr("disabled", true);
-                $(".is_black_all").attr("disabled", true);
-                $(".is_black_gift").attr("disabled", true);
-                $(".is_black_welcome").attr("disabled", true);
-                $(".is_black_follow").attr("disabled", true);
-                $(".is_black_reply").attr("disabled", true);
-                $(".is_black_dynamic").attr("disabled", true);
-                $(".black_names").attr("disabled", true);
-                $(".black_uids").attr("disabled", true);
-                $(".is_white_all").attr("disabled", true);
-                $(".is_white_gift").attr("disabled", true);
-                $(".is_white_welcome").attr("disabled", true);
-                $(".is_white_follow").attr("disabled", true);
-                $(".is_white_reply").attr("disabled", true);
-                $(".is_white_dynamic").attr("disabled", true);
-                $(".white_names").attr("disabled", true);
-                $(".white_uids").attr("disabled", true);
             }
         }
         return set;
