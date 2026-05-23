@@ -67,3 +67,14 @@ configurations {
 tasks.withType(JavaCompile) {
 	options.encoding = 'UTF-8'
 }
+
+task generateBuildInfo {
+    doLast {
+        def props = new Properties()
+        props.setProperty('build.time', new Date().format('yyyy-MM-dd HH:mm:ss'))
+        def file = file('src/main/resources/build-info.properties')
+        file.parentFile.mkdirs()
+        file.withOutputStream { props.store(it, null) }
+    }
+}
+processResources.dependsOn generateBuildInfo

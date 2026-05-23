@@ -1,3 +1,5 @@
+# 忽略编译时生成的时间戳文件
+src/main/resources/build-info.properties
 # 忽略idea下所有文件
 .idea/
 # 忽略out下生成文件

@@ -36,6 +36,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.*;
 import java.net.URLEncoder;
+import java.util.Properties;
 
 import java.util.HashSet;
 import java.util.List;
@@ -81,7 +82,20 @@ public class WebController {
             model.addAttribute("USER", PublicDataConf.USER);
         }
 
+        model.addAttribute("BUILD_TIME", getBuildTime());
+
         return "index";
+    }
+
+    private String getBuildTime() {
+        try (InputStream is = getClass().getClassLoader().getResourceAsStream("build-info.properties")) {
+            if (is != null) {
+                Properties props = new Properties();
+                props.load(is);
+                return props.getProperty("build.time", "");
+            }
+        } catch (Exception ignored) {}
+        return "";
     }
 
     @RequestMapping(value = "/connect")
