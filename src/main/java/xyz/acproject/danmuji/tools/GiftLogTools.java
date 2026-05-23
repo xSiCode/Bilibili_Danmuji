@@ -26,12 +26,14 @@ public class GiftLogTools {
         return t;
     });
 
-    private static volatile String lastRoom;
+    private static volatile String lastRoomId;
+    private static volatile String lastAnchorName;
     private static String jarDir;
 
     static {
         initBase();
-        lastRoom = roomKey();
+        lastRoomId = roomKey();
+        lastAnchorName = safeFileName(PublicDataConf.ANCHOR_NAME);
         loadFromCsv();
         flushScheduler.scheduleWithFixedDelay(GiftLogTools::flushToCsv, 60, 60, TimeUnit.SECONDS);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -50,8 +52,14 @@ public class GiftLogTools {
         return id != null ? id.toString() : "unknown";
     }
 
+    private static String safeFileName(String s) {
+        if (s == null || s.isEmpty()) return "unknown";
+        return s.replaceAll("[\\\\/:*?\"<>|]", "_");
+    }
+
     private static String currentCsvPath() {
-        return jarDir + File.separator + "Danmuji_log" + File.separator + roomKey() + "_3_礼物信息.csv";
+        String name = safeFileName(PublicDataConf.ANCHOR_NAME);
+        return jarDir + File.separator + "Danmuji_log" + File.separator + roomKey() + "_" + name + "_3_礼物信息.csv";
     }
 
     private static String key(long uid, String giftName) {
@@ -146,12 +154,13 @@ public class GiftLogTools {
 
     private static synchronized void flushToCsv() {
         String rk = roomKey();
-        if (!rk.equals(lastRoom)) {
-            // room switched: flush old data to old file, then load new room
-            String oldPath = jarDir + File.separator + "Danmuji_log" + File.separator + lastRoom + "_3_礼物信息.csv";
+        if (!rk.equals(lastRoomId)) {
+            String oldPrefix = lastRoomId + "_" + lastAnchorName;
+            String oldPath = jarDir + File.separator + "Danmuji_log" + File.separator + oldPrefix + "_3_礼物信息.csv";
             doFlush(oldPath);
             giftMap.clear();
-            lastRoom = rk;
+            lastRoomId = rk;
+            lastAnchorName = safeFileName(PublicDataConf.ANCHOR_NAME);
             loadFromCsv(currentCsvPath());
         }
         doFlush(currentCsvPath());

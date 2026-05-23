@@ -22,7 +22,8 @@ public class RoomInfoLogTools {
     private static final Logger LOGGER = LogManager.getLogger(RoomInfoLogTools.class);
 
     private static final LinkedHashMap<String, long[]> roomInfoMap = new LinkedHashMap<>();
-    private static volatile String lastRoom;
+    private static volatile String lastRoomId;
+    private static volatile String lastAnchorName;
     private static String jarDir;
     private static volatile boolean running;
 
@@ -31,7 +32,8 @@ public class RoomInfoLogTools {
 
     static {
         initBase();
-        lastRoom = roomKey();
+        lastRoomId = roomKey();
+        lastAnchorName = safeFileName(PublicDataConf.ANCHOR_NAME);
         loadFromCsv();
     }
 
@@ -66,12 +68,18 @@ public class RoomInfoLogTools {
     }
 
     private static String roomKey() {
-        Long id = PublicDataConf.ROOMID  ;
+        Long id = PublicDataConf.ROOMID;
         return id != null ? id.toString() : "unknown";
     }
 
+    private static String safeFileName(String s) {
+        if (s == null || s.isEmpty()) return "unknown";
+        return s.replaceAll("[\\\\/:*?\"<>|]", "_");
+    }
+
     private static String currentCsvPath() {
-        return jarDir + File.separator + "Danmuji_log" + File.separator + roomKey() + "_1_直播间信息.csv";
+        String name = safeFileName(PublicDataConf.ANCHOR_NAME);
+        return jarDir + File.separator + "Danmuji_log" + File.separator + roomKey() + "_" + name + "_1_直播间信息.csv";
     }
 
     private static synchronized void tick() {
@@ -109,11 +117,13 @@ public class RoomInfoLogTools {
 
     private static synchronized void flushToCsv() {
         String rk = roomKey();
-        if (!rk.equals(lastRoom)) {
-            String oldPath = jarDir + File.separator + "Danmuji_log" + File.separator + lastRoom + "_1_直播间信息.csv";
+        if (!rk.equals(lastRoomId)) {
+            String oldPrefix = lastRoomId + "_" + lastAnchorName;
+            String oldPath = jarDir + File.separator + "Danmuji_log" + File.separator + oldPrefix + "_1_直播间信息.csv";
             doFlush(oldPath);
             roomInfoMap.clear();
-            lastRoom = rk;
+            lastRoomId = rk;
+            lastAnchorName = safeFileName(PublicDataConf.ANCHOR_NAME);
             loadFromCsv(currentCsvPath());
         }
         doFlush(currentCsvPath());

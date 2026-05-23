@@ -26,12 +26,14 @@ public class MatchCountTools {
         return t;
     });
 
-    private static volatile String lastRoom;
+    private static volatile String lastRoomId;
+    private static volatile String lastAnchorName;
     private static String jarDir;
 
     static {
         initBase();
-        lastRoom = roomKey();
+        lastRoomId = roomKey();
+        lastAnchorName = safeFileName(PublicDataConf.ANCHOR_NAME);
         loadFromCsv();
         flushScheduler.scheduleWithFixedDelay(MatchCountTools::flushToCsv, 60, 60, TimeUnit.SECONDS);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -50,8 +52,14 @@ public class MatchCountTools {
         return id != null ? id.toString() : "unknown";
     }
 
+    private static String safeFileName(String s) {
+        if (s == null || s.isEmpty()) return "unknown";
+        return s.replaceAll("[\\\\/:*?\"<>|]", "_");
+    }
+
     private static String currentCsvPath() {
-        return jarDir + File.separator + "Danmuji_log" + File.separator + roomKey() + "_5_匹配信息.csv";
+        String name = safeFileName(PublicDataConf.ANCHOR_NAME);
+        return jarDir + File.separator + "Danmuji_log" + File.separator + roomKey() + "_" + name + "_5_匹配信息.csv";
     }
 
     public static void recordMatch(long matchedUid, String matchedName, int score) {
@@ -138,11 +146,13 @@ public class MatchCountTools {
 
     private static synchronized void flushToCsv() {
         String rk = roomKey();
-        if (!rk.equals(lastRoom)) {
-            String oldPath = jarDir + File.separator + "Danmuji_log" + File.separator + lastRoom + "_5_匹配信息.csv";
+        if (!rk.equals(lastRoomId)) {
+            String oldPrefix = lastRoomId + "_" + lastAnchorName;
+            String oldPath = jarDir + File.separator + "Danmuji_log" + File.separator + oldPrefix + "_5_匹配信息.csv";
             doFlush(oldPath);
             matchMap.clear();
-            lastRoom = rk;
+            lastRoomId = rk;
+            lastAnchorName = safeFileName(PublicDataConf.ANCHOR_NAME);
             loadFromCsv(currentCsvPath());
         }
         doFlush(currentCsvPath());

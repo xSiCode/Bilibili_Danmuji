@@ -17,14 +17,16 @@ public class BarrageLogTools {
 
     private static final LinkedBlockingQueue<String> batchQueue = new LinkedBlockingQueue<>(20000);
 
-    private static volatile String lastRoom;
+    private static volatile String lastRoomId;
+    private static volatile String lastAnchorName;
     private static String jarDir;
     private static volatile boolean headerWritten;
     private static final byte[] BOM = new byte[]{(byte)0xEF, (byte)0xBB, (byte)0xBF};
 
     static {
         initBase();
-        lastRoom = roomKey();
+        lastRoomId = roomKey();
+        lastAnchorName = safeFileName(PublicDataConf.ANCHOR_NAME);
         headerWritten = new File(currentCsvPath()).exists();
 
         Thread writer = new Thread(() -> {
@@ -65,8 +67,14 @@ public class BarrageLogTools {
         return id != null ? id.toString() : "unknown";
     }
 
+    private static String safeFileName(String s) {
+        if (s == null || s.isEmpty()) return "unknown";
+        return s.replaceAll("[\\\\/:*?\"<>|]", "_");
+    }
+
     private static String currentCsvPath() {
-        return jarDir + File.separator + "Danmuji_log" + File.separator + roomKey() + "_2_弹幕信息.csv";
+        String name = safeFileName(PublicDataConf.ANCHOR_NAME);
+        return jarDir + File.separator + "Danmuji_log" + File.separator + roomKey() + "_" + name + "_2_弹幕信息.csv";
     }
 
     public static void logBarrage(long uid, String uname, String msg, long timestamp) {
@@ -76,8 +84,9 @@ public class BarrageLogTools {
 
     private static synchronized void flushBatch(List<String> lines) {
         String rk = roomKey();
-        if (!rk.equals(lastRoom)) {
-            lastRoom = rk;
+        if (!rk.equals(lastRoomId)) {
+            lastRoomId = rk;
+            lastAnchorName = safeFileName(PublicDataConf.ANCHOR_NAME);
             headerWritten = new File(currentCsvPath()).exists();
         }
         String path = currentCsvPath();
