@@ -4,7 +4,7 @@ let sliceh = 0;
 $(function () {
     "use strict";
     let time;
-    time = setInterval(heartBeat, 30000);
+    time = setInterval(heartBeat, 5000);
     function heartBeat() {
         "use strict";
         $.ajax({
@@ -31,6 +31,9 @@ $(function () {
                         }
                         if ($(".room-online").length > 0 && result.room_online != null) {
                             $(".room-online").html(method.fmtNum(result.room_online));
+                        }
+                        if ($(".room_watcher").length > 0 && result.room_watcher != null) {
+                            $(".room_watcher").html(method.fmtNum(result.room_watcher));
                         }
                     } else {
                         // 旧格式兼容

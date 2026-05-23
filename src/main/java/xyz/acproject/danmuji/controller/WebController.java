@@ -231,6 +231,7 @@ public class WebController {
         data.put("live_status", PublicDataConf.lIVE_STATUS);
         data.put("room_like", PublicDataConf.ROOM_LIKE);
         data.put("room_online", PublicDataConf.ROOM_ONLINE__RANK_COUNT);
+        data.put("room_watcher", PublicDataConf.ROOM_WATCHER);
         return Response.success(data, req);
     }
 

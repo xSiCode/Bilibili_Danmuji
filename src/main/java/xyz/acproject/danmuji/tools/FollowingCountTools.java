@@ -7,6 +7,8 @@ import xyz.acproject.danmuji.conf.PublicDataConf;
 import xyz.acproject.danmuji.utils.JodaTimeUtils;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,7 +31,7 @@ public class FollowingCountTools {
     static {
         initCsvPath();
         loadFromCsv();
-        flushScheduler.scheduleWithFixedDelay(FollowingCountTools::flushToCsv, 30, 30, TimeUnit.SECONDS);
+        flushScheduler.scheduleWithFixedDelay(FollowingCountTools::flushToCsv, 60, 60, TimeUnit.SECONDS);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             flushScheduler.shutdown();
             flushToCsv();
@@ -129,7 +131,8 @@ public class FollowingCountTools {
         if (!file.getParentFile().exists()) {
             file.getParentFile().mkdirs();
         }
-        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"))) {
+        File tmpFile = new File(csvPath + ".tmp");
+        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tmpFile), "UTF-8"))) {
             writer.write('﻿');
             writer.write("最新时间,id,名字,次数");
             writer.newLine();
@@ -137,11 +140,17 @@ public class FollowingCountTools {
                 writer.write(JodaTimeUtils.formatDateTime(r.latestTime) + ",");
                 writer.write(r.uid + ",");
                 writer.write(escapeCsv(r.name) + ",");
-                writer.write(r.count);
+                writer.write(String.valueOf(r.count));
                 writer.newLine();
             }
         } catch (Exception e) {
             LOGGER.error("flush following CSV failed", e);
+            return;
+        }
+        try {
+            Files.move(tmpFile.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        } catch (IOException e) {
+            LOGGER.error("move following CSV failed", e);
         }
     }
 

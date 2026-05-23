@@ -7,6 +7,8 @@ import xyz.acproject.danmuji.conf.PublicDataConf;
 import xyz.acproject.danmuji.utils.JodaTimeUtils;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,7 +31,7 @@ public class GiftLogTools {
     static {
         initCsvPath();
         loadFromCsv();
-        flushScheduler.scheduleWithFixedDelay(GiftLogTools::flushToCsv, 30, 30, TimeUnit.SECONDS);
+        flushScheduler.scheduleWithFixedDelay(GiftLogTools::flushToCsv, 60, 60, TimeUnit.SECONDS);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             flushScheduler.shutdown();
             flushToCsv();
@@ -136,7 +138,8 @@ public class GiftLogTools {
         if (!file.getParentFile().exists()) {
             file.getParentFile().mkdirs();
         }
-        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"))) {
+        File tmpFile = new File(csvPath + ".tmp");
+        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tmpFile), "UTF-8"))) {
             writer.write('﻿');
             writer.write("最新时间,id,名字,赠送礼物名字,总金额,赠礼次数");
             writer.newLine();
@@ -146,11 +149,17 @@ public class GiftLogTools {
                 writer.write(escapeCsv(r.uname) + ",");
                 writer.write(escapeCsv(r.giftName) + ",");
                 writer.write(r.totalPrice + ",");
-                writer.write(r.count);
+                writer.write(String.valueOf(r.count));
                 writer.newLine();
             }
         } catch (Exception e) {
             LOGGER.error("flush gift CSV failed", e);
+            return;
+        }
+        try {
+            Files.move(tmpFile.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        } catch (IOException e) {
+            LOGGER.error("move gift CSV failed", e);
         }
     }
 

@@ -103,22 +103,22 @@
                     </div>
 
                     <div class="input-group mb-3">
-                        <button aria-controls="set" aria-expanded="false" class="btn btn-secondary"
+                        <button aria-controls="set" aria-expanded="true" class="btn btn-secondary"
                                 data-bs-target="#set" data-bs-toggle="collapse" href="#set"
                                 id="set_open">设置
                         </button>
                     </div>
                     <!--设置-->
-                    <div class="collapse multi-collapse" id="set">
+                    <div class="collapse multi-collapse show" id="set">
                         <div class="settings-container">
                             <!-- 侧边栏导航 -->
                             <div class="settings-sidebar" style="width:220px;flex-shrink:0;">
                                 <div class="sidebar-section">
                                     <span class="sidebar-section-header"
                                           onclick="toggleSidebarSection(this);return false;">基本设置</span>
-                                    <a href="javascript:void(0)" class="sidebar-link active" data-tab="account-set"
+                                    <a href="javascript:void(0)" class="sidebar-link" th:classappend="${USER == null} ? 'active'" data-tab="account-set"
                                        onclick="switchTab('account-set', this);return false;">账号设置</a>
-                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="room-set"
+                                    <a href="javascript:void(0)" class="sidebar-link" th:classappend="${USER != null and ROOMID == null} ? 'active'" data-tab="room-set"
                                        onclick="switchTab('room-set', this);return false;">房间设置</a>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="common-set"
                                        onclick="switchTab('common-set', this);return false;">通用设置</a>
@@ -160,7 +160,7 @@
                                           onclick="toggleSidebarSection(this);return false;">小黑屋</span>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="positiveWhite-set"
                                        onclick="switchTab('positiveWhite-set', this);return false;">负黑正白姬</a>
-                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="autoBlock-set"
+                                    <a href="javascript:void(0)" class="sidebar-link" th:classappend="${USER != null and ROOMID != null} ? 'active'" data-tab="autoBlock-set"
                                        onclick="switchTab('autoBlock-set', this);return false;">负黑自动拉黑姬</a>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="badlist-set"
                                        onclick="switchTab('badlist-set', this);return false;">拉黑姬</a>
@@ -172,7 +172,7 @@
                             </div>
                             <!-- 内容面板 -->
                             <div class="settings-content flex-grow-1">
-                                <div class="tab-pane active" id="tab-account-set">
+                                <div class="tab-pane" th:classappend="${USER == null} ? 'active'" id="tab-account-set">
                                     <!-- 账号设置开始 -->
                                     <div class="input-group mb-1"><h5>账号设置</h5></div>
                                     <div class="account-set">
@@ -212,7 +212,7 @@
                                     </div>
                                     <!-- 账号设置结束 -->
                                 </div>
-                                <div class="tab-pane" id="tab-room-set">
+                                <div class="tab-pane" th:classappend="${USER != null and ROOMID == null} ? 'active'" id="tab-room-set">
                                     <!-- 房间设置开始 -->
                                     <div class="input-group mb-1"><h5>房间设置</h5></div>
                                     <div class="room-set">
@@ -1389,7 +1389,7 @@
                                     </div>
                                     <!-- 底部按钮结束 -->
                                 </div>
-                                <div class="tab-pane" id="tab-autoBlock-set">
+                                <div class="tab-pane" th:classappend="${USER != null and ROOMID != null} ? 'active'" id="tab-autoBlock-set">
                                     <!-- 负黑自动拉黑姬设置开始 -->
                                     <div class="input-group mb-1"><h5>负黑自动拉黑姬</h5></div>
                                     <div class="input-group mb-3 autoBlock-set" id="autoBlock-set">

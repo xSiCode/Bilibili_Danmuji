@@ -7,6 +7,8 @@ import xyz.acproject.danmuji.conf.PublicDataConf;
 import xyz.acproject.danmuji.utils.JodaTimeUtils;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,7 +31,7 @@ public class VisitorCountTools {
     static {
         initCsvPath();
         loadFromCsv();
-        flushScheduler.scheduleWithFixedDelay(VisitorCountTools::flushToCsv, 30, 30, TimeUnit.SECONDS);
+        flushScheduler.scheduleWithFixedDelay(VisitorCountTools::flushToCsv, 60, 60, TimeUnit.SECONDS);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             flushScheduler.shutdown();
             flushToCsv();
@@ -133,7 +135,8 @@ public class VisitorCountTools {
         if (!file.getParentFile().exists()) {
             file.getParentFile().mkdirs();
         }
-        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"))) {
+        File tmpFile = new File(csvPath + ".tmp");
+        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tmpFile), "UTF-8"))) {
             writer.write('﻿');
             writer.write("最近,id,观众,打分,打分类型,次数");
             writer.newLine();
@@ -143,11 +146,17 @@ public class VisitorCountTools {
                 writer.write(escapeCsv(r.uname) + ",");
                 writer.write(r.score + ",");
                 writer.write(escapeCsv(r.scoreType) + ",");
-                writer.write(r.count);
+                writer.write(String.valueOf(r.count));
                 writer.newLine();
             }
         } catch (Exception e) {
             LOGGER.error("flush visitor CSV failed", e);
+            return;
+        }
+        try {
+            Files.move(tmpFile.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        } catch (IOException e) {
+            LOGGER.error("move visitor CSV failed", e);
         }
     }
 

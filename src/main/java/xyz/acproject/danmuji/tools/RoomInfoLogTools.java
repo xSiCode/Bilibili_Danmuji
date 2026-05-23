@@ -6,6 +6,8 @@ import org.springframework.boot.system.ApplicationHome;
 import xyz.acproject.danmuji.conf.PublicDataConf;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -40,7 +42,10 @@ public class RoomInfoLogTools {
             t.setDaemon(true);
             return t;
         });
-        scheduler.scheduleWithFixedDelay(RoomInfoLogTools::tick, 60, 60, TimeUnit.SECONDS);
+        scheduler.scheduleWithFixedDelay(() -> {
+            tick();
+            flushToCsv();
+        }, 60, 60, TimeUnit.SECONDS);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             running = false;
             scheduler.shutdown();
@@ -95,7 +100,8 @@ public class RoomInfoLogTools {
         if (!file.getParentFile().exists()) {
             file.getParentFile().mkdirs();
         }
-        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"))) {
+        File tmpFile = new File(csvPath + ".tmp");
+        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tmpFile), "UTF-8"))) {
             writer.write('﻿');
             writer.write("时间,观看数,在线数,点赞数");
             writer.newLine();
@@ -106,6 +112,12 @@ public class RoomInfoLogTools {
             }
         } catch (Exception ex) {
             LOGGER.error("flush room info CSV failed", ex);
+            return;
+        }
+        try {
+            Files.move(tmpFile.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        } catch (IOException e) {
+            LOGGER.error("move room info CSV failed", e);
         }
     }
 }

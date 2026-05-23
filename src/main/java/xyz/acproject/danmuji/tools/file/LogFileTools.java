@@ -113,7 +113,7 @@ public class LogFileTools {
 
 	public void logFile(String msg) {
 		String dateStr = JodaTimeUtils.getCurrentDateString();
-		String key = PublicDataConf.ROOMID + "_" + dateStr + "_";
+		String key = PublicDataConf.ROOMID + "_" + dateStr + "_log";
 		String fp = filePathCache;
 		if (fp == null || !key.equals(filePathKey)) {
 			fp = getBaseDirPath() + key + ".txt";
