@@ -26,10 +26,12 @@ public class VisitorCountTools {
         return t;
     });
 
-    private static volatile String csvPath;
+    private static volatile String lastRoom;
+    private static String jarDir;
 
     static {
-        initCsvPath();
+        initBase();
+        lastRoom = roomKey();
         loadFromCsv();
         flushScheduler.scheduleWithFixedDelay(VisitorCountTools::flushToCsv, 60, 60, TimeUnit.SECONDS);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -38,15 +40,18 @@ public class VisitorCountTools {
         }, "visitor-csv-shutdown"));
     }
 
-    private static void initCsvPath() {
+    private static void initBase() {
         ApplicationHome home = new ApplicationHome(VisitorCountTools.class);
-        File jarDir = home.getSource().getParentFile();
-        csvPath = new File(jarDir, "Danmuji_log/" + roomid() + "_4_观众信息.csv").getAbsolutePath();
+        jarDir = home.getSource().getParentFile().getAbsolutePath();
     }
 
-    private static String roomid() {
+    private static String roomKey() {
         Long id = PublicDataConf.ROOMID;
         return id != null ? id.toString() : "unknown";
+    }
+
+    private static String currentCsvPath() {
+        return jarDir + File.separator + "Danmuji_log" + File.separator + roomKey() + "_4_观众信息.csv";
     }
 
     public static void recordVisitor(long uid, String uname, int score, String scoreType) {
@@ -64,7 +69,11 @@ public class VisitorCountTools {
     }
 
     private static void loadFromCsv() {
-        File file = new File(csvPath);
+        loadFromCsv(currentCsvPath());
+    }
+
+    private static void loadFromCsv(String path) {
+        File file = new File(path);
         if (!file.exists()) return;
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
             String line = reader.readLine(); // skip header
@@ -130,12 +139,24 @@ public class VisitorCountTools {
     }
 
     private static synchronized void flushToCsv() {
+        String rk = roomKey();
+        if (!rk.equals(lastRoom)) {
+            String oldPath = jarDir + File.separator + "Danmuji_log" + File.separator + lastRoom + "_4_观众信息.csv";
+            doFlush(oldPath);
+            visitorMap.clear();
+            lastRoom = rk;
+            loadFromCsv(currentCsvPath());
+        }
+        doFlush(currentCsvPath());
+    }
+
+    private static void doFlush(String path) {
         List<VisitorRecord> records = new ArrayList<>(visitorMap.values());
-        File file = new File(csvPath);
+        File file = new File(path);
         if (!file.getParentFile().exists()) {
             file.getParentFile().mkdirs();
         }
-        File tmpFile = new File(csvPath + ".tmp");
+        File tmpFile = new File(path + ".tmp");
         try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tmpFile), "UTF-8"))) {
             writer.write('﻿');
             writer.write("最近,id,观众,打分,打分类型,次数");

@@ -22,14 +22,16 @@ public class RoomInfoLogTools {
     private static final Logger LOGGER = LogManager.getLogger(RoomInfoLogTools.class);
 
     private static final LinkedHashMap<String, long[]> roomInfoMap = new LinkedHashMap<>();
-    private static volatile String csvPath;
+    private static volatile String lastRoom;
+    private static String jarDir;
     private static volatile boolean running;
 
     private static final ThreadLocal<SimpleDateFormat> MINUTE_FORMAT =
             ThreadLocal.withInitial(() -> new SimpleDateFormat("yyyy-MM-dd HH:mm"));
 
     static {
-        initCsvPath();
+        initBase();
+        lastRoom = roomKey();
         loadFromCsv();
     }
 
@@ -58,12 +60,18 @@ public class RoomInfoLogTools {
         flushToCsv();
     }
 
-    private static void initCsvPath() {
+    private static void initBase() {
         ApplicationHome home = new ApplicationHome(RoomInfoLogTools.class);
-        File jarDir = home.getSource().getParentFile();
+        jarDir = home.getSource().getParentFile().getAbsolutePath();
+    }
+
+    private static String roomKey() {
         Long id = PublicDataConf.ROOMID;
-        String room = id != null ? id.toString() : "unknown";
-        csvPath = new File(jarDir, "Danmuji_log/" + room + "_1_直播间信息.csv").getAbsolutePath();
+        return id != null ? id.toString() : "unknown";
+    }
+
+    private static String currentCsvPath() {
+        return jarDir + File.separator + "Danmuji_log" + File.separator + roomKey() + "_1_直播间信息.csv";
     }
 
     private static synchronized void tick() {
@@ -76,7 +84,11 @@ public class RoomInfoLogTools {
     }
 
     private static void loadFromCsv() {
-        File file = new File(csvPath);
+        loadFromCsv(currentCsvPath());
+    }
+
+    private static void loadFromCsv(String path) {
+        File file = new File(path);
         if (!file.exists()) return;
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
             String line = reader.readLine(); // skip header + BOM
@@ -96,11 +108,23 @@ public class RoomInfoLogTools {
     }
 
     private static synchronized void flushToCsv() {
-        File file = new File(csvPath);
+        String rk = roomKey();
+        if (!rk.equals(lastRoom)) {
+            String oldPath = jarDir + File.separator + "Danmuji_log" + File.separator + lastRoom + "_1_直播间信息.csv";
+            doFlush(oldPath);
+            roomInfoMap.clear();
+            lastRoom = rk;
+            loadFromCsv(currentCsvPath());
+        }
+        doFlush(currentCsvPath());
+    }
+
+    private static void doFlush(String path) {
+        File file = new File(path);
         if (!file.getParentFile().exists()) {
             file.getParentFile().mkdirs();
         }
-        File tmpFile = new File(csvPath + ".tmp");
+        File tmpFile = new File(path + ".tmp");
         try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tmpFile), "UTF-8"))) {
             writer.write('﻿');
             writer.write("时间,观看数,在线数,点赞数");

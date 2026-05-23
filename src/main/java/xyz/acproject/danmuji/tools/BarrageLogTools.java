@@ -17,13 +17,15 @@ public class BarrageLogTools {
 
     private static final LinkedBlockingQueue<String> batchQueue = new LinkedBlockingQueue<>(20000);
 
-    private static volatile String csvPath;
+    private static volatile String lastRoom;
+    private static String jarDir;
     private static volatile boolean headerWritten;
     private static final byte[] BOM = new byte[]{(byte)0xEF, (byte)0xBB, (byte)0xBF};
 
     static {
-        initCsvPath();
-        headerWritten = new File(csvPath).exists();
+        initBase();
+        lastRoom = roomKey();
+        headerWritten = new File(currentCsvPath()).exists();
 
         Thread writer = new Thread(() -> {
             while (true) {
@@ -53,12 +55,18 @@ public class BarrageLogTools {
         }, "barrage-csv-shutdown"));
     }
 
-    private static void initCsvPath() {
+    private static void initBase() {
         ApplicationHome home = new ApplicationHome(BarrageLogTools.class);
-        File jarDir = home.getSource().getParentFile();
+        jarDir = home.getSource().getParentFile().getAbsolutePath();
+    }
+
+    private static String roomKey() {
         Long id = PublicDataConf.ROOMID;
-        String room = id != null ? id.toString() : "unknown";
-        csvPath = new File(jarDir, "Danmuji_log/" + room + "_2_弹幕信息.csv").getAbsolutePath();
+        return id != null ? id.toString() : "unknown";
+    }
+
+    private static String currentCsvPath() {
+        return jarDir + File.separator + "Danmuji_log" + File.separator + roomKey() + "_2_弹幕信息.csv";
     }
 
     public static void logBarrage(long uid, String uname, String msg, long timestamp) {
@@ -67,7 +75,13 @@ public class BarrageLogTools {
     }
 
     private static synchronized void flushBatch(List<String> lines) {
-        File file = new File(csvPath);
+        String rk = roomKey();
+        if (!rk.equals(lastRoom)) {
+            lastRoom = rk;
+            headerWritten = new File(currentCsvPath()).exists();
+        }
+        String path = currentCsvPath();
+        File file = new File(path);
         if (!file.getParentFile().exists()) {
             file.getParentFile().mkdirs();
         }

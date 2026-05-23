@@ -26,10 +26,12 @@ public class GiftLogTools {
         return t;
     });
 
-    private static volatile String csvPath;
+    private static volatile String lastRoom;
+    private static String jarDir;
 
     static {
-        initCsvPath();
+        initBase();
+        lastRoom = roomKey();
         loadFromCsv();
         flushScheduler.scheduleWithFixedDelay(GiftLogTools::flushToCsv, 60, 60, TimeUnit.SECONDS);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -38,12 +40,18 @@ public class GiftLogTools {
         }, "gift-csv-shutdown"));
     }
 
-    private static void initCsvPath() {
+    private static void initBase() {
         ApplicationHome home = new ApplicationHome(GiftLogTools.class);
-        File jarDir = home.getSource().getParentFile();
+        jarDir = home.getSource().getParentFile().getAbsolutePath();
+    }
+
+    private static String roomKey() {
         Long id = PublicDataConf.ROOMID;
-        String room = id != null ? id.toString() : "unknown";
-        csvPath = new File(jarDir, "Danmuji_log/" + room + "_3_礼物信息.csv").getAbsolutePath();
+        return id != null ? id.toString() : "unknown";
+    }
+
+    private static String currentCsvPath() {
+        return jarDir + File.separator + "Danmuji_log" + File.separator + roomKey() + "_3_礼物信息.csv";
     }
 
     private static String key(long uid, String giftName) {
@@ -67,7 +75,11 @@ public class GiftLogTools {
     }
 
     private static void loadFromCsv() {
-        File file = new File(csvPath);
+        loadFromCsv(currentCsvPath());
+    }
+
+    private static void loadFromCsv(String path) {
+        File file = new File(path);
         if (!file.exists()) return;
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
             String line = reader.readLine(); // skip header
@@ -133,12 +145,25 @@ public class GiftLogTools {
     }
 
     private static synchronized void flushToCsv() {
+        String rk = roomKey();
+        if (!rk.equals(lastRoom)) {
+            // room switched: flush old data to old file, then load new room
+            String oldPath = jarDir + File.separator + "Danmuji_log" + File.separator + lastRoom + "_3_礼物信息.csv";
+            doFlush(oldPath);
+            giftMap.clear();
+            lastRoom = rk;
+            loadFromCsv(currentCsvPath());
+        }
+        doFlush(currentCsvPath());
+    }
+
+    private static void doFlush(String path) {
         List<GiftRecord> records = new ArrayList<>(giftMap.values());
-        File file = new File(csvPath);
+        File file = new File(path);
         if (!file.getParentFile().exists()) {
             file.getParentFile().mkdirs();
         }
-        File tmpFile = new File(csvPath + ".tmp");
+        File tmpFile = new File(path + ".tmp");
         try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tmpFile), "UTF-8"))) {
             writer.write('﻿');
             writer.write("最新时间,id,名字,赠送礼物名字,总金额,赠礼次数");
