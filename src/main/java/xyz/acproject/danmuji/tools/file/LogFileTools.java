@@ -111,9 +111,14 @@ public class LogFileTools {
 		return logFileTools;
 	}
 
+	private static String safeFileName(String s) {
+		if (s == null || s.isEmpty()) return "unknown";
+		return s.replaceAll("[\\\\/:*?\"<>|]", "_");
+	}
+
 	public void logFile(String msg) {
 		String dateStr = JodaTimeUtils.getCurrentDateString();
-		String key = PublicDataConf.ROOMID + "_" + dateStr + "_log";
+		String key = PublicDataConf.ROOMID + "_" + safeFileName(PublicDataConf.ANCHOR_NAME) + "_0_" + dateStr + "_log";
 		String fp = filePathCache;
 		if (fp == null || !key.equals(filePathKey)) {
 			fp = getBaseDirPath() + key + ".txt";
@@ -125,7 +130,7 @@ public class LogFileTools {
 
 	public void logWatcherFile(String msg) {
 		String dateStr = JodaTimeUtils.getCurrentDateString();
-		String key = PublicDataConf.ROOMID + "_" + dateStr + "_viewers";
+		String key = PublicDataConf.ROOMID + "_" + safeFileName(PublicDataConf.ANCHOR_NAME) + "_0_" + dateStr + "_viewers";
 		String fp = watcherPathCache;
 		if (fp == null || !key.equals(watcherPathKey)) {
 			fp = getBaseDirPath() + key + ".txt";
@@ -137,7 +142,7 @@ public class LogFileTools {
 
 	public void logFollowingsFile(String msg) {
 		String dateStr = JodaTimeUtils.getCurrentDateString();
-		String key = PublicDataConf.ROOMID + "_" + dateStr + "_followings";
+		String key = PublicDataConf.ROOMID + "_"+ safeFileName(PublicDataConf.ANCHOR_NAME) + "_0_"  + dateStr + "_followings";
 		String fp = followingsPathCache;
 		if (fp == null || !key.equals(followingsPathKey)) {
 			fp = getBaseDirPath() + key + ".txt";
@@ -149,7 +154,7 @@ public class LogFileTools {
 
 	public void logTestFile(String msg) {
 		String dateStr = JodaTimeUtils.getCurrentDateString();
-		String key =PublicDataConf.ROOMID + "_" + dateStr + "_testLog";
+		String key =PublicDataConf.ROOMID + "_" + safeFileName(PublicDataConf.ANCHOR_NAME) + "_0_" + dateStr + "_testLog";
 		String fp = testPathCache;
 		if (fp == null || !key.equals(testPathKey)) {
 			fp = getBaseDirPath() + key + ".txt";

@@ -35,7 +35,7 @@ public class GiftLogTools {
         lastRoomId = roomKey();
         lastAnchorName = safeFileName(PublicDataConf.ANCHOR_NAME);
         loadFromCsv();
-        flushScheduler.scheduleWithFixedDelay(GiftLogTools::flushToCsv, 60, 60, TimeUnit.SECONDS);
+        flushScheduler.scheduleWithFixedDelay(GiftLogTools::flushToCsv, 180, 180, TimeUnit.SECONDS);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             flushScheduler.shutdown();
             flushToCsv();
@@ -67,17 +67,18 @@ public class GiftLogTools {
     }
 
     public static void logGift(long uid, String uname, String giftName, long price, long timestamp) {
+        long timestampMillis = timestamp * 1000; // 返回的是以s为单位，而不是毫秒
         String k = key(uid, giftName);
         giftMap.compute(k, (key, v) -> {
             if (v == null) {
-                return new GiftRecord(uid, uname, giftName, price, price, 1, timestamp);
+                return new GiftRecord(uid, uname, giftName, price, price, 1, timestampMillis);
             }
             v.uname = uname;
             long singlePrice = price > 0 ? price : v.price;
             v.price = singlePrice;
             v.totalPrice += price;
             v.count++;
-            v.latestTime = timestamp;
+            v.latestTime = timestampMillis;
             return v;
         });
     }

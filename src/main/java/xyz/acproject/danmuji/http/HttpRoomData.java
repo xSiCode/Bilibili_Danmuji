@@ -548,7 +548,7 @@ public class HttpRoomData {
         if (pnScore != null) {
             String blackWhiteType = "[已在黑白名单: " + pnScore + "]";
             logSb.append(blackWhiteType);
-            LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb.append(" [跳过]")));
+            LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb.append(" [关注隐藏] [跳过]")));
             return CompletableFuture.completedFuture(Pair.of(pnScore, blackWhiteType));
         }
 
@@ -561,7 +561,7 @@ public class HttpRoomData {
                 }
 
                 String resultStartStr = "{\"code\":0,\"message\":\"OK\"";
-                LogFileTools.getlogFileTools().logTestFile(logSb + dynData.substring(0, Math.min(84, dynData.length())));
+               // LogFileTools.getlogFileTools().logTestFile(logSb + dynData.substring(0, Math.min(84, dynData.length())));
 
                 int blackWhiteScore = 0;
                 String blackWhiteType = null;
@@ -605,7 +605,7 @@ public class HttpRoomData {
                             System.out.println("15分钟延迟已到，开始执行任务！当前时间：" + System.currentTimeMillis());
                         }, 15, TimeUnit.MINUTES);
                     }
-                    LogFileTools.getlogFileTools().logTestFile(logSb + " 用户动态API 调用超过频次，建议主动限制");
+                 //   LogFileTools.getlogFileTools().logTestFile(logSb + " 用户动态API 调用超过频次，建议主动限制");
                 }
 
                 if (blackWhiteScore != 0) {
@@ -665,7 +665,7 @@ public class HttpRoomData {
         // 1 当前观众就在本地黑白名单里
         Integer pnScore = pnScoreMap.get(vmid);
         if (null != pnScore) {
-            blackWhiteType = "[已在黑白名单: " + pnScore + "] [黑白分:" +blackWhiteScore+ "】";
+            blackWhiteType = "[已在黑白名单: " + pnScore + "] [黑白分:" +blackWhiteScore+ "]";
             blackWhiteScore = pnScore;
             logSb.append(blackWhiteType);
         }
@@ -752,7 +752,7 @@ public class HttpRoomData {
                         System.out.println("5分钟延迟已到，开始执行任务！当前时间：" + System.currentTimeMillis());
                     }, 5, TimeUnit.MINUTES);
                 }
-                LogFileTools.getlogFileTools().logTestFile(logSb + " 用户卡片信息API 调用超过频次，建议主动限制");
+              //  LogFileTools.getlogFileTools().logTestFile(logSb + " 用户卡片信息API 调用超过频次，建议主动限制");
             }
 
             SelfTools.appendAt(logSb, 140, logSbEnd.toString());

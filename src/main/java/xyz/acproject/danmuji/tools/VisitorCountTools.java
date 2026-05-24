@@ -35,7 +35,7 @@ public class VisitorCountTools {
         lastRoomId = roomKey();
         lastAnchorName = safeFileName(PublicDataConf.ANCHOR_NAME);
         loadFromCsv();
-        flushScheduler.scheduleWithFixedDelay(VisitorCountTools::flushToCsv, 60, 60, TimeUnit.SECONDS);
+        flushScheduler.scheduleWithFixedDelay(VisitorCountTools::flushToCsv, 180, 180, TimeUnit.SECONDS);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             flushScheduler.shutdown();
             flushToCsv();
