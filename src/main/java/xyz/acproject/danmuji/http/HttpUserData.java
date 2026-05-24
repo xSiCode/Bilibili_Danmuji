@@ -14,10 +14,12 @@ import xyz.acproject.danmuji.entity.login_data.Qrcode;
 import xyz.acproject.danmuji.entity.user_data.*;
 import xyz.acproject.danmuji.entity.user_in_room_barrageMsg.UserBarrageMsg;
 import xyz.acproject.danmuji.tools.CurrencyTools;
+import xyz.acproject.danmuji.tools.file.LogFileTools;
 import xyz.acproject.danmuji.utils.JodaTimeUtils;
 import xyz.acproject.danmuji.utils.OkHttp3Utils;
 import xyz.acproject.danmuji.utils.UrlUtils;
 
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 /**
@@ -29,6 +31,8 @@ import java.util.*;
  */
 public class HttpUserData {
     private static Logger LOGGER = LogManager.getLogger(HttpUserData.class);
+    private static final ThreadLocal<SimpleDateFormat> TIME_FORMAT =
+            ThreadLocal.withInitial(() -> new SimpleDateFormat("HH:mm:ss"));
 
     /**
      * 初始化 获取用户信息+判断是否登陆状态
@@ -102,7 +106,7 @@ public class HttpUserData {
                     PublicDataConf.WBI_SUB_KEY = filename.substring(0, filename.lastIndexOf('.'));
                 }
             }
-        }  else {
+        } else {
             LOGGER.error("获取用户nav信息失败,原因:{}", jsonObject.getString("message"));
         }
         return userNav;
@@ -256,7 +260,7 @@ public class HttpUserData {
             response = OkHttp3Utils.getHttp3Utils()
                     .httpGet("https://passport.bilibili.com/x/passport-login/web/qrcode/poll", headers, params);
             data = response.body().string();
-            if (JSONObject.parseObject(data).getJSONObject("data").getIntValue("code")==0) {
+            if (JSONObject.parseObject(data).getJSONObject("data").getIntValue("code") == 0) {
                 Headers headers2 = response.headers();
                 List<String> cookies = headers2.values("Set-Cookie");
                 Set<String> cookieSet = new HashSet<>();
@@ -292,7 +296,7 @@ public class HttpUserData {
 
 
     public static UserCookie httpBuvid34(UserCookie userCookie) {
-        if(userCookie==null){
+        if (userCookie == null) {
             userCookie = new UserCookie();
         }
         String data = null;
@@ -326,6 +330,7 @@ public class HttpUserData {
         }
         return userCookie;
     }
+
     /**
      * 单点登录系统获取
      */
@@ -357,7 +362,7 @@ public class HttpUserData {
         jsonObject = JSONObject.parseObject(data);
         JSONObject dataObject = jsonObject.getJSONObject("data");
         List<String> ssos = JSONArray.parseArray(dataObject.getString("sso"), String.class);
-        return ssos!=null?ssos:ssoList;
+        return ssos != null ? ssos : ssoList;
     }
 
     /**
@@ -403,7 +408,7 @@ public class HttpUserData {
      * 获取用户在目标房间所能发送弹幕的最大长度
      */
     public static void httpGetUserBarrageMsg() {
-        if(CurrencyTools.parseRoomId()==0)return;
+        if (CurrencyTools.parseRoomId() == 0) return;
         String data = null;
         JSONObject jsonObject = null;
         Map<String, String> headers = null;
@@ -507,7 +512,7 @@ public class HttpUserData {
         if (StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
             headers.put("cookie", PublicDataConf.USERCOOKIE);
         }
-        if(StringUtils.isBlank(msg)){
+        if (StringUtils.isBlank(msg)) {
             LOGGER.error("发送弹幕失败,原因:弹幕非空");
             return -400;
         }
@@ -515,7 +520,7 @@ public class HttpUserData {
         params.put("color", PublicDataConf.USERBARRAGEMESSAGE.getDanmu().getColor().toString());
         params.put("fontsize", "25");
         params.put("mode", PublicDataConf.USERBARRAGEMESSAGE.getDanmu().getMode().toString());
-        params.put("msg", UrlUtils.URLEncoderString(msg,"utf-8"));
+        params.put("msg", UrlUtils.URLEncoderString(msg, "utf-8"));
         params.put("rnd", String.valueOf(System.currentTimeMillis()).substring(0, 10));
         params.put("roomid", PublicDataConf.ROOMID.toString());
         params.put("bubble", PublicDataConf.USERBARRAGEMESSAGE.getBubble().toString());
@@ -544,7 +549,8 @@ public class HttpUserData {
                     PublicDataConf.barrageString.offer(msg);
                 } else {
                     String message = jsonObject.getString("message");
-                    if("f".equals(message)||"k".equals(message)) message="触发破站关键字，请检查发送弹幕是否含有破站屏蔽词或者非法词汇";
+                    if ("f".equals(message) || "k".equals(message))
+                        message = "触发破站关键字，请检查发送弹幕是否含有破站屏蔽词或者非法词汇";
                     LOGGER.error("发送弹幕失败,原因:" + message);
                     code = -402;
                 }
@@ -589,7 +595,7 @@ public class HttpUserData {
         params.put("color", userBarrageMsg.getDanmu().getColor().toString());
         params.put("fontsize", "25");
         params.put("mode", userBarrageMsg.getDanmu().getMode().toString());
-        params.put("msg",  UrlUtils.URLEncoderString(msg,"utf-8"));
+        params.put("msg", UrlUtils.URLEncoderString(msg, "utf-8"));
         params.put("rnd", String.valueOf(System.currentTimeMillis()).substring(0, 10));
         params.put("roomid", roomId.toString());
         params.put("bubble", userBarrageMsg.getBubble().toString());
@@ -664,7 +670,7 @@ public class HttpUserData {
         params.put("msg[receiver_type]", "1");
         params.put("msg[msg_type]", "1");
         params.put("msg[msg_status]", "0");
-        params.put("msg[content]", UrlUtils.URLEncoderString("{\"content\":\"" + msg + "\"}","utf-8"));
+        params.put("msg[content]", UrlUtils.URLEncoderString("{\"content\":\"" + msg + "\"}", "utf-8"));
         params.put("msg[timestamp]", String.valueOf(System.currentTimeMillis()).substring(0, 10));
         params.put("msg[new_face_version]", "1");
         params.put("msg[dev_id]", UUID.randomUUID().toString());
@@ -703,7 +709,7 @@ public class HttpUserData {
      * @param roomid  roomid
      * @return {@link Short}
      */
-    public static Short httpPostSendBag(UserBag userBag,long ruid,long roomid) {
+    public static Short httpPostSendBag(UserBag userBag, long ruid, long roomid) {
         JSONObject jsonObject = null;
         String data = null;
         short code = -1;
@@ -725,7 +731,7 @@ public class HttpUserData {
         params.put("gift_id", String.valueOf(userBag.getGift_id()));
         params.put("ruid", String.valueOf(ruid));
         params.put("send_ruid", "0");
-        params.put("gift_num",  String.valueOf(userBag.getGift_num()));
+        params.put("gift_num", String.valueOf(userBag.getGift_num()));
         params.put("bag_id", String.valueOf(userBag.getBag_id()));
         params.put("platform", "pc");
         params.put("biz_code", "Live");
@@ -751,7 +757,7 @@ public class HttpUserData {
         code = jsonObject.getShort("code");
         if (code == 0) {
             // 发送私聊成功
-            LOGGER.info("赠送礼物成功,赠送房间:{},赠送主播id:{},送出礼物:{},个数:{},亲密度:{}",roomid,ruid,userBag.getGift_name(),userBag.getGift_num(),userBag.getFeed()*userBag.getGift_num());
+            LOGGER.info("赠送礼物成功,赠送房间:{},赠送主播id:{},送出礼物:{},个数:{},亲密度:{}", roomid, ruid, userBag.getGift_name(), userBag.getGift_num(), userBag.getFeed() * userBag.getGift_num());
         } else {
             LOGGER.error("赠送礼物失败,原因:{}", jsonObject.getString("message"));
         }
@@ -842,7 +848,7 @@ public class HttpUserData {
                 result.put("follow_list_visible", foJo.getShort("code") == 0);
 
 
-               // LOGGER.info( "https://api.bilibili.com/x/relation/followings?vmid=" + uid + "&pn=1&ps=1",foJo);
+                // LOGGER.info( "https://api.bilibili.com/x/relation/followings?vmid=" + uid + "&pn=1&ps=1",foJo);
             }
         } catch (Exception e) {
             result.put("follow_list_visible", false);
@@ -872,8 +878,8 @@ public class HttpUserData {
                     result.put("article_count", cardData.getInteger("article_count"));
                 }
 
-               // LOGGER.info( "https://api.bilibili.com/x/web-interface/card?mid=" + uid,data);
-              //  LOGGER.info( "https://api.bilibili.com/x/web-interface/card?mid=" + uid,jsonObject);
+                // LOGGER.info( "https://api.bilibili.com/x/web-interface/card?mid=" + uid,data);
+                //  LOGGER.info( "https://api.bilibili.com/x/web-interface/card?mid=" + uid,jsonObject);
             }
         } catch (Exception e) {
             LOGGER.error("获取用户卡片信息失败:{}", e.getMessage());
@@ -920,8 +926,8 @@ public class HttpUserData {
                         result.put("live_status", liveRoom.getInteger("liveStatus"));
                     }
 
-                 //   LOGGER.info( "https://api.bilibili.com/x/space/acc/info?mid=",data);
-                 //   LOGGER.info( "https://api.bilibili.com/x/space/acc/info?mid=",jsonObject);
+                    //   LOGGER.info( "https://api.bilibili.com/x/space/acc/info?mid=",data);
+                    //   LOGGER.info( "https://api.bilibili.com/x/space/acc/info?mid=",jsonObject);
                 }
             } else {
                 LOGGER.error("获取用户空间信息失败");
@@ -1026,7 +1032,7 @@ public class HttpUserData {
                             userMedals.addAll(userMedalList);
                         }
                     }
-                    if(nowPage==totalPage){
+                    if (nowPage == totalPage) {
                         break;
                     }
                 } else {
@@ -1131,6 +1137,14 @@ public class HttpUserData {
         } else {
             LOGGER.error("拉黑用户失败,原因:{}", jsonObject.getString("message"));
         }
+        StringBuilder sb = new StringBuilder(100);
+        sb.append(TIME_FORMAT.get().format(System.currentTimeMillis()))
+                .append("  https://space.bilibili.com/")
+                .append(fid)
+                .append(" [auto black] api return: ").append(data);
+        LogFileTools.getlogFileTools().logTestFile(sb.toString());
+
+
         return code;
     }
 
@@ -1183,6 +1197,7 @@ public class HttpUserData {
 
     /**
      * 获取B站拉黑列表(小黑屋)
+     *
      * @param pn 页码
      * @param ps 每页条数
      * @return JSONObject {total, list: [{mid, uname, face, sign, mtime}]}

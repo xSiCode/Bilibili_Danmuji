@@ -42,6 +42,7 @@ import xyz.acproject.danmuji.tools.ShieldGiftTools;
 import xyz.acproject.danmuji.tools.VisitorCountTools;
 import xyz.acproject.danmuji.tools.file.FileTools;
 import xyz.acproject.danmuji.tools.file.GuardFileTools;
+import xyz.acproject.danmuji.tools.file.LogFileTools;
 import xyz.acproject.danmuji.utils.JodaTimeUtils;
 import xyz.acproject.danmuji.utils.SelfTools;
 import xyz.acproject.danmuji.utils.SpringUtils;
@@ -168,7 +169,7 @@ public class ParseMessageThread extends Thread {
                                         JSONObject.parseObject(((JSONArray) array.get(0)).getString(13)).getString("url"));
                             } catch (Exception e) {
                                 // TODO: handle exception
-                                LOGGER.error("弹幕体解析抛出解析异常体:{}" ,message);
+                                LOGGER.error("弹幕体解析抛出解析异常体:{}", message);
                                 LOGGER.error(e);
                                 break;
                             }
@@ -318,12 +319,12 @@ public class ParseMessageThread extends Thread {
 
                         // 部分金瓜子礼物连击
                         case "COMBO_SEND":
-                            					LOGGER.info("部分金瓜子礼物连击:::" + message);
+                            LOGGER.info("部分金瓜子礼物连击:::" + message);
                             break;
 
                         // 部分金瓜子礼物连击
                         case "COMBO_END":
-                            					LOGGER.info("部分金瓜子礼物连击:::" + message);
+                            LOGGER.info("部分金瓜子礼物连击:::" + message);
                             break;
 
                         // 上舰
@@ -594,7 +595,7 @@ public class ParseMessageThread extends Thread {
 
                         // 舰长进入直播间消息
                         case "ENTRY_EFFECT":
-                           // LOGGER.info("舰长大大进入直播间消息推送:::" + message);
+                            // LOGGER.info("舰长大大进入直播间消息推送:::" + message);
                             break;
 
                         // 节奏风暴推送 action 为start和end
@@ -1067,148 +1068,161 @@ public class ParseMessageThread extends Thread {
                                         // 异步获取用户详细信息 + 关注列表分析，避免阻塞主消息处理线程
                                         WATCHER_EXECUTOR.execute(() -> {
                                             HttpRoomData.processFollowings(_follow_uid, _follow_uname)
-                                                .thenAccept(blackWhiteResult -> {
-                                                    int blackWhiteScore = blackWhiteResult.getLeft();
-                                                    String blackWhiteType = blackWhiteResult.getRight();
+                                                    .thenAccept(blackWhiteResult -> {
+                                                        int blackWhiteScore = blackWhiteResult.getLeft();
+                                                        String blackWhiteType = blackWhiteResult.getRight();
 
-                                                    VisitorCountTools.recordVisitor(_follow_uid, _follow_uname, blackWhiteScore, blackWhiteType);
+                                                        VisitorCountTools.recordVisitor(_follow_uid, _follow_uname, blackWhiteScore, blackWhiteType);
 
-                                            // 负黑自动拉黑姬
-                                            if (conf.getAuto_block() != null && conf.getAuto_block().is_auto_block()) {
-                                                int blockScore = conf.getAuto_block().getBlock_score();
-                                                if (blackWhiteScore <= blockScore) {
-                                                    // check if this uid was already blocked within the interval
-                                                    boolean withinInterval = false;
-                                                    int blockInterval = conf.getAuto_block().getBlock_interval();
-                                                    try {
-                                                        FileTools fileTools = new FileTools();
-                                                        java.io.File file = new java.io.File(fileTools.getBaseJarPath(), "set/负黑自动拉黑记录.json");
-                                                        if (file.exists()) {
-                                                            StringBuilder fsb = new StringBuilder();
-                                                            try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(new java.io.FileInputStream(file), "UTF-8"))) {
-                                                                String line;
-                                                                while ((line = reader.readLine()) != null) {
-                                                                    fsb.append(line);
-                                                                }
-                                                            }
-                                                            JSONObject existing = JSONObject.parseObject(fsb.toString());
-                                                            com.alibaba.fastjson.JSONArray existingRecords = existing.getJSONArray("records");
-                                                            if (existingRecords != null) {
-                                                                java.text.SimpleDateFormat sdf = DATE_TIME_FORMAT.get();
-                                                                long now = System.currentTimeMillis();
-                                                                for (int i = 0; i < existingRecords.size(); i++) {
-                                                                    JSONObject r = existingRecords.getJSONObject(i);
-                                                                    if (r.getLong("uid") != null && r.getLong("uid") == _follow_uid) {
-                                                                        String lastTimeStr = r.getString("time");
-                                                                        if (lastTimeStr != null) {
-                                                                            try {
-                                                                                long lastTime = sdf.parse(lastTimeStr).getTime();
-                                                                                if (now - lastTime < blockInterval * 60L * 1000L) {
-                                                                                    withinInterval = true;
-                                                                                }
-                                                                            } catch (Exception ignored) {}
-                                                                        }
-                                                                        break;
-                                                                    }
-                                                                }
-                                                            }
-                                                        }
-                                                    } catch (Exception e) {
-                                                        LOGGER.error("auto_block check existing error", e);
-                                                    }
-                                                    if (!withinInterval) {
-                                                        short code = HttpUserData.httpPostAddBadList(_follow_uid);
-                                                        if (code == 0) {
-                                                            // Sync to badlist config so UI reflects the blocked user
-                                                            try {
-                                                                if (PublicDataConf.centerSetConf.getBadList() != null) {
-                                                                    List<BadListSetConf.BadUser> badUsers = PublicDataConf.centerSetConf.getBadList().getBadUsers();
-                                                                    if (badUsers == null) {
-                                                                        badUsers = new java.util.ArrayList<>();
-                                                                        PublicDataConf.centerSetConf.getBadList().setBadUsers(badUsers);
-                                                                    }
-                                                                    boolean exists = false;
-                                                                    for (BadListSetConf.BadUser bu : badUsers) {
-                                                                        if (bu.getUid() != null && bu.getUid().equals(_follow_uid)) {
-                                                                            bu.setUname(_follow_uname);
-                                                                            exists = true;
-                                                                            break;
-                                                                        }
-                                                                    }
-                                                                    if (!exists) {
-                                                                        badUsers.add(new BadListSetConf.BadUser(_follow_uid, _follow_uname));
-                                                                    }
-                                                                }
-                                                            } catch (Exception e) {
-                                                                LOGGER.error("auto_block sync badlist error", e);
-                                                            }
-                                                            Exception saveError = null;
-                                                            JSONObject record = null;
-                                                            try {
-                                                                java.text.SimpleDateFormat sdf = DATE_TIME_FORMAT.get();
-                                                                String timeStr = sdf.format(new Date());
-                                                                FileTools fileTools = new FileTools();
-                                                                java.io.File file = new java.io.File(fileTools.getBaseJarPath(), "set/负黑自动拉黑记录.json");
-                                                                JSONObject data;
-                                                                com.alibaba.fastjson.JSONArray records;
-                                                                if (file.exists()) {
-                                                                    StringBuilder fsb = new StringBuilder();
-                                                                    try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(new java.io.FileInputStream(file), "UTF-8"))) {
-                                                                        String line;
-                                                                        while ((line = reader.readLine()) != null) {
-                                                                            fsb.append(line);
-                                                                        }
-                                                                    }
-                                                                    try {
-                                                                        data = JSONObject.parseObject(fsb.toString());
-                                                                        records = data.getJSONArray("records");
-                                                                        if (records == null) {
-                                                                            records = new com.alibaba.fastjson.JSONArray();
-                                                                            data.put("records", records);
-                                                                        }
-                                                                    } catch (Exception pe) {
-                                                                        LOGGER.error("负黑自动拉黑记录.json 文件损坏，将重建", pe);
-                                                                        data = new JSONObject();
-                                                                        data.put("type", "负黑自动拉黑记录");
-                                                                        records = new com.alibaba.fastjson.JSONArray();
-                                                                        data.put("records", records);
-                                                                    }
-                                                                } else {
-                                                                    data = new JSONObject();
-                                                                    data.put("type", "负黑自动拉黑记录");
-                                                                    records = new com.alibaba.fastjson.JSONArray();
-                                                                    data.put("records", records);
-                                                                }
-                                                                record = new JSONObject();
-                                                                record.put("time", timeStr);
-                                                                record.put("uid", _follow_uid);
-                                                                record.put("uname", _follow_uname);
-                                                                record.put("score", blackWhiteType +" [" +blackWhiteScore+"]" );
-                                                                records.add(0, record);
-                                                                if (!file.getParentFile().exists()) {
-                                                                    file.getParentFile().mkdirs();
-                                                                }
-                                                                try (java.io.BufferedWriter writer = new java.io.BufferedWriter(new java.io.OutputStreamWriter(new java.io.FileOutputStream(file), "UTF-8"))) {
-                                                                    writer.write(com.alibaba.fastjson.JSON.toJSONString(data, true));
-                                                                }
-                                                            } catch (Exception e) {
-                                                                saveError = e;
-                                                                LOGGER.error("auto_block record save error", e);
-                                                            }
-                                                            // push to frontend for real-time refresh (always, even if file save fails)
-                                                            if (record != null) {
+                                                        // 负黑自动拉黑姬
+                                                        if (conf.getAuto_block() != null && conf.getAuto_block().is_auto_block()) {
+                                                            int blockScore = conf.getAuto_block().getBlock_score();
+                                                            if (blackWhiteScore <= blockScore) {
+                                                                // check if this uid was already blocked within the interval
+                                                                boolean withinInterval = false;
+                                                                int blockInterval = conf.getAuto_block().getBlock_interval();
                                                                 try {
-                                                                    danmuWebsocket.sendMessage(WsPackage.toJson("auto_block", (short) 0, record));
+                                                                    FileTools fileTools = new FileTools();
+                                                                    java.io.File file = new java.io.File(fileTools.getBaseJarPath(), "set/负黑自动拉黑记录.json");
+                                                                    if (file.exists()) {
+                                                                        StringBuilder fsb = new StringBuilder();
+                                                                        try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(new java.io.FileInputStream(file), "UTF-8"))) {
+                                                                            String line;
+                                                                            while ((line = reader.readLine()) != null) {
+                                                                                fsb.append(line);
+                                                                            }
+                                                                        }
+                                                                        JSONObject existing = JSONObject.parseObject(fsb.toString());
+                                                                        com.alibaba.fastjson.JSONArray existingRecords = existing.getJSONArray("records");
+                                                                        if (existingRecords != null) {
+                                                                            java.text.SimpleDateFormat sdf = DATE_TIME_FORMAT.get();
+                                                                            long now = System.currentTimeMillis();
+                                                                            for (int i = 0; i < existingRecords.size(); i++) {
+                                                                                JSONObject r = existingRecords.getJSONObject(i);
+                                                                                if (r.getLong("uid") != null && r.getLong("uid") == _follow_uid) {
+                                                                                    String lastTimeStr = r.getString("time");
+                                                                                    if (lastTimeStr != null) {
+                                                                                        try {
+                                                                                            long lastTime = sdf.parse(lastTimeStr).getTime();
+                                                                                            if (now - lastTime < blockInterval * 60L * 1000L) {
+                                                                                                withinInterval = true;
+                                                                                            }
+                                                                                        } catch (Exception ignored) {
+                                                                                        }
+                                                                                    }
+                                                                                    break;
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
                                                                 } catch (Exception e) {
-                                                                    LOGGER.error("auto_block ws push error", e);
+                                                                    LOGGER.error("auto_block check existing error", e);
+                                                                }
+                                                                if (!withinInterval) {
+                                                                    short code = HttpUserData.httpPostAddBadList(_follow_uid);
+                                                                    if (code == 0 || code ==22120) {
+                                                                        // Sync to badlist config so UI reflects the blocked user
+                                                                        try {
+                                                                            if (PublicDataConf.centerSetConf.getBadList() != null) {
+                                                                                List<BadListSetConf.BadUser> badUsers = PublicDataConf.centerSetConf.getBadList().getBadUsers();
+                                                                                if (badUsers == null) {
+                                                                                    badUsers = new java.util.ArrayList<>();
+                                                                                    PublicDataConf.centerSetConf.getBadList().setBadUsers(badUsers);
+                                                                                }
+                                                                                boolean exists = false;
+                                                                                for (BadListSetConf.BadUser bu : badUsers) {
+                                                                                    if (bu.getUid() != null && bu.getUid().equals(_follow_uid)) {
+                                                                                        bu.setUname(_follow_uname);
+                                                                                        exists = true;
+                                                                                        break;
+                                                                                    }
+                                                                                }
+                                                                                if (!exists) {
+                                                                                    badUsers.add(new BadListSetConf.BadUser(_follow_uid, _follow_uname));
+                                                                                }
+                                                                            }
+                                                                        } catch (Exception e) {
+                                                                            LOGGER.error("auto_block sync badlist error", e);
+                                                                        }
+                                                                        Exception saveError = null;
+                                                                        JSONObject record = null;
+                                                                        try {
+                                                                            java.text.SimpleDateFormat sdf = DATE_TIME_FORMAT.get();
+                                                                            String timeStr = sdf.format(new Date());
+                                                                            FileTools fileTools = new FileTools();
+                                                                            java.io.File file = new java.io.File(fileTools.getBaseJarPath(), "set/负黑自动拉黑记录.json");
+                                                                            JSONObject data;
+                                                                            com.alibaba.fastjson.JSONArray records;
+                                                                            if (file.exists()) {
+                                                                                StringBuilder fsb = new StringBuilder();
+                                                                                try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(new java.io.FileInputStream(file), "UTF-8"))) {
+                                                                                    String line;
+                                                                                    while ((line = reader.readLine()) != null) {
+                                                                                        fsb.append(line);
+                                                                                    }
+                                                                                }
+                                                                                try {
+                                                                                    data = JSONObject.parseObject(fsb.toString());
+                                                                                    records = data.getJSONArray("records");
+                                                                                    if (records == null) {
+                                                                                        records = new com.alibaba.fastjson.JSONArray();
+                                                                                        data.put("records", records);
+                                                                                    }
+                                                                                } catch (Exception pe) {
+                                                                                    LOGGER.error("负黑自动拉黑记录.json 文件损坏，将重建", pe);
+                                                                                    data = new JSONObject();
+                                                                                    data.put("type", "负黑自动拉黑记录");
+                                                                                    records = new com.alibaba.fastjson.JSONArray();
+                                                                                    data.put("records", records);
+                                                                                }
+                                                                            } else {
+                                                                                data = new JSONObject();
+                                                                                data.put("type", "负黑自动拉黑记录");
+                                                                                records = new com.alibaba.fastjson.JSONArray();
+                                                                                data.put("records", records);
+                                                                            }
+                                                                            record = new JSONObject();
+                                                                            record.put("time", timeStr);
+                                                                            record.put("uid", _follow_uid);
+                                                                            record.put("uname", _follow_uname);
+                                                                            String s = blackWhiteType + " [" + blackWhiteScore + "]";
+                                                                            if(code ==22120){
+                                                                                s = s+" [已在黑名单在，再次拉黑]";
+                                                                            }
+                                                                            record.put("score", s);
+                                                                            records.add(0, record);
+                                                                            if (!file.getParentFile().exists()) {
+                                                                                file.getParentFile().mkdirs();
+                                                                            }
+                                                                            try (java.io.BufferedWriter writer = new java.io.BufferedWriter(new java.io.OutputStreamWriter(new java.io.FileOutputStream(file), "UTF-8"))) {
+                                                                                writer.write(com.alibaba.fastjson.JSON.toJSONString(data, true));
+                                                                            }
+                                                                        } catch (Exception e) {
+                                                                            saveError = e;
+                                                                            LOGGER.error("auto_block record save error", e);
+                                                                        }
+                                                                        // push to frontend for real-time refresh (always, even if file save fails)
+                                                                        if (record != null) {
+                                                                            try {
+                                                                                danmuWebsocket.sendMessage(WsPackage.toJson("auto_block", (short) 0, record));
+                                                                            } catch (Exception e) {
+                                                                                LOGGER.error("auto_block ws push error", e);
+                                                                            }
+                                                                        }
+                                                                    } else {
+                                                                        StringBuilder sb = new StringBuilder(100);
+                                                                        sb.append(TIME_FORMAT.get().format(System.currentTimeMillis()))
+                                                                                .append("  https://space.bilibili.com/")
+                                                                                .append(_follow_uid)
+                                                                                .append("  name:").append(_follow_uname)
+                                                                                .append("  拉黑api error, code:").append(code);
+                                                                        LogFileTools.getlogFileTools().logTestFile( sb.toString() );
+                                                                    }
                                                                 }
                                                             }
                                                         }
-                                                    }
-                                                }
-                                            }
 
-                                                });
+                                                    });
                                         });
                                     }
 
@@ -1362,7 +1376,7 @@ public class ParseMessageThread extends Thread {
                             LOGGER.info("红包抽奖结果推送:::" + message);
                             break;
                         case "LIKE_INFO_V3_UPDATE":
-                           					LOGGER.info("点赞信息v3推送:UPDATE::" + message);
+                            LOGGER.info("点赞信息v3推送:UPDATE::" + message);
                             //{"cmd":"LIKE_INFO_V3_UPDATE","data":{"click_count":371578}}
                             PublicDataConf.ROOM_LIKE = JSONObject.parseObject(jsonObject.getString("data")).getLong("click_count");
                             break;
@@ -1387,7 +1401,7 @@ public class ParseMessageThread extends Thread {
 //                                "user_status":2,"awards":[{"gift_id":31212,"gift_name":"打call","gift_pic":"https://s1.hdslb.com/bfs/live/461be640f60788c1d159ec8d6c5d5cf1ef3d1830.png",
 //                                "num":2},{"gift_id":31214,"gift_name":"牛哇","gift_pic":"https://s1.hdslb.com/bfs/live/91ac8e35dd93a7196325f1e2052356e71d135afb.png","num":3},{"gift_id":31216,
 //                                "gift_name":"小花花","gift_pic":"https://s1.hdslb.com/bfs/live/5126973892625f3a43a8290be6b625b5e54261a5.png","num":3}],"lot_config_id":3,"total_price":1600,"wait_num":7}}
-                        LOGGER.info("红包详细信息推送:::" + message);
+                            LOGGER.info("红包详细信息推送:::" + message);
                             if ((PublicDataConf.centerSetConf.getThank_gift().hasRdShield())
                                     || (PublicDataConf.centerSetConf.getWelcome().hasRdShield())
                                     || (PublicDataConf.centerSetConf.getFollow().hasRdShield())) {
@@ -1419,7 +1433,7 @@ public class ParseMessageThread extends Thread {
                             LOGGER.info("CARD_MSG:::" + message);
                             break;
                         case "USER_PANEL_RED_ALARM":
-                           					LOGGER.info("USER_PANEL_RED_ALARM:::" + message);
+                            LOGGER.info("USER_PANEL_RED_ALARM:::" + message);
                             break;
                         case "TRADING_SCORE":
                             LOGGER.info("TRADING_SCORE:::" + message);
@@ -1700,8 +1714,8 @@ public class ParseMessageThread extends Thread {
                     if (!PublicDataConf.MEDALINFOANCHOR.getMedal_name().equals(interact.getFans_medal().getMedal_name())) {
                         return;
                     }
-                    if(interact.getFans_medal().getGuard_level() <= 0){
-                    //   LOGGER.info("欢迎姬人员屏蔽[舰长模式]:{}", ParseIndentityTools.parseGuard(interact.getFans_medal().getGuard_level()));
+                    if (interact.getFans_medal().getGuard_level() <= 0) {
+                        //   LOGGER.info("欢迎姬人员屏蔽[舰长模式]:{}", ParseIndentityTools.parseGuard(interact.getFans_medal().getGuard_level()));
                         return;
                     }
                 default:

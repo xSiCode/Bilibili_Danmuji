@@ -605,7 +605,7 @@ public class HttpRoomData {
                             System.out.println("15分钟延迟已到，开始执行任务！当前时间：" + System.currentTimeMillis());
                         }, 15, TimeUnit.MINUTES);
                     }
-                 //   LogFileTools.getlogFileTools().logTestFile(logSb + " 用户动态API 调用超过频次，建议主动限制");
+                    LogFileTools.getlogFileTools().logTestFile(logSb + " 用户动态API 调用超过频次，建议主动限制");
                 }
 
                 if (blackWhiteScore != 0) {
@@ -752,7 +752,7 @@ public class HttpRoomData {
                         System.out.println("5分钟延迟已到，开始执行任务！当前时间：" + System.currentTimeMillis());
                     }, 5, TimeUnit.MINUTES);
                 }
-              //  LogFileTools.getlogFileTools().logTestFile(logSb + " 用户卡片信息API 调用超过频次，建议主动限制");
+                LogFileTools.getlogFileTools().logTestFile(logSb + " 用户卡片信息API 调用超过频次，建议主动限制");
             }
 
             SelfTools.appendAt(logSb, 140, logSbEnd.toString());
@@ -794,6 +794,10 @@ public class HttpRoomData {
 
     public static void reloadPnScoreMap() {
         pnScoreMap = loadNegativeBlackPositiveWhiteScores();
+    }
+
+    public static boolean isUidInPnScoreMap(long uid) {
+        return pnScoreMap.containsKey(uid);
     }
 
     public static Map<Long, String> httpGetGuardList() {

@@ -4,6 +4,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.boot.system.ApplicationHome;
 import xyz.acproject.danmuji.conf.PublicDataConf;
+import xyz.acproject.danmuji.http.HttpRoomData;
 import xyz.acproject.danmuji.utils.JodaTimeUtils;
 
 import java.io.*;
@@ -65,13 +66,15 @@ public class VisitorCountTools {
     public static void recordVisitor(long uid, String uname, int score, String scoreType) {
         visitorMap.compute(uid, (k, v) -> {
             if (v == null) {
-                return new VisitorRecord(uid, uname, score, scoreType, 1, System.currentTimeMillis());
+                return new VisitorRecord(uid, uname, score, scoreType, 1, System.currentTimeMillis(),
+                        HttpRoomData.isUidInPnScoreMap(uid));
             }
             v.uname = uname;
             v.score = score;
             v.scoreType = scoreType;
             v.count++;
             v.latestEntryTime = System.currentTimeMillis();
+            v.inPnTable = HttpRoomData.isUidInPnScoreMap(uid);
             return v;
         });
     }
@@ -107,8 +110,15 @@ public class VisitorCountTools {
             int score = Integer.parseInt(fields.get(3));
             String scoreType = fields.get(4);
             int count = Integer.parseInt(fields.get(5));
+            boolean inPnTable;
+            if (fields.size() >= 7) {
+                inPnTable = "是".equals(fields.get(6));
+            } else {
+                // old format compatibility: derive from current pnScoreMap
+                inPnTable = HttpRoomData.isUidInPnScoreMap(uid);
+            }
             long time = JodaTimeUtils.parse(timeStr, "yyyy-MM-dd HH:mm:ss").getTime();
-            return new VisitorRecord(uid, uname, score, scoreType, count, time);
+            return new VisitorRecord(uid, uname, score, scoreType, count, time, inPnTable);
         } catch (Exception e) {
             return null;
         }
@@ -169,7 +179,7 @@ public class VisitorCountTools {
         File tmpFile = new File(path + ".tmp");
         try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tmpFile), "UTF-8"))) {
             writer.write('﻿');
-            writer.write("最近,id,观众,打分,打分类型,次数");
+            writer.write("最近,id,观众,打分,打分类型,次数,判定表");
             writer.newLine();
             for (VisitorRecord r : records) {
                 writer.write(JodaTimeUtils.formatDateTime(r.latestEntryTime) + ",");
@@ -177,7 +187,8 @@ public class VisitorCountTools {
                 writer.write(escapeCsv(r.uname) + ",");
                 writer.write(r.score + ",");
                 writer.write(escapeCsv(r.scoreType) + ",");
-                writer.write(String.valueOf(r.count));
+                writer.write(r.count + ",");
+                writer.write(r.inPnTable ? "是" : "否");
                 writer.newLine();
             }
         } catch (Exception e) {
@@ -206,14 +217,16 @@ public class VisitorCountTools {
         volatile String scoreType;
         volatile int count;
         volatile long latestEntryTime;
+        volatile boolean inPnTable;
 
-        VisitorRecord(long uid, String uname, int score, String scoreType, int count, long latestEntryTime) {
+        VisitorRecord(long uid, String uname, int score, String scoreType, int count, long latestEntryTime, boolean inPnTable) {
             this.uid = uid;
             this.uname = uname;
             this.score = score;
             this.scoreType = scoreType;
             this.count = count;
             this.latestEntryTime = latestEntryTime;
+            this.inPnTable = inPnTable;
         }
     }
 }
