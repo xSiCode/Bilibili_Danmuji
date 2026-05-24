@@ -437,8 +437,8 @@ public class HttpRoomData {
     }
 
     // 用户 用户动态冷却调用
-   static final ScheduledExecutorService schedulerDynamicService = new ScheduledThreadPoolExecutor(1);
-   static final AtomicBoolean schedulerDynamicColdWait = new AtomicBoolean(false);
+    static final ScheduledExecutorService schedulerDynamicService = new ScheduledThreadPoolExecutor(1);
+    static final AtomicBoolean schedulerDynamicColdWait = new AtomicBoolean(false);
 
 
     // 用户 卡片信息冷却调用
@@ -455,6 +455,7 @@ public class HttpRoomData {
                 LOGGER.error(e);
                 future.complete(null);
             }
+
             @Override
             public void onResponse(Call call, Response response) {
                 try {
@@ -525,15 +526,6 @@ public class HttpRoomData {
                 .append(uname)
                 .append(" ");
 
-        // 1 当前观众就在本地黑白名单里
-        Integer pnScore = pnScoreMap.get(vmid);
-        if (pnScore != null) {
-            String blackWhiteType = "[已在名单: " + pnScore + "]";
-            logSb.append(blackWhiteType);
-            LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb.append(" [跳过]")));
-            return CompletableFuture.completedFuture(Pair.of(pnScore, blackWhiteType));
-        }
-
         // 2. 异步获取用户关注列表
         return asyncHttpGetFollowings(vmid, 1, 50).thenCompose(firstPage -> {
             short code = firstPage != null ? firstPage.getShort("code") : -1;
@@ -551,6 +543,15 @@ public class HttpRoomData {
     /** 关注列表不可见 → 通过空间动态判断 */
     private static CompletableFuture<Pair<Integer, String>> processHiddenFollowings(long vmid, StringBuilder logSb) {
         StringBuilder logSbEnd = new StringBuilder(100);
+        // 1 当前观众就在本地黑白名单里
+        Integer pnScore = pnScoreMap.get(vmid);
+        if (pnScore != null) {
+            String blackWhiteType = "[已在黑白名单: " + pnScore + "]";
+            logSb.append(blackWhiteType);
+            LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb.append(" [跳过]")));
+            return CompletableFuture.completedFuture(Pair.of(pnScore, blackWhiteType));
+        }
+
 
         if (!schedulerDynamicColdWait.get()) {
             return asyncHttpGetUserDynamic(vmid).thenCompose(dynData -> {
@@ -661,6 +662,13 @@ public class HttpRoomData {
         } else {
             logSbEnd.append("[成分:关注普通, 需要确认]");
         }
+        // 1 当前观众就在本地黑白名单里
+        Integer pnScore = pnScoreMap.get(vmid);
+        if (null != pnScore) {
+            blackWhiteType = "[已在黑白名单: " + pnScore + "] [黑白分:" +blackWhiteScore+ "】";
+            blackWhiteScore = pnScore;
+            logSb.append(blackWhiteType);
+        }
 
         int bwCount = blackCount * whiteCount;
         if (blackWhiteScore != 0 || bwCount != 0) {
@@ -725,7 +733,7 @@ public class HttpRoomData {
                         score = 2;
                         type = "[已关注]";
                         logSb.append(type);
-                    } else if ((fans < 50 && attention > 4000 ) ||(fans > 4500)  ) {
+                    } else if ((fans < 50 && attention > 4000) || (attention > 4900)) {
                         score = -2;
                         type = "[疑似人机]";
                         logSb.append(type).append(" [拉黑] ");
