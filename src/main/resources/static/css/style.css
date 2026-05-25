@@ -82,7 +82,13 @@ input {
 }
 
 .center-wrapper {
-    margin-top: 2.5vh !important;
+    margin-top: 0 !important;
+}
+
+.card-outer-wrap {
+    margin: 1px !important;
+    padding-left: 1px !important;
+    padding-right: 1px !important;
 }
 
 .login-body {

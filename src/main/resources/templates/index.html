@@ -35,7 +35,7 @@
 <div class="app">
     <div
             class="row align-items-center justify-content-center center-wrapper">
-        <div class="col-md-11 m-3">
+        <div class="col-md-12 card-outer-wrap">
             <div class="card border-primary">
                 <div class="card-header">
                     <h2>
@@ -43,7 +43,7 @@
                         <span style="float:right;font-size:13px;color:#888;font-weight:normal;line-height:2.2;" th:if="${BUILD_TIME} != ''" th:text="'Build: ' + ${BUILD_TIME}"></span>
                     </h2>
                 </div>
-                <div class="card-body pt-0 px-3 pb-3">
+                <div class="card-body p-1 pt-0">
                     <span id="app-version" th:data-version="${EDITION}" style="display:none"></span><!-- 状态栏：始终可见 -->
                     <div class="status-bar">
                         <div class="status-bar-row">
