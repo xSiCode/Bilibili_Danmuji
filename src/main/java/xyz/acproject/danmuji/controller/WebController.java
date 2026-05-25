@@ -1320,8 +1320,8 @@ public class WebController {
             String maxOnlineTime = "";
             long cumulativeWatcher = 0;
             long cumulativeLike = 0;
-            // interval is 180 seconds (3 minutes) per data point
-            final long INTERVAL_SECONDS = 180;
+            // interval is 60 seconds (1 minute) per data point
+            final long INTERVAL_SECONDS = 60;
 
             for (String[] row : filteredRows) {
                 long online = Long.parseLong(row[2]);
