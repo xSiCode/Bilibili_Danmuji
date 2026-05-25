@@ -1507,3 +1507,77 @@ div .link-popup-panel .popup-content-ctnr p {
         text-decoration: underline;
     }
 }
+
+/* ========== 直播间管理 ========== */
+#lrm-data-table {
+    table-layout: fixed;
+    width: 100%;
+}
+#lrm-data-table th {
+    cursor: grab;
+    user-select: none;
+    white-space: nowrap;
+}
+#lrm-data-table th:active {
+    cursor: grabbing;
+}
+#lrm-data-table th.sortable-ghost {
+    opacity: 0.4;
+    background: #c8ebfb;
+}
+#lrm-data-table th.sortable-chosen {
+    background: #e2e3e5;
+}
+#lrm-stats-row .card {
+    min-height: 52px;
+}
+#lrm-charts-row .card {
+    min-height: 260px;
+}
+#lrm-charts-row canvas {
+    max-height: 200px;
+}
+
+/* ========== 弹幕管理 ========== */
+#dmgr-data-table {
+    table-layout: fixed;
+    width: 100%;
+}
+#dmgr-data-table th {
+    cursor: grab;
+    user-select: none;
+    white-space: nowrap;
+}
+#dmgr-data-table th:active {
+    cursor: grabbing;
+}
+#dmgr-data-table th.sortable-ghost {
+    opacity: 0.4;
+    background: #c8ebfb;
+}
+#dmgr-data-table th.sortable-chosen {
+    background: #e2e3e5;
+}
+#dmgr-stats-row .card {
+    min-height: 52px;
+}
+#dmgr-charts-row .card {
+    min-height: 260px;
+}
+#dmgr-charts-row canvas {
+    max-height: 200px;
+}
+
+/* ========== 观众管理 ========== */
+#vst-data-table { table-layout: fixed; width: 100%; }
+#vst-data-table th { cursor: grab; user-select: none; white-space: nowrap; }
+#vst-data-table th:active { cursor: grabbing; }
+#vst-data-table th.sortable-ghost { opacity: 0.4; background: #c8ebfb; }
+#vst-data-table th.sortable-chosen { background: #e2e3e5; }
+#vst-data-table th[data-sort] { cursor: pointer; color: #0d6efd; }
+#vst-data-table th[data-sort]:hover { color: #0a58ca; text-decoration: underline; }
+#vst-stats-row .card { min-height: 52px; }
+#vst-charts-row .card { min-height: 260px; }
+#vst-charts-row canvas { max-height: 200px; }
+#vst-freq-charts-row .card { min-height: 260px; }
+#vst-freq-charts-row canvas { max-height: 200px; }

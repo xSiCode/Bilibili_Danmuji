@@ -1,10 +1,70 @@
 let socket = null;
 let sliceh = 0;
+// 观众管理 state
+let vstState = {
+    currentFile: '',
+    startTime: '',
+    endTime: '',
+    fileFirstTime: '',
+    fileLastTime: '',
+    search: '',
+    page: 1,
+    pageSize: 10,
+    totalPages: 1,
+    totalRows: 0,
+    sortField: '最近',
+    sortOrder: 'asc',
+    rankLimit: 15,
+    headers: ['最近', 'id', '观众', '打分', '打分类型', '次数', '判定表', '场次'],
+    columnOrder: [0, 1, 2, 3, 4, 5, 6, 7],
+    chartInstances: {}
+};
+// 弹幕管理 state
+let dmgrState = {
+    currentFile: '',
+    startTime: '',
+    endTime: '',
+    fileFirstTime: '',
+    fileLastTime: '',
+    search: '',
+    page: 1,
+    pageSize: 10,
+    totalPages: 1,
+    totalRows: 0,
+    headers: ['发送时间', 'id', '名字', '弹幕'],
+    columnOrder: [0, 1, 2, 3],
+    chartInstances: {}
+};
+// 直播间管理 state
+let lrmState = {
+    currentFile: '',
+    startTime: '',
+    endTime: '',
+    fileFirstTime: '',
+    fileLastTime: '',
+    page: 1,
+    pageSize: 10,
+    totalPages: 1,
+    totalRows: 0,
+    headers: ['时间', '观看数', '在线数', '点赞数'],
+    columnOrder: [0, 1, 2, 3, 4],
+    chartInstances: {}
+};
 
 $(function () {
     "use strict";
     let time;
     time = setInterval(heartBeat, 5000);
+    // 恢复上次的tab页
+    try {
+        var savedTab = localStorage.getItem('activeTab');
+        if (savedTab) {
+            var $link = $('.sidebar-link[data-tab="' + savedTab + '"]');
+            if ($link.length) {
+                switchTab(savedTab, $link[0]);
+            }
+        }
+    } catch(e) {}
     function heartBeat() {
         "use strict";
         $.ajax({
@@ -54,6 +114,157 @@ $(function () {
     $(document).on('change', '.import-file-input', function () {
         method.importDfFile(this);
     });
+
+    // ========== 直播间管理 event bindings ==========
+    $(document).on('change', '#lrm-csv-select', function () {
+        lrmState.currentFile = $(this).val();
+        lrmState.startTime = '';
+        lrmState.endTime = '';
+        lrmState.page = 1;
+        if (lrmState.currentFile) method.loadCsvData();
+    });
+    $(document).on('click', '#lrm-btn-apply', function () {
+        lrmState.startTime = ($('#lrm-filter-start').val() || '').replace('T', ' ');
+        lrmState.endTime = ($('#lrm-filter-end').val() || '').replace('T', ' ');
+        lrmState.page = 1;
+        method.loadCsvData();
+    });
+    $(document).on('click', '#lrm-btn-reset', function () {
+        lrmState.startTime = lrmState.fileFirstTime;
+        lrmState.endTime = lrmState.fileLastTime;
+        $('#lrm-filter-start').val(lrmState.fileFirstTime.replace(' ', 'T'));
+        $('#lrm-filter-end').val(lrmState.fileLastTime.replace(' ', 'T'));
+        lrmState.page = 1;
+        method.loadCsvData();
+    });
+    $(document).on('click', '#lrm-btn-export', function () {
+        method.exportCsv();
+    });
+    $(document).on('click', '#lrm-first-btn', function () {
+        if (lrmState.page > 1) { lrmState.page = 1; method.loadCsvData(); }
+    });
+    $(document).on('click', '#lrm-prev-btn', function () {
+        if (lrmState.page > 1) { lrmState.page--; method.loadCsvData(); }
+    });
+    $(document).on('click', '#lrm-next-btn', function () {
+        if (lrmState.page < lrmState.totalPages) { lrmState.page++; method.loadCsvData(); }
+    });
+    $(document).on('click', '#lrm-last-btn', function () {
+        if (lrmState.page < lrmState.totalPages) { lrmState.page = lrmState.totalPages; method.loadCsvData(); }
+    });
+    $(document).on('click', '#lrm-btn-go', function () {
+        method.gotoPage($('#lrm-page-jump').val());
+    });
+    $(document).on('keypress', '#lrm-page-jump', function (e) {
+        if (e.which === 13) { method.gotoPage($(this).val()); }
+    });
+    $(document).on('click', '.lrm-row-del', function () {
+        var timeKey = $(this).data('time');
+        method.deleteCsvRow(timeKey);
+    });
+
+    // ========== 弹幕管理 event bindings ==========
+    $(document).on('change', '#dmgr-csv-select', function () {
+        dmgrState.currentFile = $(this).val();
+        dmgrState.startTime = '';
+        dmgrState.endTime = '';
+        dmgrState.search = '';
+        $('#dmgr-search-input').val('');
+        dmgrState.page = 1;
+        if (dmgrState.currentFile) method.loadDmgrData();
+    });
+    $(document).on('click', '#dmgr-btn-apply', function () {
+        dmgrState.startTime = ($('#dmgr-filter-start').val() || '').replace('T', ' ');
+        dmgrState.endTime = ($('#dmgr-filter-end').val() || '').replace('T', ' ');
+        dmgrState.search = $('#dmgr-search-input').val() || '';
+        dmgrState.page = 1;
+        method.loadDmgrData();
+    });
+    $(document).on('click', '#dmgr-btn-reset', function () {
+        dmgrState.startTime = dmgrState.fileFirstTime;
+        dmgrState.endTime = dmgrState.fileLastTime;
+        dmgrState.search = '';
+        $('#dmgr-search-input').val('');
+        $('#dmgr-filter-start').val(dmgrState.fileFirstTime.replace(' ', 'T'));
+        $('#dmgr-filter-end').val(dmgrState.fileLastTime.replace(' ', 'T'));
+        dmgrState.page = 1;
+        method.loadDmgrData();
+    });
+    $(document).on('keypress', '#dmgr-search-input', function (e) {
+        if (e.which === 13) {
+            dmgrState.search = $(this).val() || '';
+            dmgrState.page = 1;
+            method.loadDmgrData();
+        }
+    });
+    $(document).on('click', '#dmgr-btn-export', function () {
+        method.exportDmgrCsv();
+    });
+    $(document).on('click', '#dmgr-first-btn', function () {
+        if (dmgrState.page > 1) { dmgrState.page = 1; method.loadDmgrData(); }
+    });
+    $(document).on('click', '#dmgr-prev-btn', function () {
+        if (dmgrState.page > 1) { dmgrState.page--; method.loadDmgrData(); }
+    });
+    $(document).on('click', '#dmgr-next-btn', function () {
+        if (dmgrState.page < dmgrState.totalPages) { dmgrState.page++; method.loadDmgrData(); }
+    });
+    $(document).on('click', '#dmgr-last-btn', function () {
+        if (dmgrState.page < dmgrState.totalPages) { dmgrState.page = dmgrState.totalPages; method.loadDmgrData(); }
+    });
+    $(document).on('click', '#dmgr-btn-go', function () {
+        method.gotoDmgrPage($('#dmgr-page-jump').val());
+    });
+    $(document).on('keypress', '#dmgr-page-jump', function (e) {
+        if (e.which === 13) { method.gotoDmgrPage($(this).val()); }
+    });
+    // ========== 观众管理 event bindings ==========
+    $(document).on('change', '#vst-csv-select', function () {
+        vstState.currentFile = $(this).val();
+        vstState.startTime = ''; vstState.endTime = ''; vstState.search = '';
+        $('#vst-search-input').val('');
+        vstState.sortField = '最近'; vstState.sortOrder = 'asc';
+        vstState.page = 1;
+        if (vstState.currentFile) method.loadVstData();
+    });
+    $(document).on('click', '#vst-btn-apply', function () {
+        vstState.startTime = ($('#vst-filter-start').val() || '').replace('T', ' ');
+        vstState.endTime = ($('#vst-filter-end').val() || '').replace('T', ' ');
+        vstState.search = $('#vst-search-input').val() || '';
+        vstState.page = 1;
+        method.loadVstData();
+    });
+    $(document).on('click', '#vst-btn-reset', function () {
+        vstState.startTime = vstState.fileFirstTime; vstState.endTime = vstState.fileLastTime;
+        vstState.search = ''; $('#vst-search-input').val('');
+        $('#vst-filter-start').val(vstState.fileFirstTime.replace(' ', 'T'));
+        $('#vst-filter-end').val(vstState.fileLastTime.replace(' ', 'T'));
+        vstState.sortField = '最近'; vstState.sortOrder = 'asc';
+        vstState.page = 1; method.loadVstData();
+    });
+    $(document).on('keypress', '#vst-search-input', function (e) {
+        if (e.which === 13) { vstState.search = $(this).val() || ''; vstState.page = 1; method.loadVstData(); }
+    });
+    $(document).on('click', '#vst-btn-export', function () { method.exportVstCsv(); });
+    $(document).on('click', '#vst-first-btn', function () { if (vstState.page > 1) { vstState.page = 1; method.loadVstData(); } });
+    $(document).on('click', '#vst-prev-btn', function () { if (vstState.page > 1) { vstState.page--; method.loadVstData(); } });
+    $(document).on('click', '#vst-next-btn', function () { if (vstState.page < vstState.totalPages) { vstState.page++; method.loadVstData(); } });
+    $(document).on('click', '#vst-last-btn', function () { if (vstState.page < vstState.totalPages) { vstState.page = vstState.totalPages; method.loadVstData(); } });
+    $(document).on('click', '#vst-btn-go', function () { method.gotoVstPage($('#vst-page-jump').val()); });
+    $(document).on('keypress', '#vst-page-jump', function (e) { if (e.which === 13) method.gotoVstPage($(this).val()); });
+    $(document).on('click', '#vst-btn-rank-apply', function () {
+        var v = parseInt($('#vst-rank-limit').val());
+        if (isNaN(v) || v < 1) v = 1;
+        var maxV = parseInt($('#vst-rank-limit').attr('max')) || 15;
+        if (v > maxV) v = maxV;
+        vstState.rankLimit = v;
+        $('#vst-rank-limit').val(v);
+        method.renderVstCharts();
+    });
+    $(document).on('click', '#vst-table-head th[data-sort]', function () {
+        method.sortVstColumn($(this).data('sort'));
+    });
+
     publicData.set = method.initSet(method.getSet());
     method.loadPNList();
     method.loadAutoBlockList();
@@ -2165,6 +2376,12 @@ const method = {
             url = "../abImport";
         } else if (fileType === 'ds') {
             url = "../dsImport";
+        } else if (fileType === 'lrm') {
+            url = "../importCsvFile";
+        } else if (fileType === 'dmgr') {
+            url = "../importBarrageCsvFile";
+        } else if (fileType === 'vst') {
+            url = "../importVisitorCsvFile";
         } else {
             url = "../setImport";
         }
@@ -2185,6 +2402,12 @@ const method = {
                         method.loadAutoBlockList();
                     } else if (fileType === 'ds') {
                         method.loadDanmakuStoreList();
+                    } else if (fileType === 'lrm') {
+                        method.loadCsvFileList();
+                    } else if (fileType === 'dmgr') {
+                        method.loadDmgrCsvFileList();
+                    } else if (fileType === 'vst') {
+                        method.loadVstCsvFileList();
                     } else {
                         setTimeout(function () { location.reload(); }, 1200);
                     }
@@ -2706,6 +2929,972 @@ const method = {
             $pagination.hide();
         }
     },
+
+    // ========== 直播间管理 ==========
+
+    loadCsvFileList: function () {
+        $.ajax({
+            url: '../listCsvFiles',
+            type: 'GET',
+            dataType: 'json',
+            success: function (data) {
+                if (data.code == "200" && data.result) {
+                    var $select = $('#lrm-csv-select');
+                    $select.find('option[value!=""]').remove();
+                    $.each(data.result, function (i, item) {
+                        var label = item.fileName;
+                        if (item.anchorName) label = item.anchorName + ' - ' + item.fileName;
+                        $select.append('<option value="' + item.filePath + '">' + label + '</option>');
+                    });
+                    var firstOpt = $select.find('option[value!=""]').first();
+                    if (firstOpt.length) {
+                        $select.val(firstOpt.val());
+                        lrmState.currentFile = firstOpt.val();
+                        method.loadCsvData();
+                    }
+                }
+            }
+        });
+    },
+
+    loadCsvData: function () {
+        if (!lrmState.currentFile) return;
+        $.ajax({
+            url: '../readCsvData',
+            type: 'GET',
+            data: {
+                filePath: lrmState.currentFile,
+                page: lrmState.page,
+                pageSize: lrmState.pageSize,
+                startTime: lrmState.startTime || '',
+                endTime: lrmState.endTime || ''
+            },
+            dataType: 'json',
+            success: function (data) {
+                if (data.code == "200" && data.result) {
+                    var r = data.result;
+                    lrmState.totalPages = r.totalPages || 0;
+                    lrmState.totalRows = r.total || 0;
+                    // store file time range
+                    lrmState.fileFirstTime = r.firstTime || '';
+                    lrmState.fileLastTime = r.lastTime || '';
+                    // auto-fill time filter from file range on first load
+                    if (!lrmState.startTime && !lrmState.endTime && r.firstTime && r.lastTime) {
+                        lrmState.startTime = r.firstTime;
+                        lrmState.endTime = r.lastTime;
+                        $('#lrm-filter-start').val(r.firstTime.replace(' ', 'T'));
+                        $('#lrm-filter-end').val(r.lastTime.replace(' ', 'T'));
+                    }
+                    method.renderCsvTable(r.rows || []);
+                    method.renderCsvPagination();
+                    if (r.total > 0) {
+                        method.renderCsvCharts();
+                        method.renderCsvStats();
+                        $('#lrm-stats-row').show();
+                    } else {
+                        $('#lrm-stats-row').hide();
+                        $('#lrm-charts-row').hide();
+                    }
+                }
+            }
+        });
+    },
+
+    renderCsvTable: function (rows) {
+        var $tbody = $('#lrm-table-body');
+        var $table = $('#lrm-data-table');
+        var $empty = $('#lrm-empty-msg');
+        $tbody.empty();
+        if (!rows || rows.length === 0) {
+            $table.hide();
+            $('#lrm-pagination').hide();
+            $empty.show();
+            return;
+        }
+        $empty.hide();
+        $table.show();
+        var cols = ['时间', '观看数', '在线数', '点赞数'];
+        $.each(rows, function (i, row) {
+            var tr = '<tr>';
+            $.each(lrmState.columnOrder, function (j, colIdx) {
+                if (colIdx === 4) {
+                    tr += '<td><button class="btn btn-sm btn-outline-danger lrm-row-del" data-time="' + (row['时间'] || '') + '">删除</button></td>';
+                } else if (colIdx < cols.length) {
+                    tr += '<td>' + (row[cols[colIdx]] || '') + '</td>';
+                }
+            });
+            tr += '</tr>';
+            $tbody.append(tr);
+        });
+        setTimeout(function () { method.initColumnDrag(); }, 100);
+    },
+
+    renderCsvPagination: function () {
+        var $pagination = $('#lrm-pagination');
+        if (lrmState.totalPages <= 0) {
+            $pagination.hide();
+            return;
+        }
+        $pagination.show();
+        $('#lrm-page-info').text('第' + lrmState.page + '页 / 共' + lrmState.totalPages + '页');
+        $('#lrm-page-jump').attr('max', lrmState.totalPages).val('');
+        var isFirst = lrmState.page <= 1;
+        var isLast = lrmState.page >= lrmState.totalPages;
+        $('#lrm-first-btn, #lrm-prev-btn').prop('disabled', isFirst);
+        $('#lrm-next-btn, #lrm-last-btn').prop('disabled', isLast);
+    },
+
+    gotoPage: function (targetPage) {
+        var p = parseInt(targetPage);
+        if (isNaN(p) || p < 1) p = 1;
+        if (p > lrmState.totalPages) p = lrmState.totalPages;
+        if (p === lrmState.page) return;
+        lrmState.page = p;
+        method.loadCsvData();
+    },
+
+    renderCsvCharts: function () {
+        $.each(lrmState.chartInstances, function (key, chart) {
+            if (chart) chart.destroy();
+        });
+        lrmState.chartInstances = {};
+
+        if (!lrmState.currentFile) return;
+
+        $.ajax({
+            url: '../readCsvData',
+            type: 'GET',
+            data: {
+                filePath: lrmState.currentFile,
+                page: 1,
+                pageSize: 999999,
+                startTime: lrmState.startTime || '',
+                endTime: lrmState.endTime || ''
+            },
+            dataType: 'json',
+            async: false,
+            success: function (data) {
+                if (data.code == "200" && data.result && data.result.rows) {
+                    var rows = data.result.rows;
+                    if (rows.length < 2) {
+                        $('#lrm-charts-row').hide();
+                        return;
+                    }
+                    $('#lrm-charts-row').show();
+
+                    var labels = [];
+                    var watcherData = [];
+                    var onlineData = [];
+                    var likeData = [];
+                    $.each(rows, function (i, row) {
+                        var t = row['时间'] || '';
+                        labels.push(t);
+                        watcherData.push(parseInt(row['观看数']) || 0);
+                        onlineData.push(parseInt(row['在线数']) || 0);
+                        likeData.push(parseInt(row['点赞数']) || 0);
+                    });
+
+                    var chartOptions = {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    title: function (ctx) { return ctx[0].label; },
+                                    label: function (ctx) { return ' ' + ctx.raw.toLocaleString(); }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                ticks: {
+                                    maxTicksLimit: 12,
+                                    autoSkip: true,
+                                    font: { size: 10 },
+                                    callback: function (val, index) {
+                                        var t = this.getLabelForValue(val);
+                                        var m = t.match(/(\d{2}:\d{2})/);
+                                        return m ? m[1] : t;
+                                    }
+                                }
+                            },
+                            y: { ticks: { font: { size: 10 } } }
+                        }
+                    };
+
+                    var datasetBase = { borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: '#fff', tension: 0.1 };
+
+                    var ctxW = document.getElementById('lrm-chart-watcher').getContext('2d');
+                    lrmState.chartInstances.watcher = new Chart(ctxW, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [$.extend({ data: watcherData, borderColor: '#0d6efd' }, datasetBase)]
+                        },
+                        options: chartOptions
+                    });
+
+                    var ctxO = document.getElementById('lrm-chart-online').getContext('2d');
+                    lrmState.chartInstances.online = new Chart(ctxO, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [$.extend({ data: onlineData, borderColor: '#198754' }, datasetBase)]
+                        },
+                        options: chartOptions
+                    });
+
+                    var ctxL = document.getElementById('lrm-chart-like').getContext('2d');
+                    lrmState.chartInstances.like = new Chart(ctxL, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [$.extend({ data: likeData, borderColor: '#fd7e14' }, datasetBase)]
+                        },
+                        options: chartOptions
+                    });
+                }
+            }
+        });
+    },
+
+    renderCsvStats: function () {
+        if (!lrmState.currentFile) return;
+        $.ajax({
+            url: '../getCsvStatistics',
+            type: 'GET',
+            data: {
+                filePath: lrmState.currentFile,
+                startTime: lrmState.startTime || '',
+                endTime: lrmState.endTime || ''
+            },
+            dataType: 'json',
+            success: function (data) {
+                if (data.code == "200" && data.result) {
+                    var s = data.result;
+                    $('#lrm-stat-cum-watcher').text((s.cumulativeWatcher || 0).toLocaleString());
+                    $('#lrm-stat-cum-like').text((s.cumulativeLike || 0).toLocaleString());
+                    var onlineText = (s.avgOnlineCount || 0).toLocaleString();
+                    if (s.maxOnlineCount && s.maxOnlineCount.time) {
+                        var m = s.maxOnlineCount.time.match(/(\d{2}:\d{2})/);
+                        onlineText += ' / ' + (m ? m[1] : s.maxOnlineCount.time) + ' ' + (s.maxOnlineCount.count || 0).toLocaleString();
+                    }
+                    $('#lrm-stat-online').text(onlineText);
+                    var totalSec = s.totalWatchSeconds || 0;
+                    var avgSec = s.avgWatchSeconds || 0;
+                    var totalText = method.formatDuration(totalSec);
+                    var avgText = method.formatDuration(avgSec);
+                    $('#lrm-stat-watch-time').text(totalText + ' / ' + avgText);
+                    $('#lrm-stats-row').show();
+                }
+            }
+        });
+    },
+
+    deleteCsvRow: function (timeKey) {
+        if (!confirm('确定删除此条记录？(' + timeKey + ')')) return;
+        $.ajax({
+            url: '../deleteCsvRow',
+            type: 'POST',
+            data: {
+                filePath: lrmState.currentFile,
+                timeKey: timeKey
+            },
+            dataType: 'json',
+            success: function (data) {
+                if (data.code == "200" && data.result) {
+                    showMessage("删除成功!", "success", 2);
+                    method.loadCsvData();
+                } else {
+                    showMessage("删除失败!", "danger", 3);
+                }
+            },
+            error: function () {
+                showMessage("删除失败!", "danger", 3);
+            }
+        });
+    },
+
+    formatDuration: function (totalSeconds) {
+        if (!totalSeconds || totalSeconds <= 0) return '--';
+        var h = Math.floor(totalSeconds / 3600);
+        var m = Math.floor((totalSeconds % 3600) / 60);
+        var s = totalSeconds % 60;
+        if (h > 0) return h + '时' + m + '分' + s + '秒';
+        if (m > 0) return m + '分' + s + '秒';
+        return s + '秒';
+    },
+
+    exportCsv: function () {
+        if (!lrmState.currentFile) return;
+        var url = '../exportFilteredCsv?filePath=' + encodeURIComponent(lrmState.currentFile);
+        if (lrmState.startTime) url += '&startTime=' + encodeURIComponent(lrmState.startTime);
+        if (lrmState.endTime) url += '&endTime=' + encodeURIComponent(lrmState.endTime);
+        window.open(window.location.origin + url);
+    },
+
+    initColumnDrag: function () {
+        var thead = document.getElementById('lrm-table-head');
+        if (!thead || !thead.querySelector('tr')) return;
+        if (thead._sortable) {
+            thead._sortable.destroy();
+        }
+        thead._sortable = new Sortable(thead.querySelector('tr'), {
+            animation: 150,
+            filter: 'th[data-sortable="false"]',
+            onEnd: function () {
+                var order = [];
+                $('#lrm-table-head th').each(function (idx) {
+                    var text = $(this).text().trim();
+                    if (text === '时间') order.push(0);
+                    else if (text === '观看数') order.push(1);
+                    else if (text === '在线数') order.push(2);
+                    else if (text === '点赞数') order.push(3);
+                    else if (text === '操作') order.push(4);
+                });
+                lrmState.columnOrder = order;
+                method.loadCsvData();
+            }
+        });
+    },
+
+    // ========== 弹幕管理 ==========
+
+    loadDmgrCsvFileList: function () {
+        $.ajax({
+            url: '../listBarrageCsvFiles',
+            type: 'GET',
+            dataType: 'json',
+            success: function (data) {
+                if (data.code == "200" && data.result) {
+                    var $select = $('#dmgr-csv-select');
+                    $select.find('option[value!=""]').remove();
+                    $.each(data.result, function (i, item) {
+                        var label = item.fileName;
+                        if (item.anchorName) label = item.anchorName + ' - ' + item.fileName;
+                        $select.append('<option value="' + item.filePath + '">' + label + '</option>');
+                    });
+                    var firstOpt = $select.find('option[value!=""]').first();
+                    if (firstOpt.length) {
+                        $select.val(firstOpt.val());
+                        dmgrState.currentFile = firstOpt.val();
+                        method.loadDmgrData();
+                    }
+                }
+            }
+        });
+    },
+
+    loadDmgrData: function () {
+        if (!dmgrState.currentFile) return;
+        $.ajax({
+            url: '../readBarrageCsvData',
+            type: 'GET',
+            data: {
+                filePath: dmgrState.currentFile,
+                page: dmgrState.page,
+                pageSize: dmgrState.pageSize,
+                startTime: dmgrState.startTime || '',
+                endTime: dmgrState.endTime || '',
+                search: dmgrState.search || ''
+            },
+            dataType: 'json',
+            success: function (data) {
+                if (data.code == "200" && data.result) {
+                    var r = data.result;
+                    dmgrState.totalPages = r.totalPages || 0;
+                    dmgrState.totalRows = r.total || 0;
+                    dmgrState.fileFirstTime = r.firstTime || '';
+                    dmgrState.fileLastTime = r.lastTime || '';
+                    if (!dmgrState.startTime && !dmgrState.endTime && r.firstTime && r.lastTime) {
+                        dmgrState.startTime = r.firstTime;
+                        dmgrState.endTime = r.lastTime;
+                        $('#dmgr-filter-start').val(r.firstTime.replace(' ', 'T'));
+                        $('#dmgr-filter-end').val(r.lastTime.replace(' ', 'T'));
+                    }
+                    method.renderDmgrTable(r.rows || []);
+                    method.renderDmgrPagination();
+                    if (r.total > 0) {
+                        method.renderDmgrCharts();
+                        method.renderDmgrStats();
+                        $('#dmgr-stats-row').show();
+                    } else {
+                        $('#dmgr-stats-row').hide();
+                        $('#dmgr-charts-row').hide();
+                    }
+                }
+            }
+        });
+    },
+
+    renderDmgrTable: function (rows) {
+        var $tbody = $('#dmgr-table-body');
+        var $table = $('#dmgr-data-table');
+        var $empty = $('#dmgr-empty-msg');
+        $tbody.empty();
+        if (!rows || rows.length === 0) {
+            $table.hide();
+            $('#dmgr-pagination').hide();
+            $empty.show();
+            return;
+        }
+        $empty.hide();
+        $table.show();
+        var cols = dmgrState.headers;
+        $.each(rows, function (i, row) {
+            var tr = '<tr>';
+            $.each(dmgrState.columnOrder, function (j, colIdx) {
+                if (colIdx < cols.length) {
+                    tr += '<td>' + (row[cols[colIdx]] || '') + '</td>';
+                }
+            });
+            tr += '</tr>';
+            $tbody.append(tr);
+        });
+        setTimeout(function () { method.initDmgrColumnDrag(); }, 100);
+    },
+
+    renderDmgrPagination: function () {
+        var $pagination = $('#dmgr-pagination');
+        if (dmgrState.totalPages <= 0) {
+            $pagination.hide();
+            return;
+        }
+        $pagination.show();
+        $('#dmgr-page-info').text('第' + dmgrState.page + '页 / 共' + dmgrState.totalPages + '页');
+        $('#dmgr-page-jump').attr('max', dmgrState.totalPages).val('');
+        var isFirst = dmgrState.page <= 1;
+        var isLast = dmgrState.page >= dmgrState.totalPages;
+        $('#dmgr-first-btn, #dmgr-prev-btn').prop('disabled', isFirst);
+        $('#dmgr-next-btn, #dmgr-last-btn').prop('disabled', isLast);
+    },
+
+    gotoDmgrPage: function (targetPage) {
+        var p = parseInt(targetPage);
+        if (isNaN(p) || p < 1) p = 1;
+        if (p > dmgrState.totalPages) p = dmgrState.totalPages;
+        if (p === dmgrState.page) return;
+        dmgrState.page = p;
+        method.loadDmgrData();
+    },
+
+    renderDmgrCharts: function () {
+        $.each(dmgrState.chartInstances, function (key, chart) {
+            if (chart) chart.destroy();
+        });
+        dmgrState.chartInstances = {};
+
+        if (!dmgrState.currentFile) return;
+
+        $.ajax({
+            url: '../getBarrageStatistics',
+            type: 'GET',
+            data: {
+                filePath: dmgrState.currentFile,
+                startTime: dmgrState.startTime || '',
+                endTime: dmgrState.endTime || ''
+            },
+            dataType: 'json',
+            async: false,
+            success: function (data) {
+                if (data.code == "200" && data.result) {
+                    var s = data.result;
+                    var perInt = s.perIntervalData || [];
+                    var top5 = s.top5Senders || [];
+                    var wordFreq = s.wordFrequency || [];
+                    var hasData = perInt.length > 0 || top5.length > 0 || wordFreq.length > 0;
+                    if (!hasData) {
+                        $('#dmgr-charts-row').hide();
+                        return;
+                    }
+                    $('#dmgr-charts-row').show();
+
+                    var chartOpts = {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: true, position: 'top', labels: { font: { size: 10 } } },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (ctx) { return ' ' + ctx.raw.toLocaleString(); }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: { ticks: { font: { size: 10 } } },
+                            y: { ticks: { font: { size: 10 } } }
+                        }
+                    };
+
+                    // Chart 1: 弹幕数量趋势 (line)
+                    if (perInt.length > 0) {
+                        var ctx1 = document.getElementById('dmgr-chart-count').getContext('2d');
+                        dmgrState.chartInstances.count = new Chart(ctx1, {
+                            type: 'line',
+                            data: {
+                                labels: perInt.map(function (d) { return d.time; }),
+                                datasets: [{
+                                    label: '弹幕数',
+                                    data: perInt.map(function (d) { return d.count; }),
+                                    borderColor: '#0d6efd', borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 4, tension: 0.1
+                                }]
+                            },
+                            options: chartOpts
+                        });
+                    }
+
+                    // Chart 2: 发送排行榜 (horizontal bar)
+                    if (top5.length > 0) {
+                        var ctx2 = document.getElementById('dmgr-chart-top5').getContext('2d');
+                        dmgrState.chartInstances.top5 = new Chart(ctx2, {
+                            type: 'bar',
+                            data: {
+                                labels: top5.map(function (d) { return d.name; }),
+                                datasets: [{
+                                    label: '发送数',
+                                    data: top5.map(function (d) { return d.count; }),
+                                    backgroundColor: ['#0d6efd', '#198754', '#fd7e14', '#dc3545', '#6f42c1']
+                                }]
+                            },
+                            options: {
+                                indexAxis: 'y',
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: { display: false },
+                                    tooltip: {
+                                        callbacks: {
+                                            label: function (ctx) { return ' 发送数: ' + ctx.raw.toLocaleString(); }
+                                        }
+                                    }
+                                },
+                                scales: {
+                                    x: {
+                                        ticks: { font: { size: 10 }, stepSize: 1 },
+                                        title: { display: true, text: '发送数', font: { size: 10 } }
+                                    },
+                                    y: {
+                                        ticks: { font: { size: 10 } }
+                                    }
+                                }
+                            }
+                        });
+                    }
+
+                    // Chart 3: 弹幕质量趋势 (质量 = 总长度/弹幕数)
+                    if (perInt.length > 0) {
+                        var ctx3 = document.getElementById('dmgr-chart-quality').getContext('2d');
+                        dmgrState.chartInstances.quality = new Chart(ctx3, {
+                            type: 'line',
+                            data: {
+                                labels: perInt.map(function (d) { return d.time; }),
+                                datasets: [{
+                                    label: '弹幕质量',
+                                    data: perInt.map(function (d) { return d.avgLength; }),
+                                    borderColor: '#198754', borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 4, tension: 0.1,
+                                    fill: true, backgroundColor: 'rgba(25,135,84,0.08)'
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                interaction: { mode: 'index', intersect: false },
+                                plugins: {
+                                    legend: { display: true, position: 'top', labels: { font: { size: 10 } } },
+                                    tooltip: { callbacks: { label: function (ctx) { return ' 平均长度: ' + ctx.raw.toLocaleString() + ' 字'; } } }
+                                },
+                                scales: {
+                                    x: { ticks: { font: { size: 10 } } },
+                                    y: {
+                                        title: { display: true, text: '字数', font: { size: 10 } },
+                                        ticks: { font: { size: 10 } }
+                                    }
+                                }
+                            }
+                        });
+                    }
+
+                    // Chart 4: 词频 (vertical bar, top 15)
+                    var top15 = wordFreq.slice(0, 15);
+                    if (top15.length > 0) {
+                        var ctx4 = document.getElementById('dmgr-chart-wordfreq').getContext('2d');
+                        dmgrState.chartInstances.wordfreq = new Chart(ctx4, {
+                            type: 'bar',
+                            data: {
+                                labels: top15.map(function (d) { return d.word; }),
+                                datasets: [{
+                                    label: '出现次数',
+                                    data: top15.map(function (d) { return d.count; }),
+                                    backgroundColor: '#6f42c1'
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: { display: false },
+                                    tooltip: { callbacks: { label: function (ctx) { return ' 出现次数: ' + ctx.raw.toLocaleString(); } } }
+                                },
+                                scales: {
+                                    x: { ticks: { font: { size: 10 }, maxRotation: 60 } },
+                                    y: { ticks: { font: { size: 10 } }, title: { display: true, text: '次数', font: { size: 10 } } }
+                                }
+                            }
+                        });
+                    }
+                }
+            }
+        });
+    },
+
+    renderDmgrStats: function () {
+        if (!dmgrState.currentFile) return;
+        $.ajax({
+            url: '../getBarrageStatistics',
+            type: 'GET',
+            data: {
+                filePath: dmgrState.currentFile,
+                startTime: dmgrState.startTime || '',
+                endTime: dmgrState.endTime || ''
+            },
+            dataType: 'json',
+            success: function (data) {
+                if (data.code == "200" && data.result) {
+                    var s = data.result;
+                    $('#dmgr-stat-users').text((s.userCount || 0).toLocaleString());
+                    $('#dmgr-stat-count').text((s.barrageCount || 0).toLocaleString());
+                    $('#dmgr-stat-chars').text((s.totalChars || 0).toLocaleString());
+                    var avgLen = s.barrageCount > 0 ? Math.round(s.totalChars / s.barrageCount) : 0;
+                    $('#dmgr-stat-avg-len').text(avgLen.toLocaleString() + ' 字');
+                    $('#dmgr-stats-row').show();
+                }
+            }
+        });
+    },
+
+    exportDmgrCsv: function () {
+        if (!dmgrState.currentFile) return;
+        var url = '../exportBarrageFilteredCsv?filePath=' + encodeURIComponent(dmgrState.currentFile);
+        if (dmgrState.startTime) url += '&startTime=' + encodeURIComponent(dmgrState.startTime);
+        if (dmgrState.endTime) url += '&endTime=' + encodeURIComponent(dmgrState.endTime);
+        if (dmgrState.search) url += '&search=' + encodeURIComponent(dmgrState.search);
+        window.open(window.location.origin + url);
+    },
+
+    initDmgrColumnDrag: function () {
+        var thead = document.getElementById('dmgr-table-head');
+        if (!thead || !thead.querySelector('tr')) return;
+        if (thead._sortable) { thead._sortable.destroy(); }
+        thead._sortable = new Sortable(thead.querySelector('tr'), {
+            animation: 150,
+            filter: 'th[data-sortable="false"]',
+            onEnd: function () {
+                var order = [];
+                $('#dmgr-table-head th').each(function (idx) {
+                    var text = $(this).text().trim();
+                    if (text === '发送时间') order.push(0);
+                    else if (text === 'id') order.push(1);
+                    else if (text === '名字') order.push(2);
+                    else if (text === '弹幕') order.push(3);
+                });
+                dmgrState.columnOrder = order;
+                method.loadDmgrData();
+            }
+        });
+    },
+
+    // ========== 观众管理 ==========
+
+    loadVstCsvFileList: function () {
+        $.ajax({
+            url: '../listVisitorCsvFiles',
+            type: 'GET',
+            dataType: 'json',
+            success: function (data) {
+                if (data.code == "200" && data.result) {
+                    var $select = $('#vst-csv-select');
+                    $select.find('option[value!=""]').remove();
+                    $.each(data.result, function (i, item) {
+                        var label = item.fileName;
+                        if (item.anchorName) label = item.anchorName + ' - ' + item.fileName;
+                        $select.append('<option value="' + item.filePath + '">' + label + '</option>');
+                    });
+                    var firstOpt = $select.find('option[value!=""]').first();
+                    if (firstOpt.length) {
+                        $select.val(firstOpt.val());
+                        vstState.currentFile = firstOpt.val();
+                        method.loadVstData();
+                    }
+                }
+            }
+        });
+    },
+
+    loadVstData: function () {
+        if (!vstState.currentFile) return;
+        $.ajax({
+            url: '../readVisitorCsvData',
+            type: 'GET',
+            data: {
+                filePath: vstState.currentFile,
+                page: vstState.page,
+                pageSize: vstState.pageSize,
+                startTime: vstState.startTime || '',
+                endTime: vstState.endTime || '',
+                search: vstState.search || '',
+                sortField: vstState.sortField,
+                sortOrder: vstState.sortOrder
+            },
+            dataType: 'json',
+            success: function (data) {
+                if (data.code == "200" && data.result) {
+                    var r = data.result;
+                    vstState.totalPages = r.totalPages || 0;
+                    vstState.totalRows = r.total || 0;
+                    var st1 = (r.liveStartTime && r.liveStartTime.length > 0) ? r.liveStartTime : (r.firstTime || '');
+                    var st2 = r.firstTime || '';
+                    if (st1 && st2) { vstState.fileFirstTime = st1 < st2 ? st1 : st2; }
+                    else { vstState.fileFirstTime = st1 || st2; }
+                    vstState.fileLastTime = r.lastTime || '';
+                    if (!vstState.startTime && !vstState.endTime && vstState.fileFirstTime && r.lastTime) {
+                        vstState.startTime = vstState.fileFirstTime;
+                        vstState.endTime = r.lastTime;
+                        $('#vst-filter-start').val(vstState.fileFirstTime.replace(' ', 'T'));
+                        $('#vst-filter-end').val(r.lastTime.replace(' ', 'T'));
+                    }
+                    method.renderVstTable(r.rows || []);
+                    method.renderVstPagination();
+                    if (r.total > 0) {
+                        method.renderVstCharts();
+                        method.renderVstStats();
+                        $('#vst-stats-row, #vst-rank-limit-row').show();
+                    } else {
+                        $('#vst-stats-row, #vst-rank-limit-row').hide();
+                        $('#vst-charts-row, #vst-freq-charts-row').hide();
+                    }
+                }
+            }
+        });
+    },
+
+    renderVstTable: function (rows) {
+        var $tbody = $('#vst-table-body');
+        var $table = $('#vst-data-table');
+        var $empty = $('#vst-empty-msg');
+        $tbody.empty();
+        if (!rows || rows.length === 0) {
+            $table.hide(); $('#vst-pagination').hide(); $empty.show(); return;
+        }
+        $empty.hide(); $table.show();
+        var cols = vstState.headers;
+        $.each(rows, function (i, row) {
+            var tr = '<tr>';
+            $.each(vstState.columnOrder, function (j, colIdx) {
+                if (colIdx < cols.length) {
+                    tr += '<td>' + (row[cols[colIdx]] || '') + '</td>';
+                }
+            });
+            tr += '</tr>';
+            $tbody.append(tr);
+        });
+        // update sort indicators on headers
+        $('#vst-table-head th[data-sort]').each(function () {
+            var f = $(this).data('sort');
+            $(this).text(f);
+            if (f === vstState.sortField) {
+                $(this).text(f + ' ' + (vstState.sortOrder === 'asc' ? '▲' : '▼'));
+            }
+        });
+        setTimeout(function () { method.initVstColumnDrag(); }, 100);
+    },
+
+    renderVstPagination: function () {
+        var $p = $('#vst-pagination');
+        if (vstState.totalPages <= 0) { $p.hide(); return; }
+        $p.show();
+        $('#vst-page-info').text('第' + vstState.page + '页 / 共' + vstState.totalPages + '页');
+        $('#vst-page-jump').attr('max', vstState.totalPages).val('');
+        var isFirst = vstState.page <= 1, isLast = vstState.page >= vstState.totalPages;
+        $('#vst-first-btn, #vst-prev-btn').prop('disabled', isFirst);
+        $('#vst-next-btn, #vst-last-btn').prop('disabled', isLast);
+    },
+
+    gotoVstPage: function (p) {
+        p = parseInt(p);
+        if (isNaN(p) || p < 1) p = 1;
+        if (p > vstState.totalPages) p = vstState.totalPages;
+        if (p === vstState.page) return;
+        vstState.page = p;
+        method.loadVstData();
+    },
+
+    sortVstColumn: function (field) {
+        if (vstState.sortField === field) {
+            vstState.sortOrder = vstState.sortOrder === 'asc' ? 'desc' : 'asc';
+        } else {
+            vstState.sortField = field;
+            vstState.sortOrder = 'desc';
+        }
+        vstState.page = 1;
+        $('#vst-stat-sort').text(field + (vstState.sortOrder === 'asc' ? '▲' : '▼'));
+        method.loadVstData();
+    },
+
+    renderVstCharts: function () {
+        $.each(vstState.chartInstances, function (k, c) { if (c) c.destroy(); });
+        vstState.chartInstances = {};
+        if (!vstState.currentFile) return;
+
+        $.ajax({
+            url: '../getVisitorStatistics',
+            type: 'GET',
+            data: { filePath: vstState.currentFile, startTime: vstState.startTime || '', endTime: vstState.endTime || '', limit: vstState.rankLimit },
+            dataType: 'json', async: false,
+            success: function (data) {
+                if (data.code != "200" || !data.result) { $('#vst-charts-row, #vst-freq-charts-row').hide(); return; }
+                var s = data.result;
+                var perInt = s.perIntervalData || [];
+                var top5 = s.top15Visitors || [];
+                var fieldRank = s.fieldRanking || [];
+                var scoreDist = s.scoreDistribution || [];
+                var visitFreq = s.visitCountDist || [];
+                var fieldFreq = s.fieldCountDist || [];
+                if (perInt.length === 0 && top5.length === 0 && fieldRank.length === 0 && scoreDist.length === 0) { $('#vst-charts-row').hide(); return; }
+                $('#vst-charts-row').show();
+
+                // Chart 1: 观众数量 line
+                if (perInt.length > 0) {
+                    var ctx1 = document.getElementById('vst-chart-count').getContext('2d');
+                    vstState.chartInstances.count = new Chart(ctx1, {
+                        type: 'line', data: {
+                            labels: perInt.map(function (d) { return d.time; }),
+                            datasets: [{ label: '人数', data: perInt.map(function (d) { return d.count; }), borderColor: '#0d6efd', borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 4, tension: 0.1, fill: true, backgroundColor: 'rgba(13,110,253,0.06)' }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: true, position: 'top', labels: { font: { size: 10 } } }, tooltip: { callbacks: { label: function (ctx) { return ' 人数: ' + ctx.raw.toLocaleString(); } } } }, scales: { x: { ticks: { font: { size: 10 } } }, y: { ticks: { font: { size: 10 } } } } }
+                    });
+                }
+
+                // Chart 2: 观众打分分布 bar
+                if (scoreDist.length > 0) {
+                    var ctx2 = document.getElementById('vst-chart-score').getContext('2d');
+                    vstState.chartInstances.score = new Chart(ctx2, {
+                        type: 'bar', data: {
+                            labels: scoreDist.map(function (d) { return d.score; }),
+                            datasets: [{ label: '人数', data: scoreDist.map(function (d) { return d.count; }), backgroundColor: '#198754' }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (ctx) { return ' 分数 ' + ctx.label + ': ' + ctx.raw.toLocaleString() + ' 人'; } } } }, scales: { x: { ticks: { font: { size: 10 } }, title: { display: true, text: '分数', font: { size: 10 } } }, y: { ticks: { font: { size: 10 } }, title: { display: true, text: '人数', font: { size: 10 } } } } }
+                    });
+                }
+
+                // Chart 3: 进出榜 top5 vertical bar
+                if (top5.length > 0) {
+                    var ctx3 = document.getElementById('vst-chart-top5').getContext('2d');
+                    vstState.chartInstances.top5 = new Chart(ctx3, {
+                        type: 'bar', data: {
+                            labels: top5.map(function (d) { return d.name; }),
+                            datasets: [{ label: '次数', data: top5.map(function (d) { return d.count; }), backgroundColor: ['#0d6efd','#198754','#fd7e14','#dc3545','#6f42c1'] }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (ctx) { return ' 次数: ' + ctx.raw.toLocaleString(); } } } }, scales: { x: { ticks: { font: { size: 10 }, maxRotation: 45 } }, y: { ticks: { font: { size: 10 } }, title: { display: true, text: '次数', font: { size: 10 } } } } }
+                    });
+                }
+
+                // Chart 4: 场次榜 top15 vertical bar
+                if (fieldRank.length > 0) {
+                    var ctx4 = document.getElementById('vst-chart-wordfreq').getContext('2d');
+                    vstState.chartInstances.field = new Chart(ctx4, {
+                        type: 'bar', data: {
+                            labels: fieldRank.map(function (d) { return d.name; }),
+                            datasets: [{ label: '场次', data: fieldRank.map(function (d) { return d.count; }), backgroundColor: '#6f42c1' }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (ctx) { return ' 场次: ' + ctx.raw.toLocaleString(); } } } }, scales: { x: { ticks: { font: { size: 10 }, maxRotation: 45 } }, y: { ticks: { font: { size: 10 } }, title: { display: true, text: '场次', font: { size: 10 } } } } }
+                    });
+                }
+
+                // Chart 5: 进出频次分布 bar
+                if (visitFreq.length > 0) {
+                    $('#vst-freq-charts-row').show();
+                    var ctx5 = document.getElementById('vst-chart-visitfreq').getContext('2d');
+                    vstState.chartInstances.visitfreq = new Chart(ctx5, {
+                        type: 'bar', data: {
+                            labels: visitFreq.map(function (d) { return d.count; }),
+                            datasets: [{ label: '频次', data: visitFreq.map(function (d) { return d.freq; }), backgroundColor: '#0d6efd' }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (ctx) { return ' 次数 ' + ctx.label + ': ' + ctx.raw.toLocaleString() + ' 人'; } } } }, scales: { x: { ticks: { font: { size: 10 } }, title: { display: true, text: '次数', font: { size: 10 } } }, y: { ticks: { font: { size: 10 } }, title: { display: true, text: '频次(人数)', font: { size: 10 } } } } }
+                    });
+                } else { $('#vst-freq-charts-row').hide(); }
+
+                // Chart 6: 场次频次分布 bar
+                if (fieldFreq.length > 0) {
+                    $('#vst-freq-charts-row').show();
+                    var ctx6 = document.getElementById('vst-chart-fieldfreq').getContext('2d');
+                    vstState.chartInstances.fieldfreq = new Chart(ctx6, {
+                        type: 'bar', data: {
+                            labels: fieldFreq.map(function (d) { return d.count; }),
+                            datasets: [{ label: '频次', data: fieldFreq.map(function (d) { return d.freq; }), backgroundColor: '#6f42c1' }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (ctx) { return ' 场次 ' + ctx.label + ': ' + ctx.raw.toLocaleString() + ' 人'; } } } }, scales: { x: { ticks: { font: { size: 10 } }, title: { display: true, text: '场次', font: { size: 10 } } }, y: { ticks: { font: { size: 10 } }, title: { display: true, text: '频次(人数)', font: { size: 10 } } } } }
+                    });
+                }
+            }
+        });
+    },
+
+    renderVstStats: function () {
+        if (!vstState.currentFile) return;
+        $.ajax({
+            url: '../getVisitorStatistics',
+            type: 'GET',
+            data: { filePath: vstState.currentFile, startTime: vstState.startTime || '', endTime: vstState.endTime || '', limit: vstState.rankLimit },
+            dataType: 'json',
+            success: function (data) {
+                if (data.code == "200" && data.result) {
+                    var s = data.result;
+                    // update rank limit max
+                    var maxRank = Math.max(1, Math.floor((s.actualPeople || 0) / 2));
+                    $('#vst-rank-limit').attr('max', maxRank);
+                    if (vstState.rankLimit > maxRank) { vstState.rankLimit = maxRank; $('#vst-rank-limit').val(maxRank); }
+                    $('#vst-stat-visits').text((s.totalVisits || 0).toLocaleString());
+                    $('#vst-stat-actual').text((s.actualPeople || 0).toLocaleString());
+                    $('#vst-stat-avgpm').text((s.avgPerMin || 0).toLocaleString());
+                    $('#vst-stat-score').text((s.scoreSum || 0).toLocaleString() + ' / ' + (s.scoreAvg || 0).toLocaleString());
+                    $('#vst-stat-pn').text((s.pnYes || 0) + ' 是 / ' + (s.pnNo || 0) + ' 否');
+                    $('#vst-stats-row').show();
+                }
+            }
+        });
+    },
+
+    exportVstCsv: function () {
+        if (!vstState.currentFile) return;
+        var url = '../exportVisitorFilteredCsv?filePath=' + encodeURIComponent(vstState.currentFile);
+        if (vstState.startTime) url += '&startTime=' + encodeURIComponent(vstState.startTime);
+        if (vstState.endTime) url += '&endTime=' + encodeURIComponent(vstState.endTime);
+        if (vstState.search) url += '&search=' + encodeURIComponent(vstState.search);
+        window.open(window.location.origin + url);
+    },
+
+    initVstColumnDrag: function () {
+        var thead = document.getElementById('vst-table-head');
+        if (!thead || !thead.querySelector('tr')) return;
+        if (thead._sortable) thead._sortable.destroy();
+        thead._sortable = new Sortable(thead.querySelector('tr'), {
+            animation: 150, filter: 'th[data-sortable="false"]',
+            onEnd: function () {
+                var order = [];
+                $('#vst-table-head th').each(function (idx) {
+                    var text = $(this).text().trim().replace(/ [▲▼]/, '');
+                    var fi = vstState.headers.indexOf(text);
+                    if (fi >= 0) order.push(fi);
+                });
+                vstState.columnOrder = order;
+                method.loadVstData();
+            }
+        });
+    }
+
+
 };
 
 function openSocket(ip, sliceh) {
@@ -2777,6 +3966,8 @@ function switchTab(tabId, el) {
     $('.settings-content .tab-pane').removeClass('active').hide();
     var targetPane = $('#tab-' + tabId);
     targetPane.addClass('active').show();
+    // 记住当前tab，页面刷新后恢复
+    try { localStorage.setItem('activeTab', tabId); } catch(e) {}
     // 自动调整textarea高度
     targetPane.find('textarea.form-control').each(function () {
         $(this).css('height', this.scrollHeight + 'px');
@@ -2784,6 +3975,24 @@ function switchTab(tabId, el) {
     // 切换到负黑自动拉黑姬时重新加载数据
     if (tabId === 'autoBlock-set') {
         method.loadAutoBlockList();
+    }
+    // 切换到直播间管理时加载CSV文件列表
+    if (tabId === 'live-room-mgr') {
+        if (!$('#lrm-csv-select option[value!=""]').length) {
+            method.loadCsvFileList();
+        }
+    }
+    // 切换到弹幕管理时加载CSV文件列表
+    if (tabId === 'danmaku-mgr') {
+        if (!$('#dmgr-csv-select option[value!=""]').length) {
+            method.loadDmgrCsvFileList();
+        }
+    }
+    // 切换到观众管理时加载CSV文件列表
+    if (tabId === 'audience-mgr') {
+        if (!$('#vst-csv-select option[value!=""]').length) {
+            method.loadVstCsvFileList();
+        }
     }
 }
 

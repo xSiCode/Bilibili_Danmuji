@@ -36,7 +36,7 @@ public class VisitorCountTools {
         lastRoomId = roomKey();
         lastAnchorName = safeFileName(PublicDataConf.ANCHOR_NAME);
         loadFromCsv();
-        flushScheduler.scheduleWithFixedDelay(VisitorCountTools::flushToCsv, 180, 180, TimeUnit.SECONDS);
+        flushScheduler.scheduleWithFixedDelay(VisitorCountTools::flushToCsv, 60, 60, TimeUnit.SECONDS);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             flushScheduler.shutdown();
             flushToCsv();
@@ -67,7 +67,7 @@ public class VisitorCountTools {
         visitorMap.compute(uid, (k, v) -> {
             if (v == null) {
                 return new VisitorRecord(uid, uname, score, scoreType, 1, System.currentTimeMillis(),
-                        HttpRoomData.isUidInPnScoreMap(uid));
+                        HttpRoomData.isUidInPnScoreMap(uid), 0);
             }
             v.uname = uname;
             v.score = score;
@@ -88,11 +88,16 @@ public class VisitorCountTools {
         if (!file.exists()) return;
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
             String line = reader.readLine(); // skip header
+            boolean needComputeSession = false;
             while ((line = reader.readLine()) != null) {
                 VisitorRecord record = parseLine(line);
                 if (record != null) {
+                    if (record.session == 0) needComputeSession = true;
                     visitorMap.put(record.uid, record);
                 }
+            }
+            if (needComputeSession) {
+                computeSessions();
             }
         } catch (Exception e) {
             LOGGER.error("load visitor CSV failed", e);
@@ -117,8 +122,12 @@ public class VisitorCountTools {
                 // old format compatibility: derive from current pnScoreMap
                 inPnTable = HttpRoomData.isUidInPnScoreMap(uid);
             }
+            int session = 0;
+            if (fields.size() >= 8) {
+                try { session = Integer.parseInt(fields.get(7)); } catch (NumberFormatException e) {}
+            }
             long time = JodaTimeUtils.parse(timeStr, "yyyy-MM-dd HH:mm:ss").getTime();
-            return new VisitorRecord(uid, uname, score, scoreType, count, time, inPnTable);
+            return new VisitorRecord(uid, uname, score, scoreType, count, time, inPnTable, session);
         } catch (Exception e) {
             return null;
         }
@@ -172,6 +181,8 @@ public class VisitorCountTools {
 
     private static void doFlush(String path) {
         List<VisitorRecord> records = new ArrayList<>(visitorMap.values());
+        records.sort((a, b) -> Long.compare(a.latestEntryTime, b.latestEntryTime));
+        computeSessions(records);
         File file = new File(path);
         if (!file.getParentFile().exists()) {
             file.getParentFile().mkdirs();
@@ -179,7 +190,7 @@ public class VisitorCountTools {
         File tmpFile = new File(path + ".tmp");
         try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tmpFile), "UTF-8"))) {
             writer.write('﻿');
-            writer.write("最近,id,观众,打分,打分类型,次数,判定表");
+            writer.write("最近,id,观众,打分,打分类型,次数,判定表,场次");
             writer.newLine();
             for (VisitorRecord r : records) {
                 writer.write(JodaTimeUtils.formatDateTime(r.latestEntryTime) + ",");
@@ -189,6 +200,7 @@ public class VisitorCountTools {
                 writer.write(escapeCsv(r.scoreType) + ",");
                 writer.write(r.count + ",");
                 writer.write(r.inPnTable ? "是" : "否");
+                writer.write("," + r.session);
                 writer.newLine();
             }
         } catch (Exception e) {
@@ -200,6 +212,27 @@ public class VisitorCountTools {
         } catch (IOException e) {
             LOGGER.error("move visitor CSV failed", e);
         }
+    }
+
+    private static void computeSessions(List<VisitorRecord> records) {
+        if (records.isEmpty()) return;
+        int session = Math.max(records.get(0).session, 1);
+        records.get(0).session = session;
+        for (int i = 1; i < records.size(); i++) {
+            VisitorRecord prev = records.get(i - 1);
+            VisitorRecord cur = records.get(i);
+            long diff = cur.latestEntryTime - prev.latestEntryTime;
+            if (diff >= 3 * 60 * 60 * 1000L) {
+                session++;
+            }
+            cur.session = session;
+        }
+    }
+
+    private static void computeSessions() {
+        List<VisitorRecord> records = new ArrayList<>(visitorMap.values());
+        records.sort((a, b) -> Long.compare(a.latestEntryTime, b.latestEntryTime));
+        computeSessions(records);
     }
 
     private static String escapeCsv(String s) {
@@ -218,8 +251,9 @@ public class VisitorCountTools {
         volatile int count;
         volatile long latestEntryTime;
         volatile boolean inPnTable;
+        volatile int session;
 
-        VisitorRecord(long uid, String uname, int score, String scoreType, int count, long latestEntryTime, boolean inPnTable) {
+        VisitorRecord(long uid, String uname, int score, String scoreType, int count, long latestEntryTime, boolean inPnTable, int session) {
             this.uid = uid;
             this.uname = uname;
             this.score = score;
@@ -227,6 +261,7 @@ public class VisitorCountTools {
             this.count = count;
             this.latestEntryTime = latestEntryTime;
             this.inPnTable = inPnTable;
+            this.session = session;
         }
     }
 }

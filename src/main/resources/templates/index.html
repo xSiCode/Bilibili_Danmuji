@@ -26,6 +26,8 @@
             type="text/javascript"></script>
     <script type="text/javascript" src="../../js/connect.js"
             th:src="@{/js/connect.js}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
 </head>
 
 <body>
@@ -169,6 +171,22 @@
                                        onclick="switchTab('bili-badlist-set', this);return false;">Bili小黑屋</a>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="black-set"
                                        onclick="switchTab('black-set', this);return false;">过滤姬</a>
+                                </div>
+                                <div class="sidebar-section">
+                                    <span class="sidebar-section-header"
+                                          onclick="toggleSidebarSection(this);return false;">后台管理</span>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="live-room-mgr"
+                                       onclick="switchTab('live-room-mgr', this);return false;">直播间管理</a>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="danmaku-mgr"
+                                       onclick="switchTab('danmaku-mgr', this);return false;">弹幕管理</a>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="gift-mgr"
+                                       onclick="switchTab('gift-mgr', this);return false;">礼物管理</a>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="audience-mgr"
+                                       onclick="switchTab('audience-mgr', this);return false;">观众管理</a>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="match-mgr"
+                                       onclick="switchTab('match-mgr', this);return false;">匹配管理</a>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="follow-mgr"
+                                       onclick="switchTab('follow-mgr', this);return false;">关注管理</a>
                                 </div>
                             </div>
                             <!-- 内容面板 -->
@@ -1777,6 +1795,383 @@
                                         </div>
                                     </div>
                                     <!-- Bili小黑屋结束 -->
+                                </div>
+                                <div class="tab-pane" id="tab-live-room-mgr">
+                                    <div class="input-group mb-1"><h5>直播间管理</h5></div>
+                                    <!-- 文件选择 + 时间筛选 -->
+                                    <div class="row g-2 mb-2 align-items-end">
+                                        <div class="col-auto">
+                                            <label class="form-label mb-0" style="font-size:12px;">CSV文件</label>
+                                            <select id="lrm-csv-select" class="form-select form-select-sm" style="width:260px;">
+                                                <option value="">-- 选择文件 --</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-auto">
+                                            <label class="form-label mb-0" style="font-size:12px;">开始时间</label>
+                                            <input type="datetime-local" id="lrm-filter-start" class="form-control form-control-sm" style="width:200px;">
+                                        </div>
+                                        <div class="col-auto">
+                                            <label class="form-label mb-0" style="font-size:12px;">结束时间</label>
+                                            <input type="datetime-local" id="lrm-filter-end" class="form-control form-control-sm" style="width:200px;">
+                                        </div>
+                                        <div class="col-auto">
+                                            <button id="lrm-btn-apply" class="btn btn-sm btn-primary">筛选</button>
+                                            <button id="lrm-btn-reset" class="btn btn-sm btn-outline-secondary ms-1">重置</button>
+                                        </div>
+                                        <div class="col-auto ms-auto">
+                                            <button id="lrm-btn-export" class="btn btn-sm btn-success">导出CSV</button>
+                                            <button class="btn btn-sm btn-outline-warning" onclick="$('#lrm-import-file').click()">导入CSV</button>
+                                            <input type="file" id="lrm-import-file" accept=".csv" style="display:none;" class="import-file-input" data-file-type="lrm">
+                                        </div>
+                                    </div>
+                                    <!-- 统计卡片 -->
+                                    <div id="lrm-stats-row" class="row g-2 mb-2" style="display:none;">
+                                        <div class="col-md-3">
+                                            <div class="card border-info"><div class="card-body py-1 px-2" style="font-size:12px;">
+                                                <span class="text-muted">累计观看数</span><br>
+                                                <strong id="lrm-stat-cum-watcher" class="text-info">--</strong>
+                                            </div></div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="card border-danger"><div class="card-body py-1 px-2" style="font-size:12px;">
+                                                <span class="text-muted">累计点赞数</span><br>
+                                                <strong id="lrm-stat-cum-like" class="text-danger">--</strong>
+                                            </div></div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="card border-primary"><div class="card-body py-1 px-2" style="font-size:12px;">
+                                                <span class="text-muted">平均在线 / 最高在线</span><br>
+                                                <strong id="lrm-stat-online" class="text-primary">--</strong>
+                                            </div></div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="card border-warning"><div class="card-body py-1 px-2" style="font-size:12px;">
+                                                <span class="text-muted">总观看时长 / 人均观看</span><br>
+                                                <strong id="lrm-stat-watch-time" class="text-warning">--</strong>
+                                            </div></div>
+                                        </div>
+                                    </div>
+                                    <!-- 数据表格 -->
+                                    <div class="lrm-table-wrap">
+                                        <table id="lrm-data-table" class="table table-sm table-striped" style="display:none;">
+                                            <thead id="lrm-table-head">
+                                                <tr>
+                                                    <th>时间</th>
+                                                    <th>观看数</th>
+                                                    <th>在线数</th>
+                                                    <th>点赞数</th>
+                                                    <th data-sortable="false">操作</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="lrm-table-body"></tbody>
+                                        </table>
+                                        <div id="lrm-pagination" class="d-flex justify-content-center align-items-center mt-2" style="display:none;">
+                                            <button id="lrm-first-btn" class="btn btn-sm btn-outline-secondary">首页</button>
+                                            <button id="lrm-prev-btn" class="btn btn-sm btn-outline-secondary ms-1">上一页</button>
+                                            <span id="lrm-page-info" class="mx-2">第1页 / 共1页</span>
+                                            <button id="lrm-next-btn" class="btn btn-sm btn-outline-secondary">下一页</button>
+                                            <button id="lrm-last-btn" class="btn btn-sm btn-outline-secondary ms-1">尾页</button>
+                                            <span class="ms-3">跳至</span>
+                                            <input type="number" id="lrm-page-jump" class="form-control form-control-sm" style="width:60px;" min="1">
+                                            <span>页</span>
+                                            <button id="lrm-btn-go" class="btn btn-sm btn-outline-primary ms-1">GO</button>
+                                        </div>
+                                        <div id="lrm-empty-msg" class="text-muted text-center py-3" style="display:none;">暂无数据</div>
+                                    </div>
+                                    <!-- 图表区 -->
+                                    <div class="row g-2 mt-3" id="lrm-charts-row" style="display:none;">
+                                        <div class="col-md-4">
+                                            <div class="card"><div class="card-body p-2">
+                                                <h6 class="card-title text-center" style="font-size:13px;">观看数趋势</h6>
+                                                <canvas id="lrm-chart-watcher" height="200"></canvas>
+                                            </div></div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="card"><div class="card-body p-2">
+                                                <h6 class="card-title text-center" style="font-size:13px;">在线数趋势</h6>
+                                                <canvas id="lrm-chart-online" height="200"></canvas>
+                                            </div></div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="card"><div class="card-body p-2">
+                                                <h6 class="card-title text-center" style="font-size:13px;">点赞数趋势</h6>
+                                                <canvas id="lrm-chart-like" height="200"></canvas>
+                                            </div></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="tab-pane" id="tab-danmaku-mgr">
+                                    <div class="input-group mb-1"><h5>弹幕管理</h5></div>
+                                    <!-- 文件选择 + 时间筛选 + 搜索 -->
+                                    <div class="row g-2 mb-2 align-items-end">
+                                        <div class="col-auto">
+                                            <label class="form-label mb-0" style="font-size:12px;">CSV文件</label>
+                                            <select id="dmgr-csv-select" class="form-select form-select-sm" style="width:260px;">
+                                                <option value="">-- 选择文件 --</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-auto">
+                                            <label class="form-label mb-0" style="font-size:12px;">开始时间</label>
+                                            <input type="datetime-local" id="dmgr-filter-start" class="form-control form-control-sm" style="width:200px;">
+                                        </div>
+                                        <div class="col-auto">
+                                            <label class="form-label mb-0" style="font-size:12px;">结束时间</label>
+                                            <input type="datetime-local" id="dmgr-filter-end" class="form-control form-control-sm" style="width:200px;">
+                                        </div>
+                                        <div class="col-auto">
+                                            <button id="dmgr-btn-apply" class="btn btn-sm btn-primary">筛选</button>
+                                            <button id="dmgr-btn-reset" class="btn btn-sm btn-outline-secondary ms-1">重置</button>
+                                        </div>
+                                        <div class="col-auto">
+                                            <input type="text" id="dmgr-search-input" class="form-control form-control-sm" style="width:160px;" placeholder="搜索...">
+                                        </div>
+                                        <div class="col-auto ms-auto">
+                                            <button id="dmgr-btn-export" class="btn btn-sm btn-success">导出CSV</button>
+                                            <button class="btn btn-sm btn-outline-warning" onclick="$('#dmgr-import-file').click()">导入CSV</button>
+                                            <input type="file" id="dmgr-import-file" accept=".csv" style="display:none;" class="import-file-input" data-file-type="dmgr">
+                                        </div>
+                                    </div>
+                                    <!-- 统计卡片 -->
+                                    <div id="dmgr-stats-row" class="row g-2 mb-2" style="display:none;">
+                                        <div class="col-md-3">
+                                            <div class="card border-info"><div class="card-body py-1 px-2" style="font-size:12px;">
+                                                <span class="text-muted">发弹幕人数</span><br>
+                                                <strong id="dmgr-stat-users" class="text-info">--</strong>
+                                            </div></div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="card border-success"><div class="card-body py-1 px-2" style="font-size:12px;">
+                                                <span class="text-muted">弹幕数量</span><br>
+                                                <strong id="dmgr-stat-count" class="text-success">--</strong>
+                                            </div></div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="card border-primary"><div class="card-body py-1 px-2" style="font-size:12px;">
+                                                <span class="text-muted">弹幕总字数</span><br>
+                                                <strong id="dmgr-stat-chars" class="text-primary">--</strong>
+                                            </div></div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="card border-warning"><div class="card-body py-1 px-2" style="font-size:12px;">
+                                                <span class="text-muted">平均弹幕长度</span><br>
+                                                <strong id="dmgr-stat-avg-len" class="text-warning">--</strong>
+                                            </div></div>
+                                        </div>
+                                    </div>
+                                    <!-- 数据表格 -->
+                                    <div class="dmgr-table-wrap">
+                                        <table id="dmgr-data-table" class="table table-sm table-striped" style="display:none;">
+                                            <thead id="dmgr-table-head">
+                                                <tr>
+                                                    <th>发送时间</th>
+                                                    <th>id</th>
+                                                    <th>名字</th>
+                                                    <th>弹幕</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="dmgr-table-body"></tbody>
+                                        </table>
+                                        <div id="dmgr-pagination" class="d-flex justify-content-center align-items-center mt-2" style="display:none;">
+                                            <button id="dmgr-first-btn" class="btn btn-sm btn-outline-secondary">首页</button>
+                                            <button id="dmgr-prev-btn" class="btn btn-sm btn-outline-secondary ms-1">上一页</button>
+                                            <span id="dmgr-page-info" class="mx-2">第1页 / 共1页</span>
+                                            <button id="dmgr-next-btn" class="btn btn-sm btn-outline-secondary">下一页</button>
+                                            <button id="dmgr-last-btn" class="btn btn-sm btn-outline-secondary ms-1">尾页</button>
+                                            <span class="ms-3">跳至</span>
+                                            <input type="number" id="dmgr-page-jump" class="form-control form-control-sm" style="width:60px;" min="1">
+                                            <span>页</span>
+                                            <button id="dmgr-btn-go" class="btn btn-sm btn-outline-primary ms-1">GO</button>
+                                        </div>
+                                        <div id="dmgr-empty-msg" class="text-muted text-center py-3" style="display:none;">暂无数据</div>
+                                    </div>
+                                    <!-- 图表区 2x2 -->
+                                    <div class="row g-2 mt-3" id="dmgr-charts-row" style="display:none;">
+                                        <div class="col-md-6">
+                                            <div class="card"><div class="card-body p-2">
+                                                <h6 class="card-title text-center" style="font-size:13px;">弹幕数量趋势</h6>
+                                                <canvas id="dmgr-chart-count" height="200"></canvas>
+                                            </div></div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="card"><div class="card-body p-2">
+                                                <h6 class="card-title text-center" style="font-size:13px;">发送排行榜 (Top 5)</h6>
+                                                <canvas id="dmgr-chart-top5" height="200"></canvas>
+                                            </div></div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="card"><div class="card-body p-2">
+                                                <h6 class="card-title text-center" style="font-size:13px;">弹幕质量趋势</h6>
+                                                <canvas id="dmgr-chart-quality" height="200"></canvas>
+                                            </div></div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="card"><div class="card-body p-2">
+                                                <h6 class="card-title text-center" style="font-size:13px;">词频 Top 15</h6>
+                                                <canvas id="dmgr-chart-wordfreq" height="200"></canvas>
+                                            </div></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="tab-pane" id="tab-gift-mgr">
+                                    <div class="input-group mb-1"><h5>礼物管理</h5></div>
+                                    <p class="text-muted">功能开发中...</p>
+                                </div>
+                                <div class="tab-pane" id="tab-audience-mgr">
+                                    <div class="input-group mb-1"><h5>观众管理</h5></div>
+                                    <!-- 文件选择 + 时间筛选 + 搜索 -->
+                                    <div class="row g-2 mb-2 align-items-end">
+                                        <div class="col-auto">
+                                            <label class="form-label mb-0" style="font-size:12px;">CSV文件</label>
+                                            <select id="vst-csv-select" class="form-select form-select-sm" style="width:260px;">
+                                                <option value="">-- 选择文件 --</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-auto">
+                                            <label class="form-label mb-0" style="font-size:12px;">开始时间</label>
+                                            <input type="datetime-local" id="vst-filter-start" class="form-control form-control-sm" style="width:200px;">
+                                        </div>
+                                        <div class="col-auto">
+                                            <label class="form-label mb-0" style="font-size:12px;">结束时间</label>
+                                            <input type="datetime-local" id="vst-filter-end" class="form-control form-control-sm" style="width:200px;">
+                                        </div>
+                                        <div class="col-auto">
+                                            <button id="vst-btn-apply" class="btn btn-sm btn-primary">筛选</button>
+                                            <button id="vst-btn-reset" class="btn btn-sm btn-outline-secondary ms-1">重置</button>
+                                        </div>
+                                        <div class="col-auto">
+                                            <input type="text" id="vst-search-input" class="form-control form-control-sm" style="width:160px;" placeholder="搜索...">
+                                        </div>
+                                        <div class="col-auto ms-auto">
+                                            <button id="vst-btn-export" class="btn btn-sm btn-success">导出CSV</button>
+                                            <button class="btn btn-sm btn-outline-warning" onclick="$('#vst-import-file').click()">导入CSV</button>
+                                            <input type="file" id="vst-import-file" accept=".csv" style="display:none;" class="import-file-input" data-file-type="vst">
+                                        </div>
+                                    </div>
+                                    <!-- 统计卡片 -->
+                                    <div id="vst-stats-row" class="row g-2 mb-2" style="display:none;">
+                                        <div class="col-md-2">
+                                            <div class="card border-info"><div class="card-body py-1 px-2" style="font-size:11px;">
+                                                <span class="text-muted">进场人数</span><br>
+                                                <strong id="vst-stat-visits" class="text-info">--</strong>
+                                            </div></div>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <div class="card border-success"><div class="card-body py-1 px-2" style="font-size:11px;">
+                                                <span class="text-muted">实际人数</span><br>
+                                                <strong id="vst-stat-actual" class="text-success">--</strong>
+                                            </div></div>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <div class="card border-primary"><div class="card-body py-1 px-2" style="font-size:11px;">
+                                                <span class="text-muted">平均/分钟</span><br>
+                                                <strong id="vst-stat-avgpm" class="text-primary">--</strong>
+                                            </div></div>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <div class="card border-warning"><div class="card-body py-1 px-2" style="font-size:11px;">
+                                                <span class="text-muted">打分 总和 / 均</span><br>
+                                                <strong id="vst-stat-score" class="text-warning">--</strong>
+                                            </div></div>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <div class="card border-danger"><div class="card-body py-1 px-2" style="font-size:11px;">
+                                                <span class="text-muted">判定表 是/否</span><br>
+                                                <strong id="vst-stat-pn" class="text-danger">--</strong>
+                                            </div></div>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <div class="card border-secondary"><div class="card-body py-1 px-2" style="font-size:11px;">
+                                                <span class="text-muted">当前排序</span><br>
+                                                <strong id="vst-stat-sort" class="text-secondary" style="font-size:10px;">次数↓</strong>
+                                            </div></div>
+                                        </div>
+                                    </div>
+                                    <!-- 表格 -->
+                                    <div class="vst-table-wrap">
+                                        <table id="vst-data-table" class="table table-sm table-striped" style="display:none;">
+                                            <thead id="vst-table-head">
+                                                <tr>
+                                                    <th data-sort="最近">最近</th>
+                                                    <th data-sort="id">id</th>
+                                                    <th data-sort="观众">观众</th>
+                                                    <th data-sort="打分">打分</th>
+                                                    <th data-sort="打分类型">打分类型</th>
+                                                    <th data-sort="次数">次数 ▼</th>
+                                                    <th data-sort="判定表">判定表</th>
+                                                    <th data-sort="场次">场次</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="vst-table-body"></tbody>
+                                        </table>
+                                        <div id="vst-pagination" class="d-flex justify-content-center align-items-center mt-2" style="display:none;">
+                                            <button id="vst-first-btn" class="btn btn-sm btn-outline-secondary">首页</button>
+                                            <button id="vst-prev-btn" class="btn btn-sm btn-outline-secondary ms-1">上一页</button>
+                                            <span id="vst-page-info" class="mx-2">第1页 / 共1页</span>
+                                            <button id="vst-next-btn" class="btn btn-sm btn-outline-secondary">下一页</button>
+                                            <button id="vst-last-btn" class="btn btn-sm btn-outline-secondary ms-1">尾页</button>
+                                            <span class="ms-3">跳至</span>
+                                            <input type="number" id="vst-page-jump" class="form-control form-control-sm" style="width:60px;" min="1">
+                                            <span>页</span>
+                                            <button id="vst-btn-go" class="btn btn-sm btn-outline-primary ms-1">GO</button>
+                                        </div>
+                                        <div id="vst-empty-msg" class="text-muted text-center py-3" style="display:none;">暂无数据</div>
+                                    </div>
+                                    <!-- 排名数量控制 -->
+                                    <div class="d-flex align-items-center mt-2" id="vst-rank-limit-row" style="display:none;">
+                                        <span style="font-size:12px;" class="text-muted">进出榜/场次榜 显示数量：</span>
+                                        <input type="number" id="vst-rank-limit" class="form-control form-control-sm ms-1" style="width:70px;" min="1" value="15">
+                                        <button id="vst-btn-rank-apply" class="btn btn-sm btn-outline-primary ms-1">应用</button>
+                                    </div>
+                                    <!-- 图表区 2x2 -->
+                                    <div class="row g-2 mt-3" id="vst-charts-row" style="display:none;">
+                                        <div class="col-md-6">
+                                            <div class="card"><div class="card-body p-2">
+                                                <h6 class="card-title text-center" style="font-size:13px;">观众数量趋势</h6>
+                                                <canvas id="vst-chart-count" height="200"></canvas>
+                                            </div></div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="card"><div class="card-body p-2">
+                                                <h6 class="card-title text-center" style="font-size:13px;">打分人数分布</h6>
+                                                <canvas id="vst-chart-score" height="200"></canvas>
+                                            </div></div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="card"><div class="card-body p-2">
+                                                <h6 class="card-title text-center" style="font-size:13px;">进出榜 Top 15</h6>
+                                                <canvas id="vst-chart-top5" height="200"></canvas>
+                                            </div></div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="card"><div class="card-body p-2">
+                                                <h6 class="card-title text-center" style="font-size:13px;">场次榜 Top 15</h6>
+                                                <canvas id="vst-chart-wordfreq" height="200"></canvas>
+                                            </div></div>
+                                        </div>
+                                    </div>
+                                    <!-- 频次图 row 3 -->
+                                    <div class="row g-2 mt-3" id="vst-freq-charts-row" style="display:none;">
+                                        <div class="col-md-6">
+                                            <div class="card"><div class="card-body p-2">
+                                                <h6 class="card-title text-center" style="font-size:13px;">进出频次分布</h6>
+                                                <canvas id="vst-chart-visitfreq" height="200"></canvas>
+                                            </div></div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="card"><div class="card-body p-2">
+                                                <h6 class="card-title text-center" style="font-size:13px;">场次频次分布</h6>
+                                                <canvas id="vst-chart-fieldfreq" height="200"></canvas>
+                                            </div></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="tab-pane" id="tab-match-mgr">
+                                    <div class="input-group mb-1"><h5>匹配管理</h5></div>
+                                    <p class="text-muted">功能开发中...</p>
+                                </div>
+                                <div class="tab-pane" id="tab-follow-mgr">
+                                    <div class="input-group mb-1"><h5>关注管理</h5></div>
+                                    <p class="text-muted">功能开发中...</p>
                                 </div>
                             </div>
                         </div>

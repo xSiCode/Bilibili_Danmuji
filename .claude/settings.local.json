@@ -54,7 +54,16 @@
       "WebFetch(domain:api.bilibili.com)",
       "WebFetch(domain:github.com)",
       "Bash(./mvnw compile *)",
-      "Bash(./gradlew processResources *)"
+      "Bash(./gradlew processResources *)",
+      "Bash(sed -i '2760r /tmp/lrm_methods.js' \"E:\\\\claudeCode\\\\Bilibili_Danmuji\\\\src\\\\main\\\\resources\\\\static\\\\js\\\\index.js\")",
+      "Bash(sed -n '2758,2770p' \"E:\\\\claudeCode\\\\Bilibili_Danmuji\\\\src\\\\main\\\\resources\\\\static\\\\js\\\\index.js\")",
+      "Bash(sed -n '3532,3813p' \"src/main/resources/static/js/index.js\")",
+      "Bash(sed -n '3814,3845p' \"src/main/resources/static/js/index.js\")",
+      "Bash(awk '/tab-audience-mgr/,/tab-match-mgr/' \"E:\\\\claudeCode\\\\Bilibili_Danmuji\\\\src\\\\main\\\\resources\\\\templates\\\\index.html\")",
+      "Bash(grep *)",
+      "Bash(awk 'NR>=2021 && NR<=2148' \"E:\\\\claudeCode\\\\Bilibili_Danmuji\\\\src\\\\main\\\\resources\\\\templates\\\\index.html\")",
+      "Bash(awk 'NR>=35 && NR<=55')",
+      "Bash(./gradlew compileJava -q)"
     ]
   }
 }

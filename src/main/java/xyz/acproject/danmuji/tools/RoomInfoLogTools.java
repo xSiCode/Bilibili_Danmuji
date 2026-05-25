@@ -49,7 +49,7 @@ public class RoomInfoLogTools {
         scheduler.scheduleWithFixedDelay(() -> {
             tick();
             flushToCsv();
-        }, 180, 180, TimeUnit.SECONDS);
+        }, 60, 60, TimeUnit.SECONDS);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             running = false;
             scheduler.shutdown();

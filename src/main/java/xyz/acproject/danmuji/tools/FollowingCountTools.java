@@ -35,7 +35,7 @@ public class FollowingCountTools {
         lastRoomId = roomKey();
         lastAnchorName = safeFileName(PublicDataConf.ANCHOR_NAME);
         loadFromCsv();
-        flushScheduler.scheduleWithFixedDelay(FollowingCountTools::flushToCsv, 180, 180, TimeUnit.SECONDS);
+        flushScheduler.scheduleWithFixedDelay(FollowingCountTools::flushToCsv, 60, 60, TimeUnit.SECONDS);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             flushScheduler.shutdown();
             flushToCsv();
