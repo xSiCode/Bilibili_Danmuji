@@ -615,14 +615,14 @@ public class HttpRoomData {
                 if (StringUtils.isBlank(s)) continue;
                 if (StringUtils.contains(dataStr, s)) {
                     temp--;
-                    logSb.append(" [").append(s).append("]");
+                    logSb.append(" [").append(s).append("-1]");
                 }
             }
             for (String s : PublicDataConf.centerSetConf.getWhite().getNames()) {
                 if (StringUtils.isBlank(s)) continue;
                 if (StringUtils.contains(dataStr, s)) {
                     temp++;
-                    logSb.append(" [").append(s).append("]");
+                    logSb.append(" [").append(s).append("+1]");
                 }
             }
         }else {
@@ -639,6 +639,7 @@ public class HttpRoomData {
         JSONArray list = firstPage.getJSONObject("data").getJSONArray("list");
 
         int blackWhiteScore = 0;
+        StringBuilder blackWhiteType = new StringBuilder(100);
         int blackCount = 0;
         int whiteCount = 0;
         int lurenScore = 0;
@@ -654,6 +655,7 @@ public class HttpRoomData {
             Integer score = pnScoreMap.get(mid);
             if (score != null) {
                 blackWhiteScore += score;
+                blackWhiteType.append("[").append(followedName).append(":").append(score).append("]");
                 matchedList.add(followedName + ":" + score);
                 MatchCountTools.recordMatch(mid, followedName, score);
                 if (score < 0) {
@@ -667,11 +669,9 @@ public class HttpRoomData {
             }
         }
 
-        String blackWhiteType = null;
         if (blackWhiteScore > 0) {
             logSbEnd.append("[成分:关注正面]");
         } else if (blackWhiteScore < 0) {
-            blackWhiteType = "[关注负面]";
             logSbEnd.append("[成分:关注负面]");
         } else {
             logSbEnd.append("[成分:关注普通]");
@@ -683,7 +683,7 @@ public class HttpRoomData {
         Integer pnScore = pnScoreMap.get(vmid);
         if (null != pnScore) {
             blackWhiteScore = pnScore;
-            blackWhiteType = "[已在名单，关注可见: " + blackWhiteScore + "]";
+            blackWhiteType.append("[已在名单，关注可见: ").append(blackWhiteScore).append("]");
             logSb.append(blackWhiteType);
         }
 
@@ -697,10 +697,10 @@ public class HttpRoomData {
         if (blackWhiteScore != 0) {
             SelfTools.appendAt(logSb, 160, logSbEnd.toString());
             LogFileTools.getlogFileTools().logFollowingsFile(logSb.toString());
-            return CompletableFuture.completedFuture(Pair.of(blackWhiteScore, blackWhiteType));
+            return CompletableFuture.completedFuture(Pair.of(blackWhiteScore, blackWhiteType.toString()));
         }
 
-        return proceedToCardCheck(vmid, logSb, logSbEnd, blackWhiteScore, blackWhiteType);
+        return proceedToCardCheck(vmid, logSb, logSbEnd, blackWhiteScore, blackWhiteType.toString());
     }
 
     /**

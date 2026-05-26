@@ -163,14 +163,14 @@
                                           onclick="toggleSidebarSection(this);return false;">小黑屋</span>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="positiveWhite-set"
                                        onclick="switchTab('positiveWhite-set', this);return false;">负黑正白姬</a>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="black-set"
+                                       onclick="switchTab('black-set', this);return false;">黑白过滤姬</a>
                                     <a href="javascript:void(0)" class="sidebar-link" th:classappend="${USER != null and ROOMID != null} ? 'active'" data-tab="autoBlock-set"
                                        onclick="switchTab('autoBlock-set', this);return false;">负黑自动拉黑姬</a>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="badlist-set"
-                                       onclick="switchTab('badlist-set', this);return false;">拉黑姬</a>
+                                       onclick="switchTab('badlist-set', this);return false;">本地小黑屋</a>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="bili-badlist-set"
                                        onclick="switchTab('bili-badlist-set', this);return false;">Bili小黑屋</a>
-                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="black-set"
-                                       onclick="switchTab('black-set', this);return false;">过滤姬</a>
                                 </div>
                                 <div class="sidebar-section">
                                     <span class="sidebar-section-header"
@@ -1679,7 +1679,7 @@
                                 </div>
                                 <div class="tab-pane" id="tab-badlist-set">
                                     <!-- 拉黑姬设置开始 -->
-                                    <div class="input-group mb-1"><h5>拉黑姬</h5></div>
+                                    <div class="input-group mb-1"><h5>本地小黑屋</h5></div>
                                     <div class="input-group mb-3 badlist-set" id="badlist-set">
                                         <div class="header-set">
                                             <div class="row align-items-center mb-2">
@@ -1808,11 +1808,11 @@
                                         </div>
                                         <div class="col-auto">
                                             <label class="form-label mb-0" style="font-size:12px;">开始时间</label>
-                                            <input type="datetime-local" id="lrm-filter-start" class="form-control form-control-sm" style="width:200px;">
+                                            <input type="date" id="lrm-filter-start" class="form-control form-control-sm" style="width:200px;">
                                         </div>
                                         <div class="col-auto">
                                             <label class="form-label mb-0" style="font-size:12px;">结束时间</label>
-                                            <input type="datetime-local" id="lrm-filter-end" class="form-control form-control-sm" style="width:200px;">
+                                            <input type="date" id="lrm-filter-end" class="form-control form-control-sm" style="width:200px;">
                                         </div>
                                         <div class="col-auto">
                                             <button id="lrm-btn-apply" class="btn btn-sm btn-primary">筛选</button>
@@ -1915,11 +1915,11 @@
                                         </div>
                                         <div class="col-auto">
                                             <label class="form-label mb-0" style="font-size:12px;">开始时间</label>
-                                            <input type="datetime-local" id="dmgr-filter-start" class="form-control form-control-sm" style="width:200px;">
+                                            <input type="date" id="dmgr-filter-start" class="form-control form-control-sm" style="width:200px;">
                                         </div>
                                         <div class="col-auto">
                                             <label class="form-label mb-0" style="font-size:12px;">结束时间</label>
-                                            <input type="datetime-local" id="dmgr-filter-end" class="form-control form-control-sm" style="width:200px;">
+                                            <input type="date" id="dmgr-filter-end" class="form-control form-control-sm" style="width:200px;">
                                         </div>
                                         <div class="col-auto">
                                             <button id="dmgr-btn-apply" class="btn btn-sm btn-primary">筛选</button>
@@ -1987,6 +1987,11 @@
                                         </div>
                                         <div id="dmgr-empty-msg" class="text-muted text-center py-3" style="display:none;">暂无数据</div>
                                     </div>
+                                    <div class="d-flex align-items-center mt-2" id="dmgr-rank-limit-row" style="display:none;">
+                                        <span style="font-size:12px;" class="text-muted">发送排行榜 显示数量：</span>
+                                        <input type="number" id="dmgr-rank-limit" class="form-control form-control-sm ms-1" style="width:70px;" min="1" value="15">
+                                        <button id="dmgr-btn-rank-apply" class="btn btn-sm btn-outline-primary ms-1">应用</button>
+                                    </div>
                                     <!-- 图表区 2x2 -->
                                     <div class="row g-2 mt-3" id="dmgr-charts-row" style="display:none;">
                                         <div class="col-md-6">
@@ -2026,11 +2031,11 @@
                                         </div>
                                         <div class="col-auto">
                                             <label class="form-label mb-0" style="font-size:12px;">开始时间</label>
-                                            <input type="datetime-local" id="gft-filter-start" class="form-control form-control-sm" style="width:200px;">
+                                            <input type="date" id="gft-filter-start" class="form-control form-control-sm" style="width:200px;">
                                         </div>
                                         <div class="col-auto">
                                             <label class="form-label mb-0" style="font-size:12px;">结束时间</label>
-                                            <input type="datetime-local" id="gft-filter-end" class="form-control form-control-sm" style="width:200px;">
+                                            <input type="date" id="gft-filter-end" class="form-control form-control-sm" style="width:200px;">
                                         </div>
                                         <div class="col-auto">
                                             <button id="gft-btn-apply" class="btn btn-sm btn-primary">筛选</button>
@@ -2086,7 +2091,7 @@
                                     </div>
                                     <div class="d-flex align-items-center mt-2" id="gft-rank-limit-row" style="display:none;">
                                         <span style="font-size:12px;" class="text-muted">礼物金额排行榜 显示数量：</span>
-                                        <input type="number" id="gft-rank-limit" class="form-control form-control-sm ms-1" style="width:70px;" min="1" value="10">
+                                        <input type="number" id="gft-rank-limit" class="form-control form-control-sm ms-1" style="width:70px;" min="1" value="15">
                                         <button id="gft-btn-rank-apply" class="btn btn-sm btn-outline-primary ms-1">应用</button>
                                     </div>
                                     <div class="row g-2 mt-3" id="gft-charts-row" style="display:none;">
@@ -2122,11 +2127,11 @@
                                         </div>
                                         <div class="col-auto">
                                             <label class="form-label mb-0" style="font-size:12px;">开始时间</label>
-                                            <input type="datetime-local" id="vst-filter-start" class="form-control form-control-sm" style="width:200px;">
+                                            <input type="date" id="vst-filter-start" class="form-control form-control-sm" style="width:200px;">
                                         </div>
                                         <div class="col-auto">
                                             <label class="form-label mb-0" style="font-size:12px;">结束时间</label>
-                                            <input type="datetime-local" id="vst-filter-end" class="form-control form-control-sm" style="width:200px;">
+                                            <input type="date" id="vst-filter-end" class="form-control form-control-sm" style="width:200px;">
                                         </div>
                                         <div class="col-auto">
                                             <button id="vst-btn-apply" class="btn btn-sm btn-primary">筛选</button>
@@ -2280,11 +2285,11 @@
                                         </div>
                                         <div class="col-auto">
                                             <label class="form-label mb-0" style="font-size:12px;">开始时间</label>
-                                            <input type="datetime-local" id="mtch-filter-start" class="form-control form-control-sm" style="width:200px;">
+                                            <input type="date" id="mtch-filter-start" class="form-control form-control-sm" style="width:200px;">
                                         </div>
                                         <div class="col-auto">
                                             <label class="form-label mb-0" style="font-size:12px;">结束时间</label>
-                                            <input type="datetime-local" id="mtch-filter-end" class="form-control form-control-sm" style="width:200px;">
+                                            <input type="date" id="mtch-filter-end" class="form-control form-control-sm" style="width:200px;">
                                         </div>
                                         <div class="col-auto">
                                             <button id="mtch-btn-apply" class="btn btn-sm btn-primary">筛选</button>
@@ -2329,7 +2334,7 @@
                                     <!-- 排名数量控制 -->
                                     <div class="d-flex align-items-center mt-2" id="mtch-rank-limit-row" style="display:none;">
                                         <span style="font-size:12px;" class="text-muted">匹配排行榜 显示数量：</span>
-                                        <input type="number" id="mtch-rank-limit" class="form-control form-control-sm ms-1" style="width:70px;" min="1" value="10">
+                                        <input type="number" id="mtch-rank-limit" class="form-control form-control-sm ms-1" style="width:70px;" min="1" value="15">
                                         <button id="mtch-btn-rank-apply" class="btn btn-sm btn-outline-primary ms-1">应用</button>
                                     </div>
                                     <!-- 图表区 -->
@@ -2365,11 +2370,11 @@
                                         </div>
                                         <div class="col-auto">
                                             <label class="form-label mb-0" style="font-size:12px;">开始时间</label>
-                                            <input type="datetime-local" id="flw-filter-start" class="form-control form-control-sm" style="width:200px;">
+                                            <input type="date" id="flw-filter-start" class="form-control form-control-sm" style="width:200px;">
                                         </div>
                                         <div class="col-auto">
                                             <label class="form-label mb-0" style="font-size:12px;">结束时间</label>
-                                            <input type="datetime-local" id="flw-filter-end" class="form-control form-control-sm" style="width:200px;">
+                                            <input type="date" id="flw-filter-end" class="form-control form-control-sm" style="width:200px;">
                                         </div>
                                         <div class="col-auto">
                                             <button id="flw-btn-apply" class="btn btn-sm btn-primary">筛选</button>
@@ -2411,7 +2416,7 @@
                                     </div>
                                     <div class="d-flex align-items-center mt-2" id="flw-rank-limit-row" style="display:none;">
                                         <span style="font-size:12px;" class="text-muted">关注排行榜 显示数量：</span>
-                                        <input type="number" id="flw-rank-limit" class="form-control form-control-sm ms-1" style="width:70px;" min="1" value="10">
+                                        <input type="number" id="flw-rank-limit" class="form-control form-control-sm ms-1" style="width:70px;" min="1" value="15">
                                         <button id="flw-btn-rank-apply" class="btn btn-sm btn-outline-primary ms-1">应用</button>
                                     </div>
                                     <div class="row g-2 mt-3" id="flw-charts-row" style="display:none;">

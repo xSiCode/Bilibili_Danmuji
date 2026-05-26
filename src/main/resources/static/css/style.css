@@ -1248,16 +1248,18 @@ div .link-popup-panel .popup-content-ctnr p {
     table-layout: fixed;
     width: 100%;
 }
+.auto-block-table td {
+    white-space: nowrap;
+}
 .auto-block-table .ab-col-time {
-    width: 200px;
+    width: 140px;
 }
 .auto-block-table .ab-col-unblock {
-    width: 100px;
+    width: 80px;
 }
 .auto-block-table .ab-col-delete {
-    width: 100px;
+    width: 80px;
 }
-/* 被拉黑用户名 和 拉黑类型和分数 平分剩余空间，不设固定宽度 */
 .ab-uname-link {
     text-decoration: none;
 }

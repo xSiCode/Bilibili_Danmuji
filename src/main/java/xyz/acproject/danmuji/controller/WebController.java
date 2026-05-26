@@ -1124,6 +1124,11 @@ public class WebController {
                 result.put("lastTime", "");
                 result.put("filteredFirstTime", "");
                 result.put("filteredLastTime", "");
+                String liveStartTime = "";
+                if (PublicDataConf.ROOM_INFO != null && PublicDataConf.ROOM_INFO.getLive_start_time() != null) {
+                    liveStartTime = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(new java.util.Date(PublicDataConf.ROOM_INFO.getLive_start_time() * 1000L));
+                }
+                result.put("liveStartTime", liveStartTime);
                 return Response.success(result, req);
             }
 
@@ -1188,6 +1193,11 @@ public class WebController {
             result.put("lastTime", lastTime != null ? lastTime : "");
             result.put("filteredFirstTime", filteredFirstTime != null ? filteredFirstTime : "");
             result.put("filteredLastTime", filteredLastTime != null ? filteredLastTime : "");
+            String liveStartTime = "";
+            if (PublicDataConf.ROOM_INFO != null && PublicDataConf.ROOM_INFO.getLive_start_time() != null) {
+                liveStartTime = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(new java.util.Date(PublicDataConf.ROOM_INFO.getLive_start_time() * 1000L));
+            }
+            result.put("liveStartTime", liveStartTime);
             return Response.success(result, req);
         } catch (Exception e) {
             LOGGER.error("readCsvData error", e);
@@ -1511,6 +1521,8 @@ public class WebController {
                                           @RequestParam(required = false) String startTime,
                                           @RequestParam(required = false) String endTime,
                                           @RequestParam(required = false) String search,
+                                          @RequestParam(required = false) String sortField,
+                                          @RequestParam(required = false) String sortOrder,
                                           HttpServletRequest req) {
         try {
             validateFilePath(filePath);
@@ -1562,6 +1574,26 @@ public class WebController {
                 }
             }
 
+            String sf = (sortField != null && !sortField.isEmpty()) ? sortField : "发送时间";
+            boolean asc = (sortField != null && !sortField.isEmpty()) ? "asc".equalsIgnoreCase(sortOrder) : false;
+            boolean isDefSort = sortField == null || sortField.isEmpty();
+            allRows.sort((a, b) -> {
+                int cmp;
+                switch (sf) {
+                    case "id":
+                        cmp = compareField(a.get(sf), b.get(sf), true);
+                        break;
+                    case "名字": case "弹幕":
+                        cmp = compareField(a.get(sf), b.get(sf), false);
+                        break;
+                    default:
+                        cmp = compareField(a.get("发送时间"), b.get("发送时间"), false);
+                        break;
+                }
+                if (cmp == 0 && isDefSort) cmp = compareField(a.get("id"), b.get("id"), true);
+                return asc ? cmp : -cmp;
+            });
+
             int total = allRows.size();
             int totalPages = (int) Math.ceil((double) total / pageSize);
             if (page < 1) page = 1;
@@ -1577,6 +1609,11 @@ public class WebController {
             result.put("currentPage", page);
             result.put("firstTime", firstTime != null ? firstTime : "");
             result.put("lastTime", lastTime != null ? lastTime : "");
+            String liveStartTime = "";
+            if (PublicDataConf.ROOM_INFO != null && PublicDataConf.ROOM_INFO.getLive_start_time() != null) {
+                liveStartTime = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(new java.util.Date(PublicDataConf.ROOM_INFO.getLive_start_time() * 1000L));
+            }
+            result.put("liveStartTime", liveStartTime);
             return Response.success(result, req);
         } catch (Exception e) {
             LOGGER.error("readBarrageCsvData error", e);
@@ -1701,6 +1738,7 @@ public class WebController {
     public Response<?> getBarrageStatistics(@RequestParam("filePath") String filePath,
                                             @RequestParam(required = false) String startTime,
                                             @RequestParam(required = false) String endTime,
+                                            @RequestParam(defaultValue = "5") int limit,
                                             HttpServletRequest req) {
         try {
             validateFilePath(filePath);
@@ -1785,7 +1823,7 @@ public class WebController {
             List<Map<String, Object>> top5Senders = new ArrayList<>();
             senderCounts.entrySet().stream()
                     .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
-                    .limit(5)
+                    .limit(limit)
                     .forEach(e -> {
                         Map<String, Object> item = new LinkedHashMap<>();
                         item.put("name", e.getKey());
@@ -1988,7 +2026,7 @@ public class WebController {
 
             // sort: default = 最近 asc, id asc
             String sf = (sortField != null && !sortField.isEmpty()) ? sortField : "最近";
-            boolean asc = (sortField != null && !sortField.isEmpty()) ? "asc".equalsIgnoreCase(sortOrder) : true;
+            boolean asc = (sortField != null && !sortField.isEmpty()) ? "asc".equalsIgnoreCase(sortOrder) : false;
             boolean isDefSort = sortField == null || sortField.isEmpty();
             allRows.sort((a, b) -> {
                 int cmp;
@@ -2452,7 +2490,7 @@ public class WebController {
 
             // sort: default = 最近匹配 asc, 匹配id asc
             String sf = (sortField != null && !sortField.isEmpty()) ? sortField : "最近匹配";
-            boolean asc = (sortField != null && !sortField.isEmpty()) ? "asc".equalsIgnoreCase(sortOrder) : true;
+            boolean asc = (sortField != null && !sortField.isEmpty()) ? "asc".equalsIgnoreCase(sortOrder) : false;
             boolean isDefSort = sortField == null || sortField.isEmpty();
             allRows.sort((a, b) -> {
                 int cmp;
@@ -2490,6 +2528,11 @@ public class WebController {
             result.put("lastTime", lastTime != null ? lastTime : "");
             result.put("filteredFirstTime", filteredFirstTime != null ? filteredFirstTime : "");
             result.put("filteredLastTime", filteredLastTime != null ? filteredLastTime : "");
+            String liveStartTime = "";
+            if (PublicDataConf.ROOM_INFO != null && PublicDataConf.ROOM_INFO.getLive_start_time() != null) {
+                liveStartTime = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(new java.util.Date(PublicDataConf.ROOM_INFO.getLive_start_time() * 1000L));
+            }
+            result.put("liveStartTime", liveStartTime);
             return Response.success(result, req);
         } catch (Exception e) {
             LOGGER.error("readMatchCsvData error", e);
@@ -2825,7 +2868,7 @@ public class WebController {
             }
 
             String sf = (sortField != null && !sortField.isEmpty()) ? sortField : "最新时间";
-            boolean asc = (sortField != null && !sortField.isEmpty()) ? "asc".equalsIgnoreCase(sortOrder) : true;
+            boolean asc = (sortField != null && !sortField.isEmpty()) ? "asc".equalsIgnoreCase(sortOrder) : false;
             boolean isDefSort = sortField == null || sortField.isEmpty();
             allRows.sort((a, b) -> {
                 int cmp;
@@ -2863,6 +2906,11 @@ public class WebController {
             result.put("lastTime", lastTime != null ? lastTime : "");
             result.put("filteredFirstTime", filteredFirstTime != null ? filteredFirstTime : "");
             result.put("filteredLastTime", filteredLastTime != null ? filteredLastTime : "");
+            String liveStartTime = "";
+            if (PublicDataConf.ROOM_INFO != null && PublicDataConf.ROOM_INFO.getLive_start_time() != null) {
+                liveStartTime = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(new java.util.Date(PublicDataConf.ROOM_INFO.getLive_start_time() * 1000L));
+            }
+            result.put("liveStartTime", liveStartTime);
             return Response.success(result, req);
         } catch (Exception e) {
             LOGGER.error("readFollowCsvData error", e);
@@ -3140,7 +3188,7 @@ public class WebController {
             }
 
             String sf = (sortField != null && !sortField.isEmpty()) ? sortField : "最新时间";
-            boolean asc = (sortField != null && !sortField.isEmpty()) ? "asc".equalsIgnoreCase(sortOrder) : true;
+            boolean asc = (sortField != null && !sortField.isEmpty()) ? "asc".equalsIgnoreCase(sortOrder) : false;
             boolean isDefSort = sortField == null || sortField.isEmpty();
             allRows.sort((a, b) -> {
                 int cmp;
@@ -3176,6 +3224,11 @@ public class WebController {
             result.put("lastTime", lastTime != null ? lastTime : "");
             result.put("filteredFirstTime", filteredFirstTime != null ? filteredFirstTime : "");
             result.put("filteredLastTime", filteredLastTime != null ? filteredLastTime : "");
+            String liveStartTime = "";
+            if (PublicDataConf.ROOM_INFO != null && PublicDataConf.ROOM_INFO.getLive_start_time() != null) {
+                liveStartTime = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(new java.util.Date(PublicDataConf.ROOM_INFO.getLive_start_time() * 1000L));
+            }
+            result.put("liveStartTime", liveStartTime);
             return Response.success(result, req);
         } catch (Exception e) {
             LOGGER.error("readGiftCsvData error", e);

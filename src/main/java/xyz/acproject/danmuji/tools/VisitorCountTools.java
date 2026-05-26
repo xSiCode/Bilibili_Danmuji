@@ -11,7 +11,9 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -21,6 +23,7 @@ public class VisitorCountTools {
     private static final Logger LOGGER = LogManager.getLogger(VisitorCountTools.class);
 
     private static final ConcurrentHashMap<Long, VisitorRecord> visitorMap = new ConcurrentHashMap<>();
+    private static final Set<Long> dirtyUids = ConcurrentHashMap.newKeySet();
     private static final ScheduledExecutorService flushScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread t = new Thread(r, "visitor-csv-flush");
         t.setDaemon(true);
@@ -66,6 +69,7 @@ public class VisitorCountTools {
     public static void recordVisitor(long uid, String uname, int score, String scoreType) {
         visitorMap.compute(uid, (k, v) -> {
             if (v == null) {
+                dirtyUids.add(uid);
                 return new VisitorRecord(uid, uname, score, scoreType, 1, System.currentTimeMillis(),
                         HttpRoomData.isUidInPnScoreMap(uid), 1);
             }
@@ -79,6 +83,7 @@ public class VisitorCountTools {
             }
             v.latestEntryTime = now;
             v.inPnTable = HttpRoomData.isUidInPnScoreMap(uid);
+            dirtyUids.add(uid);
             return v;
         });
     }
@@ -168,28 +173,69 @@ public class VisitorCountTools {
     private static synchronized void flushToCsv() {
         String rk = roomKey();
         if (!rk.equals(lastRoomId)) {
+            // 房间切换：完整写出旧房间的所有记录
             String oldPrefix = lastRoomId + "_" + lastAnchorName;
             String oldPath = jarDir + File.separator + "Danmuji_log" + File.separator + oldPrefix + "_4_观众信息.csv";
-            doFlush(oldPath);
+            doFlushFull(oldPath);
             visitorMap.clear();
+            dirtyUids.clear();
             lastRoomId = rk;
             lastAnchorName = safeFileName(PublicDataConf.ANCHOR_NAME);
             loadFromCsv(currentCsvPath());
         }
-        doFlush(currentCsvPath());
+        doFlushAppend(currentCsvPath());
     }
 
-    private static void doFlush(String path) {
+    private static void doFlushFull(String path) {
         List<VisitorRecord> records = new ArrayList<>(visitorMap.values());
+        records.sort((a, b) -> Long.compare(a.latestEntryTime, b.latestEntryTime));
+        writeCsvFile(path, records, false);
+    }
+
+    private static void doFlushAppend(String path) {
+        List<VisitorRecord> records = new ArrayList<>();
+        for (Long uid : dirtyUids) {
+            VisitorRecord r = visitorMap.get(uid);
+            if (r != null) records.add(r);
+        }
+        if (records.isEmpty()) return;
+        records.sort((a, b) -> Long.compare(a.latestEntryTime, b.latestEntryTime));
+        writeCsvFile(path, records, true);
+        dirtyUids.clear();
+    }
+
+    private static void writeCsvFile(String path, List<VisitorRecord> records, boolean append) {
         File file = new File(path);
         if (!file.getParentFile().exists()) {
             file.getParentFile().mkdirs();
         }
         File tmpFile = new File(path + ".tmp");
         try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tmpFile), "UTF-8"))) {
-            writer.write('﻿');
-            writer.write("最近,id,观众,打分,打分类型,次数,判定表,场次");
-            writer.newLine();
+            if (append && file.exists()) {
+                // 复制原文件内容到临时文件，但跳过本次要更新的 uid 对应的旧行
+                Set<Long> appendUids = new HashSet<>();
+                for (VisitorRecord r : records) appendUids.add(r.uid);
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
+                    String l;
+                    boolean isHeader = true;
+                    while ((l = reader.readLine()) != null) {
+                        if (isHeader) { isHeader = false; writer.write(l); writer.newLine(); continue; }
+                        List<String> fields = parseCsvLine(l);
+                        if (fields.size() >= 8) {
+                            try {
+                                long rowUid = Long.parseLong(fields.get(1));
+                                if (appendUids.contains(rowUid)) continue; // 跳过旧行
+                            } catch (NumberFormatException e) {}
+                        }
+                        writer.write(l);
+                        writer.newLine();
+                    }
+                }
+            } else {
+                writer.write('﻿');
+                writer.write("最近,id,观众,打分,打分类型,次数,判定表,场次");
+                writer.newLine();
+            }
             for (VisitorRecord r : records) {
                 writer.write(JodaTimeUtils.formatDateTime(r.latestEntryTime) + ",");
                 writer.write(r.uid + ",");

@@ -13,7 +13,7 @@ let vstState = {
     totalPages: 1,
     totalRows: 0,
     sortField: '最近',
-    sortOrder: 'asc',
+    sortOrder: 'desc',
     rankLimit: 15,
     headers: ['最近', 'id', '观众', '打分', '打分类型', '次数', '判定表', '场次'],
     columnOrder: [0, 1, 2, 3, 4, 5, 6, 7],
@@ -32,8 +32,8 @@ let mtchState = {
     totalPages: 1,
     totalRows: 0,
     sortField: '最近匹配',
-    sortOrder: 'asc',
-    rankLimit: 10,
+    sortOrder: 'desc',
+    rankLimit: 15,
     headers: ['最近匹配', '匹配id', '匹配名', '匹配分', '匹配次数'],
     columnOrder: [0, 1, 2, 3, 4],
     chartInstances: {}
@@ -51,8 +51,8 @@ let flwState = {
     totalPages: 1,
     totalRows: 0,
     sortField: '最新时间',
-    sortOrder: 'asc',
-    rankLimit: 10,
+    sortOrder: 'desc',
+    rankLimit: 15,
     headers: ['最新时间', 'id', '名字', '次数'],
     columnOrder: [0, 1, 2, 3],
     chartInstances: {}
@@ -70,8 +70,8 @@ let gftState = {
     totalPages: 1,
     totalRows: 0,
     sortField: '最新时间',
-    sortOrder: 'asc',
-    rankLimit: 10,
+    sortOrder: 'desc',
+    rankLimit: 15,
     headers: ['最新时间', 'id', '名字', '赠送礼物名字', '电池', '赠礼次数'],
     columnOrder: [0, 1, 2, 3, 4, 5],
     chartInstances: {}
@@ -88,6 +88,9 @@ let dmgrState = {
     pageSize: 10,
     totalPages: 1,
     totalRows: 0,
+    sortField: '发送时间',
+    sortOrder: 'desc',
+    rankLimit: 15,
     headers: ['发送时间', 'id', '名字', '弹幕'],
     columnOrder: [0, 1, 2, 3],
     chartInstances: {}
@@ -105,7 +108,7 @@ let lrmState = {
     totalPages: 1,
     totalRows: 0,
     sortField: '时间',
-    sortOrder: 'asc',
+    sortOrder: 'desc',
     headers: ['时间', '观看数', '在线数', '点赞数'],
     columnOrder: [0, 1, 2, 3, 4],
     chartInstances: {}
@@ -180,23 +183,21 @@ $(function () {
         lrmState.currentFile = $(this).val();
         lrmState.startTime = ''; lrmState.endTime = ''; lrmState.search = '';
         $('#lrm-search-input').val('');
-        lrmState.sortField = '时间'; lrmState.sortOrder = 'asc';
+        lrmState.sortField = '时间'; lrmState.sortOrder = 'desc';
         lrmState.page = 1;
         if (lrmState.currentFile) method.loadCsvData();
     });
     $(document).on('click', '#lrm-btn-apply', function () {
-        lrmState.startTime = ($('#lrm-filter-start').val() || '').replace('T', ' ');
-        lrmState.endTime = ($('#lrm-filter-end').val() || '').replace('T', ' ');
+        lrmState.startTime = ($('#lrm-filter-start').val() || '');
+        lrmState.endTime = ($('#lrm-filter-end').val() || '');
         lrmState.search = $('#lrm-search-input').val() || '';
         lrmState.page = 1;
         method.loadCsvData();
     });
     $(document).on('click', '#lrm-btn-reset', function () {
-        lrmState.startTime = lrmState.fileFirstTime; lrmState.endTime = lrmState.fileLastTime;
+        lrmState.startTime = ''; lrmState.endTime = '';
         lrmState.search = ''; $('#lrm-search-input').val('');
-        $('#lrm-filter-start').val(lrmState.fileFirstTime.replace(' ', 'T'));
-        $('#lrm-filter-end').val(lrmState.fileLastTime.replace(' ', 'T'));
-        lrmState.sortField = '时间'; lrmState.sortOrder = 'asc';
+        lrmState.sortField = '时间'; lrmState.sortOrder = 'desc';
         lrmState.page = 1; method.loadCsvData();
     });
     $(document).on('keypress', '#lrm-search-input', function (e) {
@@ -248,36 +249,30 @@ $(function () {
     // ========== 弹幕管理 event bindings ==========
     $(document).on('change', '#dmgr-csv-select', function () {
         dmgrState.currentFile = $(this).val();
-        dmgrState.startTime = '';
-        dmgrState.endTime = '';
-        dmgrState.search = '';
+        dmgrState.startTime = ''; dmgrState.endTime = ''; dmgrState.search = '';
         $('#dmgr-search-input').val('');
+        dmgrState.sortField = '发送时间'; dmgrState.sortOrder = 'desc';
         dmgrState.page = 1;
         if (dmgrState.currentFile) method.loadDmgrData();
     });
     $(document).on('click', '#dmgr-btn-apply', function () {
-        dmgrState.startTime = ($('#dmgr-filter-start').val() || '').replace('T', ' ');
-        dmgrState.endTime = ($('#dmgr-filter-end').val() || '').replace('T', ' ');
+        dmgrState.startTime = ($('#dmgr-filter-start').val() || '');
+        dmgrState.endTime = ($('#dmgr-filter-end').val() || '');
         dmgrState.search = $('#dmgr-search-input').val() || '';
         dmgrState.page = 1;
         method.loadDmgrData();
     });
     $(document).on('click', '#dmgr-btn-reset', function () {
-        dmgrState.startTime = dmgrState.fileFirstTime;
-        dmgrState.endTime = dmgrState.fileLastTime;
-        dmgrState.search = '';
-        $('#dmgr-search-input').val('');
-        $('#dmgr-filter-start').val(dmgrState.fileFirstTime.replace(' ', 'T'));
-        $('#dmgr-filter-end').val(dmgrState.fileLastTime.replace(' ', 'T'));
-        dmgrState.page = 1;
-        method.loadDmgrData();
+        dmgrState.startTime = ''; dmgrState.endTime = '';
+        dmgrState.search = ''; $('#dmgr-search-input').val('');
+        dmgrState.sortField = '发送时间'; dmgrState.sortOrder = 'desc';
+        dmgrState.page = 1; method.loadDmgrData();
     });
     $(document).on('keypress', '#dmgr-search-input', function (e) {
-        if (e.which === 13) {
-            dmgrState.search = $(this).val() || '';
-            dmgrState.page = 1;
-            method.loadDmgrData();
-        }
+        if (e.which === 13) { dmgrState.search = $(this).val() || ''; dmgrState.page = 1; method.loadDmgrData(); }
+    });
+    $(document).on('click', '#dmgr-table-head th[data-sort]', function () {
+        method.sortDmgrColumn($(this).data('sort'));
     });
     $(document).on('click', '#dmgr-btn-export', function () {
         method.exportDmgrCsv();
@@ -300,28 +295,33 @@ $(function () {
     $(document).on('keypress', '#dmgr-page-jump', function (e) {
         if (e.which === 13) { method.gotoDmgrPage($(this).val()); }
     });
+    $(document).on('click', '#dmgr-btn-rank-apply', function () {
+        var v = parseInt($('#dmgr-rank-limit').val());
+        if (isNaN(v) || v < 1) v = 1;
+        dmgrState.rankLimit = v;
+        $('#dmgr-rank-limit').val(v);
+        method.renderDmgrCharts();
+    });
     // ========== 观众管理 event bindings ==========
     $(document).on('change', '#vst-csv-select', function () {
         vstState.currentFile = $(this).val();
         vstState.startTime = ''; vstState.endTime = ''; vstState.search = '';
         $('#vst-search-input').val('');
-        vstState.sortField = '最近'; vstState.sortOrder = 'asc';
+        vstState.sortField = '最近'; vstState.sortOrder = 'desc';
         vstState.page = 1;
         if (vstState.currentFile) method.loadVstData();
     });
     $(document).on('click', '#vst-btn-apply', function () {
-        vstState.startTime = ($('#vst-filter-start').val() || '').replace('T', ' ');
-        vstState.endTime = ($('#vst-filter-end').val() || '').replace('T', ' ');
+        vstState.startTime = ($('#vst-filter-start').val() || '');
+        vstState.endTime = ($('#vst-filter-end').val() || '');
         vstState.search = $('#vst-search-input').val() || '';
         vstState.page = 1;
         method.loadVstData();
     });
     $(document).on('click', '#vst-btn-reset', function () {
-        vstState.startTime = vstState.fileFirstTime; vstState.endTime = vstState.fileLastTime;
+        vstState.startTime = ''; vstState.endTime = '';
         vstState.search = ''; $('#vst-search-input').val('');
-        $('#vst-filter-start').val(vstState.fileFirstTime.replace(' ', 'T'));
-        $('#vst-filter-end').val(vstState.fileLastTime.replace(' ', 'T'));
-        vstState.sortField = '最近'; vstState.sortOrder = 'asc';
+        vstState.sortField = '最近'; vstState.sortOrder = 'desc';
         vstState.page = 1; method.loadVstData();
     });
     $(document).on('keypress', '#vst-search-input', function (e) {
@@ -337,8 +337,6 @@ $(function () {
     $(document).on('click', '#vst-btn-rank-apply', function () {
         var v = parseInt($('#vst-rank-limit').val());
         if (isNaN(v) || v < 1) v = 1;
-        var maxV = parseInt($('#vst-rank-limit').attr('max')) || 15;
-        if (v > maxV) v = maxV;
         vstState.rankLimit = v;
         $('#vst-rank-limit').val(v);
         method.renderVstCharts();
@@ -351,23 +349,21 @@ $(function () {
         mtchState.currentFile = $(this).val();
         mtchState.startTime = ''; mtchState.endTime = ''; mtchState.search = '';
         $('#mtch-search-input').val('');
-        mtchState.sortField = '最近匹配'; mtchState.sortOrder = 'asc';
+        mtchState.sortField = '最近匹配'; mtchState.sortOrder = 'desc';
         mtchState.page = 1;
         if (mtchState.currentFile) method.loadMtchData();
     });
     $(document).on('click', '#mtch-btn-apply', function () {
-        mtchState.startTime = ($('#mtch-filter-start').val() || '').replace('T', ' ');
-        mtchState.endTime = ($('#mtch-filter-end').val() || '').replace('T', ' ');
+        mtchState.startTime = ($('#mtch-filter-start').val() || '');
+        mtchState.endTime = ($('#mtch-filter-end').val() || '');
         mtchState.search = $('#mtch-search-input').val() || '';
         mtchState.page = 1;
         method.loadMtchData();
     });
     $(document).on('click', '#mtch-btn-reset', function () {
-        mtchState.startTime = mtchState.fileFirstTime; mtchState.endTime = mtchState.fileLastTime;
+        mtchState.startTime = ''; mtchState.endTime = '';
         mtchState.search = ''; $('#mtch-search-input').val('');
-        $('#mtch-filter-start').val(mtchState.fileFirstTime.replace(' ', 'T'));
-        $('#mtch-filter-end').val(mtchState.fileLastTime.replace(' ', 'T'));
-        mtchState.sortField = '最近匹配'; mtchState.sortOrder = 'asc';
+        mtchState.sortField = '最近匹配'; mtchState.sortOrder = 'desc';
         mtchState.page = 1; method.loadMtchData();
     });
     $(document).on('keypress', '#mtch-search-input', function (e) {
@@ -383,8 +379,6 @@ $(function () {
     $(document).on('click', '#mtch-btn-rank-apply', function () {
         var v = parseInt($('#mtch-rank-limit').val());
         if (isNaN(v) || v < 1) v = 1;
-        var maxV = parseInt($('#mtch-rank-limit').attr('max')) || 10;
-        if (v > maxV) v = maxV;
         mtchState.rankLimit = v;
         $('#mtch-rank-limit').val(v);
         method.renderMtchCharts();
@@ -397,23 +391,21 @@ $(function () {
         flwState.currentFile = $(this).val();
         flwState.startTime = ''; flwState.endTime = ''; flwState.search = '';
         $('#flw-search-input').val('');
-        flwState.sortField = '最新时间'; flwState.sortOrder = 'asc';
+        flwState.sortField = '最新时间'; flwState.sortOrder = 'desc';
         flwState.page = 1;
         if (flwState.currentFile) method.loadFlwData();
     });
     $(document).on('click', '#flw-btn-apply', function () {
-        flwState.startTime = ($('#flw-filter-start').val() || '').replace('T', ' ');
-        flwState.endTime = ($('#flw-filter-end').val() || '').replace('T', ' ');
+        flwState.startTime = ($('#flw-filter-start').val() || '');
+        flwState.endTime = ($('#flw-filter-end').val() || '');
         flwState.search = $('#flw-search-input').val() || '';
         flwState.page = 1;
         method.loadFlwData();
     });
     $(document).on('click', '#flw-btn-reset', function () {
-        flwState.startTime = flwState.fileFirstTime; flwState.endTime = flwState.fileLastTime;
+        flwState.startTime = ''; flwState.endTime = '';
         flwState.search = ''; $('#flw-search-input').val('');
-        $('#flw-filter-start').val(flwState.fileFirstTime.replace(' ', 'T'));
-        $('#flw-filter-end').val(flwState.fileLastTime.replace(' ', 'T'));
-        flwState.sortField = '最新时间'; flwState.sortOrder = 'asc';
+        flwState.sortField = '最新时间'; flwState.sortOrder = 'desc';
         flwState.page = 1; method.loadFlwData();
     });
     $(document).on('keypress', '#flw-search-input', function (e) {
@@ -429,8 +421,6 @@ $(function () {
     $(document).on('click', '#flw-btn-rank-apply', function () {
         var v = parseInt($('#flw-rank-limit').val());
         if (isNaN(v) || v < 1) v = 1;
-        var maxV = parseInt($('#flw-rank-limit').attr('max')) || 10;
-        if (v > maxV) v = maxV;
         flwState.rankLimit = v;
         $('#flw-rank-limit').val(v);
         method.renderFlwCharts();
@@ -443,23 +433,21 @@ $(function () {
         gftState.currentFile = $(this).val();
         gftState.startTime = ''; gftState.endTime = ''; gftState.search = '';
         $('#gft-search-input').val('');
-        gftState.sortField = '最新时间'; gftState.sortOrder = 'asc';
+        gftState.sortField = '最新时间'; gftState.sortOrder = 'desc';
         gftState.page = 1;
         if (gftState.currentFile) method.loadGftData();
     });
     $(document).on('click', '#gft-btn-apply', function () {
-        gftState.startTime = ($('#gft-filter-start').val() || '').replace('T', ' ');
-        gftState.endTime = ($('#gft-filter-end').val() || '').replace('T', ' ');
+        gftState.startTime = ($('#gft-filter-start').val() || '');
+        gftState.endTime = ($('#gft-filter-end').val() || '');
         gftState.search = $('#gft-search-input').val() || '';
         gftState.page = 1;
         method.loadGftData();
     });
     $(document).on('click', '#gft-btn-reset', function () {
-        gftState.startTime = gftState.fileFirstTime; gftState.endTime = gftState.fileLastTime;
+        gftState.startTime = ''; gftState.endTime = '';
         gftState.search = ''; $('#gft-search-input').val('');
-        $('#gft-filter-start').val(gftState.fileFirstTime.replace(' ', 'T'));
-        $('#gft-filter-end').val(gftState.fileLastTime.replace(' ', 'T'));
-        gftState.sortField = '最新时间'; gftState.sortOrder = 'asc';
+        gftState.sortField = '最新时间'; gftState.sortOrder = 'desc';
         gftState.page = 1; method.loadGftData();
     });
     $(document).on('keypress', '#gft-search-input', function (e) {
@@ -475,8 +463,6 @@ $(function () {
     $(document).on('click', '#gft-btn-rank-apply', function () {
         var v = parseInt($('#gft-rank-limit').val());
         if (isNaN(v) || v < 1) v = 1;
-        var maxV = parseInt($('#gft-rank-limit').attr('max')) || 10;
-        if (v > maxV) v = maxV;
         gftState.rankLimit = v;
         $('#gft-rank-limit').val(v);
         method.renderGftCharts();
@@ -3213,11 +3199,13 @@ const method = {
                     lrmState.totalRows = r.total || 0;
                     lrmState.fileFirstTime = r.firstTime || '';
                     lrmState.fileLastTime = r.lastTime || '';
-                    if (!lrmState.startTime && !lrmState.endTime && r.firstTime && r.lastTime) {
-                        lrmState.startTime = r.firstTime;
-                        lrmState.endTime = r.lastTime;
-                        $('#lrm-filter-start').val(r.firstTime.replace(' ', 'T'));
-                        $('#lrm-filter-end').val(r.lastTime.replace(' ', 'T'));
+                    if (!lrmState.startTime && !lrmState.endTime) {
+                        var today = new Date(); today.setDate(today.getDate() + 1); today = today.toISOString().substring(0, 10);
+                        var liveStart = (r.liveStartTime || '').substring(0, 10);
+                        lrmState.startTime = liveStart || today;
+                        lrmState.endTime = today;
+                        $('#lrm-filter-start').val(lrmState.startTime);
+                        $('#lrm-filter-end').val(lrmState.endTime);
                     }
                     method.renderCsvTable(r.rows || []);
                     method.renderCsvPagination();
@@ -3553,7 +3541,9 @@ const method = {
                 pageSize: dmgrState.pageSize,
                 startTime: dmgrState.startTime || '',
                 endTime: dmgrState.endTime || '',
-                search: dmgrState.search || ''
+                search: dmgrState.search || '',
+                sortField: dmgrState.sortField,
+                sortOrder: dmgrState.sortOrder
             },
             dataType: 'json',
             success: function (data) {
@@ -3563,20 +3553,22 @@ const method = {
                     dmgrState.totalRows = r.total || 0;
                     dmgrState.fileFirstTime = r.firstTime || '';
                     dmgrState.fileLastTime = r.lastTime || '';
-                    if (!dmgrState.startTime && !dmgrState.endTime && r.firstTime && r.lastTime) {
-                        dmgrState.startTime = r.firstTime;
-                        dmgrState.endTime = r.lastTime;
-                        $('#dmgr-filter-start').val(r.firstTime.replace(' ', 'T'));
-                        $('#dmgr-filter-end').val(r.lastTime.replace(' ', 'T'));
+                    if (!dmgrState.startTime && !dmgrState.endTime) {
+                        var today = new Date(); today.setDate(today.getDate() + 1); today = today.toISOString().substring(0, 10);
+                        var liveStart = (r.liveStartTime || '').substring(0, 10);
+                        dmgrState.startTime = liveStart || today;
+                        dmgrState.endTime = today;
+                        $('#dmgr-filter-start').val(dmgrState.startTime);
+                        $('#dmgr-filter-end').val(dmgrState.endTime);
                     }
                     method.renderDmgrTable(r.rows || []);
                     method.renderDmgrPagination();
                     if (r.total > 0) {
                         method.renderDmgrCharts();
                         method.renderDmgrStats();
-                        $('#dmgr-stats-row').show();
+                        $('#dmgr-stats-row, #dmgr-rank-limit-row').show();
                     } else {
-                        $('#dmgr-stats-row').hide();
+                        $('#dmgr-stats-row, #dmgr-rank-limit-row').hide();
                         $('#dmgr-charts-row').hide();
                     }
                 }
@@ -3600,13 +3592,27 @@ const method = {
         var cols = dmgrState.headers;
         $.each(rows, function (i, row) {
             var tr = '<tr>';
+            var uid = row['id'] || '';
             $.each(dmgrState.columnOrder, function (j, colIdx) {
                 if (colIdx < cols.length) {
-                    tr += '<td>' + (row[cols[colIdx]] || '') + '</td>';
+                    var val = row[cols[colIdx]] || '';
+                    if (cols[colIdx] === '名字' && uid) {
+                        tr += '<td><a href="https://space.bilibili.com/' + uid + '" target="_blank" style="color:#0d6efd;">' + val + '</a></td>';
+                    } else {
+                        tr += '<td>' + val + '</td>';
+                    }
                 }
             });
             tr += '</tr>';
             $tbody.append(tr);
+        });
+        // update sort indicators
+        $('#dmgr-table-head th[data-sort]').each(function () {
+            var f = $(this).data('sort');
+            $(this).text(f);
+            if (f === dmgrState.sortField) {
+                $(this).text(f + ' ' + (dmgrState.sortOrder === 'asc' ? '▲' : '▼'));
+            }
         });
         setTimeout(function () { method.initDmgrColumnDrag(); }, 100);
     },
@@ -3635,6 +3641,17 @@ const method = {
         method.loadDmgrData();
     },
 
+    sortDmgrColumn: function (field) {
+        if (dmgrState.sortField === field) {
+            dmgrState.sortOrder = dmgrState.sortOrder === 'asc' ? 'desc' : 'asc';
+        } else {
+            dmgrState.sortField = field;
+            dmgrState.sortOrder = 'desc';
+        }
+        dmgrState.page = 1;
+        method.loadDmgrData();
+    },
+
     renderDmgrCharts: function () {
         $.each(dmgrState.chartInstances, function (key, chart) {
             if (chart) chart.destroy();
@@ -3649,7 +3666,8 @@ const method = {
             data: {
                 filePath: dmgrState.currentFile,
                 startTime: dmgrState.startTime || '',
-                endTime: dmgrState.endTime || ''
+                endTime: dmgrState.endTime || '',
+                limit: dmgrState.rankLimit
             },
             dataType: 'json',
             async: false,
@@ -3718,7 +3736,6 @@ const method = {
                                 }]
                             },
                             options: {
-                                indexAxis: 'y',
                                 responsive: true,
                                 maintainAspectRatio: false,
                                 plugins: {
@@ -3731,11 +3748,12 @@ const method = {
                                 },
                                 scales: {
                                     x: {
-                                        ticks: { font: { size: 10 }, stepSize: 1 },
-                                        title: { display: true, text: '发送数', font: { size: 10 } }
+                                        ticks: { font: { size: 10 } },
+                                        title: { display: true, text: '名字', font: { size: 10 } }
                                     },
                                     y: {
-                                        ticks: { font: { size: 10 } }
+                                        ticks: { font: { size: 10 }, stepSize: 1 },
+                                        title: { display: true, text: '发送数', font: { size: 10 } }
                                     }
                                 }
                             }
@@ -3823,7 +3841,8 @@ const method = {
             data: {
                 filePath: dmgrState.currentFile,
                 startTime: dmgrState.startTime || '',
-                endTime: dmgrState.endTime || ''
+                endTime: dmgrState.endTime || '',
+                limit: dmgrState.rankLimit
             },
             dataType: 'json',
             success: function (data) {
@@ -3920,16 +3939,15 @@ const method = {
                     vstState.page = r.currentPage || 1;
                     vstState.totalPages = r.totalPages || 0;
                     vstState.totalRows = r.total || 0;
-                    var st1 = (r.liveStartTime && r.liveStartTime.length > 0) ? r.liveStartTime : (r.firstTime || '');
-                    var st2 = r.firstTime || '';
-                    if (st1 && st2) { vstState.fileFirstTime = st1 < st2 ? st1 : st2; }
-                    else { vstState.fileFirstTime = st1 || st2; }
+                    vstState.fileFirstTime = r.firstTime || '';
                     vstState.fileLastTime = r.lastTime || '';
-                    if (!vstState.startTime && !vstState.endTime && vstState.fileFirstTime && r.lastTime) {
-                        vstState.startTime = vstState.fileFirstTime;
-                        vstState.endTime = r.lastTime;
-                        $('#vst-filter-start').val(vstState.fileFirstTime.replace(' ', 'T'));
-                        $('#vst-filter-end').val(r.lastTime.replace(' ', 'T'));
+                    if (!vstState.startTime && !vstState.endTime) {
+                        var today = new Date(); today.setDate(today.getDate() + 1); today = today.toISOString().substring(0, 10);
+                        var liveStart = (r.liveStartTime || '').substring(0, 10);
+                        vstState.startTime = liveStart || today;
+                        vstState.endTime = today;
+                        $('#vst-filter-start').val(vstState.startTime);
+                        $('#vst-filter-end').val(vstState.endTime);
                     }
                     method.renderVstTable(r.rows || []);
                     method.renderVstPagination();
@@ -3958,18 +3976,24 @@ const method = {
         var cols = vstState.headers;
         $.each(rows, function (i, row) {
             var tr = '<tr>';
+            var uid = row['id'] || '';
             $.each(vstState.columnOrder, function (j, colIdx) {
                 if (colIdx < cols.length) {
-                    tr += '<td>' + (row[cols[colIdx]] || '') + '</td>';
+                    var val = row[cols[colIdx]] || '';
+                    if (cols[colIdx] === '观众' && uid) {
+                        tr += '<td><a href="https://space.bilibili.com/' + uid + '" target="_blank" style="color:#0d6efd;">' + val + '</a></td>';
+                    } else {
+                        tr += '<td>' + val + '</td>';
+                    }
                 }
             });
             tr += '</tr>';
             $tbody.append(tr);
         });
-        // update sort indicators on headers
+        // update sort indicators on headers (clear any inline width)
         $('#vst-table-head th[data-sort]').each(function () {
             var f = $(this).data('sort');
-            $(this).text(f);
+            $(this).text(f).css('width', '');
             if (f === vstState.sortField) {
                 $(this).text(f + ' ' + (vstState.sortOrder === 'asc' ? '▲' : '▼'));
             }
@@ -4110,18 +4134,23 @@ const method = {
                 if (scatterData.length > 0) {
                     $('#vst-scatter-row').show();
                     var ctx7 = document.getElementById('vst-chart-scatter').getContext('2d');
+                    // 收集所有唯一分值排序，每个分值一行，等距排列
+                    var yVals = []; var ySet = {};
+                    scatterData.forEach(function (d) { if (!ySet[d.score]) { ySet[d.score] = true; yVals.push(d.score); } });
+                    yVals.sort(function (a, b) { return a - b; });
+                    var scoreIdx = {}; yVals.forEach(function (v, i) { scoreIdx[v] = i; });
                     var scatterPoints = scatterData.map(function (d) {
                         var ms = new Date(d.time.replace(' ', 'T')).getTime();
-                        return { x: ms, y: d.score, name: d.name };
+                        return { x: ms, y: scoreIdx[d.score], score: d.score, name: d.name };
                     });
                     vstState.chartInstances.scatter = new Chart(ctx7, {
                         type: 'scatter', data: {
                             datasets: [{ label: '观众', data: scatterPoints, pointRadius: 4, pointHoverRadius: 7,
-                                pointBackgroundColor: function (ctx) { var v = ctx.raw.y; return v > 0 ? 'rgba(25,135,84,0.6)' : v < 0 ? 'rgba(220,53,69,0.6)' : 'rgba(13,110,253,0.6)'; },
-                                pointBorderColor: function (ctx) { var v = ctx.raw.y; return v > 0 ? '#198754' : v < 0 ? '#dc3545' : '#0d6efd'; }
+                                pointBackgroundColor: function (ctx) { var v = ctx.raw.score; return v > 0 ? 'rgba(25,135,84,0.6)' : v < 0 ? 'rgba(220,53,69,0.6)' : 'rgba(13,110,253,0.6)'; },
+                                pointBorderColor: function (ctx) { var v = ctx.raw.score; return v > 0 ? '#198754' : v < 0 ? '#dc3545' : '#0d6efd'; }
                             }]
                         },
-                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (ctx) { return ' ' + (ctx.raw.name || '') + ' 分数:' + ctx.raw.y; } } } }, scales: { x: { ticks: { font: { size: 10 }, callback: function (v) { var d = new Date(v); var M = d.getMonth() + 1, D = d.getDate(), h = d.getHours(), m = d.getMinutes(); return M + '/' + D + ' ' + (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m; } }, title: { display: true, text: '时间', font: { size: 10 } } }, y: { ticks: { font: { size: 10 } }, title: { display: true, text: '打分', font: { size: 10 } } } } }
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (ctx) { return ' ' + (ctx.raw.name || '') + ' 分数:' + ctx.raw.score; } } } }, scales: { x: { ticks: { font: { size: 10 }, callback: function (v) { var d = new Date(v); var M = d.getMonth() + 1, D = d.getDate(), h = d.getHours(), m = d.getMinutes(); return M + '/' + D + ' ' + (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m; } }, title: { display: true, text: '时间', font: { size: 10 } } }, y: { ticks: { font: { size: 10 }, stepSize: 1, callback: function (v, i) { return yVals[i] !== undefined ? yVals[i] : ''; } }, title: { display: true, text: '打分', font: { size: 10 } } } } }
                     });
                 } else { $('#vst-scatter-row').hide(); }
             }
@@ -4236,11 +4265,13 @@ const method = {
                     if (st1 && st2) { mtchState.fileFirstTime = st1 < st2 ? st1 : st2; }
                     else { mtchState.fileFirstTime = st1 || st2; }
                     mtchState.fileLastTime = r.lastTime || '';
-                    if (!mtchState.startTime && !mtchState.endTime && mtchState.fileFirstTime && r.lastTime) {
-                        mtchState.startTime = mtchState.fileFirstTime;
-                        mtchState.endTime = r.lastTime;
-                        $('#mtch-filter-start').val(mtchState.fileFirstTime.replace(' ', 'T'));
-                        $('#mtch-filter-end').val(r.lastTime.replace(' ', 'T'));
+                    if (!mtchState.startTime && !mtchState.endTime) {
+                        var today = new Date(); today.setDate(today.getDate() + 1); today = today.toISOString().substring(0, 10);
+                        var liveStart = (r.liveStartTime || '').substring(0, 10);
+                        mtchState.startTime = liveStart || today;
+                        mtchState.endTime = today;
+                        $('#mtch-filter-start').val(mtchState.startTime);
+                        $('#mtch-filter-end').val(mtchState.endTime);
                     }
                     method.renderMtchTable(r.rows || []);
                     method.renderMtchPagination();
@@ -4268,9 +4299,15 @@ const method = {
         var cols = mtchState.headers;
         $.each(rows, function (i, row) {
             var tr = '<tr>';
+            var uid = row['匹配id'] || '';
             $.each(mtchState.columnOrder, function (j, colIdx) {
                 if (colIdx < cols.length) {
-                    tr += '<td>' + (row[cols[colIdx]] || '') + '</td>';
+                    var val = row[cols[colIdx]] || '';
+                    if (cols[colIdx] === '匹配名' && uid) {
+                        tr += '<td><a href="https://space.bilibili.com/' + uid + '" target="_blank" style="color:#0d6efd;">' + val + '</a></td>';
+                    } else {
+                        tr += '<td>' + val + '</td>';
+                    }
                 }
             });
             tr += '</tr>';
@@ -4369,7 +4406,7 @@ const method = {
                             labels: topMatches.map(function (d) { return d.name; }),
                             datasets: [{ label: '匹配次数', data: topMatches.map(function (d) { return d.count; }), backgroundColor: ['#0d6efd', '#198754', '#fd7e14', '#dc3545', '#6f42c1'] }]
                         },
-                        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (ctx) { return ' 匹配次数: ' + ctx.raw.toLocaleString(); } } } }, scales: { x: { ticks: { font: { size: 10 } }, title: { display: true, text: '匹配次数', font: { size: 10 } } }, y: { ticks: { font: { size: 10 } } } } }
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (ctx) { return ' 匹配次数: ' + ctx.raw.toLocaleString(); } } } }, scales: { x: { ticks: { font: { size: 10 } }, title: { display: true, text: '名字', font: { size: 10 } } }, y: { ticks: { font: { size: 10 } }, title: { display: true, text: '匹配次数', font: { size: 10 } } } } }
                     });
                 }
                 }, 50);
@@ -4458,11 +4495,13 @@ const method = {
                     flwState.totalRows = r.total || 0;
                     flwState.fileFirstTime = r.firstTime || '';
                     flwState.fileLastTime = r.lastTime || '';
-                    if (!flwState.startTime && !flwState.endTime && flwState.fileFirstTime && r.lastTime) {
-                        flwState.startTime = flwState.fileFirstTime;
-                        flwState.endTime = r.lastTime;
-                        $('#flw-filter-start').val(flwState.fileFirstTime.replace(' ', 'T'));
-                        $('#flw-filter-end').val(r.lastTime.replace(' ', 'T'));
+                    if (!flwState.startTime && !flwState.endTime) {
+                        var today = new Date(); today.setDate(today.getDate() + 1); today = today.toISOString().substring(0, 10);
+                        var liveStart = (r.liveStartTime || '').substring(0, 10);
+                        flwState.startTime = liveStart || today;
+                        flwState.endTime = today;
+                        $('#flw-filter-start').val(flwState.startTime);
+                        $('#flw-filter-end').val(flwState.endTime);
                     }
                     method.renderFlwTable(r.rows || []);
                     method.renderFlwPagination();
@@ -4490,9 +4529,15 @@ const method = {
         var cols = flwState.headers;
         $.each(rows, function (i, row) {
             var tr = '<tr>';
+            var uid = row['id'] || '';
             $.each(flwState.columnOrder, function (j, colIdx) {
                 if (colIdx < cols.length) {
-                    tr += '<td>' + (row[cols[colIdx]] || '') + '</td>';
+                    var val = row[cols[colIdx]] || '';
+                    if (cols[colIdx] === '名字' && uid) {
+                        tr += '<td><a href="https://space.bilibili.com/' + uid + '" target="_blank" style="color:#0d6efd;">' + val + '</a></td>';
+                    } else {
+                        tr += '<td>' + val + '</td>';
+                    }
                 }
             });
             tr += '</tr>';
@@ -4578,7 +4623,7 @@ const method = {
                             labels: topFollows.map(function (d) { return d.name; }),
                             datasets: [{ label: '次数', data: topFollows.map(function (d) { return d.count; }), backgroundColor: ['#0d6efd', '#198754', '#fd7e14', '#dc3545', '#6f42c1'] }]
                         },
-                        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (ctx) { return ' 次数: ' + ctx.raw.toLocaleString(); } } } }, scales: { x: { ticks: { font: { size: 10 } }, title: { display: true, text: '次数', font: { size: 10 } } }, y: { ticks: { font: { size: 10 } } } } }
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (ctx) { return ' 次数: ' + ctx.raw.toLocaleString(); } } } }, scales: { x: { ticks: { font: { size: 10 } }, title: { display: true, text: '名字', font: { size: 10 } } }, y: { ticks: { font: { size: 10 } }, title: { display: true, text: '次数', font: { size: 10 } } } } }
                     });
                 }
                 }, 50);
@@ -4653,11 +4698,13 @@ const method = {
                     gftState.totalRows = r.total || 0;
                     gftState.fileFirstTime = r.firstTime || '';
                     gftState.fileLastTime = r.lastTime || '';
-                    if (!gftState.startTime && !gftState.endTime && gftState.fileFirstTime && r.lastTime) {
-                        gftState.startTime = gftState.fileFirstTime;
-                        gftState.endTime = r.lastTime;
-                        $('#gft-filter-start').val(gftState.fileFirstTime.replace(' ', 'T'));
-                        $('#gft-filter-end').val(r.lastTime.replace(' ', 'T'));
+                    if (!gftState.startTime && !gftState.endTime) {
+                        var today = new Date(); today.setDate(today.getDate() + 1); today = today.toISOString().substring(0, 10);
+                        var liveStart = (r.liveStartTime || '').substring(0, 10);
+                        gftState.startTime = liveStart || today;
+                        gftState.endTime = today;
+                        $('#gft-filter-start').val(gftState.startTime);
+                        $('#gft-filter-end').val(gftState.endTime);
                     }
                     method.renderGftTable(r.rows || []);
                     method.renderGftPagination();
@@ -4676,7 +4723,17 @@ const method = {
         var cols = gftState.headers;
         $.each(rows, function (i, row) {
             var tr = '<tr>';
-            $.each(gftState.columnOrder, function (j, colIdx) { if (colIdx < cols.length) tr += '<td>' + (row[cols[colIdx]] || '') + '</td>'; });
+            var uid = row['id'] || '';
+            $.each(gftState.columnOrder, function (j, colIdx) {
+                if (colIdx < cols.length) {
+                    var val = row[cols[colIdx]] || '';
+                    if (cols[colIdx] === '名字' && uid) {
+                        tr += '<td><a href="https://space.bilibili.com/' + uid + '" target="_blank" style="color:#0d6efd;">' + val + '</a></td>';
+                    } else {
+                        tr += '<td>' + val + '</td>';
+                    }
+                }
+            });
             tr += '</tr>'; $tbody.append(tr);
         });
         $('#gft-table-head th[data-sort]').each(function () {
@@ -4762,7 +4819,7 @@ const method = {
                             labels: amountRanking.map(function (d) { return d.name; }),
                             datasets: [{ label: '金额', data: amountRanking.map(function (d) { return d.amount; }), backgroundColor: ['#0d6efd','#198754','#fd7e14','#dc3545','#6f42c1'] }]
                         },
-                        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (ctx) { return ' 金额: ' + ctx.raw.toLocaleString(); } } } }, scales: { x: { ticks: { font: { size: 10 } }, title: { display: true, text: '金额', font: { size: 10 } } }, y: { ticks: { font: { size: 10 } } } } }
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (ctx) { return ' 金额: ' + ctx.raw.toLocaleString(); } } } }, scales: { x: { ticks: { font: { size: 10 } }, title: { display: true, text: '名字', font: { size: 10 } } }, y: { ticks: { font: { size: 10 } }, title: { display: true, text: '金额', font: { size: 10 } } } } }
                     });
                 }
                 if (giftNameFreq.length > 0) {
@@ -4923,6 +4980,20 @@ function switchTab(tabId, el) {
         if (!$('#gft-csv-select option[value!=""]').length) {
             method.loadGftCsvFileList();
         }
+    }
+    // 管理页面自动刷新（每60秒）
+    if (window._mgrRefreshTimer) { clearInterval(window._mgrRefreshTimer); window._mgrRefreshTimer = null; }
+    var mgrLoadFn = null;
+    if (tabId === 'live-room-mgr') mgrLoadFn = method.loadCsvData;
+    else if (tabId === 'danmaku-mgr') mgrLoadFn = method.loadDmgrData;
+    else if (tabId === 'audience-mgr') mgrLoadFn = method.loadVstData;
+    else if (tabId === 'match-mgr') mgrLoadFn = method.loadMtchData;
+    else if (tabId === 'follow-mgr') mgrLoadFn = method.loadFlwData;
+    else if (tabId === 'gift-mgr') mgrLoadFn = method.loadGftData;
+    if (mgrLoadFn) {
+        window._mgrRefreshTimer = setInterval(function () {
+            if (typeof mgrLoadFn === 'function') mgrLoadFn();
+        }, 60000);
     }
 }
 
