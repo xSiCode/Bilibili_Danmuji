@@ -1137,12 +1137,12 @@ public class HttpUserData {
         } else {
             LOGGER.error("拉黑用户失败,原因:{}", jsonObject.getString("message"));
         }
-        StringBuilder sb = new StringBuilder(100);
-        sb.append(TIME_FORMAT.get().format(System.currentTimeMillis()))
-                .append("  https://space.bilibili.com/")
-                .append(fid)
-                .append(" [auto black] api return: ").append(data);
-        LogFileTools.getlogFileTools().logTestFile(sb.toString());
+//        StringBuilder sb = new StringBuilder(100);
+//        sb.append(TIME_FORMAT.get().format(System.currentTimeMillis()))
+//                .append("  https://space.bilibili.com/")
+//                .append(fid)
+//                .append(" [auto black] api return: ").append(data);
+//        LogFileTools.getlogFileTools().logTestFile(sb.toString());
 
 
         return code;

@@ -540,41 +540,46 @@ public class HttpRoomData {
         });
     }
 
-    /** 关注列表不可见 → 通过空间动态判断 */
+    /**
+     * 关注列表不可见 → 通过空间动态判断
+     */
     private static CompletableFuture<Pair<Integer, String>> processHiddenFollowings(long vmid, StringBuilder logSb) {
         StringBuilder logSbEnd = new StringBuilder(100);
         // 1 当前观众就在本地黑白名单里
         Integer pnScore = pnScoreMap.get(vmid);
         if (pnScore != null) {
-            String blackWhiteType = "[已在黑白名单: " + pnScore + "]";
-            logSb.append(blackWhiteType);
-            LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb.append(" [关注隐藏] [跳过]")));
+            String blackWhiteType = "[已在名单，关注隐藏: " + pnScore + "]";
+            logSb.append(blackWhiteType) ;
+            LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
             return CompletableFuture.completedFuture(Pair.of(pnScore, blackWhiteType));
         }
 
 
         if (!schedulerDynamicColdWait.get()) {
             return asyncHttpGetUserDynamic(vmid).thenCompose(dynData -> {
-                if (dynData == null) {
-                    logSbEnd.append(" [成份:关注隐藏, 需要确认] ");
-                    return  proceedToCardCheck(vmid, logSb, logSbEnd, 0, null);
-                }
-
-                String resultStartStr = "{\"code\":0,\"message\":\"OK\"";
-               // LogFileTools.getlogFileTools().logTestFile(logSb + dynData.substring(0, Math.min(84, dynData.length())));
-
                 int blackWhiteScore = 0;
                 String blackWhiteType = null;
 
+                if (dynData == null) {
+                    blackWhiteScore--;
+                    blackWhiteType = "[动态解析异常 -1]";
+                    logSbEnd.append(" [成份:关注隐藏] ");
+                    return proceedToCardCheck(vmid, logSb, logSbEnd, blackWhiteScore, blackWhiteType);
+                }
+
+                String resultStartStr = "{\"code\":0,\"message\":\"OK\"";
+                // LogFileTools.getlogFileTools().logTestFile(logSb + dynData.substring(0, Math.min(84, dynData.length())));
+
+
                 if (dynData.contains(resultStartStr)) {
                     if (dynData.length() < 200) {
-                        blackWhiteScore = -1;
+                        blackWhiteScore --;
                         blackWhiteType = "[关注和动态都不可见 -1]";
-                        logSb.append(blackWhiteType).append(" [拉黑] ");
+                        logSb.append(blackWhiteType);
                     }
 
-                    blackWhiteScore = getKeyWordsScore(dynData);
-                    blackWhiteType = "[关注不可见] [动态: "+blackWhiteScore+"]";
+                    blackWhiteScore = blackWhiteScore - getKeyWordsScore(dynData, logSb);
+                    blackWhiteType = "[关注不可见] [动态: " + blackWhiteScore + "]";
 
                 } else {
                     if (schedulerDynamicColdWait.compareAndSet(false, true)) {
@@ -592,38 +597,43 @@ public class HttpRoomData {
 //                    return CompletableFuture.completedFuture(Pair.of(blackWhiteScore, blackWhiteType));
 //                }
                 //  blackWhiteScore = -1, 0
-                logSbEnd.append(" [成份:关注隐藏, 需要确认] ");
+                logSbEnd.append(" [成份:关注隐藏] ");
                 return proceedToCardCheck(vmid, logSb, logSbEnd, blackWhiteScore, blackWhiteType);
             });
         } else {
-            logSbEnd.append(" [成份:关注隐藏, api冷却] ");
+            logSbEnd.append(" [成份:关注隐藏，动态未查看] ");
             return proceedToCardCheck(vmid, logSb, logSbEnd, 0, null);
         }
     }
 
 
-    private static int getKeyWordsScore(String dataStr ) {
+    private static int getKeyWordsScore(String dataStr, StringBuilder logSb) {
+        int temp = 0;
 
-        if (PublicDataConf.centerSetConf.getBlack() != null
-                && PublicDataConf.centerSetConf.getBlack().isDynamic()) {
+        if (PublicDataConf.centerSetConf.getBlack() != null) {
             for (String s : PublicDataConf.centerSetConf.getBlack().getNames()) {
                 if (StringUtils.isBlank(s)) continue;
                 if (StringUtils.contains(dataStr, s)) {
-                    return -1;
+                    temp--;
+                    logSb.append(" [").append(s).append("]");
                 }
             }
             for (String s : PublicDataConf.centerSetConf.getWhite().getNames()) {
                 if (StringUtils.isBlank(s)) continue;
                 if (StringUtils.contains(dataStr, s)) {
-                    return 1;
+                    temp++;
+                    logSb.append(" [").append(s).append("]");
                 }
             }
+        }else {
+            logSb.append(" [key没获取到]");
         }
-
-        return 0;
+        return temp;
     }
 
-    /** 关注列表可见 → 逐关注人打分 */
+    /**
+     * 关注列表可见 → 逐关注人打分
+     */
     private static CompletableFuture<Pair<Integer, String>> processVisibleFollowings(long vmid, StringBuilder logSb, JSONObject firstPage) {
         StringBuilder logSbEnd = new StringBuilder(100);
         JSONArray list = firstPage.getJSONObject("data").getJSONArray("list");
@@ -631,6 +641,7 @@ public class HttpRoomData {
         int blackWhiteScore = 0;
         int blackCount = 0;
         int whiteCount = 0;
+        int lurenScore = 0;
         JSONArray followingsList = new JSONArray();
         JSONArray matchedList = new JSONArray();
 
@@ -651,7 +662,8 @@ public class HttpRoomData {
                     whiteCount++;
                 }
             } else {
-                blackWhiteScore += getKeyWordsScore(String.valueOf(user));
+                // 通过关注列表的人的名字，签名来判断
+                lurenScore += getKeyWordsScore(String.valueOf(obj), logSb);
             }
         }
 
@@ -659,31 +671,31 @@ public class HttpRoomData {
         if (blackWhiteScore > 0) {
             logSbEnd.append("[成分:关注正面]");
         } else if (blackWhiteScore < 0) {
-            blackWhiteType = "[关注野猪偏多]";
-            logSb.append(blackWhiteType).append(" [拉黑] ");
+            blackWhiteType = "[关注负面]";
             logSbEnd.append("[成分:关注负面]");
         } else {
-            logSbEnd.append("[成分:关注普通, 需要确认]");
+            logSbEnd.append("[成分:关注普通]");
         }
+        blackWhiteScore = Math.min(lurenScore, 2);
+        logSbEnd.append(" [黑白分:").append(blackWhiteScore).append("]");
+
         // 1 当前观众就在本地黑白名单里
         Integer pnScore = pnScoreMap.get(vmid);
         if (null != pnScore) {
-            blackWhiteType = "[已在黑白名单: " + pnScore + "] [黑白分:" +blackWhiteScore+ "]";
             blackWhiteScore = pnScore;
+            blackWhiteType = "[已在名单，关注可见: " + blackWhiteScore + "]";
             logSb.append(blackWhiteType);
         }
 
-        int bwCount = blackCount * whiteCount;
-        if (blackWhiteScore != 0 || bwCount != 0) {
-            logSbEnd.append(" [黑白分:").append(blackWhiteScore)
-                    .append("] [分裂度:").append(bwCount)
+        if (blackWhiteScore != 0 &&  !matchedList.isEmpty()) {
+            logSbEnd.append(" [分裂度:").append(blackCount * whiteCount)
                     .append("] [匹配数:").append(matchedList.size())
                     .append("] 黑白名单:").append(matchedList.toJSONString());
         }
         logSbEnd.append(" 🍉🍉 关注列表:").append(followingsList.toJSONString());
 
         if (blackWhiteScore != 0) {
-            SelfTools.appendAt(logSb, 140, logSbEnd.toString());
+            SelfTools.appendAt(logSb, 160, logSbEnd.toString());
             LogFileTools.getlogFileTools().logFollowingsFile(logSb.toString());
             return CompletableFuture.completedFuture(Pair.of(blackWhiteScore, blackWhiteType));
         }
@@ -691,11 +703,13 @@ public class HttpRoomData {
         return proceedToCardCheck(vmid, logSb, logSbEnd, blackWhiteScore, blackWhiteType);
     }
 
-    /** 3. 用户卡片信息判断 → 最终打分 */
+    /**
+     * 3. 用户卡片信息判断 → 最终打分
+     */
     private static CompletableFuture<Pair<Integer, String>> proceedToCardCheck(long vmid, StringBuilder logSb, StringBuilder logSbEnd,
                                                                                int blackWhiteScore, String blackWhiteType) {
         if (schedulerCardInfoColdWait.get()) {
-            SelfTools.appendAt(logSb, 140, logSbEnd.toString());
+            SelfTools.appendAt(logSb, 160, logSbEnd.toString());
             LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
             return CompletableFuture.completedFuture(Pair.of(blackWhiteScore, blackWhiteType));
         }
@@ -722,51 +736,64 @@ public class HttpRoomData {
                     long likeNum = dataCard.getLongValue("like_num");
 
                     SelfTools.appendAt(logSb, 80, "");
-                    logSb.append(" [LV:").append(currentLevel)
-                            .append("] [投稿:").append(archiveCount)
+                    logSb.append("[投稿:").append(archiveCount)
                             .append("] [关注:").append(attention)
                             .append("] [粉丝:").append(fans)
                             .append("] [获赞:").append(likeNum)
                             .append("]");
                     if (fans > 1000 || archiveCount > 100 || likeNum > 10_0000) {
-                        score = score + 1;
+                        score++;
                         type = "[KOL +1]";
                         logSb.append(" [KOL:").append(fans / 1000 + archiveCount / 100 + likeNum / 10_0000).append("]");
                     }
 
                     if (following) {
-                        score = 2;
-                        type = "[已关注]";
+                        score +=2;
+                        type = "[已关注 +2]";
                         logSb.append(type);
                     } else if ((fans < 50 && attention > 4500) || (attention > 4990)) {
-                        score = score - 1;
-                        type = "[疑似人机]";
-                        logSb.append(type).append(" [人机 -1] ");
+                        score--;
+                        type = "[疑似人机 -1]";
+                        logSb.append(type) ;
+                    } else if ( attention == 0 && fans ==0) {
+                        score--;
+                        type = "[疑似人机 -1]";
+                        logSb.append(type);
                     }
 
                     // lv 3, 4 不处理
                     if (currentLevel == 0) {
-                        score = -2;
-                        type = "[LV:0]";
-                        logSb.append(type).append(" [拉黑] ");
-                    } else if (currentLevel < 4) {
+                        score = score -2;
+                        type = "[LV:0 -2]";
+                        logSb.append(type) ;
+                    } else if (currentLevel <=2) {
                         score = score - 1;
-                        type = "[LV:" + currentLevel + "]";
-                        logSb.append(type).append(" [新号: -1] ");
-                    } else if (currentLevel > 4) {
+                        type = "[LV:" + currentLevel + " -1]";
+                        logSb.append(type) ;
+                    } else if (currentLevel >= 5) {
                         score = score + 1;
-                        type = "[LV:" + currentLevel + "]";
-                        logSb.append(type).append(" [老用户 +1] ");
-                    } else {
-                        // LV:4  不处理
+                        type = "[LV:" + currentLevel + " +1]";
+                        logSb.append(type) ;
+                    } else { //3 4
+                        logSb.append(" [LV:").append(currentLevel).append("]");
                     }
 
-                    if( StringUtils.contains((CharSequence) dataX, "大会员") ){
+                    if( StringUtils.contains((CharSequence) cardInfo, "大会员") ){
                         score = score + 1;
                         type = "[大会员 +1]";
-                        logSb.append(type).append(type);
+                        logSb.append(type);
                     }
 
+                    score += getKeyWordsScore(String.valueOf(cardInfo), logSb);
+
+
+                    LogFileTools.getlogFileTools().logTestFile(String.valueOf(cardInfo));
+
+
+                    logSb.append(" [黑白分:").append(score).append("]");
+
+                    SelfTools.appendAt(logSb, 160, logSbEnd.toString());
+                    LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
                 } else {
                     logSb.append("[用户信息解析异常]");
                 }
@@ -780,8 +807,7 @@ public class HttpRoomData {
                 LogFileTools.getlogFileTools().logTestFile(logSb + " 用户卡片信息API 调用超过频次，冷却5分钟");
             }
 
-            SelfTools.appendAt(logSb, 140, logSbEnd.toString());
-            LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
+
             return Pair.of(score, type);
         });
     }
