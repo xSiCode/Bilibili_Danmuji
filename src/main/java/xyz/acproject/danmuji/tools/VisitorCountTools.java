@@ -67,13 +67,17 @@ public class VisitorCountTools {
         visitorMap.compute(uid, (k, v) -> {
             if (v == null) {
                 return new VisitorRecord(uid, uname, score, scoreType, 1, System.currentTimeMillis(),
-                        HttpRoomData.isUidInPnScoreMap(uid), 0);
+                        HttpRoomData.isUidInPnScoreMap(uid), 1);
             }
             v.uname = uname;
             v.score = score;
             v.scoreType = scoreType;
             v.count++;
-            v.latestEntryTime = System.currentTimeMillis();
+            long now = System.currentTimeMillis();
+            if (now - v.latestEntryTime >= 3 * 60 * 60 * 1000L) {
+                v.session++;
+            }
+            v.latestEntryTime = now;
             v.inPnTable = HttpRoomData.isUidInPnScoreMap(uid);
             return v;
         });
@@ -88,16 +92,12 @@ public class VisitorCountTools {
         if (!file.exists()) return;
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
             String line = reader.readLine(); // skip header
-            boolean needComputeSession = false;
             while ((line = reader.readLine()) != null) {
                 VisitorRecord record = parseLine(line);
                 if (record != null) {
-                    if (record.session == 0) needComputeSession = true;
+                    if (record.session == 0) record.session = 1;
                     visitorMap.put(record.uid, record);
                 }
-            }
-            if (needComputeSession) {
-                computeSessions();
             }
         } catch (Exception e) {
             LOGGER.error("load visitor CSV failed", e);
@@ -181,8 +181,6 @@ public class VisitorCountTools {
 
     private static void doFlush(String path) {
         List<VisitorRecord> records = new ArrayList<>(visitorMap.values());
-        records.sort((a, b) -> Long.compare(a.latestEntryTime, b.latestEntryTime));
-        computeSessions(records);
         File file = new File(path);
         if (!file.getParentFile().exists()) {
             file.getParentFile().mkdirs();
@@ -212,27 +210,6 @@ public class VisitorCountTools {
         } catch (IOException e) {
             LOGGER.error("move visitor CSV failed", e);
         }
-    }
-
-    private static void computeSessions(List<VisitorRecord> records) {
-        if (records.isEmpty()) return;
-        int session = Math.max(records.get(0).session, 1);
-        records.get(0).session = session;
-        for (int i = 1; i < records.size(); i++) {
-            VisitorRecord prev = records.get(i - 1);
-            VisitorRecord cur = records.get(i);
-            long diff = cur.latestEntryTime - prev.latestEntryTime;
-            if (diff >= 3 * 60 * 60 * 1000L) {
-                session++;
-            }
-            cur.session = session;
-        }
-    }
-
-    private static void computeSessions() {
-        List<VisitorRecord> records = new ArrayList<>(visitorMap.values());
-        records.sort((a, b) -> Long.compare(a.latestEntryTime, b.latestEntryTime));
-        computeSessions(records);
     }
 
     private static String escapeCsv(String s) {

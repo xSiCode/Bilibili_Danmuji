@@ -1718,7 +1718,8 @@ public class WebController {
                 String msg = row[3];
                 totalChars += msg.length();
 
-                String[] tokens = msg.split("[^\\u4e00-\\u9fa5a-zA-Z0-9]+");
+                String clearedMsg = msg.replaceAll("\\[.*?\\]", "");
+                String[] tokens = clearedMsg.split("[^\\u4e00-\\u9fa5a-zA-Z0-9]+");
                 for (String token : tokens) {
                     if (token.length() >= 2) {
                         wordFreq.put(token, wordFreq.getOrDefault(token, 0) + 1);
@@ -1897,6 +1898,8 @@ public class WebController {
             String[] headers = {"最近", "id", "观众", "打分", "打分类型", "次数", "判定表", "场次"};
             String firstTime = null;
             String lastTime = null;
+            String filteredFirstTime = null;
+            String filteredLastTime = null;
 
             if (!file.exists()) {
                 result.put("headers", headers);
@@ -1906,6 +1909,8 @@ public class WebController {
                 result.put("currentPage", page);
                 result.put("firstTime", "");
                 result.put("lastTime", "");
+                result.put("filteredFirstTime", "");
+                result.put("filteredLastTime", "");
                 return Response.success(result, req);
             }
 
@@ -1937,6 +1942,8 @@ public class WebController {
                     row.put("判定表", fields.get(6));
                     row.put("场次", fields.size() >= 8 ? fields.get(7) : "1");
                     allRows.add(row);
+                    if (filteredFirstTime == null) filteredFirstTime = time;
+                    filteredLastTime = time;
                 }
             }
 
@@ -1981,6 +1988,8 @@ public class WebController {
             result.put("currentPage", page);
             result.put("firstTime", firstTime != null ? firstTime : "");
             result.put("lastTime", lastTime != null ? lastTime : "");
+            result.put("filteredFirstTime", filteredFirstTime != null ? filteredFirstTime : "");
+            result.put("filteredLastTime", filteredLastTime != null ? filteredLastTime : "");
             // live start time for default filter
             String liveStartTime = "";
             if (PublicDataConf.ROOM_INFO != null && PublicDataConf.ROOM_INFO.getLive_start_time() != null) {

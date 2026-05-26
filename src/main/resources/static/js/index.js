@@ -3417,11 +3417,15 @@ const method = {
                     var chartOpts = {
                         responsive: true,
                         maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
                         plugins: {
                             legend: { display: true, position: 'top', labels: { font: { size: 10 } } },
                             tooltip: {
+                                titleFont: { size: 12 },
+                                bodyFont: { size: 12 },
                                 callbacks: {
-                                    label: function (ctx) { return ' ' + ctx.raw.toLocaleString(); }
+                                    title: function (ctxs) { return '时间: ' + ctxs[0].label; },
+                                    label: function (ctx) { return ' ' + ctx.dataset.label + ': ' + ctx.raw.toLocaleString(); }
                                 }
                             }
                         },
@@ -3506,7 +3510,14 @@ const method = {
                                 interaction: { mode: 'index', intersect: false },
                                 plugins: {
                                     legend: { display: true, position: 'top', labels: { font: { size: 10 } } },
-                                    tooltip: { callbacks: { label: function (ctx) { return ' 平均长度: ' + ctx.raw.toLocaleString() + ' 字'; } } }
+                                    tooltip: {
+                                        titleFont: { size: 12 },
+                                        bodyFont: { size: 12 },
+                                        callbacks: {
+                                            title: function (ctxs) { return '时间: ' + ctxs[0].label; },
+                                            label: function (ctx) { return ' 平均长度: ' + ctx.raw.toLocaleString() + ' 字'; }
+                                        }
+                                    }
                                 },
                                 scales: {
                                     x: { ticks: { font: { size: 10 } } },
@@ -3654,6 +3665,7 @@ const method = {
             success: function (data) {
                 if (data.code == "200" && data.result) {
                     var r = data.result;
+                    vstState.page = r.currentPage || 1;
                     vstState.totalPages = r.totalPages || 0;
                     vstState.totalRows = r.total || 0;
                     var st1 = (r.liveStartTime && r.liveStartTime.length > 0) ? r.liveStartTime : (r.firstTime || '');
