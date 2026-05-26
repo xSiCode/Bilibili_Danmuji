@@ -1818,6 +1818,9 @@
                                             <button id="lrm-btn-apply" class="btn btn-sm btn-primary">筛选</button>
                                             <button id="lrm-btn-reset" class="btn btn-sm btn-outline-secondary ms-1">重置</button>
                                         </div>
+                                        <div class="col-auto">
+                                            <input type="text" id="lrm-search-input" class="form-control form-control-sm" style="width:160px;" placeholder="搜索...">
+                                        </div>
                                         <div class="col-auto ms-auto">
                                             <button id="lrm-btn-export" class="btn btn-sm btn-success">导出CSV</button>
                                             <button class="btn btn-sm btn-outline-warning" onclick="$('#lrm-import-file').click()">导入CSV</button>
@@ -1856,10 +1859,10 @@
                                         <table id="lrm-data-table" class="table table-sm table-striped" style="display:none;">
                                             <thead id="lrm-table-head">
                                                 <tr>
-                                                    <th>时间</th>
-                                                    <th>观看数</th>
-                                                    <th>在线数</th>
-                                                    <th>点赞数</th>
+                                                    <th data-sort="时间">时间</th>
+                                                    <th data-sort="观看数">观看数</th>
+                                                    <th data-sort="在线数">在线数</th>
+                                                    <th data-sort="点赞数">点赞数</th>
                                                     <th data-sortable="false">操作</th>
                                                 </tr>
                                             </thead>

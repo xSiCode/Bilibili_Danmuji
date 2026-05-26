@@ -115,6 +115,13 @@ public class RoomInfoLogTools {
         }
     }
 
+    public static synchronized void removeByTimeKey(String timeKey) {
+        if (timeKey == null || timeKey.isEmpty()) return;
+        // timeKey format: "yyyy-MM-dd HH:mm:ss", map key is "yyyy-MM-dd HH:mm"
+        String mapKey = timeKey.length() >= 16 ? timeKey.substring(0, 16) : timeKey;
+        roomInfoMap.remove(mapKey);
+    }
+
     private static synchronized void flushToCsv() {
         String rk = roomKey();
         if (!rk.equals(lastRoomId)) {

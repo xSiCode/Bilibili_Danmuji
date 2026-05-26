@@ -42,6 +42,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.*;
 
 import java.util.stream.Collectors;
+import xyz.acproject.danmuji.tools.RoomInfoLogTools;
 
 /**
  * @author BanqiJane
@@ -1095,6 +1096,9 @@ public class WebController {
                                    @RequestParam(defaultValue = "10") int pageSize,
                                    @RequestParam(required = false) String startTime,
                                    @RequestParam(required = false) String endTime,
+                                   @RequestParam(required = false) String search,
+                                   @RequestParam(required = false) String sortField,
+                                   @RequestParam(required = false) String sortOrder,
                                    HttpServletRequest req) {
         try {
             validateFilePath(filePath);
@@ -1105,6 +1109,10 @@ public class WebController {
             Map<String, Object> result = new LinkedHashMap<>();
             List<Map<String, String>> allRows = new ArrayList<>();
             String[] headers = {"时间", "观看数", "在线数", "点赞数"};
+            String firstTime = null;
+            String lastTime = null;
+            String filteredFirstTime = null;
+            String filteredLastTime = null;
 
             if (!file.exists()) {
                 result.put("headers", headers);
@@ -1114,11 +1122,12 @@ public class WebController {
                 result.put("currentPage", page);
                 result.put("firstTime", "");
                 result.put("lastTime", "");
+                result.put("filteredFirstTime", "");
+                result.put("filteredLastTime", "");
                 return Response.success(result, req);
             }
 
-            String firstTime = null;
-            String lastTime = null;
+            String searchLower = (search != null && !search.isEmpty()) ? search.toLowerCase() : null;
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
                 String line = reader.readLine(); // skip header + BOM
                 while ((line = reader.readLine()) != null) {
@@ -1127,18 +1136,40 @@ public class WebController {
                         String time = parts[0];
                         if (firstTime == null) firstTime = time;
                         lastTime = time;
-                        // apply time filter (format yyyy-MM-dd HH:mm, naturally sortable)
                         if (startTime != null && !startTime.isEmpty() && time.compareTo(startTime) < 0) continue;
                         if (endTime != null && !endTime.isEmpty() && time.compareTo(endTime) > 0) continue;
+                        if (searchLower != null && !parts[0].toLowerCase().contains(searchLower)
+                                && !parts[1].toLowerCase().contains(searchLower)
+                                && !parts[2].toLowerCase().contains(searchLower)
+                                && !parts[3].toLowerCase().contains(searchLower)) continue;
                         Map<String, String> row = new LinkedHashMap<>();
                         row.put("时间", time);
                         row.put("观看数", parts[1]);
                         row.put("在线数", parts[2]);
                         row.put("点赞数", parts[3]);
                         allRows.add(row);
+                        if (filteredFirstTime == null) filteredFirstTime = time;
+                        filteredLastTime = time;
                     }
                 }
             }
+
+            String sf = (sortField != null && !sortField.isEmpty()) ? sortField : "时间";
+            boolean asc = (sortField != null && !sortField.isEmpty()) ? "asc".equalsIgnoreCase(sortOrder) : true;
+            boolean isDefSort = sortField == null || sortField.isEmpty();
+            allRows.sort((a, b) -> {
+                int cmp;
+                switch (sf) {
+                    case "观看数": case "在线数": case "点赞数":
+                        cmp = compareField(a.get(sf), b.get(sf), true);
+                        break;
+                    default:
+                        cmp = compareField(a.get("时间"), b.get("时间"), false);
+                        break;
+                }
+                if (cmp == 0 && isDefSort) cmp = compareField(a.get("时间"), b.get("时间"), false);
+                return asc ? cmp : -cmp;
+            });
 
             int total = allRows.size();
             int totalPages = (int) Math.ceil((double) total / pageSize);
@@ -1155,6 +1186,8 @@ public class WebController {
             result.put("currentPage", page);
             result.put("firstTime", firstTime != null ? firstTime : "");
             result.put("lastTime", lastTime != null ? lastTime : "");
+            result.put("filteredFirstTime", filteredFirstTime != null ? filteredFirstTime : "");
+            result.put("filteredLastTime", filteredLastTime != null ? filteredLastTime : "");
             return Response.success(result, req);
         } catch (Exception e) {
             LOGGER.error("readCsvData error", e);
@@ -1204,6 +1237,8 @@ public class WebController {
                 }
             }
             Files.move(tmpFile.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            // 同步移除 RoomInfoLogTools 内存中的记录，防止下次 flush 时恢复
+            RoomInfoLogTools.removeByTimeKey(timeKey);
             return Response.success(true, req);
         } catch (Exception e) {
             LOGGER.error("deleteCsvRow error", e);
@@ -1216,6 +1251,7 @@ public class WebController {
     public void exportFilteredCsv(@RequestParam("filePath") String filePath,
                                   @RequestParam(required = false) String startTime,
                                   @RequestParam(required = false) String endTime,
+                                  @RequestParam(required = false) String search,
                                   HttpServletResponse response) throws Exception {
         validateFilePath(filePath);
         File file = new File(filePath);
@@ -1225,7 +1261,7 @@ public class WebController {
 
         File tmpFile = File.createTempFile("lrm-export-", ".csv");
         try {
-            int rowCount = 0;
+            String searchLower = (search != null && !search.isEmpty()) ? search.toLowerCase() : null;
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"));
                  BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tmpFile), "UTF-8"))) {
                 // write BOM + header
@@ -1240,9 +1276,12 @@ public class WebController {
                         String time = parts[0];
                         if (startTime != null && !startTime.isEmpty() && time.compareTo(startTime) < 0) continue;
                         if (endTime != null && !endTime.isEmpty() && time.compareTo(endTime) > 0) continue;
+                        if (searchLower != null && !parts[0].toLowerCase().contains(searchLower)
+                                && !parts[1].toLowerCase().contains(searchLower)
+                                && !parts[2].toLowerCase().contains(searchLower)
+                                && !parts[3].toLowerCase().contains(searchLower)) continue;
                         writer.write(line);
                         writer.newLine();
-                        rowCount++;
                     }
                 }
             }

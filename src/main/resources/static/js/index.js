@@ -99,10 +99,13 @@ let lrmState = {
     endTime: '',
     fileFirstTime: '',
     fileLastTime: '',
+    search: '',
     page: 1,
     pageSize: 10,
     totalPages: 1,
     totalRows: 0,
+    sortField: '时间',
+    sortOrder: 'asc',
     headers: ['时间', '观看数', '在线数', '点赞数'],
     columnOrder: [0, 1, 2, 3, 4],
     chartInstances: {}
@@ -175,24 +178,32 @@ $(function () {
     // ========== 直播间管理 event bindings ==========
     $(document).on('change', '#lrm-csv-select', function () {
         lrmState.currentFile = $(this).val();
-        lrmState.startTime = '';
-        lrmState.endTime = '';
+        lrmState.startTime = ''; lrmState.endTime = ''; lrmState.search = '';
+        $('#lrm-search-input').val('');
+        lrmState.sortField = '时间'; lrmState.sortOrder = 'asc';
         lrmState.page = 1;
         if (lrmState.currentFile) method.loadCsvData();
     });
     $(document).on('click', '#lrm-btn-apply', function () {
         lrmState.startTime = ($('#lrm-filter-start').val() || '').replace('T', ' ');
         lrmState.endTime = ($('#lrm-filter-end').val() || '').replace('T', ' ');
+        lrmState.search = $('#lrm-search-input').val() || '';
         lrmState.page = 1;
         method.loadCsvData();
     });
     $(document).on('click', '#lrm-btn-reset', function () {
-        lrmState.startTime = lrmState.fileFirstTime;
-        lrmState.endTime = lrmState.fileLastTime;
+        lrmState.startTime = lrmState.fileFirstTime; lrmState.endTime = lrmState.fileLastTime;
+        lrmState.search = ''; $('#lrm-search-input').val('');
         $('#lrm-filter-start').val(lrmState.fileFirstTime.replace(' ', 'T'));
         $('#lrm-filter-end').val(lrmState.fileLastTime.replace(' ', 'T'));
-        lrmState.page = 1;
-        method.loadCsvData();
+        lrmState.sortField = '时间'; lrmState.sortOrder = 'asc';
+        lrmState.page = 1; method.loadCsvData();
+    });
+    $(document).on('keypress', '#lrm-search-input', function (e) {
+        if (e.which === 13) { lrmState.search = $(this).val() || ''; lrmState.page = 1; method.loadCsvData(); }
+    });
+    $(document).on('click', '#lrm-table-head th[data-sort]', function () {
+        method.sortCsvColumn($(this).data('sort'));
     });
     $(document).on('click', '#lrm-btn-export', function () {
         method.exportCsv();
@@ -216,8 +227,22 @@ $(function () {
         if (e.which === 13) { method.gotoPage($(this).val()); }
     });
     $(document).on('click', '.lrm-row-del', function () {
-        var timeKey = $(this).data('time');
-        method.deleteCsvRow(timeKey);
+        var $btn = $(this);
+        if ($btn.hasClass('confirming')) {
+            $btn.removeClass('confirming').text('删除').removeClass('btn-danger').addClass('btn-outline-danger');
+            var timeKey = $btn.data('time');
+            method.deleteCsvRow(timeKey);
+        } else {
+            // 取消其他正在确认的按钮
+            $('.lrm-row-del.confirming').removeClass('confirming').text('删除').removeClass('btn-danger').addClass('btn-outline-danger');
+            $btn.addClass('confirming').text('确认删除?').removeClass('btn-outline-danger').addClass('btn-danger');
+            // 3秒后自动恢复
+            setTimeout(function () {
+                if ($btn.hasClass('confirming')) {
+                    $btn.removeClass('confirming').text('删除').removeClass('btn-danger').addClass('btn-outline-danger');
+                }
+            }, 3000);
+        }
     });
 
     // ========== 弹幕管理 event bindings ==========
@@ -3174,18 +3199,20 @@ const method = {
                 page: lrmState.page,
                 pageSize: lrmState.pageSize,
                 startTime: lrmState.startTime || '',
-                endTime: lrmState.endTime || ''
+                endTime: lrmState.endTime || '',
+                search: lrmState.search || '',
+                sortField: lrmState.sortField,
+                sortOrder: lrmState.sortOrder
             },
             dataType: 'json',
             success: function (data) {
                 if (data.code == "200" && data.result) {
                     var r = data.result;
+                    lrmState.page = r.currentPage || 1;
                     lrmState.totalPages = r.totalPages || 0;
                     lrmState.totalRows = r.total || 0;
-                    // store file time range
                     lrmState.fileFirstTime = r.firstTime || '';
                     lrmState.fileLastTime = r.lastTime || '';
-                    // auto-fill time filter from file range on first load
                     if (!lrmState.startTime && !lrmState.endTime && r.firstTime && r.lastTime) {
                         lrmState.startTime = r.firstTime;
                         lrmState.endTime = r.lastTime;
@@ -3233,6 +3260,13 @@ const method = {
             tr += '</tr>';
             $tbody.append(tr);
         });
+        $('#lrm-table-head th[data-sort]').each(function () {
+            var f = $(this).data('sort');
+            $(this).text(f);
+            if (f === lrmState.sortField) {
+                $(this).text(f + ' ' + (lrmState.sortOrder === 'asc' ? '▲' : '▼'));
+            }
+        });
         setTimeout(function () { method.initColumnDrag(); }, 100);
     },
 
@@ -3257,6 +3291,17 @@ const method = {
         if (p > lrmState.totalPages) p = lrmState.totalPages;
         if (p === lrmState.page) return;
         lrmState.page = p;
+        method.loadCsvData();
+    },
+
+    sortCsvColumn: function (field) {
+        if (lrmState.sortField === field) {
+            lrmState.sortOrder = lrmState.sortOrder === 'asc' ? 'desc' : 'asc';
+        } else {
+            lrmState.sortField = field;
+            lrmState.sortOrder = 'desc';
+        }
+        lrmState.page = 1;
         method.loadCsvData();
     },
 
@@ -3404,7 +3449,6 @@ const method = {
     },
 
     deleteCsvRow: function (timeKey) {
-        if (!confirm('确定删除此条记录？(' + timeKey + ')')) return;
         $.ajax({
             url: '../deleteCsvRow',
             type: 'POST',
@@ -3442,7 +3486,8 @@ const method = {
         var url = '../exportFilteredCsv?filePath=' + encodeURIComponent(lrmState.currentFile);
         if (lrmState.startTime) url += '&startTime=' + encodeURIComponent(lrmState.startTime);
         if (lrmState.endTime) url += '&endTime=' + encodeURIComponent(lrmState.endTime);
-        window.open(window.location.origin + url);
+        if (lrmState.search) url += '&search=' + encodeURIComponent(lrmState.search);
+        window.open(url, '_blank');
     },
 
     initColumnDrag: function () {
