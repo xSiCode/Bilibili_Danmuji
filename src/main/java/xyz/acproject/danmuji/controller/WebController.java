@@ -1125,7 +1125,8 @@ public class WebController {
                 result.put("filteredFirstTime", "");
                 result.put("filteredLastTime", "");
                 String liveStartTime = "";
-                if (PublicDataConf.ROOM_INFO != null && PublicDataConf.ROOM_INFO.getLive_start_time() != null) {
+                if (PublicDataConf.ROOM_INFO != null && PublicDataConf.ROOM_INFO.getLive_start_time() != null
+                        && PublicDataConf.ROOM_INFO.getLive_start_time() > 0) {
                     liveStartTime = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(new java.util.Date(PublicDataConf.ROOM_INFO.getLive_start_time() * 1000L));
                 }
                 result.put("liveStartTime", liveStartTime);
@@ -1194,7 +1195,8 @@ public class WebController {
             result.put("filteredFirstTime", filteredFirstTime != null ? filteredFirstTime : "");
             result.put("filteredLastTime", filteredLastTime != null ? filteredLastTime : "");
             String liveStartTime = "";
-            if (PublicDataConf.ROOM_INFO != null && PublicDataConf.ROOM_INFO.getLive_start_time() != null) {
+            if (PublicDataConf.ROOM_INFO != null && PublicDataConf.ROOM_INFO.getLive_start_time() != null
+                    && PublicDataConf.ROOM_INFO.getLive_start_time() > 0) {
                 liveStartTime = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(new java.util.Date(PublicDataConf.ROOM_INFO.getLive_start_time() * 1000L));
             }
             result.put("liveStartTime", liveStartTime);
@@ -1610,7 +1612,8 @@ public class WebController {
             result.put("firstTime", firstTime != null ? firstTime : "");
             result.put("lastTime", lastTime != null ? lastTime : "");
             String liveStartTime = "";
-            if (PublicDataConf.ROOM_INFO != null && PublicDataConf.ROOM_INFO.getLive_start_time() != null) {
+            if (PublicDataConf.ROOM_INFO != null && PublicDataConf.ROOM_INFO.getLive_start_time() != null
+                    && PublicDataConf.ROOM_INFO.getLive_start_time() > 0) {
                 liveStartTime = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(new java.util.Date(PublicDataConf.ROOM_INFO.getLive_start_time() * 1000L));
             }
             result.put("liveStartTime", liveStartTime);
@@ -2094,7 +2097,8 @@ public class WebController {
             result.put("filteredLastTime", filteredLastTime != null ? filteredLastTime : "");
             // live start time for default filter
             String liveStartTime = "";
-            if (PublicDataConf.ROOM_INFO != null && PublicDataConf.ROOM_INFO.getLive_start_time() != null) {
+            if (PublicDataConf.ROOM_INFO != null && PublicDataConf.ROOM_INFO.getLive_start_time() != null
+                    && PublicDataConf.ROOM_INFO.getLive_start_time() > 0) {
                 liveStartTime = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(new java.util.Date(PublicDataConf.ROOM_INFO.getLive_start_time() * 1000L));
             }
             result.put("liveStartTime", liveStartTime);
@@ -2554,7 +2558,8 @@ public class WebController {
             result.put("filteredFirstTime", filteredFirstTime != null ? filteredFirstTime : "");
             result.put("filteredLastTime", filteredLastTime != null ? filteredLastTime : "");
             String liveStartTime = "";
-            if (PublicDataConf.ROOM_INFO != null && PublicDataConf.ROOM_INFO.getLive_start_time() != null) {
+            if (PublicDataConf.ROOM_INFO != null && PublicDataConf.ROOM_INFO.getLive_start_time() != null
+                    && PublicDataConf.ROOM_INFO.getLive_start_time() > 0) {
                 liveStartTime = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(new java.util.Date(PublicDataConf.ROOM_INFO.getLive_start_time() * 1000L));
             }
             result.put("liveStartTime", liveStartTime);
@@ -2932,7 +2937,8 @@ public class WebController {
             result.put("filteredFirstTime", filteredFirstTime != null ? filteredFirstTime : "");
             result.put("filteredLastTime", filteredLastTime != null ? filteredLastTime : "");
             String liveStartTime = "";
-            if (PublicDataConf.ROOM_INFO != null && PublicDataConf.ROOM_INFO.getLive_start_time() != null) {
+            if (PublicDataConf.ROOM_INFO != null && PublicDataConf.ROOM_INFO.getLive_start_time() != null
+                    && PublicDataConf.ROOM_INFO.getLive_start_time() > 0) {
                 liveStartTime = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(new java.util.Date(PublicDataConf.ROOM_INFO.getLive_start_time() * 1000L));
             }
             result.put("liveStartTime", liveStartTime);
@@ -3250,7 +3256,8 @@ public class WebController {
             result.put("filteredFirstTime", filteredFirstTime != null ? filteredFirstTime : "");
             result.put("filteredLastTime", filteredLastTime != null ? filteredLastTime : "");
             String liveStartTime = "";
-            if (PublicDataConf.ROOM_INFO != null && PublicDataConf.ROOM_INFO.getLive_start_time() != null) {
+            if (PublicDataConf.ROOM_INFO != null && PublicDataConf.ROOM_INFO.getLive_start_time() != null
+                    && PublicDataConf.ROOM_INFO.getLive_start_time() > 0) {
                 liveStartTime = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(new java.util.Date(PublicDataConf.ROOM_INFO.getLive_start_time() * 1000L));
             }
             result.put("liveStartTime", liveStartTime);

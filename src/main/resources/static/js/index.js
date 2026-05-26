@@ -1,5 +1,26 @@
 let socket = null;
 let sliceh = 0;
+
+function applyHoursFilter(state, prefix) {
+    var hoursVal = $(prefix + '-filter-hours').val();
+    var hours = (hoursVal !== '' && hoursVal !== null) ? parseInt(hoursVal) : 3;
+    if (isNaN(hours) || hours < 0) hours = 3;
+    var now = new Date();
+    var start = new Date(now.getTime() - hours * 3600000);
+    start.setMinutes(0, 0, 0);
+    var end = new Date(now.getTime() + 3600000);
+    end.setMinutes(0, 0, 0);
+    var pad = function(n) { return ('0' + n).slice(-2); };
+    var fmt = function(d) {
+        return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate())
+            + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+    };
+    state.startTime = fmt(start);
+    state.endTime = fmt(end);
+    $(prefix + '-filter-start').val(fmt(start).substring(0, 10));
+    $(prefix + '-filter-end').val(fmt(end).substring(0, 10));
+}
+
 // 观众管理 state
 let vstState = {
     currentFile: '',
@@ -188,15 +209,14 @@ $(function () {
         if (lrmState.currentFile) method.loadCsvData();
     });
     $(document).on('click', '#lrm-btn-apply', function () {
-        lrmState.startTime = ($('#lrm-filter-start').val() || '');
-        lrmState.endTime = ($('#lrm-filter-end').val() || '');
+        applyHoursFilter(lrmState, '#lrm');
         lrmState.search = $('#lrm-search-input').val() || '';
         lrmState.page = 1;
         method.loadCsvData();
     });
     $(document).on('click', '#lrm-btn-reset', function () {
         lrmState.startTime = ''; lrmState.endTime = '';
-        lrmState.search = ''; $('#lrm-search-input').val('');
+        lrmState.search = ''; $('#lrm-search-input').val(''); $('#lrm-filter-hours').val('3');
         lrmState.sortField = '时间'; lrmState.sortOrder = 'desc';
         lrmState.page = 1; method.loadCsvData();
     });
@@ -256,15 +276,14 @@ $(function () {
         if (dmgrState.currentFile) method.loadDmgrData();
     });
     $(document).on('click', '#dmgr-btn-apply', function () {
-        dmgrState.startTime = ($('#dmgr-filter-start').val() || '');
-        dmgrState.endTime = ($('#dmgr-filter-end').val() || '');
+        applyHoursFilter(dmgrState, '#dmgr');
         dmgrState.search = $('#dmgr-search-input').val() || '';
         dmgrState.page = 1;
         method.loadDmgrData();
     });
     $(document).on('click', '#dmgr-btn-reset', function () {
         dmgrState.startTime = ''; dmgrState.endTime = '';
-        dmgrState.search = ''; $('#dmgr-search-input').val('');
+        dmgrState.search = ''; $('#dmgr-search-input').val(''); $('#dmgr-filter-hours').val('3');
         dmgrState.sortField = '发送时间'; dmgrState.sortOrder = 'desc';
         dmgrState.page = 1; method.loadDmgrData();
     });
@@ -312,15 +331,14 @@ $(function () {
         if (vstState.currentFile) method.loadVstData();
     });
     $(document).on('click', '#vst-btn-apply', function () {
-        vstState.startTime = ($('#vst-filter-start').val() || '');
-        vstState.endTime = ($('#vst-filter-end').val() || '');
+        applyHoursFilter(vstState, '#vst');
         vstState.search = $('#vst-search-input').val() || '';
         vstState.page = 1;
         method.loadVstData();
     });
     $(document).on('click', '#vst-btn-reset', function () {
         vstState.startTime = ''; vstState.endTime = '';
-        vstState.search = ''; $('#vst-search-input').val('');
+        vstState.search = ''; $('#vst-search-input').val(''); $('#vst-filter-hours').val('3');
         vstState.sortField = '最近'; vstState.sortOrder = 'desc';
         vstState.page = 1; method.loadVstData();
     });
@@ -354,15 +372,14 @@ $(function () {
         if (mtchState.currentFile) method.loadMtchData();
     });
     $(document).on('click', '#mtch-btn-apply', function () {
-        mtchState.startTime = ($('#mtch-filter-start').val() || '');
-        mtchState.endTime = ($('#mtch-filter-end').val() || '');
+        applyHoursFilter(mtchState, '#mtch');
         mtchState.search = $('#mtch-search-input').val() || '';
         mtchState.page = 1;
         method.loadMtchData();
     });
     $(document).on('click', '#mtch-btn-reset', function () {
         mtchState.startTime = ''; mtchState.endTime = '';
-        mtchState.search = ''; $('#mtch-search-input').val('');
+        mtchState.search = ''; $('#mtch-search-input').val(''); $('#mtch-filter-hours').val('3');
         mtchState.sortField = '最近匹配'; mtchState.sortOrder = 'desc';
         mtchState.page = 1; method.loadMtchData();
     });
@@ -396,15 +413,14 @@ $(function () {
         if (flwState.currentFile) method.loadFlwData();
     });
     $(document).on('click', '#flw-btn-apply', function () {
-        flwState.startTime = ($('#flw-filter-start').val() || '');
-        flwState.endTime = ($('#flw-filter-end').val() || '');
+        applyHoursFilter(flwState, '#flw');
         flwState.search = $('#flw-search-input').val() || '';
         flwState.page = 1;
         method.loadFlwData();
     });
     $(document).on('click', '#flw-btn-reset', function () {
         flwState.startTime = ''; flwState.endTime = '';
-        flwState.search = ''; $('#flw-search-input').val('');
+        flwState.search = ''; $('#flw-search-input').val(''); $('#flw-filter-hours').val('3');
         flwState.sortField = '最新时间'; flwState.sortOrder = 'desc';
         flwState.page = 1; method.loadFlwData();
     });
@@ -438,15 +454,14 @@ $(function () {
         if (gftState.currentFile) method.loadGftData();
     });
     $(document).on('click', '#gft-btn-apply', function () {
-        gftState.startTime = ($('#gft-filter-start').val() || '');
-        gftState.endTime = ($('#gft-filter-end').val() || '');
+        applyHoursFilter(gftState, '#gft');
         gftState.search = $('#gft-search-input').val() || '';
         gftState.page = 1;
         method.loadGftData();
     });
     $(document).on('click', '#gft-btn-reset', function () {
         gftState.startTime = ''; gftState.endTime = '';
-        gftState.search = ''; $('#gft-search-input').val('');
+        gftState.search = ''; $('#gft-search-input').val(''); $('#gft-filter-hours').val('3');
         gftState.sortField = '最新时间'; gftState.sortOrder = 'desc';
         gftState.page = 1; method.loadGftData();
     });
@@ -3200,12 +3215,7 @@ const method = {
                     lrmState.fileFirstTime = r.firstTime || '';
                     lrmState.fileLastTime = r.lastTime || '';
                     if (!lrmState.startTime && !lrmState.endTime) {
-                        var today = new Date(); today.setDate(today.getDate() + 1); today = today.toISOString().substring(0, 10);
-                        var liveStart = (r.liveStartTime || '').substring(0, 10);
-                        lrmState.startTime = liveStart || today;
-                        lrmState.endTime = today;
-                        $('#lrm-filter-start').val(lrmState.startTime);
-                        $('#lrm-filter-end').val(lrmState.endTime);
+                        applyHoursFilter(lrmState, '#lrm');
                     }
                     method.renderCsvTable(r.rows || []);
                     method.renderCsvPagination();
@@ -3554,12 +3564,7 @@ const method = {
                     dmgrState.fileFirstTime = r.firstTime || '';
                     dmgrState.fileLastTime = r.lastTime || '';
                     if (!dmgrState.startTime && !dmgrState.endTime) {
-                        var today = new Date(); today.setDate(today.getDate() + 1); today = today.toISOString().substring(0, 10);
-                        var liveStart = (r.liveStartTime || '').substring(0, 10);
-                        dmgrState.startTime = liveStart || today;
-                        dmgrState.endTime = today;
-                        $('#dmgr-filter-start').val(dmgrState.startTime);
-                        $('#dmgr-filter-end').val(dmgrState.endTime);
+                        applyHoursFilter(dmgrState, '#dmgr');
                     }
                     method.renderDmgrTable(r.rows || []);
                     method.renderDmgrPagination();
@@ -3980,12 +3985,7 @@ const method = {
                     vstState.fileFirstTime = r.firstTime || '';
                     vstState.fileLastTime = r.lastTime || '';
                     if (!vstState.startTime && !vstState.endTime) {
-                        var today = new Date(); today.setDate(today.getDate() + 1); today = today.toISOString().substring(0, 10);
-                        var liveStart = (r.liveStartTime || '').substring(0, 10);
-                        vstState.startTime = liveStart || today;
-                        vstState.endTime = today;
-                        $('#vst-filter-start').val(vstState.startTime);
-                        $('#vst-filter-end').val(vstState.endTime);
+                        applyHoursFilter(vstState, '#vst');
                     }
                     method.renderVstTable(r.rows || []);
                     method.renderVstPagination();
@@ -4304,12 +4304,7 @@ const method = {
                     else { mtchState.fileFirstTime = st1 || st2; }
                     mtchState.fileLastTime = r.lastTime || '';
                     if (!mtchState.startTime && !mtchState.endTime) {
-                        var today = new Date(); today.setDate(today.getDate() + 1); today = today.toISOString().substring(0, 10);
-                        var liveStart = (r.liveStartTime || '').substring(0, 10);
-                        mtchState.startTime = liveStart || today;
-                        mtchState.endTime = today;
-                        $('#mtch-filter-start').val(mtchState.startTime);
-                        $('#mtch-filter-end').val(mtchState.endTime);
+                        applyHoursFilter(mtchState, '#mtch');
                     }
                     method.renderMtchTable(r.rows || []);
                     method.renderMtchPagination();
@@ -4534,12 +4529,7 @@ const method = {
                     flwState.fileFirstTime = r.firstTime || '';
                     flwState.fileLastTime = r.lastTime || '';
                     if (!flwState.startTime && !flwState.endTime) {
-                        var today = new Date(); today.setDate(today.getDate() + 1); today = today.toISOString().substring(0, 10);
-                        var liveStart = (r.liveStartTime || '').substring(0, 10);
-                        flwState.startTime = liveStart || today;
-                        flwState.endTime = today;
-                        $('#flw-filter-start').val(flwState.startTime);
-                        $('#flw-filter-end').val(flwState.endTime);
+                        applyHoursFilter(flwState, '#flw');
                     }
                     method.renderFlwTable(r.rows || []);
                     method.renderFlwPagination();
@@ -4737,12 +4727,7 @@ const method = {
                     gftState.fileFirstTime = r.firstTime || '';
                     gftState.fileLastTime = r.lastTime || '';
                     if (!gftState.startTime && !gftState.endTime) {
-                        var today = new Date(); today.setDate(today.getDate() + 1); today = today.toISOString().substring(0, 10);
-                        var liveStart = (r.liveStartTime || '').substring(0, 10);
-                        gftState.startTime = liveStart || today;
-                        gftState.endTime = today;
-                        $('#gft-filter-start').val(gftState.startTime);
-                        $('#gft-filter-end').val(gftState.endTime);
+                        applyHoursFilter(gftState, '#gft');
                     }
                     method.renderGftTable(r.rows || []);
                     method.renderGftPagination();

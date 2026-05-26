@@ -408,6 +408,8 @@ public class HttpRoomData {
         }
         if (data == null)
             return null;
+
+        LogFileTools.getlogFileTools().logFollowingsFile("httpgetusercar: "+ data);
         jsonObject = JSONObject.parseObject(data);
         return jsonObject;
     }
@@ -655,7 +657,6 @@ public class HttpRoomData {
             Integer score = pnScoreMap.get(mid);
             if (score != null) {
                 blackWhiteScore += score;
-                blackWhiteType.append("[").append(followedName).append(":").append(score).append("]");
                 matchedList.add(followedName + ":" + score);
                 MatchCountTools.recordMatch(mid, followedName, score);
                 if (score < 0) {
@@ -711,12 +712,18 @@ public class HttpRoomData {
         if (schedulerCardInfoColdWait.get()) {
             SelfTools.appendAt(logSb, 160, logSbEnd.toString());
             LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
+
+            LogFileTools.getlogFileTools().logFollowingsFile("---------------------706-----------------------");
             return CompletableFuture.completedFuture(Pair.of(blackWhiteScore, blackWhiteType));
         }
 
+        LogFileTools.getlogFileTools().logFollowingsFile("---------------------710-----------------------");
         return asyncHttpGetUserCard(vmid).thenApply(dataX -> {
             int score = blackWhiteScore;
             String type = blackWhiteType;
+
+            LogFileTools.getlogFileTools().logFollowingsFile("aysnc result: "+ String.valueOf(dataX));
+
             if (dataX != null && dataX.getShort("code") == 0) {
                 JSONObject dataCard = dataX.getJSONObject("data");
                 if (dataCard != null) {

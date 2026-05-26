@@ -127,7 +127,7 @@ public final class JodaTimeUtils {
 	 */
 	public static String format(Long mills, String pattern) {
 	    String dateStr = "";
-	    if (null == mills || mills.longValue() < 0) {
+	    if (null == mills || mills.longValue() <= 0) {
 	        return dateStr;
 	    }
 	    try {
@@ -147,7 +147,7 @@ public final class JodaTimeUtils {
 	 */
 	public static String formatDateTime(Long mills) {
 	    String dateStr = "";
-	    if (null == mills || mills.longValue() < 0) {
+	    if (null == mills || mills.longValue() <= 0) {
 	        return dateStr;
 	    }
 	    try {
