@@ -678,7 +678,6 @@ public class HttpRoomData {
             logSbEnd.append("[成分:关注普通]");
         }
         blackWhiteScore  += Math.min(lurenScore, 2);
-        logSbEnd.append(" [黑白分:").append(blackWhiteScore).append("]");
 
         // 1 当前观众就在本地黑白名单里
         Integer pnScore = pnScoreMap.get(vmid);
@@ -689,14 +688,15 @@ public class HttpRoomData {
         }
 
         if (blackWhiteScore != 0 &&  !matchedList.isEmpty()) {
-            logSbEnd.append(" [分裂度:").append(blackCount * whiteCount)
+            logSbEnd.append(" [黑白分:").append(blackWhiteScore).append("]")
+                    .append(" [分裂度:").append(blackCount * whiteCount)
                     .append("] [匹配数:").append(matchedList.size())
                     .append("] 黑白名单:").append(matchedList.toJSONString());
         }
         logSbEnd.append(" 🍉🍉 关注列表:").append(followingsList.toJSONString());
 
         if (blackWhiteScore != 0) {
-            SelfTools.appendAt(logSb, 160, logSbEnd.toString());
+            SelfTools.appendAt(logSb, 180, logSbEnd.toString());
             LogFileTools.getlogFileTools().logFollowingsFile(logSb.toString());
             return CompletableFuture.completedFuture(Pair.of(blackWhiteScore, blackWhiteType.toString()));
         }
@@ -710,19 +710,15 @@ public class HttpRoomData {
     private static CompletableFuture<Pair<Integer, String>> proceedToCardCheck(long vmid, StringBuilder logSb, StringBuilder logSbEnd,
                                                                                int blackWhiteScore, String blackWhiteType) {
         if (schedulerCardInfoColdWait.get()) {
-            SelfTools.appendAt(logSb, 160, logSbEnd.toString());
+            SelfTools.appendAt(logSb, 180, logSbEnd.toString());
             LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
 
-            LogFileTools.getlogFileTools().logFollowingsFile("---------------------706-----------------------");
             return CompletableFuture.completedFuture(Pair.of(blackWhiteScore, blackWhiteType));
         }
 
-        LogFileTools.getlogFileTools().logFollowingsFile("---------------------710-----------------------");
         return asyncHttpGetUserCard(vmid).thenApply(dataX -> {
             int score = blackWhiteScore;
             String type = blackWhiteType;
-
-            LogFileTools.getlogFileTools().logFollowingsFile("aysnc result: "+ String.valueOf(dataX));
 
             if (dataX != null && dataX.getShort("code") == 0) {
                 JSONObject dataCard = dataX.getJSONObject("data");
@@ -785,7 +781,7 @@ public class HttpRoomData {
                         logSb.append(" [LV:").append(currentLevel).append("]");
                     }
 
-                    if( StringUtils.contains((CharSequence) cardInfo, "大会员") ){
+                    if( StringUtils.contains(String.valueOf(cardInfo), "大会员") ){
                         score = score + 1;
                         type = "[大会员 +1]";
                         logSb.append(type);
@@ -799,7 +795,7 @@ public class HttpRoomData {
 
                     logSb.append(" [黑白分:").append(score).append("]");
 
-                    SelfTools.appendAt(logSb, 160, logSbEnd.toString());
+                    SelfTools.appendAt(logSb, 180, logSbEnd.toString());
                     LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
                 } else {
                     logSb.append("[用户信息解析异常]");
