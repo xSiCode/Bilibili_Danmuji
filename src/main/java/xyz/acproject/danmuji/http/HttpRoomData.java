@@ -676,7 +676,7 @@ public class HttpRoomData {
         } else {
             logSbEnd.append("[成分:关注普通]");
         }
-        blackWhiteScore = Math.min(lurenScore, 2);
+        blackWhiteScore  += Math.min(lurenScore, 2);
         logSbEnd.append(" [黑白分:").append(blackWhiteScore).append("]");
 
         // 1 当前观众就在本地黑白名单里

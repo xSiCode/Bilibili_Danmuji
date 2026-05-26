@@ -2000,7 +2000,7 @@
                                         </div>
                                         <div class="col-md-6">
                                             <div class="card"><div class="card-body p-2">
-                                                <h6 class="card-title text-center" style="font-size:13px;">弹幕质量趋势</h6>
+                                                <h6 class="card-title text-center" style="font-size:13px;">弹幕长度趋势</h6>
                                                 <canvas id="dmgr-chart-quality" height="200"></canvas>
                                             </div></div>
                                         </div>
@@ -2014,7 +2014,98 @@
                                 </div>
                                 <div class="tab-pane" id="tab-gift-mgr">
                                     <div class="input-group mb-1"><h5>礼物管理</h5></div>
-                                    <p class="text-muted">功能开发中...</p>
+                                    <div class="row g-2 mb-2 align-items-end">
+                                        <div class="col-auto">
+                                            <label class="form-label mb-0" style="font-size:12px;">CSV文件</label>
+                                            <select id="gft-csv-select" class="form-select form-select-sm" style="width:260px;">
+                                                <option value="">-- 选择文件 --</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-auto">
+                                            <label class="form-label mb-0" style="font-size:12px;">开始时间</label>
+                                            <input type="datetime-local" id="gft-filter-start" class="form-control form-control-sm" style="width:200px;">
+                                        </div>
+                                        <div class="col-auto">
+                                            <label class="form-label mb-0" style="font-size:12px;">结束时间</label>
+                                            <input type="datetime-local" id="gft-filter-end" class="form-control form-control-sm" style="width:200px;">
+                                        </div>
+                                        <div class="col-auto">
+                                            <button id="gft-btn-apply" class="btn btn-sm btn-primary">筛选</button>
+                                            <button id="gft-btn-reset" class="btn btn-sm btn-outline-secondary ms-1">重置</button>
+                                        </div>
+                                        <div class="col-auto">
+                                            <input type="text" id="gft-search-input" class="form-control form-control-sm" style="width:160px;" placeholder="搜索...">
+                                        </div>
+                                        <div class="col-auto ms-auto">
+                                            <button id="gft-btn-export" class="btn btn-sm btn-success">导出CSV</button>
+                                            <button class="btn btn-sm btn-outline-warning" onclick="$('#gft-import-file').click()">导入CSV</button>
+                                            <input type="file" id="gft-import-file" accept=".csv" style="display:none;" class="import-file-input" data-file-type="gft">
+                                        </div>
+                                    </div>
+                                    <!-- 统计卡片 -->
+                                    <div class="row g-2 mt-2" id="gft-stats-row" style="display:none;">
+                                        <div class="col-auto">
+                                            <div class="card text-bg-info"><div class="card-body py-1 px-3"><small>总电池数</small><br><strong id="gft-stat-amount">0</strong></div></div>
+                                        </div>
+                                        <div class="col-auto">
+                                            <div class="card text-bg-success"><div class="card-body py-1 px-3"><small>送礼人数</small><br><strong id="gft-stat-users">0</strong></div></div>
+                                        </div>
+                                        <div class="col-auto">
+                                            <div class="card text-bg-primary"><div class="card-body py-1 px-3"><small>礼物记录数</small><br><strong id="gft-stat-records">0</strong></div></div>
+                                        </div>
+                                    </div>
+                                    <div class="gft-table-wrap">
+                                        <table id="gft-data-table" class="table table-sm table-striped" style="display:none;">
+                                            <thead id="gft-table-head">
+                                                <tr>
+                                                    <th data-sort="最新时间">最新时间</th>
+                                                    <th data-sort="id">id</th>
+                                                    <th data-sort="名字">名字</th>
+                                                    <th data-sort="赠送礼物名字">赠送礼物名字</th>
+                                                    <th data-sort="电池">电池</th>
+                                                    <th data-sort="赠礼次数">赠礼次数</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="gft-table-body"></tbody>
+                                        </table>
+                                        <div id="gft-pagination" class="d-flex justify-content-center align-items-center mt-2" style="display:none;">
+                                            <button id="gft-first-btn" class="btn btn-sm btn-outline-secondary">首页</button>
+                                            <button id="gft-prev-btn" class="btn btn-sm btn-outline-secondary ms-1">上一页</button>
+                                            <span id="gft-page-info" class="mx-2">第1页 / 共1页</span>
+                                            <button id="gft-next-btn" class="btn btn-sm btn-outline-secondary">下一页</button>
+                                            <button id="gft-last-btn" class="btn btn-sm btn-outline-secondary ms-1">尾页</button>
+                                            <span class="ms-3">跳至</span>
+                                            <input type="number" id="gft-page-jump" class="form-control form-control-sm" style="width:60px;" min="1">
+                                            <span>页</span>
+                                            <button id="gft-btn-go" class="btn btn-sm btn-outline-primary ms-1">GO</button>
+                                        </div>
+                                        <div id="gft-empty-msg" class="text-muted text-center py-3" style="display:none;">暂无数据</div>
+                                    </div>
+                                    <div class="d-flex align-items-center mt-2" id="gft-rank-limit-row" style="display:none;">
+                                        <span style="font-size:12px;" class="text-muted">礼物金额排行榜 显示数量：</span>
+                                        <input type="number" id="gft-rank-limit" class="form-control form-control-sm ms-1" style="width:70px;" min="1" value="10">
+                                        <button id="gft-btn-rank-apply" class="btn btn-sm btn-outline-primary ms-1">应用</button>
+                                    </div>
+                                    <div class="row g-2 mt-3" id="gft-charts-row" style="display:none;">
+                                        <div class="col-12">
+                                            <div class="card"><div class="card-body p-2">
+                                                <h6 class="card-title text-center" style="font-size:13px;">礼物趋势版</h6>
+                                                <canvas id="gft-chart-trend" height="160"></canvas>
+                                            </div></div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="card"><div class="card-body p-2">
+                                                <h6 class="card-title text-center" style="font-size:13px;">礼物金额排行榜</h6>
+                                                <canvas id="gft-chart-rank" height="200"></canvas>
+                                            </div></div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="card"><div class="card-body p-2">
+                                                <h6 class="card-title text-center" style="font-size:13px;">礼物名字频次榜</h6>
+                                                <canvas id="gft-chart-freq" height="200"></canvas>
+                                            </div></div>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div class="tab-pane" id="tab-audience-mgr">
                                     <div class="input-group mb-1"><h5>观众管理</h5></div>
@@ -2126,7 +2217,7 @@
                                     <div class="row g-2 mt-3" id="vst-charts-row" style="display:none;">
                                         <div class="col-md-6">
                                             <div class="card"><div class="card-body p-2">
-                                                <h6 class="card-title text-center" style="font-size:13px;">观众数量趋势</h6>
+                                                <h6 class="card-title text-center" style="font-size:13px;">观众进场趋势</h6>
                                                 <canvas id="vst-chart-count" height="200"></canvas>
                                             </div></div>
                                         </div>
@@ -2149,6 +2240,15 @@
                                             </div></div>
                                         </div>
                                     </div>
+                                    <!-- 观众成份散点图 -->
+                                    <div class="row g-2 mt-3" id="vst-scatter-row" style="display:none;">
+                                        <div class="col-12">
+                                            <div class="card"><div class="card-body p-2">
+                                                <h6 class="card-title text-center" style="font-size:13px;">观众成份</h6>
+                                                <canvas id="vst-chart-scatter" height="220"></canvas>
+                                            </div></div>
+                                        </div>
+                                    </div>
                                     <!-- 频次图 row 3 -->
                                     <div class="row g-2 mt-3" id="vst-freq-charts-row" style="display:none;">
                                         <div class="col-md-6">
@@ -2167,11 +2267,164 @@
                                 </div>
                                 <div class="tab-pane" id="tab-match-mgr">
                                     <div class="input-group mb-1"><h5>匹配管理</h5></div>
-                                    <p class="text-muted">功能开发中...</p>
+                                    <!-- 文件选择 + 时间筛选 + 搜索 -->
+                                    <div class="row g-2 mb-2 align-items-end">
+                                        <div class="col-auto">
+                                            <label class="form-label mb-0" style="font-size:12px;">CSV文件</label>
+                                            <select id="mtch-csv-select" class="form-select form-select-sm" style="width:260px;">
+                                                <option value="">-- 选择文件 --</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-auto">
+                                            <label class="form-label mb-0" style="font-size:12px;">开始时间</label>
+                                            <input type="datetime-local" id="mtch-filter-start" class="form-control form-control-sm" style="width:200px;">
+                                        </div>
+                                        <div class="col-auto">
+                                            <label class="form-label mb-0" style="font-size:12px;">结束时间</label>
+                                            <input type="datetime-local" id="mtch-filter-end" class="form-control form-control-sm" style="width:200px;">
+                                        </div>
+                                        <div class="col-auto">
+                                            <button id="mtch-btn-apply" class="btn btn-sm btn-primary">筛选</button>
+                                            <button id="mtch-btn-reset" class="btn btn-sm btn-outline-secondary ms-1">重置</button>
+                                        </div>
+                                        <div class="col-auto">
+                                            <input type="text" id="mtch-search-input" class="form-control form-control-sm" style="width:160px;" placeholder="搜索...">
+                                        </div>
+                                        <div class="col-auto ms-auto">
+                                            <button id="mtch-btn-export" class="btn btn-sm btn-success">导出CSV</button>
+                                            <button class="btn btn-sm btn-outline-warning" onclick="$('#mtch-import-file').click()">导入CSV</button>
+                                            <input type="file" id="mtch-import-file" accept=".csv" style="display:none;" class="import-file-input" data-file-type="mtch">
+                                        </div>
+                                    </div>
+                                    <!-- 表格 -->
+                                    <div class="mtch-table-wrap">
+                                        <table id="mtch-data-table" class="table table-sm table-striped" style="display:none;">
+                                            <thead id="mtch-table-head">
+                                                <tr>
+                                                    <th data-sort="最近匹配">最近匹配</th>
+                                                    <th data-sort="匹配id">匹配id</th>
+                                                    <th data-sort="匹配名">匹配名</th>
+                                                    <th data-sort="匹配分">匹配分</th>
+                                                    <th data-sort="匹配次数">匹配次数</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="mtch-table-body"></tbody>
+                                        </table>
+                                        <div id="mtch-pagination" class="d-flex justify-content-center align-items-center mt-2" style="display:none;">
+                                            <button id="mtch-first-btn" class="btn btn-sm btn-outline-secondary">首页</button>
+                                            <button id="mtch-prev-btn" class="btn btn-sm btn-outline-secondary ms-1">上一页</button>
+                                            <span id="mtch-page-info" class="mx-2">第1页 / 共1页</span>
+                                            <button id="mtch-next-btn" class="btn btn-sm btn-outline-secondary">下一页</button>
+                                            <button id="mtch-last-btn" class="btn btn-sm btn-outline-secondary ms-1">尾页</button>
+                                            <span class="ms-3">跳至</span>
+                                            <input type="number" id="mtch-page-jump" class="form-control form-control-sm" style="width:60px;" min="1">
+                                            <span>页</span>
+                                            <button id="mtch-btn-go" class="btn btn-sm btn-outline-primary ms-1">GO</button>
+                                        </div>
+                                        <div id="mtch-empty-msg" class="text-muted text-center py-3" style="display:none;">暂无数据</div>
+                                    </div>
+                                    <!-- 排名数量控制 -->
+                                    <div class="d-flex align-items-center mt-2" id="mtch-rank-limit-row" style="display:none;">
+                                        <span style="font-size:12px;" class="text-muted">匹配排行榜 显示数量：</span>
+                                        <input type="number" id="mtch-rank-limit" class="form-control form-control-sm ms-1" style="width:70px;" min="1" value="10">
+                                        <button id="mtch-btn-rank-apply" class="btn btn-sm btn-outline-primary ms-1">应用</button>
+                                    </div>
+                                    <!-- 图表区 -->
+                                    <div class="row g-2 mt-3" id="mtch-charts-row" style="display:none;">
+                                        <div class="col-md-4">
+                                            <div class="card"><div class="card-body p-2">
+                                                <h6 class="card-title text-center" style="font-size:13px;">匹配分分布</h6>
+                                                <canvas id="mtch-chart-score" height="200"></canvas>
+                                            </div></div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="card"><div class="card-body p-2">
+                                                <h6 class="card-title text-center" style="font-size:13px;">匹配频次分布</h6>
+                                                <canvas id="mtch-chart-freq" height="200"></canvas>
+                                            </div></div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="card"><div class="card-body p-2">
+                                                <h6 class="card-title text-center" style="font-size:13px;">匹配次数排行</h6>
+                                                <canvas id="mtch-chart-rank" height="200"></canvas>
+                                            </div></div>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div class="tab-pane" id="tab-follow-mgr">
                                     <div class="input-group mb-1"><h5>关注管理</h5></div>
-                                    <p class="text-muted">功能开发中...</p>
+                                    <div class="row g-2 mb-2 align-items-end">
+                                        <div class="col-auto">
+                                            <label class="form-label mb-0" style="font-size:12px;">CSV文件</label>
+                                            <select id="flw-csv-select" class="form-select form-select-sm" style="width:260px;">
+                                                <option value="">-- 选择文件 --</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-auto">
+                                            <label class="form-label mb-0" style="font-size:12px;">开始时间</label>
+                                            <input type="datetime-local" id="flw-filter-start" class="form-control form-control-sm" style="width:200px;">
+                                        </div>
+                                        <div class="col-auto">
+                                            <label class="form-label mb-0" style="font-size:12px;">结束时间</label>
+                                            <input type="datetime-local" id="flw-filter-end" class="form-control form-control-sm" style="width:200px;">
+                                        </div>
+                                        <div class="col-auto">
+                                            <button id="flw-btn-apply" class="btn btn-sm btn-primary">筛选</button>
+                                            <button id="flw-btn-reset" class="btn btn-sm btn-outline-secondary ms-1">重置</button>
+                                        </div>
+                                        <div class="col-auto">
+                                            <input type="text" id="flw-search-input" class="form-control form-control-sm" style="width:160px;" placeholder="搜索...">
+                                        </div>
+                                        <div class="col-auto ms-auto">
+                                            <button id="flw-btn-export" class="btn btn-sm btn-success">导出CSV</button>
+                                            <button class="btn btn-sm btn-outline-warning" onclick="$('#flw-import-file').click()">导入CSV</button>
+                                            <input type="file" id="flw-import-file" accept=".csv" style="display:none;" class="import-file-input" data-file-type="flw">
+                                        </div>
+                                    </div>
+                                    <div class="flw-table-wrap">
+                                        <table id="flw-data-table" class="table table-sm table-striped" style="display:none;">
+                                            <thead id="flw-table-head">
+                                                <tr>
+                                                    <th data-sort="最新时间">最新时间</th>
+                                                    <th data-sort="id">id</th>
+                                                    <th data-sort="名字">名字</th>
+                                                    <th data-sort="次数">次数</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="flw-table-body"></tbody>
+                                        </table>
+                                        <div id="flw-pagination" class="d-flex justify-content-center align-items-center mt-2" style="display:none;">
+                                            <button id="flw-first-btn" class="btn btn-sm btn-outline-secondary">首页</button>
+                                            <button id="flw-prev-btn" class="btn btn-sm btn-outline-secondary ms-1">上一页</button>
+                                            <span id="flw-page-info" class="mx-2">第1页 / 共1页</span>
+                                            <button id="flw-next-btn" class="btn btn-sm btn-outline-secondary">下一页</button>
+                                            <button id="flw-last-btn" class="btn btn-sm btn-outline-secondary ms-1">尾页</button>
+                                            <span class="ms-3">跳至</span>
+                                            <input type="number" id="flw-page-jump" class="form-control form-control-sm" style="width:60px;" min="1">
+                                            <span>页</span>
+                                            <button id="flw-btn-go" class="btn btn-sm btn-outline-primary ms-1">GO</button>
+                                        </div>
+                                        <div id="flw-empty-msg" class="text-muted text-center py-3" style="display:none;">暂无数据</div>
+                                    </div>
+                                    <div class="d-flex align-items-center mt-2" id="flw-rank-limit-row" style="display:none;">
+                                        <span style="font-size:12px;" class="text-muted">关注排行榜 显示数量：</span>
+                                        <input type="number" id="flw-rank-limit" class="form-control form-control-sm ms-1" style="width:70px;" min="1" value="10">
+                                        <button id="flw-btn-rank-apply" class="btn btn-sm btn-outline-primary ms-1">应用</button>
+                                    </div>
+                                    <div class="row g-2 mt-3" id="flw-charts-row" style="display:none;">
+                                        <div class="col-md-6">
+                                            <div class="card"><div class="card-body p-2">
+                                                <h6 class="card-title text-center" style="font-size:13px;">关注频次分布</h6>
+                                                <canvas id="flw-chart-freq" height="200"></canvas>
+                                            </div></div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="card"><div class="card-body p-2">
+                                                <h6 class="card-title text-center" style="font-size:13px;">关注次数排行</h6>
+                                                <canvas id="flw-chart-rank" height="200"></canvas>
+                                            </div></div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>

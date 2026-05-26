@@ -19,6 +19,63 @@ let vstState = {
     columnOrder: [0, 1, 2, 3, 4, 5, 6, 7],
     chartInstances: {}
 };
+// 匹配管理 state
+let mtchState = {
+    currentFile: '',
+    startTime: '',
+    endTime: '',
+    fileFirstTime: '',
+    fileLastTime: '',
+    search: '',
+    page: 1,
+    pageSize: 10,
+    totalPages: 1,
+    totalRows: 0,
+    sortField: '最近匹配',
+    sortOrder: 'asc',
+    rankLimit: 10,
+    headers: ['最近匹配', '匹配id', '匹配名', '匹配分', '匹配次数'],
+    columnOrder: [0, 1, 2, 3, 4],
+    chartInstances: {}
+};
+// 关注人管理 state
+let flwState = {
+    currentFile: '',
+    startTime: '',
+    endTime: '',
+    fileFirstTime: '',
+    fileLastTime: '',
+    search: '',
+    page: 1,
+    pageSize: 10,
+    totalPages: 1,
+    totalRows: 0,
+    sortField: '最新时间',
+    sortOrder: 'asc',
+    rankLimit: 10,
+    headers: ['最新时间', 'id', '名字', '次数'],
+    columnOrder: [0, 1, 2, 3],
+    chartInstances: {}
+};
+// 礼物管理 state
+let gftState = {
+    currentFile: '',
+    startTime: '',
+    endTime: '',
+    fileFirstTime: '',
+    fileLastTime: '',
+    search: '',
+    page: 1,
+    pageSize: 10,
+    totalPages: 1,
+    totalRows: 0,
+    sortField: '最新时间',
+    sortOrder: 'asc',
+    rankLimit: 10,
+    headers: ['最新时间', 'id', '名字', '赠送礼物名字', '电池', '赠礼次数'],
+    columnOrder: [0, 1, 2, 3, 4, 5],
+    chartInstances: {}
+};
 // 弹幕管理 state
 let dmgrState = {
     currentFile: '',
@@ -263,6 +320,144 @@ $(function () {
     });
     $(document).on('click', '#vst-table-head th[data-sort]', function () {
         method.sortVstColumn($(this).data('sort'));
+    });
+    // ========== 匹配管理 event bindings ==========
+    $(document).on('change', '#mtch-csv-select', function () {
+        mtchState.currentFile = $(this).val();
+        mtchState.startTime = ''; mtchState.endTime = ''; mtchState.search = '';
+        $('#mtch-search-input').val('');
+        mtchState.sortField = '最近匹配'; mtchState.sortOrder = 'asc';
+        mtchState.page = 1;
+        if (mtchState.currentFile) method.loadMtchData();
+    });
+    $(document).on('click', '#mtch-btn-apply', function () {
+        mtchState.startTime = ($('#mtch-filter-start').val() || '').replace('T', ' ');
+        mtchState.endTime = ($('#mtch-filter-end').val() || '').replace('T', ' ');
+        mtchState.search = $('#mtch-search-input').val() || '';
+        mtchState.page = 1;
+        method.loadMtchData();
+    });
+    $(document).on('click', '#mtch-btn-reset', function () {
+        mtchState.startTime = mtchState.fileFirstTime; mtchState.endTime = mtchState.fileLastTime;
+        mtchState.search = ''; $('#mtch-search-input').val('');
+        $('#mtch-filter-start').val(mtchState.fileFirstTime.replace(' ', 'T'));
+        $('#mtch-filter-end').val(mtchState.fileLastTime.replace(' ', 'T'));
+        mtchState.sortField = '最近匹配'; mtchState.sortOrder = 'asc';
+        mtchState.page = 1; method.loadMtchData();
+    });
+    $(document).on('keypress', '#mtch-search-input', function (e) {
+        if (e.which === 13) { mtchState.search = $(this).val() || ''; mtchState.page = 1; method.loadMtchData(); }
+    });
+    $(document).on('click', '#mtch-btn-export', function () { method.exportMtchCsv(); });
+    $(document).on('click', '#mtch-first-btn', function () { if (mtchState.page > 1) { mtchState.page = 1; method.loadMtchData(); } });
+    $(document).on('click', '#mtch-prev-btn', function () { if (mtchState.page > 1) { mtchState.page--; method.loadMtchData(); } });
+    $(document).on('click', '#mtch-next-btn', function () { if (mtchState.page < mtchState.totalPages) { mtchState.page++; method.loadMtchData(); } });
+    $(document).on('click', '#mtch-last-btn', function () { if (mtchState.page < mtchState.totalPages) { mtchState.page = mtchState.totalPages; method.loadMtchData(); } });
+    $(document).on('click', '#mtch-btn-go', function () { method.gotoMtchPage($('#mtch-page-jump').val()); });
+    $(document).on('keypress', '#mtch-page-jump', function (e) { if (e.which === 13) method.gotoMtchPage($(this).val()); });
+    $(document).on('click', '#mtch-btn-rank-apply', function () {
+        var v = parseInt($('#mtch-rank-limit').val());
+        if (isNaN(v) || v < 1) v = 1;
+        var maxV = parseInt($('#mtch-rank-limit').attr('max')) || 10;
+        if (v > maxV) v = maxV;
+        mtchState.rankLimit = v;
+        $('#mtch-rank-limit').val(v);
+        method.renderMtchCharts();
+    });
+    $(document).on('click', '#mtch-table-head th[data-sort]', function () {
+        method.sortMtchColumn($(this).data('sort'));
+    });
+    // ========== 关注人管理 event bindings ==========
+    $(document).on('change', '#flw-csv-select', function () {
+        flwState.currentFile = $(this).val();
+        flwState.startTime = ''; flwState.endTime = ''; flwState.search = '';
+        $('#flw-search-input').val('');
+        flwState.sortField = '最新时间'; flwState.sortOrder = 'asc';
+        flwState.page = 1;
+        if (flwState.currentFile) method.loadFlwData();
+    });
+    $(document).on('click', '#flw-btn-apply', function () {
+        flwState.startTime = ($('#flw-filter-start').val() || '').replace('T', ' ');
+        flwState.endTime = ($('#flw-filter-end').val() || '').replace('T', ' ');
+        flwState.search = $('#flw-search-input').val() || '';
+        flwState.page = 1;
+        method.loadFlwData();
+    });
+    $(document).on('click', '#flw-btn-reset', function () {
+        flwState.startTime = flwState.fileFirstTime; flwState.endTime = flwState.fileLastTime;
+        flwState.search = ''; $('#flw-search-input').val('');
+        $('#flw-filter-start').val(flwState.fileFirstTime.replace(' ', 'T'));
+        $('#flw-filter-end').val(flwState.fileLastTime.replace(' ', 'T'));
+        flwState.sortField = '最新时间'; flwState.sortOrder = 'asc';
+        flwState.page = 1; method.loadFlwData();
+    });
+    $(document).on('keypress', '#flw-search-input', function (e) {
+        if (e.which === 13) { flwState.search = $(this).val() || ''; flwState.page = 1; method.loadFlwData(); }
+    });
+    $(document).on('click', '#flw-btn-export', function () { method.exportFlwCsv(); });
+    $(document).on('click', '#flw-first-btn', function () { if (flwState.page > 1) { flwState.page = 1; method.loadFlwData(); } });
+    $(document).on('click', '#flw-prev-btn', function () { if (flwState.page > 1) { flwState.page--; method.loadFlwData(); } });
+    $(document).on('click', '#flw-next-btn', function () { if (flwState.page < flwState.totalPages) { flwState.page++; method.loadFlwData(); } });
+    $(document).on('click', '#flw-last-btn', function () { if (flwState.page < flwState.totalPages) { flwState.page = flwState.totalPages; method.loadFlwData(); } });
+    $(document).on('click', '#flw-btn-go', function () { method.gotoFlwPage($('#flw-page-jump').val()); });
+    $(document).on('keypress', '#flw-page-jump', function (e) { if (e.which === 13) method.gotoFlwPage($(this).val()); });
+    $(document).on('click', '#flw-btn-rank-apply', function () {
+        var v = parseInt($('#flw-rank-limit').val());
+        if (isNaN(v) || v < 1) v = 1;
+        var maxV = parseInt($('#flw-rank-limit').attr('max')) || 10;
+        if (v > maxV) v = maxV;
+        flwState.rankLimit = v;
+        $('#flw-rank-limit').val(v);
+        method.renderFlwCharts();
+    });
+    $(document).on('click', '#flw-table-head th[data-sort]', function () {
+        method.sortFlwColumn($(this).data('sort'));
+    });
+    // ========== 礼物管理 event bindings ==========
+    $(document).on('change', '#gft-csv-select', function () {
+        gftState.currentFile = $(this).val();
+        gftState.startTime = ''; gftState.endTime = ''; gftState.search = '';
+        $('#gft-search-input').val('');
+        gftState.sortField = '最新时间'; gftState.sortOrder = 'asc';
+        gftState.page = 1;
+        if (gftState.currentFile) method.loadGftData();
+    });
+    $(document).on('click', '#gft-btn-apply', function () {
+        gftState.startTime = ($('#gft-filter-start').val() || '').replace('T', ' ');
+        gftState.endTime = ($('#gft-filter-end').val() || '').replace('T', ' ');
+        gftState.search = $('#gft-search-input').val() || '';
+        gftState.page = 1;
+        method.loadGftData();
+    });
+    $(document).on('click', '#gft-btn-reset', function () {
+        gftState.startTime = gftState.fileFirstTime; gftState.endTime = gftState.fileLastTime;
+        gftState.search = ''; $('#gft-search-input').val('');
+        $('#gft-filter-start').val(gftState.fileFirstTime.replace(' ', 'T'));
+        $('#gft-filter-end').val(gftState.fileLastTime.replace(' ', 'T'));
+        gftState.sortField = '最新时间'; gftState.sortOrder = 'asc';
+        gftState.page = 1; method.loadGftData();
+    });
+    $(document).on('keypress', '#gft-search-input', function (e) {
+        if (e.which === 13) { gftState.search = $(this).val() || ''; gftState.page = 1; method.loadGftData(); }
+    });
+    $(document).on('click', '#gft-btn-export', function () { method.exportGftCsv(); });
+    $(document).on('click', '#gft-first-btn', function () { if (gftState.page > 1) { gftState.page = 1; method.loadGftData(); } });
+    $(document).on('click', '#gft-prev-btn', function () { if (gftState.page > 1) { gftState.page--; method.loadGftData(); } });
+    $(document).on('click', '#gft-next-btn', function () { if (gftState.page < gftState.totalPages) { gftState.page++; method.loadGftData(); } });
+    $(document).on('click', '#gft-last-btn', function () { if (gftState.page < gftState.totalPages) { gftState.page = gftState.totalPages; method.loadGftData(); } });
+    $(document).on('click', '#gft-btn-go', function () { method.gotoGftPage($('#gft-page-jump').val()); });
+    $(document).on('keypress', '#gft-page-jump', function (e) { if (e.which === 13) method.gotoGftPage($(this).val()); });
+    $(document).on('click', '#gft-btn-rank-apply', function () {
+        var v = parseInt($('#gft-rank-limit').val());
+        if (isNaN(v) || v < 1) v = 1;
+        var maxV = parseInt($('#gft-rank-limit').attr('max')) || 10;
+        if (v > maxV) v = maxV;
+        gftState.rankLimit = v;
+        $('#gft-rank-limit').val(v);
+        method.renderGftCharts();
+    });
+    $(document).on('click', '#gft-table-head th[data-sort]', function () {
+        method.sortGftColumn($(this).data('sort'));
     });
 
     publicData.set = method.initSet(method.getSet());
@@ -2382,6 +2577,12 @@ const method = {
             url = "../importBarrageCsvFile";
         } else if (fileType === 'vst') {
             url = "../importVisitorCsvFile";
+        } else if (fileType === 'mtch') {
+            url = "../importMatchCsvFile";
+        } else if (fileType === 'flw') {
+            url = "../importFollowCsvFile";
+        } else if (fileType === 'gft') {
+            url = "../importGiftCsvFile";
         } else {
             url = "../setImport";
         }
@@ -2408,6 +2609,12 @@ const method = {
                         method.loadDmgrCsvFileList();
                     } else if (fileType === 'vst') {
                         method.loadVstCsvFileList();
+                    } else if (fileType === 'mtch') {
+                        method.loadMtchCsvFileList();
+                    } else if (fileType === 'flw') {
+                        method.loadFlwCsvFileList();
+                    } else if (fileType === 'gft') {
+                        method.loadGftCsvFileList();
                     } else {
                         setTimeout(function () { location.reload(); }, 1200);
                     }
@@ -3687,7 +3894,7 @@ const method = {
                         $('#vst-stats-row, #vst-rank-limit-row').show();
                     } else {
                         $('#vst-stats-row, #vst-rank-limit-row').hide();
-                        $('#vst-charts-row, #vst-freq-charts-row').hide();
+                        $('#vst-charts-row, #vst-freq-charts-row, #vst-scatter-row').hide();
                     }
                 }
             }
@@ -3768,7 +3975,7 @@ const method = {
             data: { filePath: vstState.currentFile, startTime: vstState.startTime || '', endTime: vstState.endTime || '', limit: vstState.rankLimit },
             dataType: 'json', async: false,
             success: function (data) {
-                if (data.code != "200" || !data.result) { $('#vst-charts-row, #vst-freq-charts-row').hide(); return; }
+                if (data.code != "200" || !data.result) { $('#vst-charts-row, #vst-freq-charts-row, #vst-scatter-row').hide(); return; }
                 var s = data.result;
                 var perInt = s.perIntervalData || [];
                 var top5 = s.top15Visitors || [];
@@ -3776,7 +3983,8 @@ const method = {
                 var scoreDist = s.scoreDistribution || [];
                 var visitFreq = s.visitCountDist || [];
                 var fieldFreq = s.fieldCountDist || [];
-                if (perInt.length === 0 && top5.length === 0 && fieldRank.length === 0 && scoreDist.length === 0) { $('#vst-charts-row').hide(); return; }
+                var scatterData = s.scatterData || [];
+                if (perInt.length === 0 && top5.length === 0 && fieldRank.length === 0 && scoreDist.length === 0) { $('#vst-charts-row,#vst-scatter-row').hide(); return; }
                 $('#vst-charts-row').show();
 
                 // Chart 1: 观众数量 line
@@ -3852,6 +4060,25 @@ const method = {
                         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (ctx) { return ' 场次 ' + ctx.label + ': ' + ctx.raw.toLocaleString() + ' 人'; } } } }, scales: { x: { ticks: { font: { size: 10 } }, title: { display: true, text: '场次', font: { size: 10 } } }, y: { ticks: { font: { size: 10 } }, title: { display: true, text: '频次(人数)', font: { size: 10 } } } } }
                     });
                 }
+
+                // Chart 7: 观众成份 scatter
+                if (scatterData.length > 0) {
+                    $('#vst-scatter-row').show();
+                    var ctx7 = document.getElementById('vst-chart-scatter').getContext('2d');
+                    var scatterPoints = scatterData.map(function (d) {
+                        var ms = new Date(d.time.replace(' ', 'T')).getTime();
+                        return { x: ms, y: d.score, name: d.name };
+                    });
+                    vstState.chartInstances.scatter = new Chart(ctx7, {
+                        type: 'scatter', data: {
+                            datasets: [{ label: '观众', data: scatterPoints, pointRadius: 4, pointHoverRadius: 7,
+                                pointBackgroundColor: function (ctx) { var v = ctx.raw.y; return v > 0 ? 'rgba(25,135,84,0.6)' : v < 0 ? 'rgba(220,53,69,0.6)' : 'rgba(13,110,253,0.6)'; },
+                                pointBorderColor: function (ctx) { var v = ctx.raw.y; return v > 0 ? '#198754' : v < 0 ? '#dc3545' : '#0d6efd'; }
+                            }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (ctx) { return ' ' + (ctx.raw.name || '') + ' 分数:' + ctx.raw.y; } } } }, scales: { x: { ticks: { font: { size: 10 }, callback: function (v) { var d = new Date(v); var M = d.getMonth() + 1, D = d.getDate(), h = d.getHours(), m = d.getMinutes(); return M + '/' + D + ' ' + (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m; } }, title: { display: true, text: '时间', font: { size: 10 } } }, y: { ticks: { font: { size: 10 } }, title: { display: true, text: '打分', font: { size: 10 } } } } }
+                    });
+                } else { $('#vst-scatter-row').hide(); }
             }
         });
     },
@@ -3905,6 +4132,631 @@ const method = {
                 });
                 vstState.columnOrder = order;
                 method.loadVstData();
+            }
+        });
+    },
+
+    // ========== 匹配管理 ==========
+
+    loadMtchCsvFileList: function () {
+        $.ajax({
+            url: '../listMatchCsvFiles',
+            type: 'GET',
+            dataType: 'json',
+            success: function (data) {
+                if (data.code == "200" && data.result) {
+                    var $select = $('#mtch-csv-select');
+                    $select.find('option[value!=""]').remove();
+                    var firstOpt = null;
+                    $.each(data.result, function (i, f) {
+                        var label = f.fileName + (f.anchorName ? ' (' + f.anchorName + ')' : '');
+                        var opt = $('<option>').val(f.filePath).text(label);
+                        if (f.isCurrent === '1') { firstOpt = opt; opt.text(opt.text() + ' *'); }
+                        $select.append(opt);
+                    });
+                    if (firstOpt) {
+                        $select.val(firstOpt.val());
+                        mtchState.currentFile = firstOpt.val();
+                    }
+                    if (mtchState.currentFile) method.loadMtchData();
+                }
+            }
+        });
+    },
+
+    loadMtchData: function () {
+        if (!mtchState.currentFile) return;
+        $.ajax({
+            url: '../readMatchCsvData',
+            type: 'GET',
+            data: {
+                filePath: mtchState.currentFile,
+                page: mtchState.page,
+                pageSize: mtchState.pageSize,
+                startTime: mtchState.startTime || '',
+                endTime: mtchState.endTime || '',
+                search: mtchState.search || '',
+                sortField: mtchState.sortField,
+                sortOrder: mtchState.sortOrder
+            },
+            dataType: 'json',
+            success: function (data) {
+                if (data.code == "200" && data.result) {
+                    var r = data.result;
+                    mtchState.page = r.currentPage || 1;
+                    mtchState.totalPages = r.totalPages || 0;
+                    mtchState.totalRows = r.total || 0;
+                    var st1 = r.firstTime || '';
+                    var st2 = r.firstTime || '';
+                    if (st1 && st2) { mtchState.fileFirstTime = st1 < st2 ? st1 : st2; }
+                    else { mtchState.fileFirstTime = st1 || st2; }
+                    mtchState.fileLastTime = r.lastTime || '';
+                    if (!mtchState.startTime && !mtchState.endTime && mtchState.fileFirstTime && r.lastTime) {
+                        mtchState.startTime = mtchState.fileFirstTime;
+                        mtchState.endTime = r.lastTime;
+                        $('#mtch-filter-start').val(mtchState.fileFirstTime.replace(' ', 'T'));
+                        $('#mtch-filter-end').val(r.lastTime.replace(' ', 'T'));
+                    }
+                    method.renderMtchTable(r.rows || []);
+                    method.renderMtchPagination();
+                    if (r.total > 0) {
+                        method.renderMtchCharts();
+                        $('#mtch-rank-limit-row').show();
+                    } else {
+                        $('#mtch-rank-limit-row').hide();
+                        $('#mtch-charts-row').hide();
+                    }
+                }
+            }
+        });
+    },
+
+    renderMtchTable: function (rows) {
+        var $tbody = $('#mtch-table-body');
+        var $table = $('#mtch-data-table');
+        var $empty = $('#mtch-empty-msg');
+        $tbody.empty();
+        if (!rows || rows.length === 0) {
+            $table.hide(); $('#mtch-pagination').hide(); $empty.show(); return;
+        }
+        $empty.hide(); $table.show();
+        var cols = mtchState.headers;
+        $.each(rows, function (i, row) {
+            var tr = '<tr>';
+            $.each(mtchState.columnOrder, function (j, colIdx) {
+                if (colIdx < cols.length) {
+                    tr += '<td>' + (row[cols[colIdx]] || '') + '</td>';
+                }
+            });
+            tr += '</tr>';
+            $tbody.append(tr);
+        });
+        $('#mtch-table-head th[data-sort]').each(function () {
+            var f = $(this).data('sort');
+            $(this).text(f);
+            if (f === mtchState.sortField) {
+                $(this).text(f + ' ' + (mtchState.sortOrder === 'asc' ? '▲' : '▼'));
+            }
+        });
+        setTimeout(function () { method.initMtchColumnDrag(); }, 100);
+    },
+
+    renderMtchPagination: function () {
+        var $p = $('#mtch-pagination');
+        if (mtchState.totalPages <= 0) { $p.hide(); return; }
+        $p.show();
+        $('#mtch-page-info').text('第' + mtchState.page + '页 / 共' + mtchState.totalPages + '页');
+        $('#mtch-page-jump').attr('max', mtchState.totalPages).val('');
+        var isFirst = mtchState.page <= 1, isLast = mtchState.page >= mtchState.totalPages;
+        $('#mtch-first-btn, #mtch-prev-btn').prop('disabled', isFirst);
+        $('#mtch-next-btn, #mtch-last-btn').prop('disabled', isLast);
+    },
+
+    gotoMtchPage: function (p) {
+        p = parseInt(p);
+        if (isNaN(p) || p < 1) p = 1;
+        if (p > mtchState.totalPages) p = mtchState.totalPages;
+        if (p === mtchState.page) return;
+        mtchState.page = p;
+        method.loadMtchData();
+    },
+
+    sortMtchColumn: function (field) {
+        if (mtchState.sortField === field) {
+            mtchState.sortOrder = mtchState.sortOrder === 'asc' ? 'desc' : 'asc';
+        } else {
+            mtchState.sortField = field;
+            mtchState.sortOrder = 'desc';
+        }
+        mtchState.page = 1;
+        method.loadMtchData();
+    },
+
+    renderMtchCharts: function () {
+        $.each(mtchState.chartInstances, function (k, c) { if (c) c.destroy(); });
+        mtchState.chartInstances = {};
+        if (!mtchState.currentFile) return;
+
+        $.ajax({
+            url: '../getMatchStatistics',
+            type: 'GET',
+            data: { filePath: mtchState.currentFile, startTime: mtchState.startTime || '', endTime: mtchState.endTime || '', limit: mtchState.rankLimit },
+            dataType: 'json',
+            success: function (data) {
+                if (data.code != "200" || !data.result) { $('#mtch-charts-row').hide(); return; }
+                var s = data.result;
+                var scoreDist = s.scoreDistribution || [];
+                var freqDist = s.matchCountDist || [];
+                var topMatches = s.topMatches || [];
+                if (scoreDist.length === 0 && freqDist.length === 0 && topMatches.length === 0) { $('#mtch-charts-row').hide(); return; }
+                $('#mtch-charts-row').show();
+
+                setTimeout(function () {
+                // Chart 1: 匹配分分布
+                if (scoreDist.length > 0) {
+                    var ctx1 = document.getElementById('mtch-chart-score').getContext('2d');
+                    mtchState.chartInstances.score = new Chart(ctx1, {
+                        type: 'bar', data: {
+                            labels: scoreDist.map(function (d) { return d.score; }),
+                            datasets: [{ label: '人数', data: scoreDist.map(function (d) { return d.count; }), backgroundColor: '#198754' }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (ctx) { return ' 匹配分 ' + ctx.label + ': ' + ctx.raw.toLocaleString() + ' 人'; } } } }, scales: { x: { ticks: { font: { size: 10 } }, title: { display: true, text: '匹配分', font: { size: 10 } } }, y: { ticks: { font: { size: 10 } }, title: { display: true, text: '人数', font: { size: 10 } } } } }
+                    });
+                }
+
+                // Chart 2: 匹配频次分布
+                if (freqDist.length > 0) {
+                    var ctx2 = document.getElementById('mtch-chart-freq').getContext('2d');
+                    mtchState.chartInstances.freq = new Chart(ctx2, {
+                        type: 'bar', data: {
+                            labels: freqDist.map(function (d) { return d.count; }),
+                            datasets: [{ label: '频次', data: freqDist.map(function (d) { return d.freq; }), backgroundColor: '#0d6efd' }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (ctx) { return ' 匹配次数 ' + ctx.label + ': ' + ctx.raw.toLocaleString() + ' 人'; } } } }, scales: { x: { ticks: { font: { size: 10 } }, title: { display: true, text: '匹配次数', font: { size: 10 } } }, y: { ticks: { font: { size: 10 } }, title: { display: true, text: '频次(人数)', font: { size: 10 } } } } }
+                    });
+                }
+
+                // Chart 3: 匹配次数排行
+                if (topMatches.length > 0) {
+                    var ctx3 = document.getElementById('mtch-chart-rank').getContext('2d');
+                    mtchState.chartInstances.rank = new Chart(ctx3, {
+                        type: 'bar', data: {
+                            labels: topMatches.map(function (d) { return d.name; }),
+                            datasets: [{ label: '匹配次数', data: topMatches.map(function (d) { return d.count; }), backgroundColor: ['#0d6efd', '#198754', '#fd7e14', '#dc3545', '#6f42c1'] }]
+                        },
+                        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (ctx) { return ' 匹配次数: ' + ctx.raw.toLocaleString(); } } } }, scales: { x: { ticks: { font: { size: 10 } }, title: { display: true, text: '匹配次数', font: { size: 10 } } }, y: { ticks: { font: { size: 10 } } } } }
+                    });
+                }
+                }, 50);
+            }
+        });
+    },
+
+    exportMtchCsv: function () {
+        if (!mtchState.currentFile) return;
+        var url = '../exportMatchFilteredCsv?filePath=' + encodeURIComponent(mtchState.currentFile);
+        if (mtchState.startTime) url += '&startTime=' + encodeURIComponent(mtchState.startTime);
+        if (mtchState.endTime) url += '&endTime=' + encodeURIComponent(mtchState.endTime);
+        if (mtchState.search) url += '&search=' + encodeURIComponent(mtchState.search);
+        window.open(url, '_blank');
+    },
+
+    initMtchColumnDrag: function () {
+        var thead = document.getElementById('mtch-table-head');
+        if (!thead || thead.sortableInstance) return;
+        thead.sortableInstance = new Sortable(thead, {
+            animation: 150, ghostClass: 'sortable-ghost', chosenClass: 'sortable-chosen',
+            onEnd: function () {
+                var order = [];
+                $('#mtch-table-head th').each(function () {
+                    var txt = $(this).text().replace(/ [▲▼]/, '');
+                    var idx = mtchState.headers.indexOf(txt);
+                    if (idx >= 0) order.push(idx);
+                });
+                if (order.length === mtchState.headers.length) {
+                    mtchState.columnOrder = order;
+                    method.loadMtchData();
+                }
+            }
+        });
+    },
+
+    // ========== 关注人管理 ==========
+
+    loadFlwCsvFileList: function () {
+        $.ajax({
+            url: '../listFollowCsvFiles',
+            type: 'GET',
+            dataType: 'json',
+            success: function (data) {
+                if (data.code == "200" && data.result) {
+                    var $select = $('#flw-csv-select');
+                    $select.find('option[value!=""]').remove();
+                    var firstOpt = null;
+                    $.each(data.result, function (i, f) {
+                        var label = f.fileName + (f.anchorName ? ' (' + f.anchorName + ')' : '');
+                        var opt = $('<option>').val(f.filePath).text(label);
+                        if (f.isCurrent === '1') { firstOpt = opt; opt.text(opt.text() + ' *'); }
+                        $select.append(opt);
+                    });
+                    if (firstOpt) {
+                        $select.val(firstOpt.val());
+                        flwState.currentFile = firstOpt.val();
+                    }
+                    if (flwState.currentFile) method.loadFlwData();
+                }
+            }
+        });
+    },
+
+    loadFlwData: function () {
+        if (!flwState.currentFile) return;
+        $.ajax({
+            url: '../readFollowCsvData',
+            type: 'GET',
+            data: {
+                filePath: flwState.currentFile,
+                page: flwState.page,
+                pageSize: flwState.pageSize,
+                startTime: flwState.startTime || '',
+                endTime: flwState.endTime || '',
+                search: flwState.search || '',
+                sortField: flwState.sortField,
+                sortOrder: flwState.sortOrder
+            },
+            dataType: 'json',
+            success: function (data) {
+                if (data.code == "200" && data.result) {
+                    var r = data.result;
+                    flwState.page = r.currentPage || 1;
+                    flwState.totalPages = r.totalPages || 0;
+                    flwState.totalRows = r.total || 0;
+                    flwState.fileFirstTime = r.firstTime || '';
+                    flwState.fileLastTime = r.lastTime || '';
+                    if (!flwState.startTime && !flwState.endTime && flwState.fileFirstTime && r.lastTime) {
+                        flwState.startTime = flwState.fileFirstTime;
+                        flwState.endTime = r.lastTime;
+                        $('#flw-filter-start').val(flwState.fileFirstTime.replace(' ', 'T'));
+                        $('#flw-filter-end').val(r.lastTime.replace(' ', 'T'));
+                    }
+                    method.renderFlwTable(r.rows || []);
+                    method.renderFlwPagination();
+                    if (r.total > 0) {
+                        method.renderFlwCharts();
+                        $('#flw-rank-limit-row').show();
+                    } else {
+                        $('#flw-rank-limit-row').hide();
+                        $('#flw-charts-row').hide();
+                    }
+                }
+            }
+        });
+    },
+
+    renderFlwTable: function (rows) {
+        var $tbody = $('#flw-table-body');
+        var $table = $('#flw-data-table');
+        var $empty = $('#flw-empty-msg');
+        $tbody.empty();
+        if (!rows || rows.length === 0) {
+            $table.hide(); $('#flw-pagination').hide(); $empty.show(); return;
+        }
+        $empty.hide(); $table.show();
+        var cols = flwState.headers;
+        $.each(rows, function (i, row) {
+            var tr = '<tr>';
+            $.each(flwState.columnOrder, function (j, colIdx) {
+                if (colIdx < cols.length) {
+                    tr += '<td>' + (row[cols[colIdx]] || '') + '</td>';
+                }
+            });
+            tr += '</tr>';
+            $tbody.append(tr);
+        });
+        $('#flw-table-head th[data-sort]').each(function () {
+            var f = $(this).data('sort');
+            $(this).text(f);
+            if (f === flwState.sortField) {
+                $(this).text(f + ' ' + (flwState.sortOrder === 'asc' ? '▲' : '▼'));
+            }
+        });
+        setTimeout(function () { method.initFlwColumnDrag(); }, 100);
+    },
+
+    renderFlwPagination: function () {
+        var $p = $('#flw-pagination');
+        if (flwState.totalPages <= 0) { $p.hide(); return; }
+        $p.show();
+        $('#flw-page-info').text('第' + flwState.page + '页 / 共' + flwState.totalPages + '页');
+        $('#flw-page-jump').attr('max', flwState.totalPages).val('');
+        var isFirst = flwState.page <= 1, isLast = flwState.page >= flwState.totalPages;
+        $('#flw-first-btn, #flw-prev-btn').prop('disabled', isFirst);
+        $('#flw-next-btn, #flw-last-btn').prop('disabled', isLast);
+    },
+
+    gotoFlwPage: function (p) {
+        p = parseInt(p);
+        if (isNaN(p) || p < 1) p = 1;
+        if (p > flwState.totalPages) p = flwState.totalPages;
+        if (p === flwState.page) return;
+        flwState.page = p;
+        method.loadFlwData();
+    },
+
+    sortFlwColumn: function (field) {
+        if (flwState.sortField === field) {
+            flwState.sortOrder = flwState.sortOrder === 'asc' ? 'desc' : 'asc';
+        } else {
+            flwState.sortField = field;
+            flwState.sortOrder = 'desc';
+        }
+        flwState.page = 1;
+        method.loadFlwData();
+    },
+
+    renderFlwCharts: function () {
+        $.each(flwState.chartInstances, function (k, c) { if (c) c.destroy(); });
+        flwState.chartInstances = {};
+        if (!flwState.currentFile) return;
+
+        $.ajax({
+            url: '../getFollowStatistics',
+            type: 'GET',
+            data: { filePath: flwState.currentFile, startTime: flwState.startTime || '', endTime: flwState.endTime || '', limit: flwState.rankLimit },
+            dataType: 'json',
+            success: function (data) {
+                if (data.code != "200" || !data.result) { $('#flw-charts-row').hide(); return; }
+                var s = data.result;
+                var freqDist = s.countDist || [];
+                var topFollows = s.topFollows || [];
+                if (freqDist.length === 0 && topFollows.length === 0) { $('#flw-charts-row').hide(); return; }
+                $('#flw-charts-row').show();
+
+                setTimeout(function () {
+                // Chart 1: 关注频次分布
+                if (freqDist.length > 0) {
+                    var ctx1 = document.getElementById('flw-chart-freq').getContext('2d');
+                    flwState.chartInstances.freq = new Chart(ctx1, {
+                        type: 'bar', data: {
+                            labels: freqDist.map(function (d) { return d.count; }),
+                            datasets: [{ label: '频次', data: freqDist.map(function (d) { return d.freq; }), backgroundColor: '#0d6efd' }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (ctx) { return ' 次数 ' + ctx.label + ': ' + ctx.raw.toLocaleString() + ' 人'; } } } }, scales: { x: { ticks: { font: { size: 10 } }, title: { display: true, text: '次数', font: { size: 10 } } }, y: { ticks: { font: { size: 10 } }, title: { display: true, text: '频次(人数)', font: { size: 10 } } } } }
+                    });
+                }
+
+                // Chart 2: 关注次数排行
+                if (topFollows.length > 0) {
+                    var ctx2 = document.getElementById('flw-chart-rank').getContext('2d');
+                    flwState.chartInstances.rank = new Chart(ctx2, {
+                        type: 'bar', data: {
+                            labels: topFollows.map(function (d) { return d.name; }),
+                            datasets: [{ label: '次数', data: topFollows.map(function (d) { return d.count; }), backgroundColor: ['#0d6efd', '#198754', '#fd7e14', '#dc3545', '#6f42c1'] }]
+                        },
+                        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (ctx) { return ' 次数: ' + ctx.raw.toLocaleString(); } } } }, scales: { x: { ticks: { font: { size: 10 } }, title: { display: true, text: '次数', font: { size: 10 } } }, y: { ticks: { font: { size: 10 } } } } }
+                    });
+                }
+                }, 50);
+            }
+        });
+    },
+
+    exportFlwCsv: function () {
+        if (!flwState.currentFile) return;
+        var url = '../exportFollowFilteredCsv?filePath=' + encodeURIComponent(flwState.currentFile);
+        if (flwState.startTime) url += '&startTime=' + encodeURIComponent(flwState.startTime);
+        if (flwState.endTime) url += '&endTime=' + encodeURIComponent(flwState.endTime);
+        if (flwState.search) url += '&search=' + encodeURIComponent(flwState.search);
+        window.open(url, '_blank');
+    },
+
+    initFlwColumnDrag: function () {
+        var thead = document.getElementById('flw-table-head');
+        if (!thead || thead.sortableInstance) return;
+        thead.sortableInstance = new Sortable(thead, {
+            animation: 150, ghostClass: 'sortable-ghost', chosenClass: 'sortable-chosen',
+            onEnd: function () {
+                var order = [];
+                $('#flw-table-head th').each(function () {
+                    var txt = $(this).text().replace(/ [▲▼]/, '');
+                    var idx = flwState.headers.indexOf(txt);
+                    if (idx >= 0) order.push(idx);
+                });
+                if (order.length === flwState.headers.length) {
+                    flwState.columnOrder = order;
+                    method.loadFlwData();
+                }
+            }
+        });
+    },
+
+    // ========== 礼物管理 ==========
+
+    loadGftCsvFileList: function () {
+        $.ajax({
+            url: '../listGiftCsvFiles',
+            type: 'GET', dataType: 'json',
+            success: function (data) {
+                if (data.code == "200" && data.result) {
+                    var $select = $('#gft-csv-select');
+                    $select.find('option[value!=""]').remove();
+                    var firstOpt = null;
+                    $.each(data.result, function (i, f) {
+                        var label = f.fileName + (f.anchorName ? ' (' + f.anchorName + ')' : '');
+                        var opt = $('<option>').val(f.filePath).text(label);
+                        if (f.isCurrent === '1') { firstOpt = opt; opt.text(opt.text() + ' *'); }
+                        $select.append(opt);
+                    });
+                    if (firstOpt) { $select.val(firstOpt.val()); gftState.currentFile = firstOpt.val(); }
+                    if (gftState.currentFile) method.loadGftData();
+                }
+            }
+        });
+    },
+
+    loadGftData: function () {
+        if (!gftState.currentFile) return;
+        $.ajax({
+            url: '../readGiftCsvData', type: 'GET',
+            data: { filePath: gftState.currentFile, page: gftState.page, pageSize: gftState.pageSize, startTime: gftState.startTime || '', endTime: gftState.endTime || '', search: gftState.search || '', sortField: gftState.sortField, sortOrder: gftState.sortOrder },
+            dataType: 'json',
+            success: function (data) {
+                if (data.code == "200" && data.result) {
+                    var r = data.result;
+                    gftState.page = r.currentPage || 1;
+                    gftState.totalPages = r.totalPages || 0;
+                    gftState.totalRows = r.total || 0;
+                    gftState.fileFirstTime = r.firstTime || '';
+                    gftState.fileLastTime = r.lastTime || '';
+                    if (!gftState.startTime && !gftState.endTime && gftState.fileFirstTime && r.lastTime) {
+                        gftState.startTime = gftState.fileFirstTime;
+                        gftState.endTime = r.lastTime;
+                        $('#gft-filter-start').val(gftState.fileFirstTime.replace(' ', 'T'));
+                        $('#gft-filter-end').val(r.lastTime.replace(' ', 'T'));
+                    }
+                    method.renderGftTable(r.rows || []);
+                    method.renderGftPagination();
+                    if (r.total > 0) { method.renderGftStats(); method.renderGftCharts(); $('#gft-stats-row, #gft-rank-limit-row').show(); }
+                    else { $('#gft-stats-row, #gft-rank-limit-row').hide(); $('#gft-charts-row').hide(); }
+                }
+            }
+        });
+    },
+
+    renderGftTable: function (rows) {
+        var $tbody = $('#gft-table-body'), $table = $('#gft-data-table'), $empty = $('#gft-empty-msg');
+        $tbody.empty();
+        if (!rows || rows.length === 0) { $table.hide(); $('#gft-pagination').hide(); $empty.show(); return; }
+        $empty.hide(); $table.show();
+        var cols = gftState.headers;
+        $.each(rows, function (i, row) {
+            var tr = '<tr>';
+            $.each(gftState.columnOrder, function (j, colIdx) { if (colIdx < cols.length) tr += '<td>' + (row[cols[colIdx]] || '') + '</td>'; });
+            tr += '</tr>'; $tbody.append(tr);
+        });
+        $('#gft-table-head th[data-sort]').each(function () {
+            var f = $(this).data('sort'); $(this).text(f);
+            if (f === gftState.sortField) $(this).text(f + ' ' + (gftState.sortOrder === 'asc' ? '▲' : '▼'));
+        });
+        setTimeout(function () { method.initGftColumnDrag(); }, 100);
+    },
+
+    renderGftPagination: function () {
+        var $p = $('#gft-pagination');
+        if (gftState.totalPages <= 0) { $p.hide(); return; }
+        $p.show();
+        $('#gft-page-info').text('第' + gftState.page + '页 / 共' + gftState.totalPages + '页');
+        $('#gft-page-jump').attr('max', gftState.totalPages).val('');
+        var isFirst = gftState.page <= 1, isLast = gftState.page >= gftState.totalPages;
+        $('#gft-first-btn, #gft-prev-btn').prop('disabled', isFirst);
+        $('#gft-next-btn, #gft-last-btn').prop('disabled', isLast);
+    },
+
+    gotoGftPage: function (p) {
+        p = parseInt(p);
+        if (isNaN(p) || p < 1) p = 1;
+        if (p > gftState.totalPages) p = gftState.totalPages;
+        if (p === gftState.page) return;
+        gftState.page = p; method.loadGftData();
+    },
+
+    sortGftColumn: function (field) {
+        if (gftState.sortField === field) { gftState.sortOrder = gftState.sortOrder === 'asc' ? 'desc' : 'asc'; }
+        else { gftState.sortField = field; gftState.sortOrder = 'desc'; }
+        gftState.page = 1; method.loadGftData();
+    },
+
+    renderGftStats: function () {
+        if (!gftState.currentFile) return;
+        $.ajax({
+            url: '../getGiftStatistics', type: 'GET',
+            data: { filePath: gftState.currentFile, startTime: gftState.startTime || '', endTime: gftState.endTime || '', limit: 1 },
+            dataType: 'json',
+            success: function (data) {
+                if (data.code == "200" && data.result) {
+                    var s = data.result;
+                    $('#gft-stat-amount').text((s.totalAmount || 0).toLocaleString());
+                    $('#gft-stat-users').text((s.uniqueUsers || 0).toLocaleString());
+                    $('#gft-stat-records').text((s.totalRecords || 0).toLocaleString());
+                }
+            }
+        });
+    },
+
+    renderGftCharts: function () {
+        $.each(gftState.chartInstances, function (k, c) { if (c) c.destroy(); });
+        gftState.chartInstances = {};
+        if (!gftState.currentFile) return;
+        $.ajax({
+            url: '../getGiftStatistics', type: 'GET',
+            data: { filePath: gftState.currentFile, startTime: gftState.startTime || '', endTime: gftState.endTime || '', limit: gftState.rankLimit },
+            dataType: 'json',
+            success: function (data) {
+                if (data.code != "200" || !data.result) { $('#gft-charts-row').hide(); return; }
+                var s = data.result;
+                var perInt = s.perIntervalData || [];
+                var amountRanking = s.amountRanking || [];
+                var giftNameFreq = s.giftNameFreq || [];
+                if (perInt.length === 0 && amountRanking.length === 0 && giftNameFreq.length === 0) { $('#gft-charts-row').hide(); return; }
+                $('#gft-charts-row').show();
+                setTimeout(function () {
+                if (perInt.length > 0) {
+                    var ctx0 = document.getElementById('gft-chart-trend').getContext('2d');
+                    gftState.chartInstances.trend = new Chart(ctx0, {
+                        type: 'line', data: {
+                            labels: perInt.map(function (d) { return d.time; }),
+                            datasets: [{ label: '电池', data: perInt.map(function (d) { return d.amount; }), borderColor: '#fd7e14', borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 4, tension: 0.1, fill: true, backgroundColor: 'rgba(253,126,20,0.06)' }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: true, position: 'top', labels: { font: { size: 10 } } }, tooltip: { titleFont: { size: 12 }, bodyFont: { size: 12 }, callbacks: { title: function (ctxs) { return '时间: ' + ctxs[0].label; }, label: function (ctx) { return ' ' + ctx.dataset.label + ': ' + ctx.raw.toLocaleString(); } } } }, scales: { x: { ticks: { font: { size: 10 } } }, y: { ticks: { font: { size: 10 } }, title: { display: true, text: '电池', font: { size: 10 } } } } }
+                    });
+                }
+                if (amountRanking.length > 0) {
+                    var ctx1 = document.getElementById('gft-chart-rank').getContext('2d');
+                    gftState.chartInstances.rank = new Chart(ctx1, {
+                        type: 'bar', data: {
+                            labels: amountRanking.map(function (d) { return d.name; }),
+                            datasets: [{ label: '金额', data: amountRanking.map(function (d) { return d.amount; }), backgroundColor: ['#0d6efd','#198754','#fd7e14','#dc3545','#6f42c1'] }]
+                        },
+                        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (ctx) { return ' 金额: ' + ctx.raw.toLocaleString(); } } } }, scales: { x: { ticks: { font: { size: 10 } }, title: { display: true, text: '金额', font: { size: 10 } } }, y: { ticks: { font: { size: 10 } } } } }
+                    });
+                }
+                if (giftNameFreq.length > 0) {
+                    var ctx2 = document.getElementById('gft-chart-freq').getContext('2d');
+                    gftState.chartInstances.freq = new Chart(ctx2, {
+                        type: 'bar', data: {
+                            labels: giftNameFreq.map(function (d) { return d.name; }),
+                            datasets: [{ label: '次数', data: giftNameFreq.map(function (d) { return d.count; }), backgroundColor: '#198754' }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (ctx) { return ' 次数: ' + ctx.raw.toLocaleString(); } } } }, scales: { x: { ticks: { font: { size: 10 } }, title: { display: true, text: '礼物名', font: { size: 10 } } }, y: { ticks: { font: { size: 10 } }, title: { display: true, text: '总次数', font: { size: 10 } } } } }
+                    });
+                }
+                }, 50);
+            }
+        });
+    },
+
+    exportGftCsv: function () {
+        if (!gftState.currentFile) return;
+        var url = '../exportGiftFilteredCsv?filePath=' + encodeURIComponent(gftState.currentFile);
+        if (gftState.startTime) url += '&startTime=' + encodeURIComponent(gftState.startTime);
+        if (gftState.endTime) url += '&endTime=' + encodeURIComponent(gftState.endTime);
+        if (gftState.search) url += '&search=' + encodeURIComponent(gftState.search);
+        window.open(url, '_blank');
+    },
+
+    initGftColumnDrag: function () {
+        var thead = document.getElementById('gft-table-head');
+        if (!thead || thead.sortableInstance) return;
+        thead.sortableInstance = new Sortable(thead, {
+            animation: 150, ghostClass: 'sortable-ghost', chosenClass: 'sortable-chosen',
+            onEnd: function () {
+                var order = [];
+                $('#gft-table-head th').each(function () {
+                    var txt = $(this).text().replace(/ [▲▼]/, '');
+                    var idx = gftState.headers.indexOf(txt);
+                    if (idx >= 0) order.push(idx);
+                });
+                if (order.length === gftState.headers.length) { gftState.columnOrder = order; method.loadGftData(); }
             }
         });
     }
@@ -4007,6 +4859,24 @@ function switchTab(tabId, el) {
     if (tabId === 'audience-mgr') {
         if (!$('#vst-csv-select option[value!=""]').length) {
             method.loadVstCsvFileList();
+        }
+    }
+    // 切换到匹配管理时加载CSV文件列表
+    if (tabId === 'match-mgr') {
+        if (!$('#mtch-csv-select option[value!=""]').length) {
+            method.loadMtchCsvFileList();
+        }
+    }
+    // 切换到关注人管理时加载CSV文件列表
+    if (tabId === 'follow-mgr') {
+        if (!$('#flw-csv-select option[value!=""]').length) {
+            method.loadFlwCsvFileList();
+        }
+    }
+    // 切换到礼物管理时加载CSV文件列表
+    if (tabId === 'gift-mgr') {
+        if (!$('#gft-csv-select option[value!=""]').length) {
+            method.loadGftCsvFileList();
         }
     }
 }

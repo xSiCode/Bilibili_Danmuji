@@ -2303,6 +2303,1032 @@ public class WebController {
         }
     }
 
+    // ========== 匹配管理 CSV ==========
+
+    @ResponseBody
+    @GetMapping(value = "/listMatchCsvFiles")
+    public Response<?> listMatchCsvFiles(HttpServletRequest req) {
+        try {
+            File danmujiLogDir = getDanmujiLogDir();
+            List<Map<String, String>> fileList = new ArrayList<>();
+            if (danmujiLogDir.exists() && danmujiLogDir.isDirectory()) {
+                File[] files = danmujiLogDir.listFiles((dir, name) -> name.endsWith("匹配信息.csv"));
+                if (files != null) {
+                    String currentRoomId = PublicDataConf.ROOMID != null ? PublicDataConf.ROOMID.toString() : "";
+                    String currentAnchor = safeFileName(PublicDataConf.ANCHOR_NAME);
+                    String currentPattern = currentRoomId + "_" + currentAnchor + "_5_匹配信息.csv";
+                    for (File f : files) {
+                        Map<String, String> item = new LinkedHashMap<>();
+                        item.put("fileName", f.getName());
+                        item.put("filePath", f.getAbsolutePath());
+                        String name = f.getName();
+                        int idx1 = name.indexOf('_');
+                        int idx2 = name.indexOf('_', idx1 + 1);
+                        item.put("roomId", idx1 > 0 ? name.substring(0, idx1) : "");
+                        item.put("anchorName", idx2 > idx1 ? name.substring(idx1 + 1, idx2) : "");
+                        item.put("isCurrent", f.getName().equals(currentPattern) ? "1" : "0");
+                        fileList.add(item);
+                    }
+                }
+            }
+            fileList.sort((a, b) -> {
+                if ("1".equals(a.get("isCurrent")) && !"1".equals(b.get("isCurrent"))) return -1;
+                if (!"1".equals(a.get("isCurrent")) && "1".equals(b.get("isCurrent"))) return 1;
+                return b.get("fileName").compareTo(a.get("fileName"));
+            });
+            return Response.success(fileList, req);
+        } catch (Exception e) {
+            LOGGER.error("listMatchCsvFiles error", e);
+            return Response.success(Collections.emptyList(), req);
+        }
+    }
+
+    @ResponseBody
+    @GetMapping(value = "/readMatchCsvData")
+    public Response<?> readMatchCsvData(@RequestParam("filePath") String filePath,
+                                         @RequestParam(defaultValue = "1") int page,
+                                         @RequestParam(defaultValue = "10") int pageSize,
+                                         @RequestParam(required = false) String startTime,
+                                         @RequestParam(required = false) String endTime,
+                                         @RequestParam(required = false) String search,
+                                         @RequestParam(required = false) String sortField,
+                                         @RequestParam(required = false) String sortOrder,
+                                         HttpServletRequest req) {
+        try {
+            validateFilePath(filePath);
+            File file = new File(filePath);
+            if (!file.isAbsolute()) {
+                file = new File(getDanmujiLogDir(), filePath);
+            }
+            Map<String, Object> result = new LinkedHashMap<>();
+            List<Map<String, String>> allRows = new ArrayList<>();
+            String[] headers = {"最近匹配", "匹配id", "匹配名", "匹配分", "匹配次数"};
+            String firstTime = null;
+            String lastTime = null;
+            String filteredFirstTime = null;
+            String filteredLastTime = null;
+
+            if (!file.exists()) {
+                result.put("headers", headers);
+                result.put("rows", Collections.emptyList());
+                result.put("total", 0);
+                result.put("totalPages", 0);
+                result.put("currentPage", page);
+                result.put("firstTime", "");
+                result.put("lastTime", "");
+                result.put("filteredFirstTime", "");
+                result.put("filteredLastTime", "");
+                return Response.success(result, req);
+            }
+
+            String searchLower = (search != null && !search.isEmpty()) ? search.toLowerCase() : null;
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
+                String line = reader.readLine(); // skip header + BOM
+                while ((line = reader.readLine()) != null) {
+                    List<String> fields = parseCsvLine(line);
+                    if (fields.size() < 5) continue;
+                    String time = fields.get(0);
+                    if (firstTime == null) firstTime = time;
+                    lastTime = time;
+                    if (startTime != null && !startTime.isEmpty() && time.compareTo(startTime) < 0) continue;
+                    if (endTime != null && !endTime.isEmpty() && time.compareTo(endTime) > 0) continue;
+                    if (searchLower != null) {
+                        boolean match = false;
+                        for (String f : fields) {
+                            if (f.toLowerCase().contains(searchLower)) { match = true; break; }
+                        }
+                        if (!match) continue;
+                    }
+                    Map<String, String> row = new LinkedHashMap<>();
+                    row.put("最近匹配", time);
+                    row.put("匹配id", fields.get(1));
+                    row.put("匹配名", fields.get(2));
+                    row.put("匹配分", fields.get(3));
+                    row.put("匹配次数", fields.get(4));
+                    allRows.add(row);
+                    if (filteredFirstTime == null) filteredFirstTime = time;
+                    filteredLastTime = time;
+                }
+            }
+
+            // sort: default = 最近匹配 asc, 匹配id asc
+            String sf = (sortField != null && !sortField.isEmpty()) ? sortField : "最近匹配";
+            boolean asc = (sortField != null && !sortField.isEmpty()) ? "asc".equalsIgnoreCase(sortOrder) : true;
+            boolean isDefSort = sortField == null || sortField.isEmpty();
+            allRows.sort((a, b) -> {
+                int cmp;
+                switch (sf) {
+                    case "匹配id": case "匹配分": case "匹配次数":
+                        cmp = compareField(a.get(sf), b.get(sf), true);
+                        break;
+                    case "匹配名":
+                        cmp = compareField(b.get(sf), a.get(sf), false);
+                        break;
+                    default: // 最近匹配 (time)
+                        cmp = compareField(a.get("最近匹配"), b.get("最近匹配"), false);
+                        break;
+                }
+                if (cmp == 0 && isDefSort) {
+                    cmp = compareField(a.get("匹配id"), b.get("匹配id"), true);
+                }
+                return asc ? cmp : -cmp;
+            });
+
+            int total = allRows.size();
+            int totalPages = (int) Math.ceil((double) total / pageSize);
+            if (page < 1) page = 1;
+            if (page > totalPages && totalPages > 0) page = totalPages;
+            int fromIndex = (page - 1) * pageSize;
+            int toIndex = Math.min(fromIndex + pageSize, total);
+            List<Map<String, String>> pageRows = total > 0 ? allRows.subList(fromIndex, toIndex) : Collections.emptyList();
+
+            result.put("headers", headers);
+            result.put("rows", pageRows);
+            result.put("total", total);
+            result.put("totalPages", totalPages);
+            result.put("currentPage", page);
+            result.put("firstTime", firstTime != null ? firstTime : "");
+            result.put("lastTime", lastTime != null ? lastTime : "");
+            result.put("filteredFirstTime", filteredFirstTime != null ? filteredFirstTime : "");
+            result.put("filteredLastTime", filteredLastTime != null ? filteredLastTime : "");
+            return Response.success(result, req);
+        } catch (Exception e) {
+            LOGGER.error("readMatchCsvData error", e);
+            return Response.success(null, req);
+        }
+    }
+
+    @ResponseBody
+    @PostMapping(value = "/deleteMatchCsvRow")
+    public Response<?> deleteMatchCsvRow(@RequestParam("filePath") String filePath,
+                                          @RequestParam("timeKey") String timeKey,
+                                          @RequestParam("uidKey") String uidKey,
+                                          HttpServletRequest req) {
+        try {
+            validateFilePath(filePath);
+            File file = new File(filePath);
+            if (!file.isAbsolute()) file = new File(getDanmujiLogDir(), filePath);
+            if (!file.exists()) return Response.success(0, req);
+
+            List<String> keepLines = new ArrayList<>();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
+                String line;
+                boolean isFirst = true;
+                while ((line = reader.readLine()) != null) {
+                    if (isFirst) { isFirst = false; keepLines.add(line); continue; }
+                    List<String> fields = parseCsvLine(line);
+                    if (fields.size() >= 5 && fields.get(0).equals(timeKey) && fields.get(1).equals(uidKey)) continue;
+                    keepLines.add(line);
+                }
+            }
+            File tmpFile = new File(file.getAbsolutePath() + ".tmp");
+            try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tmpFile), "UTF-8"))) {
+                for (String l : keepLines) { writer.write(l); writer.newLine(); }
+            }
+            Files.move(tmpFile.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            return Response.success(0, req);
+        } catch (Exception e) {
+            LOGGER.error("deleteMatchCsvRow error", e);
+            return Response.success(1, req);
+        }
+    }
+
+    @GetMapping(value = "/exportMatchFilteredCsv")
+    public void exportMatchFilteredCsv(@RequestParam("filePath") String filePath,
+                                        @RequestParam(required = false) String startTime,
+                                        @RequestParam(required = false) String endTime,
+                                        @RequestParam(required = false) String search,
+                                        HttpServletResponse response) {
+        try {
+            validateFilePath(filePath);
+            File file = new File(filePath);
+            if (!file.isAbsolute()) file = new File(getDanmujiLogDir(), filePath);
+            if (!file.exists()) { response.setStatus(404); return; }
+
+            File tmpFile = File.createTempFile("mtch-export-", ".csv");
+            String searchLower = (search != null && !search.isEmpty()) ? search.toLowerCase() : null;
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"));
+                 BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tmpFile), "UTF-8"))) {
+                writer.write('﻿');
+                writer.write("最近匹配,匹配id,匹配名,匹配分,匹配次数");
+                writer.newLine();
+                String line = reader.readLine(); // skip header
+                while ((line = reader.readLine()) != null) {
+                    List<String> fields = parseCsvLine(line);
+                    if (fields.size() < 5) continue;
+                    String time = fields.get(0);
+                    if (startTime != null && !startTime.isEmpty() && time.compareTo(startTime) < 0) continue;
+                    if (endTime != null && !endTime.isEmpty() && time.compareTo(endTime) > 0) continue;
+                    if (searchLower != null) {
+                        boolean match = false;
+                        for (String f : fields) { if (f.toLowerCase().contains(searchLower)) { match = true; break; } }
+                        if (!match) continue;
+                    }
+                    writer.write(line); writer.newLine();
+                }
+            }
+
+            response.setContentType("text/csv;charset=UTF-8");
+            response.setHeader("Content-Disposition", "attachment;filename=" + java.net.URLEncoder.encode(file.getName(), "UTF-8"));
+            try (InputStream is = new FileInputStream(tmpFile);
+                 OutputStream os = response.getOutputStream()) {
+                byte[] buf = new byte[8192]; int n;
+                while ((n = is.read(buf)) != -1) os.write(buf, 0, n);
+            }
+            tmpFile.delete();
+        } catch (Exception e) {
+            LOGGER.error("exportMatchFilteredCsv error", e);
+        }
+    }
+
+    @ResponseBody
+    @GetMapping(value = "/getMatchStatistics")
+    public Response<?> getMatchStatistics(@RequestParam("filePath") String filePath,
+                                           @RequestParam(required = false) String startTime,
+                                           @RequestParam(required = false) String endTime,
+                                           @RequestParam(defaultValue = "10") int limit,
+                                           HttpServletRequest req) {
+        try {
+            validateFilePath(filePath);
+            File file = new File(filePath);
+            if (!file.isAbsolute()) file = new File(getDanmujiLogDir(), filePath);
+            Map<String, Object> stats = new LinkedHashMap<>();
+            if (!file.exists()) {
+                stats.put("totalRecords", 0); stats.put("totalMatches", 0L); stats.put("uniqueUsers", 0);
+                stats.put("scoreSum", 0L); stats.put("scoreAvg", 0.0);
+                stats.put("scoreDistribution", Collections.emptyList());
+                stats.put("matchCountDist", Collections.emptyList());
+                stats.put("topMatches", Collections.emptyList());
+                return Response.success(stats, req);
+            }
+
+            List<String[]> rows = new ArrayList<>();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
+                reader.readLine();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    List<String> fields = parseCsvLine(line);
+                    if (fields.size() < 5) continue;
+                    String time = fields.get(0);
+                    if (startTime != null && !startTime.isEmpty() && time.compareTo(startTime) < 0) continue;
+                    if (endTime != null && !endTime.isEmpty() && time.compareTo(endTime) > 0) continue;
+                    rows.add(new String[]{time, fields.get(1), fields.get(2), fields.get(3), fields.get(4)});
+                }
+            }
+
+            if (rows.isEmpty()) {
+                stats.put("totalRecords", 0); stats.put("totalMatches", 0L); stats.put("uniqueUsers", 0);
+                stats.put("scoreSum", 0L); stats.put("scoreAvg", 0.0);
+                stats.put("scoreDistribution", Collections.emptyList());
+                stats.put("matchCountDist", Collections.emptyList());
+                stats.put("topMatches", Collections.emptyList());
+                return Response.success(stats, req);
+            }
+
+            long totalMatches = 0;
+            long scoreSum = 0;
+            Set<String> uniqueUsers = new HashSet<>();
+            Map<String, String> uidNameMap = new LinkedHashMap<>();
+            Map<String, Integer> uidCountMap = new LinkedHashMap<>();
+            Map<Long, Integer> scoreDist = new LinkedHashMap<>();
+            Map<Long, Integer> matchCountDist = new LinkedHashMap<>();
+
+            for (String[] row : rows) {
+                String uid = row[1];
+                String name = row[2];
+                int score = 0, count = 0;
+                try { score = Integer.parseInt(row[3]); } catch (NumberFormatException e) {}
+                try { count = Integer.parseInt(row[4]); } catch (NumberFormatException e) {}
+                uniqueUsers.add(uid);
+                uidNameMap.put(uid, name);
+                uidCountMap.put(uid, uidCountMap.getOrDefault(uid, 0) + count);
+                totalMatches += count;
+                scoreSum += score;
+                long scKey = (long) score;
+                scoreDist.put(scKey, scoreDist.getOrDefault(scKey, 0) + 1);
+                long mcKey = (long) count;
+                matchCountDist.put(mcKey, matchCountDist.getOrDefault(mcKey, 0) + 1);
+            }
+
+            // score distribution
+            List<Map<String, Object>> scoreDistList = new ArrayList<>();
+            scoreDist.entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(e -> {
+                Map<String, Object> item = new LinkedHashMap<>();
+                item.put("score", e.getKey());
+                item.put("count", e.getValue());
+                scoreDistList.add(item);
+            });
+
+            // match count distribution
+            List<Map<String, Object>> matchCountDistList = new ArrayList<>();
+            matchCountDist.entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(e -> {
+                Map<String, Object> item = new LinkedHashMap<>();
+                item.put("count", e.getKey());
+                item.put("freq", e.getValue());
+                matchCountDistList.add(item);
+            });
+
+            // top matches by count sum
+            List<Map<String, Object>> topMatches = new ArrayList<>();
+            uidCountMap.entrySet().stream()
+                    .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
+                    .limit(limit)
+                    .forEach(e -> {
+                        Map<String, Object> item = new LinkedHashMap<>();
+                        item.put("name", uidNameMap.getOrDefault(e.getKey(), e.getKey()));
+                        item.put("count", e.getValue());
+                        topMatches.add(item);
+                    });
+
+            stats.put("totalRecords", rows.size());
+            stats.put("totalMatches", totalMatches);
+            stats.put("uniqueUsers", uniqueUsers.size());
+            stats.put("scoreSum", scoreSum);
+            stats.put("scoreAvg", uniqueUsers.size() > 0 ? Math.round(scoreSum * 10.0 / uniqueUsers.size()) / 10.0 : 0.0);
+            stats.put("scoreDistribution", scoreDistList);
+            stats.put("matchCountDist", matchCountDistList);
+            stats.put("topMatches", topMatches);
+            return Response.success(stats, req);
+        } catch (Exception e) {
+            LOGGER.error("getMatchStatistics error", e);
+            return Response.success(null, req);
+        }
+    }
+
+    @ResponseBody
+    @PostMapping(value = "/importMatchCsvFile")
+    public Response<?> importMatchCsvFile(@RequestParam("file") MultipartFile file, HttpServletRequest req) {
+        try {
+            String originalFilename = file.getOriginalFilename();
+            if (originalFilename == null || !originalFilename.endsWith(".csv")) return Response.success(2, req);
+            String firstLine;
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), "UTF-8"))) {
+                firstLine = reader.readLine();
+            }
+            if (firstLine == null || (!firstLine.contains("最近匹配") || !firstLine.contains("匹配id") || !firstLine.contains("匹配次数")))
+                return Response.success(3, req);
+            File danmujiLogDir = getDanmujiLogDir();
+            if (!danmujiLogDir.exists()) danmujiLogDir.mkdirs();
+            File destFile = new File(danmujiLogDir, originalFilename);
+            file.transferTo(destFile);
+            return Response.success(0, req);
+        } catch (Exception e) {
+            LOGGER.error("importMatchCsvFile error", e);
+            return Response.success(1, req);
+        }
+    }
+
+    // ========== 关注人管理 CSV ==========
+
+    @ResponseBody
+    @GetMapping(value = "/listFollowCsvFiles")
+    public Response<?> listFollowCsvFiles(HttpServletRequest req) {
+        try {
+            File danmujiLogDir = getDanmujiLogDir();
+            List<Map<String, String>> fileList = new ArrayList<>();
+            if (danmujiLogDir.exists() && danmujiLogDir.isDirectory()) {
+                File[] files = danmujiLogDir.listFiles((dir, name) -> name.endsWith("关注人信息.csv"));
+                if (files != null) {
+                    String currentRoomId = PublicDataConf.ROOMID != null ? PublicDataConf.ROOMID.toString() : "";
+                    String currentAnchor = safeFileName(PublicDataConf.ANCHOR_NAME);
+                    String currentPattern = currentRoomId + "_" + currentAnchor + "_6_关注人信息.csv";
+                    for (File f : files) {
+                        Map<String, String> item = new LinkedHashMap<>();
+                        item.put("fileName", f.getName());
+                        item.put("filePath", f.getAbsolutePath());
+                        String name = f.getName();
+                        int idx1 = name.indexOf('_');
+                        int idx2 = name.indexOf('_', idx1 + 1);
+                        item.put("roomId", idx1 > 0 ? name.substring(0, idx1) : "");
+                        item.put("anchorName", idx2 > idx1 ? name.substring(idx1 + 1, idx2) : "");
+                        item.put("isCurrent", f.getName().equals(currentPattern) ? "1" : "0");
+                        fileList.add(item);
+                    }
+                }
+            }
+            fileList.sort((a, b) -> {
+                if ("1".equals(a.get("isCurrent")) && !"1".equals(b.get("isCurrent"))) return -1;
+                if (!"1".equals(a.get("isCurrent")) && "1".equals(b.get("isCurrent"))) return 1;
+                return b.get("fileName").compareTo(a.get("fileName"));
+            });
+            return Response.success(fileList, req);
+        } catch (Exception e) {
+            LOGGER.error("listFollowCsvFiles error", e);
+            return Response.success(Collections.emptyList(), req);
+        }
+    }
+
+    @ResponseBody
+    @GetMapping(value = "/readFollowCsvData")
+    public Response<?> readFollowCsvData(@RequestParam("filePath") String filePath,
+                                          @RequestParam(defaultValue = "1") int page,
+                                          @RequestParam(defaultValue = "10") int pageSize,
+                                          @RequestParam(required = false) String startTime,
+                                          @RequestParam(required = false) String endTime,
+                                          @RequestParam(required = false) String search,
+                                          @RequestParam(required = false) String sortField,
+                                          @RequestParam(required = false) String sortOrder,
+                                          HttpServletRequest req) {
+        try {
+            validateFilePath(filePath);
+            File file = new File(filePath);
+            if (!file.isAbsolute()) {
+                file = new File(getDanmujiLogDir(), filePath);
+            }
+            Map<String, Object> result = new LinkedHashMap<>();
+            List<Map<String, String>> allRows = new ArrayList<>();
+            String[] headers = {"最新时间", "id", "名字", "次数"};
+            String firstTime = null;
+            String lastTime = null;
+            String filteredFirstTime = null;
+            String filteredLastTime = null;
+
+            if (!file.exists()) {
+                result.put("headers", headers);
+                result.put("rows", Collections.emptyList());
+                result.put("total", 0);
+                result.put("totalPages", 0);
+                result.put("currentPage", page);
+                result.put("firstTime", "");
+                result.put("lastTime", "");
+                result.put("filteredFirstTime", "");
+                result.put("filteredLastTime", "");
+                return Response.success(result, req);
+            }
+
+            String searchLower = (search != null && !search.isEmpty()) ? search.toLowerCase() : null;
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
+                String line = reader.readLine(); // skip header + BOM
+                while ((line = reader.readLine()) != null) {
+                    List<String> fields = parseCsvLine(line);
+                    if (fields.size() < 4) continue;
+                    String time = fields.get(0);
+                    if (firstTime == null) firstTime = time;
+                    lastTime = time;
+                    if (startTime != null && !startTime.isEmpty() && time.compareTo(startTime) < 0) continue;
+                    if (endTime != null && !endTime.isEmpty() && time.compareTo(endTime) > 0) continue;
+                    if (searchLower != null) {
+                        boolean match = false;
+                        for (String f : fields) {
+                            if (f.toLowerCase().contains(searchLower)) { match = true; break; }
+                        }
+                        if (!match) continue;
+                    }
+                    Map<String, String> row = new LinkedHashMap<>();
+                    row.put("最新时间", time);
+                    row.put("id", fields.get(1));
+                    row.put("名字", fields.get(2));
+                    row.put("次数", fields.get(3));
+                    allRows.add(row);
+                    if (filteredFirstTime == null) filteredFirstTime = time;
+                    filteredLastTime = time;
+                }
+            }
+
+            String sf = (sortField != null && !sortField.isEmpty()) ? sortField : "最新时间";
+            boolean asc = (sortField != null && !sortField.isEmpty()) ? "asc".equalsIgnoreCase(sortOrder) : true;
+            boolean isDefSort = sortField == null || sortField.isEmpty();
+            allRows.sort((a, b) -> {
+                int cmp;
+                switch (sf) {
+                    case "id": case "次数":
+                        cmp = compareField(a.get(sf), b.get(sf), true);
+                        break;
+                    case "名字":
+                        cmp = compareField(b.get(sf), a.get(sf), false);
+                        break;
+                    default: // 最新时间
+                        cmp = compareField(a.get("最新时间"), b.get("最新时间"), false);
+                        break;
+                }
+                if (cmp == 0 && isDefSort) {
+                    cmp = compareField(a.get("id"), b.get("id"), true);
+                }
+                return asc ? cmp : -cmp;
+            });
+
+            int total = allRows.size();
+            int totalPages = (int) Math.ceil((double) total / pageSize);
+            if (page < 1) page = 1;
+            if (page > totalPages && totalPages > 0) page = totalPages;
+            int fromIndex = (page - 1) * pageSize;
+            int toIndex = Math.min(fromIndex + pageSize, total);
+            List<Map<String, String>> pageRows = total > 0 ? allRows.subList(fromIndex, toIndex) : Collections.emptyList();
+
+            result.put("headers", headers);
+            result.put("rows", pageRows);
+            result.put("total", total);
+            result.put("totalPages", totalPages);
+            result.put("currentPage", page);
+            result.put("firstTime", firstTime != null ? firstTime : "");
+            result.put("lastTime", lastTime != null ? lastTime : "");
+            result.put("filteredFirstTime", filteredFirstTime != null ? filteredFirstTime : "");
+            result.put("filteredLastTime", filteredLastTime != null ? filteredLastTime : "");
+            return Response.success(result, req);
+        } catch (Exception e) {
+            LOGGER.error("readFollowCsvData error", e);
+            return Response.success(null, req);
+        }
+    }
+
+    @GetMapping(value = "/exportFollowFilteredCsv")
+    public void exportFollowFilteredCsv(@RequestParam("filePath") String filePath,
+                                         @RequestParam(required = false) String startTime,
+                                         @RequestParam(required = false) String endTime,
+                                         @RequestParam(required = false) String search,
+                                         HttpServletResponse response) {
+        try {
+            validateFilePath(filePath);
+            File file = new File(filePath);
+            if (!file.isAbsolute()) file = new File(getDanmujiLogDir(), filePath);
+            if (!file.exists()) { response.setStatus(404); return; }
+
+            File tmpFile = File.createTempFile("flw-export-", ".csv");
+            String searchLower = (search != null && !search.isEmpty()) ? search.toLowerCase() : null;
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"));
+                 BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tmpFile), "UTF-8"))) {
+                writer.write('﻿');
+                writer.write("最新时间,id,名字,次数");
+                writer.newLine();
+                String line = reader.readLine(); // skip header
+                while ((line = reader.readLine()) != null) {
+                    List<String> fields = parseCsvLine(line);
+                    if (fields.size() < 4) continue;
+                    String time = fields.get(0);
+                    if (startTime != null && !startTime.isEmpty() && time.compareTo(startTime) < 0) continue;
+                    if (endTime != null && !endTime.isEmpty() && time.compareTo(endTime) > 0) continue;
+                    if (searchLower != null) {
+                        boolean match = false;
+                        for (String f : fields) { if (f.toLowerCase().contains(searchLower)) { match = true; break; } }
+                        if (!match) continue;
+                    }
+                    writer.write(line); writer.newLine();
+                }
+            }
+
+            response.setContentType("text/csv;charset=UTF-8");
+            response.setHeader("Content-Disposition", "attachment;filename=" + java.net.URLEncoder.encode(file.getName(), "UTF-8"));
+            try (InputStream is = new FileInputStream(tmpFile);
+                 OutputStream os = response.getOutputStream()) {
+                byte[] buf = new byte[8192]; int n;
+                while ((n = is.read(buf)) != -1) os.write(buf, 0, n);
+            }
+            tmpFile.delete();
+        } catch (Exception e) {
+            LOGGER.error("exportFollowFilteredCsv error", e);
+        }
+    }
+
+    @ResponseBody
+    @GetMapping(value = "/getFollowStatistics")
+    public Response<?> getFollowStatistics(@RequestParam("filePath") String filePath,
+                                            @RequestParam(required = false) String startTime,
+                                            @RequestParam(required = false) String endTime,
+                                            @RequestParam(defaultValue = "10") int limit,
+                                            HttpServletRequest req) {
+        try {
+            validateFilePath(filePath);
+            File file = new File(filePath);
+            if (!file.isAbsolute()) file = new File(getDanmujiLogDir(), filePath);
+            Map<String, Object> stats = new LinkedHashMap<>();
+            if (!file.exists()) {
+                stats.put("totalRecords", 0); stats.put("uniqueUsers", 0); stats.put("totalFollows", 0L);
+                stats.put("countDist", Collections.emptyList());
+                stats.put("topFollows", Collections.emptyList());
+                return Response.success(stats, req);
+            }
+
+            List<String[]> rows = new ArrayList<>();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
+                reader.readLine();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    List<String> fields = parseCsvLine(line);
+                    if (fields.size() < 4) continue;
+                    String time = fields.get(0);
+                    if (startTime != null && !startTime.isEmpty() && time.compareTo(startTime) < 0) continue;
+                    if (endTime != null && !endTime.isEmpty() && time.compareTo(endTime) > 0) continue;
+                    rows.add(new String[]{time, fields.get(1), fields.get(2), fields.get(3)});
+                }
+            }
+
+            if (rows.isEmpty()) {
+                stats.put("totalRecords", 0); stats.put("uniqueUsers", 0); stats.put("totalFollows", 0L);
+                stats.put("countDist", Collections.emptyList());
+                stats.put("topFollows", Collections.emptyList());
+                return Response.success(stats, req);
+            }
+
+            long totalFollows = 0;
+            Set<String> uniqueUsers = new HashSet<>();
+            Map<String, String> uidNameMap = new LinkedHashMap<>();
+            Map<String, Integer> uidCountMap = new LinkedHashMap<>();
+            Map<Long, Integer> countDist = new LinkedHashMap<>();
+
+            for (String[] row : rows) {
+                String uid = row[1];
+                String name = row[2];
+                int count = 0;
+                try { count = Integer.parseInt(row[3]); } catch (NumberFormatException e) {}
+                uniqueUsers.add(uid);
+                uidNameMap.put(uid, name);
+                uidCountMap.put(uid, uidCountMap.getOrDefault(uid, 0) + count);
+                totalFollows += count;
+                long ck = (long) count;
+                countDist.put(ck, countDist.getOrDefault(ck, 0) + 1);
+            }
+
+            List<Map<String, Object>> countDistList = new ArrayList<>();
+            countDist.entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(e -> {
+                Map<String, Object> item = new LinkedHashMap<>();
+                item.put("count", e.getKey());
+                item.put("freq", e.getValue());
+                countDistList.add(item);
+            });
+
+            List<Map<String, Object>> topFollows = new ArrayList<>();
+            uidCountMap.entrySet().stream()
+                    .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
+                    .limit(limit)
+                    .forEach(e -> {
+                        Map<String, Object> item = new LinkedHashMap<>();
+                        item.put("name", uidNameMap.getOrDefault(e.getKey(), e.getKey()));
+                        item.put("count", e.getValue());
+                        topFollows.add(item);
+                    });
+
+            stats.put("totalRecords", rows.size());
+            stats.put("uniqueUsers", uniqueUsers.size());
+            stats.put("totalFollows", totalFollows);
+            stats.put("countDist", countDistList);
+            stats.put("topFollows", topFollows);
+            return Response.success(stats, req);
+        } catch (Exception e) {
+            LOGGER.error("getFollowStatistics error", e);
+            return Response.success(null, req);
+        }
+    }
+
+    @ResponseBody
+    @PostMapping(value = "/importFollowCsvFile")
+    public Response<?> importFollowCsvFile(@RequestParam("file") MultipartFile file, HttpServletRequest req) {
+        try {
+            String originalFilename = file.getOriginalFilename();
+            if (originalFilename == null || !originalFilename.endsWith(".csv")) return Response.success(2, req);
+            String firstLine;
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), "UTF-8"))) {
+                firstLine = reader.readLine();
+            }
+            if (firstLine == null || (!firstLine.contains("最新时间") || !firstLine.contains("id") || !firstLine.contains("次数")))
+                return Response.success(3, req);
+            File danmujiLogDir = getDanmujiLogDir();
+            if (!danmujiLogDir.exists()) danmujiLogDir.mkdirs();
+            File destFile = new File(danmujiLogDir, originalFilename);
+            file.transferTo(destFile);
+            return Response.success(0, req);
+        } catch (Exception e) {
+            LOGGER.error("importFollowCsvFile error", e);
+            return Response.success(1, req);
+        }
+    }
+
+    // ========== 礼物管理 CSV ==========
+
+    @ResponseBody
+    @GetMapping(value = "/listGiftCsvFiles")
+    public Response<?> listGiftCsvFiles(HttpServletRequest req) {
+        try {
+            File danmujiLogDir = getDanmujiLogDir();
+            List<Map<String, String>> fileList = new ArrayList<>();
+            if (danmujiLogDir.exists() && danmujiLogDir.isDirectory()) {
+                File[] files = danmujiLogDir.listFiles((dir, name) -> name.endsWith("礼物信息.csv"));
+                if (files != null) {
+                    String currentRoomId = PublicDataConf.ROOMID != null ? PublicDataConf.ROOMID.toString() : "";
+                    String currentAnchor = safeFileName(PublicDataConf.ANCHOR_NAME);
+                    String currentPattern = currentRoomId + "_" + currentAnchor + "_3_礼物信息.csv";
+                    for (File f : files) {
+                        Map<String, String> item = new LinkedHashMap<>();
+                        item.put("fileName", f.getName());
+                        item.put("filePath", f.getAbsolutePath());
+                        String name = f.getName();
+                        int idx1 = name.indexOf('_');
+                        int idx2 = name.indexOf('_', idx1 + 1);
+                        item.put("roomId", idx1 > 0 ? name.substring(0, idx1) : "");
+                        item.put("anchorName", idx2 > idx1 ? name.substring(idx1 + 1, idx2) : "");
+                        item.put("isCurrent", f.getName().equals(currentPattern) ? "1" : "0");
+                        fileList.add(item);
+                    }
+                }
+            }
+            fileList.sort((a, b) -> {
+                if ("1".equals(a.get("isCurrent")) && !"1".equals(b.get("isCurrent"))) return -1;
+                if (!"1".equals(a.get("isCurrent")) && "1".equals(b.get("isCurrent"))) return 1;
+                return b.get("fileName").compareTo(a.get("fileName"));
+            });
+            return Response.success(fileList, req);
+        } catch (Exception e) {
+            LOGGER.error("listGiftCsvFiles error", e);
+            return Response.success(Collections.emptyList(), req);
+        }
+    }
+
+    @ResponseBody
+    @GetMapping(value = "/readGiftCsvData")
+    public Response<?> readGiftCsvData(@RequestParam("filePath") String filePath,
+                                        @RequestParam(defaultValue = "1") int page,
+                                        @RequestParam(defaultValue = "10") int pageSize,
+                                        @RequestParam(required = false) String startTime,
+                                        @RequestParam(required = false) String endTime,
+                                        @RequestParam(required = false) String search,
+                                        @RequestParam(required = false) String sortField,
+                                        @RequestParam(required = false) String sortOrder,
+                                        HttpServletRequest req) {
+        try {
+            validateFilePath(filePath);
+            File file = new File(filePath);
+            if (!file.isAbsolute()) file = new File(getDanmujiLogDir(), filePath);
+            Map<String, Object> result = new LinkedHashMap<>();
+            List<Map<String, String>> allRows = new ArrayList<>();
+            String[] headers = {"最新时间", "id", "名字", "赠送礼物名字", "电池", "赠礼次数"};
+            String firstTime = null, lastTime = null;
+            String filteredFirstTime = null, filteredLastTime = null;
+
+            if (!file.exists()) {
+                result.put("headers", headers);
+                result.put("rows", Collections.emptyList());
+                result.put("total", 0);
+                result.put("totalPages", 0);
+                result.put("currentPage", page);
+                result.put("firstTime", "");
+                result.put("lastTime", "");
+                result.put("filteredFirstTime", "");
+                result.put("filteredLastTime", "");
+                return Response.success(result, req);
+            }
+
+            String searchLower = (search != null && !search.isEmpty()) ? search.toLowerCase() : null;
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
+                String line = reader.readLine();
+                while ((line = reader.readLine()) != null) {
+                    List<String> fields = parseCsvLine(line);
+                    if (fields.size() < 6) continue;
+                    String time = fields.get(0);
+                    if (firstTime == null) firstTime = time;
+                    lastTime = time;
+                    if (startTime != null && !startTime.isEmpty() && time.compareTo(startTime) < 0) continue;
+                    if (endTime != null && !endTime.isEmpty() && time.compareTo(endTime) > 0) continue;
+                    if (searchLower != null) {
+                        boolean match = false;
+                        for (String f : fields) { if (f.toLowerCase().contains(searchLower)) { match = true; break; } }
+                        if (!match) continue;
+                    }
+                    Map<String, String> row = new LinkedHashMap<>();
+                    row.put("最新时间", time);
+                    row.put("id", fields.get(1));
+                    row.put("名字", fields.get(2));
+                    row.put("赠送礼物名字", fields.get(3));
+                    try {
+                        long rawAmount = Long.parseLong(fields.get(4));
+                        row.put("电池", String.valueOf(rawAmount / 100));
+                    } catch (NumberFormatException e) {
+                        row.put("电池", fields.get(4));
+                    }
+                    row.put("赠礼次数", fields.get(5));
+                    allRows.add(row);
+                    if (filteredFirstTime == null) filteredFirstTime = time;
+                    filteredLastTime = time;
+                }
+            }
+
+            String sf = (sortField != null && !sortField.isEmpty()) ? sortField : "最新时间";
+            boolean asc = (sortField != null && !sortField.isEmpty()) ? "asc".equalsIgnoreCase(sortOrder) : true;
+            boolean isDefSort = sortField == null || sortField.isEmpty();
+            allRows.sort((a, b) -> {
+                int cmp;
+                switch (sf) {
+                    case "id": case "电池": case "赠礼次数":
+                        cmp = compareField(a.get(sf), b.get(sf), true);
+                        break;
+                    case "名字": case "赠送礼物名字":
+                        cmp = compareField(a.get(sf), b.get(sf), false);
+                        break;
+                    default:
+                        cmp = compareField(a.get("最新时间"), b.get("最新时间"), false);
+                        break;
+                }
+                if (cmp == 0 && isDefSort) cmp = compareField(a.get("id"), b.get("id"), true);
+                return asc ? cmp : -cmp;
+            });
+
+            int total = allRows.size();
+            int totalPages = (int) Math.ceil((double) total / pageSize);
+            if (page < 1) page = 1;
+            if (page > totalPages && totalPages > 0) page = totalPages;
+            int fromIndex = (page - 1) * pageSize;
+            int toIndex = Math.min(fromIndex + pageSize, total);
+            List<Map<String, String>> pageRows = total > 0 ? allRows.subList(fromIndex, toIndex) : Collections.emptyList();
+
+            result.put("headers", headers);
+            result.put("rows", pageRows);
+            result.put("total", total);
+            result.put("totalPages", totalPages);
+            result.put("currentPage", page);
+            result.put("firstTime", firstTime != null ? firstTime : "");
+            result.put("lastTime", lastTime != null ? lastTime : "");
+            result.put("filteredFirstTime", filteredFirstTime != null ? filteredFirstTime : "");
+            result.put("filteredLastTime", filteredLastTime != null ? filteredLastTime : "");
+            return Response.success(result, req);
+        } catch (Exception e) {
+            LOGGER.error("readGiftCsvData error", e);
+            return Response.success(null, req);
+        }
+    }
+
+    @GetMapping(value = "/exportGiftFilteredCsv")
+    public void exportGiftFilteredCsv(@RequestParam("filePath") String filePath,
+                                       @RequestParam(required = false) String startTime,
+                                       @RequestParam(required = false) String endTime,
+                                       @RequestParam(required = false) String search,
+                                       HttpServletResponse response) {
+        try {
+            validateFilePath(filePath);
+            File file = new File(filePath);
+            if (!file.isAbsolute()) file = new File(getDanmujiLogDir(), filePath);
+            if (!file.exists()) { response.setStatus(404); return; }
+            File tmpFile = File.createTempFile("gft-export-", ".csv");
+            String searchLower = (search != null && !search.isEmpty()) ? search.toLowerCase() : null;
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"));
+                 BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tmpFile), "UTF-8"))) {
+                writer.write('﻿');
+                writer.write("最新时间,id,名字,赠送礼物名字,总金额,赠礼次数");
+                writer.newLine();
+                String line = reader.readLine();
+                while ((line = reader.readLine()) != null) {
+                    List<String> fields = parseCsvLine(line);
+                    if (fields.size() < 6) continue;
+                    String time = fields.get(0);
+                    if (startTime != null && !startTime.isEmpty() && time.compareTo(startTime) < 0) continue;
+                    if (endTime != null && !endTime.isEmpty() && time.compareTo(endTime) > 0) continue;
+                    if (searchLower != null) {
+                        boolean match = false;
+                        for (String f : fields) { if (f.toLowerCase().contains(searchLower)) { match = true; break; } }
+                        if (!match) continue;
+                    }
+                    writer.write(line); writer.newLine();
+                }
+            }
+            response.setContentType("text/csv;charset=UTF-8");
+            response.setHeader("Content-Disposition", "attachment;filename=" + java.net.URLEncoder.encode(file.getName(), "UTF-8"));
+            try (InputStream is = new FileInputStream(tmpFile); OutputStream os = response.getOutputStream()) {
+                byte[] buf = new byte[8192]; int n;
+                while ((n = is.read(buf)) != -1) os.write(buf, 0, n);
+            }
+            tmpFile.delete();
+        } catch (Exception e) { LOGGER.error("exportGiftFilteredCsv error", e); }
+    }
+
+    @ResponseBody
+    @GetMapping(value = "/getGiftStatistics")
+    public Response<?> getGiftStatistics(@RequestParam("filePath") String filePath,
+                                          @RequestParam(required = false) String startTime,
+                                          @RequestParam(required = false) String endTime,
+                                          @RequestParam(defaultValue = "10") int limit,
+                                          HttpServletRequest req) {
+        try {
+            validateFilePath(filePath);
+            File file = new File(filePath);
+            if (!file.isAbsolute()) file = new File(getDanmujiLogDir(), filePath);
+            Map<String, Object> stats = new LinkedHashMap<>();
+            if (!file.exists()) {
+                stats.put("totalRecords", 0); stats.put("totalAmount", 0L); stats.put("uniqueUsers", 0); stats.put("uniqueGifts", 0);
+                stats.put("amountRanking", Collections.emptyList());
+                stats.put("giftNameFreq", Collections.emptyList());
+                stats.put("perIntervalData", Collections.emptyList());
+                return Response.success(stats, req);
+            }
+
+            List<String[]> rows = new ArrayList<>();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
+                reader.readLine();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    List<String> fields = parseCsvLine(line);
+                    if (fields.size() < 6) continue;
+                    String time = fields.get(0);
+                    if (startTime != null && !startTime.isEmpty() && time.compareTo(startTime) < 0) continue;
+                    if (endTime != null && !endTime.isEmpty() && time.compareTo(endTime) > 0) continue;
+                    rows.add(new String[]{time, fields.get(1), fields.get(2), fields.get(3), fields.get(4), fields.get(5)});
+                }
+            }
+
+            if (rows.isEmpty()) {
+                stats.put("totalRecords", 0); stats.put("totalAmount", 0L); stats.put("uniqueUsers", 0); stats.put("uniqueGifts", 0);
+                stats.put("amountRanking", Collections.emptyList());
+                stats.put("giftNameFreq", Collections.emptyList());
+                stats.put("perIntervalData", Collections.emptyList());
+                return Response.success(stats, req);
+            }
+
+            long totalAmount = 0;
+            Set<String> uniqueGifts = new HashSet<>();
+            Map<String, String> uidNameMap = new LinkedHashMap<>();
+            Map<String, Long> uidAmountMap = new LinkedHashMap<>();
+            Map<String, Long> giftNameCountMap = new LinkedHashMap<>();
+            Map<String, long[]> intervalMap = new LinkedHashMap<>();
+            java.text.SimpleDateFormat bucketSdf = new java.text.SimpleDateFormat("MM-dd HH:mm");
+
+            for (String[] row : rows) {
+                String uid = row[1];
+                String name = row[2];
+                String giftName = row[3];
+                long amount = 0; int count = 0;
+                try { amount = Long.parseLong(row[4]) / 100; } catch (NumberFormatException e) {}
+                try { count = Integer.parseInt(row[5]); } catch (NumberFormatException e) {}
+                uniqueGifts.add(giftName);
+                uidNameMap.put(uid, name);
+                uidAmountMap.put(uid, uidAmountMap.getOrDefault(uid, 0L) + amount);
+                giftNameCountMap.put(giftName, giftNameCountMap.getOrDefault(giftName, 0L) + count);
+                totalAmount += amount;
+
+                try {
+                    java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                    long ms = sdf.parse(row[0]).getTime();
+                    long bucketMs = (ms / 60000L) * 60000L;
+                    String bk = bucketSdf.format(new java.util.Date(bucketMs));
+                    long[] iv = intervalMap.get(bk);
+                    if (iv == null) { iv = new long[1]; intervalMap.put(bk, iv); }
+                    iv[0] += amount;
+                } catch (Exception ignored) {}
+            }
+
+            List<Map<String, Object>> amountRanking = new ArrayList<>();
+            uidAmountMap.entrySet().stream()
+                    .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
+                    .limit(limit)
+                    .forEach(e -> {
+                        Map<String, Object> item = new LinkedHashMap<>();
+                        item.put("name", uidNameMap.getOrDefault(e.getKey(), e.getKey()));
+                        item.put("amount", e.getValue());
+                        amountRanking.add(item);
+                    });
+
+            List<Map<String, Object>> giftNameFreq = new ArrayList<>();
+            giftNameCountMap.entrySet().stream()
+                    .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
+                    .forEach(e -> {
+                        Map<String, Object> item = new LinkedHashMap<>();
+                        item.put("name", e.getKey());
+                        item.put("count", e.getValue());
+                        giftNameFreq.add(item);
+                    });
+
+            stats.put("totalRecords", rows.size());
+            stats.put("totalAmount", totalAmount);
+            stats.put("uniqueUsers", uidNameMap.size());
+            stats.put("uniqueGifts", uniqueGifts.size());
+            List<Map<String, Object>> perIntervalData = new ArrayList<>();
+            intervalMap.entrySet().stream()
+                    .sorted(Map.Entry.comparingByKey())
+                    .forEach(e -> {
+                        Map<String, Object> item = new LinkedHashMap<>();
+                        item.put("time", e.getKey());
+                        item.put("amount", e.getValue()[0]);
+                        perIntervalData.add(item);
+                    });
+
+            stats.put("amountRanking", amountRanking);
+            stats.put("giftNameFreq", giftNameFreq);
+            stats.put("perIntervalData", perIntervalData);
+            return Response.success(stats, req);
+        } catch (Exception e) {
+            LOGGER.error("getGiftStatistics error", e);
+            return Response.success(null, req);
+        }
+    }
+
+    @ResponseBody
+    @PostMapping(value = "/importGiftCsvFile")
+    public Response<?> importGiftCsvFile(@RequestParam("file") MultipartFile file, HttpServletRequest req) {
+        try {
+            String originalFilename = file.getOriginalFilename();
+            if (originalFilename == null || !originalFilename.endsWith(".csv")) return Response.success(2, req);
+            String firstLine;
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), "UTF-8"))) {
+                firstLine = reader.readLine();
+            }
+            if (firstLine == null || (!firstLine.contains("最新时间") || !firstLine.contains("赠送礼物名字") || !firstLine.contains("总金额")))
+                return Response.success(3, req);
+            File danmujiLogDir = getDanmujiLogDir();
+            if (!danmujiLogDir.exists()) danmujiLogDir.mkdirs();
+            File destFile = new File(danmujiLogDir, originalFilename);
+            file.transferTo(destFile);
+            return Response.success(0, req);
+        } catch (Exception e) {
+            LOGGER.error("importGiftCsvFile error", e);
+            return Response.success(1, req);
+        }
+    }
+
     @Autowired
     public void setCheckService(SetService checkService) {
         this.checkService = checkService;

@@ -1585,5 +1585,40 @@ div .link-popup-panel .popup-content-ctnr p {
 #vst-stats-row .card { min-height: 52px; }
 #vst-charts-row .card { min-height: 260px; }
 #vst-charts-row canvas { max-height: 200px; }
+#vst-scatter-row .card { min-height: 290px; }
+#vst-scatter-row canvas { max-height: 240px; }
 #vst-freq-charts-row .card { min-height: 260px; }
 #vst-freq-charts-row canvas { max-height: 200px; }
+
+/* ========== 匹配管理 ========== */
+#mtch-data-table { table-layout: fixed; width: 100%; }
+#mtch-data-table th { cursor: grab; user-select: none; white-space: nowrap; }
+#mtch-data-table th:active { cursor: grabbing; }
+#mtch-data-table th.sortable-ghost { opacity: 0.4; background: #c8ebfb; }
+#mtch-data-table th.sortable-chosen { background: #e2e3e5; }
+#mtch-data-table th[data-sort] { cursor: pointer; color: #0d6efd; }
+#mtch-data-table th[data-sort]:hover { color: #0a58ca; text-decoration: underline; }
+#mtch-charts-row .card { min-height: 260px; }
+#mtch-charts-row canvas { max-height: 200px; }
+
+/* ========== 关注管理 ========== */
+#flw-data-table { table-layout: fixed; width: 100%; }
+#flw-data-table th { cursor: grab; user-select: none; white-space: nowrap; }
+#flw-data-table th:active { cursor: grabbing; }
+#flw-data-table th.sortable-ghost { opacity: 0.4; background: #c8ebfb; }
+#flw-data-table th.sortable-chosen { background: #e2e3e5; }
+#flw-data-table th[data-sort] { cursor: pointer; color: #0d6efd; }
+#flw-data-table th[data-sort]:hover { color: #0a58ca; text-decoration: underline; }
+#flw-charts-row .card { min-height: 260px; }
+#flw-charts-row canvas { max-height: 200px; }
+
+/* ========== 礼物管理 ========== */
+#gft-data-table { table-layout: fixed; width: 100%; }
+#gft-data-table th { cursor: grab; user-select: none; white-space: nowrap; }
+#gft-data-table th:active { cursor: grabbing; }
+#gft-data-table th.sortable-ghost { opacity: 0.4; background: #c8ebfb; }
+#gft-data-table th.sortable-chosen { background: #e2e3e5; }
+#gft-data-table th[data-sort] { cursor: pointer; color: #0d6efd; }
+#gft-data-table th[data-sort]:hover { color: #0a58ca; text-decoration: underline; }
+#gft-charts-row .card { min-height: 260px; }
+#gft-charts-row canvas { max-height: 200px; }
