@@ -1707,7 +1707,7 @@ public class WebController {
 
             int intervalMinutes = 1;
 
-            java.text.SimpleDateFormat bucketSdf = new java.text.SimpleDateFormat("HH:mm");
+            java.text.SimpleDateFormat bucketSdf = new java.text.SimpleDateFormat("MM-dd HH:mm");
             for (String[] row : filteredRows) {
                 String uid = row[1];
                 if (uid != null && !uid.isEmpty() && !uid.equals("0")) {
@@ -2147,7 +2147,7 @@ public class WebController {
             Map<Long, Integer> fieldCountDist = new LinkedHashMap<>();
             Map<String, int[]> intervalMap = new LinkedHashMap<>();
             List<Map<String, Object>> scatterData = new ArrayList<>();
-            java.text.SimpleDateFormat bucketSdf = new java.text.SimpleDateFormat("HH:mm");
+            java.text.SimpleDateFormat bucketSdf = new java.text.SimpleDateFormat("MM-dd HH:mm");
 
             for (String[] row : rows) {
                 String name = row[2];

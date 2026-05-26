@@ -3115,8 +3115,11 @@ const method = {
                                     font: { size: 10 },
                                     callback: function (val, index) {
                                         var t = this.getLabelForValue(val);
-                                        var m = t.match(/(\d{2}:\d{2})/);
-                                        return m ? m[1] : t;
+                                        if (!t) return '';
+                                        var labels = this.chart.data.labels;
+                                        var sameDay = labels.length > 0 && labels[0].substring(0, 10) === labels[labels.length - 1].substring(0, 10);
+                                        if (sameDay) { var m = t.match(/(\d{2}:\d{2})/); return m ? m[1] : t; }
+                                        return t.substring(5, 16);
                                     }
                                 }
                             },
