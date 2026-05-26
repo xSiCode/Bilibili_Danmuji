@@ -3569,7 +3569,7 @@ const method = {
                         $('#dmgr-stats-row, #dmgr-rank-limit-row').show();
                     } else {
                         $('#dmgr-stats-row, #dmgr-rank-limit-row').hide();
-                        $('#dmgr-charts-row').hide();
+                        $('#dmgr-charts-row, #dmgr-scatter-row').hide();
                     }
                 }
             }
@@ -3679,7 +3679,7 @@ const method = {
                     var wordFreq = s.wordFrequency || [];
                     var hasData = perInt.length > 0 || top5.length > 0 || wordFreq.length > 0;
                     if (!hasData) {
-                        $('#dmgr-charts-row').hide();
+                        $('#dmgr-charts-row, #dmgr-scatter-row').hide();
                         return;
                     }
                     $('#dmgr-charts-row').show();
@@ -3828,6 +3828,44 @@ const method = {
                             }
                         });
                     }
+
+                    // Chart 5: 弹幕长度散点
+                    var scatterSeries = s.danmakuScatter || [];
+                    if (scatterSeries.length > 0) {
+                        $('#dmgr-scatter-row').show();
+                        var ctx5 = document.getElementById('dmgr-chart-scatter').getContext('2d');
+                        // 收集所有点，同uid同色，不同uid不同色（用uid hash生成颜色）
+                        var uidColorCache = {};
+                        function uidToColor(uid) {
+                            if (uidColorCache[uid]) return uidColorCache[uid];
+                            var h = 0;
+                            for (var i = 0; i < uid.length; i++) { h = uid.charCodeAt(i) + ((h << 5) - h); }
+                            h = Math.abs(h) % 360;
+                            uidColorCache[uid] = 'hsla(' + h + ',70%,45%,0.8)';
+                            return uidColorCache[uid];
+                        }
+                        var allPoints = [];
+                        $.each(scatterSeries, function (si, series) {
+                            $.each(series.points || [], function (pi, p) {
+                                var ms = new Date(p.time.replace(' ', 'T')).getTime();
+                                allPoints.push({ x: ms, y: p.length, rawLen: p.rawLength, uid: series.uid, name: series.name });
+                            });
+                        });
+                        allPoints.sort(function (a, b) { return a.x - b.x; });
+                        if (allPoints.length > 0) {
+                            dmgrState.chartInstances.dmScatter = new Chart(ctx5, {
+                                type: 'scatter', data: {
+                                    datasets: [{
+                                        data: allPoints,
+                                        pointRadius: 3, pointHoverRadius: 6,
+                                        pointBackgroundColor: function (ctx) { return uidToColor(ctx.raw.uid); },
+                                        pointBorderColor: function (ctx) { return uidToColor(ctx.raw.uid).replace('0.8','1'); }
+                                    }]
+                                },
+                                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (ctx) { return ' ' + (ctx.raw.name || '') + ' 长度:' + (ctx.raw.rawLen || ctx.raw.y * 5); } } } }, scales: { x: { ticks: { font: { size: 10 }, callback: function (v) { var d = new Date(v); var M = d.getMonth() + 1, D = d.getDate(), h = d.getHours(), m = d.getMinutes(); return M + '/' + D + ' ' + (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m; } }, title: { display: true, text: '时间', font: { size: 10 } } }, y: { ticks: { font: { size: 10 }, stepSize: 1 }, title: { display: true, text: '弹幕内容长度/5', font: { size: 10 } } } } }
+                            });
+                        } else { $('#dmgr-scatter-row').hide(); }
+                    } else { $('#dmgr-scatter-row').hide(); }
                 }
             }
         });

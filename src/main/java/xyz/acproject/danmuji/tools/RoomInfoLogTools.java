@@ -28,7 +28,7 @@ public class RoomInfoLogTools {
     private static volatile boolean running;
 
     private static final ThreadLocal<SimpleDateFormat> MINUTE_FORMAT =
-            ThreadLocal.withInitial(() -> new SimpleDateFormat("yyyy-MM-dd HH:mm"));
+            ThreadLocal.withInitial(() -> new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"));
 
     static {
         initBase();
@@ -107,7 +107,9 @@ public class RoomInfoLogTools {
                     vals[0] = Long.parseLong(parts[1]);
                     vals[1] = Long.parseLong(parts[2]);
                     vals[2] = Long.parseLong(parts[3]);
-                    roomInfoMap.put(parts[0], vals);
+                    // 兼容旧格式：分钟精度补全为秒精度
+                    String timeKey = parts[0].length() == 16 ? parts[0] + ":00" : parts[0];
+                    roomInfoMap.put(timeKey, vals);
                 }
             }
         } catch (Exception e) {
