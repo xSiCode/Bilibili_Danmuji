@@ -28,7 +28,7 @@
             display: flex;
             flex-direction: column;
             gap: 0.2em;
-            padding: 0.1em 0;
+            padding: 0.2em 0.2em;
         }
         .dm-row {
             display: flex;
@@ -52,8 +52,8 @@
             overflow: hidden;
         }
         .dm-bubble {
-            max-width: calc(100% - 3.25em);
-            padding: 0.15em 0.45em;
+            max-width: calc(100% - 1.25em);
+            padding: 0.1em 0.3em;
             border-radius: 0.25em;
             line-height: 1.5;
             word-break: break-word;
@@ -81,7 +81,7 @@
     // --- responsive font size: 6% of viewport width ---
     function resizeFont() {
         var w = document.body.clientWidth || window.innerWidth || 400;
-        var fs = Math.max(10, w * 0.06);
+        var fs = Math.max(10, w * 0.058);
         document.documentElement.style.fontSize = fs + 'px';
     }
     $(window).on('resize', resizeFont);
@@ -144,10 +144,23 @@
     }
 
     function addGift(uid, uname, giftName, num) {
-        var text = '赠送 ' + he(giftName || '') + ' x' + (num || 1);
-        var $row = $('<div class="dm-row"></div>');
+        // merge: same user + same gift in the last 3 seconds → update existing
+        var now = Date.now();
+        var $last = $('#list .dm-gift').last();
+        if ($last.length) {
+            var lastData = $last.data('gift');
+            if (lastData && lastData.uid === uid && lastData.name === giftName && (now - lastData.time) < 3000) {
+                lastData.num += (num || 1);
+                lastData.time = now;
+                $last.find('.gift-num').text(' x' + lastData.num);
+                return;
+            }
+        }
+        var $row = $('<div class="dm-row dm-gift"></div>');
+        $row.data('gift', { uid: uid, name: giftName, num: (num || 1), time: now });
         $row.append(avatarHtml(uid, uname));
-        $row.append('<div class="dm-bubble" style="background:rgba(220,80,140,0.85);">' + text + '</div>');
+        $row.append('<div class="dm-bubble" style="background:rgba(220,80,140,0.85);">' +
+            '赠送 ' + he(giftName || '') + ' <span class="gift-num">x' + (num || 1) + '</span></div>');
         $('#list').append($row);
         trimList();
     }

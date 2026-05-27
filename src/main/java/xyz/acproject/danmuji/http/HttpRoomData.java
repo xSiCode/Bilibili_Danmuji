@@ -715,6 +715,7 @@ public class HttpRoomData {
         return asyncHttpGetUserCard(vmid).thenApply(dataX -> {
             int score = blackWhiteScore;
             String type = blackWhiteType;
+            StringBuilder blackWhiteTypeList = new StringBuilder(blackWhiteType);
 
             if (dataX != null && dataX.getShort("code") == 0) {
                 JSONObject dataCard = dataX.getJSONObject("data");
@@ -759,53 +760,63 @@ public class HttpRoomData {
                     if (KolLevel !=0 ) {
                         score++;
                         type = "[KOL+1]";
+                        blackWhiteTypeList.append(type);
                         logSb.append(" [KOL:").append(KolLevel).append("]").append(type);
                     }
 
                     if (following) {
                         score += 2;
                         type = "[已关注+2]";
+                        blackWhiteTypeList.append(type);
                         logSb.append(type);
                     } else if ((fans < 50 && attention > 4500) || (attention > 4990)) {
                         score--;
                         type = "[疑似人机-1]";
+                        blackWhiteTypeList.append(type);
                         logSb.append(type);
                     } else if (attention == 0 && fans == 0) {
                         score--;
                         type = "[疑似人机-1]";
+                        blackWhiteTypeList.append(type);
                         logSb.append(type);
                     } else  if (name.startsWith("bili_") && sex.equals("保密") && currentLevel <=3){
                         score--;
                         type = "[疑似人机-1]";
+                        blackWhiteTypeList.append(type);
                         logSb.append(type);
                     }
 
                     if (currentLevel == 0) {
                         score = score - 2;
                         type = "[Lv0 -2]";
+                        blackWhiteTypeList.append(type);
                         logSb.append(type);
                     } else if (currentLevel <= 2) {
                         score = score - 1;
                         type = "[Lv" + currentLevel + " -1]";
+                        blackWhiteTypeList.append(type);
                         logSb.append(type);
                     } else if (currentLevel <= 4) {
                         logSb.append(" [Lv").append(currentLevel).append("]");
                     } else {
                         score = score + 1;
                         type = "[Lv" + currentLevel + " +1]";
+                        blackWhiteTypeList.append(type);
                         logSb.append(type);
                     }
 
                     if (StringUtils.contains(String.valueOf(cardInfo), "大会员")) {
                         score = score + 1;
                         type = "[大会员+1]";
+                        blackWhiteTypeList.append(type);
                         logSb.append(type);
                     }
 
                     if(!officialTitle.isEmpty()){ //认证用户
                         score += 1;
                         type = "[认证+1]";
-                        logSb.append(type);
+                        blackWhiteTypeList.append(type);
+                        logSb.append("[").append(officialTitle).append("]").append(type);
                     }
 
                     score += getKeyWordsScore(String.valueOf(cardInfo), logSb); // 姓名，签名
@@ -815,6 +826,8 @@ public class HttpRoomData {
 
                     type = " [个人黑白分:" + score + "]";
                     logSbEnd.insert(0,type);
+
+                    // todo 实时个人看板
 
                     SelfTools.appendAt(logSb, 180, logSbEnd.toString());
                     LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
