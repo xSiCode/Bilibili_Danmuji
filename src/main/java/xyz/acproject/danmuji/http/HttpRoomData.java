@@ -825,9 +825,10 @@ public class HttpRoomData {
                     // LogFileTools.getlogFileTools().logTestFile(String.valueOf(cardInfo));
 
                     type = " [个人黑白分:" + score + "]";
+                    blackWhiteTypeList.append(type);
                     logSbEnd.insert(0,type);
 
-                    // todo 实时个人看板
+                    // todo 实时陌生观众看板
 
                     SelfTools.appendAt(logSb, 180, logSbEnd.toString());
                     LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
