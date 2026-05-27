@@ -174,6 +174,12 @@
                                 </div>
                                 <div class="sidebar-section">
                                     <span class="sidebar-section-header"
+                                          onclick="toggleSidebarSection(this);return false;">看板</span>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="stranger-board"
+                                       onclick="switchTab('stranger-board', this);return false;">陌生观众看板</a>
+                                </div>
+                                <div class="sidebar-section">
+                                    <span class="sidebar-section-header"
                                           onclick="toggleSidebarSection(this);return false;">后台管理</span>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="live-room-mgr"
                                        onclick="switchTab('live-room-mgr', this);return false;">直播间管理</a>
@@ -2465,6 +2471,49 @@
                                                 <canvas id="flw-chart-rank" height="200"></canvas>
                                             </div></div>
                                         </div>
+                                    </div>
+                                </div>
+                                <div class="tab-pane" id="tab-stranger-board">
+                                    <div class="input-group mb-1"><h5>实时陌生观众看板</h5></div>
+                                    <div class="row g-2 mb-2 align-items-end">
+                                        <div class="col-auto">
+                                            <input type="text" id="sv-search-input" class="form-control form-control-sm" style="width:200px;" placeholder="搜索观众名/UID/类型...">
+                                        </div>
+                                        <div class="col-auto">
+                                            <button id="sv-btn-search" class="btn btn-sm btn-primary">搜索</button>
+                                            <button id="sv-btn-reset" class="btn btn-sm btn-outline-secondary ms-1">重置</button>
+                                        </div>
+                                        <div class="col-auto ms-auto">
+                                            <span class="text-muted" style="font-size:12px;" id="sv-total-info"></span>
+                                        </div>
+                                    </div>
+                                    <div class="sv-table-wrap">
+                                        <table id="sv-data-table" class="table table-sm table-striped" style="display:none;table-layout:auto;width:100%;">
+                                            <thead>
+                                                <tr>
+                                                    <th>时间</th>
+                                                    <th>头像</th>
+                                                    <th>观众名</th>
+                                                    <th>打分类型</th>
+                                                    <th>次数</th>
+                                                    <th>场次</th>
+                                                    <th>拉黑</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="sv-table-body"></tbody>
+                                        </table>
+                                        <div id="sv-pagination" class="d-flex justify-content-center align-items-center mt-2" style="display:none;">
+                                            <button id="sv-first-btn" class="btn btn-sm btn-outline-secondary">首页</button>
+                                            <button id="sv-prev-btn" class="btn btn-sm btn-outline-secondary ms-1">上一页</button>
+                                            <span id="sv-page-info" class="mx-2">第1页 / 共1页</span>
+                                            <button id="sv-next-btn" class="btn btn-sm btn-outline-secondary">下一页</button>
+                                            <button id="sv-last-btn" class="btn btn-sm btn-outline-secondary ms-1">尾页</button>
+                                            <span class="ms-3">跳至</span>
+                                            <input type="number" id="sv-page-jump" class="form-control form-control-sm" style="width:60px;" min="1">
+                                            <span>页</span>
+                                            <button id="sv-btn-go" class="btn btn-sm btn-outline-primary ms-1">GO</button>
+                                        </div>
+                                        <div id="sv-empty-msg" class="text-muted text-center py-3" style="display:none;">暂无数据</div>
                                     </div>
                                 </div>
                             </div>

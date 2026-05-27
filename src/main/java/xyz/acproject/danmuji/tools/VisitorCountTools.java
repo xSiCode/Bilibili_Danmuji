@@ -88,6 +88,12 @@ public class VisitorCountTools {
         });
     }
 
+    public static int[] getCountAndSession(long uid) {
+        VisitorRecord v = visitorMap.get(uid);
+        if (v == null) return new int[]{0, 0};
+        return new int[]{v.count, v.session};
+    }
+
     private static void loadFromCsv() {
         loadFromCsv(currentCsvPath());
     }

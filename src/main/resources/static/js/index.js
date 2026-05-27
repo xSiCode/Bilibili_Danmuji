@@ -134,6 +134,16 @@ let lrmState = {
     columnOrder: [0, 1, 2, 3, 4],
     chartInstances: {}
 };
+// 陌生观众看板 state
+let svState = {
+    records: [],
+    page: 1,
+    pageSize: 10,
+    search: '',
+    totalPages: 1,
+    totalRecords: 0,
+    defaultToLast: true
+};
 
 $(function () {
     "use strict";
@@ -2925,6 +2935,12 @@ const method = {
                         }
                     }
                 }
+                if (data.cmd === 'stranger_viewer' && data.result) {
+                    method._handleStrangerViewer(data.result);
+                }
+                if (data.cmd === 'stranger_block' && data.result) {
+                    method._handleStrangerBlock(data.result);
+                }
             };
             self._autoBlockWs.onclose = function () {
                 // 断线3秒后重连
@@ -4884,6 +4900,199 @@ const method = {
                 if (order.length === gftState.headers.length) { gftState.columnOrder = order; method.loadGftData(); }
             }
         });
+    },
+
+    // ========== 陌生观众看板 ==========
+    _svInitialized: false,
+    _initSv: function () {
+        if (method._svInitialized) return;
+        method._svInitialized = true;
+
+        // Close avatar overlay on any click outside
+        $(document).on('click', function (e) {
+            var $ov = $('#sv-avatar-overlay');
+            if ($ov.length && $ov.is(':visible') && !$(e.target).closest('#sv-avatar-overlay').length && !$(e.target).is('img[data-full-src]')) {
+                $ov.hide();
+            }
+        });
+
+        // Search
+        $('#sv-btn-search').on('click', function () {
+            svState.search = $('#sv-search-input').val().trim();
+            svState.page = 1;
+            svState.defaultToLast = false;
+            method.loadSvData();
+        });
+        $('#sv-btn-reset').on('click', function () {
+            $('#sv-search-input').val('');
+            svState.search = '';
+            svState.page = 1;
+            svState.defaultToLast = true;
+            method.loadSvData();
+        });
+        $('#sv-search-input').on('keypress', function (e) {
+            if (e.which === 13) $('#sv-btn-search').click();
+        });
+
+        // Pagination
+        $('#sv-first-btn').on('click', function () { svState.defaultToLast = false; method._svGoPage(1); });
+        $('#sv-prev-btn').on('click', function () { svState.defaultToLast = false; method._svGoPage(svState.page - 1); });
+        $('#sv-next-btn').on('click', function () { svState.defaultToLast = false; method._svGoPage(svState.page + 1); });
+        $('#sv-last-btn').on('click', function () { svState.defaultToLast = false; method._svGoPage(svState.totalPages); });
+        $('#sv-btn-go').on('click', function () {
+            var p = parseInt($('#sv-page-jump').val());
+            if (p >= 1 && p <= svState.totalPages) { svState.defaultToLast = false; method._svGoPage(p); }
+        });
+    },
+
+    loadSvData: function () {
+        method._initSv();
+        var params = { page: svState.page, pageSize: svState.pageSize };
+        if (svState.search) params.search = svState.search;
+        $.get('/strangerViewerData', params, function (resp) {
+            if (resp && resp.code == "200" && resp.result) {
+                svState.records = resp.result.rows || [];
+                svState.totalRecords = resp.result.total || 0;
+                svState.totalPages = resp.result.totalPages || 0;
+                if (svState.defaultToLast && svState.totalPages > 0 && svState.search === '' && svState.page !== svState.totalPages) {
+                    svState.page = svState.totalPages;
+                    method.loadSvData();
+                    return;
+                }
+                method._renderSvTable();
+            }
+        });
+    },
+
+    _renderSvTable: function () {
+        var $tbody = $('#sv-table-body');
+        $tbody.empty();
+        var records = svState.records;
+
+        if (!records || records.length === 0) {
+            $('#sv-data-table').hide();
+            $('#sv-pagination').hide();
+            $('#sv-empty-msg').show();
+            $('#sv-total-info').text('');
+            return;
+        }
+
+        $('#sv-data-table').show();
+        $('#sv-pagination').show();
+        $('#sv-empty-msg').hide();
+        $('#sv-total-info').text('共 ' + svState.totalRecords + ' 条记录');
+
+        for (let i = 0; i < 10; i++) {
+            var $tr = $('<tr></tr>');
+            if (i < records.length) {
+                let r = records[i];
+                // 时间
+                $tr.append($('<td style="white-space:nowrap;"></td>').text(r.time || ''));
+                // 头像
+                var $avatarTd = $('<td style="white-space:nowrap;position:relative;"></td>');
+                var $avatar = $('<img src="' + (r.face || '') + '" style="width:32px;height:32px;border-radius:50%;cursor:pointer;" data-full-src="' + (r.face || '') + '">');
+                $avatar.on('click', function (e) {
+                    e.stopPropagation();
+                    var fullSrc = $(this).attr('data-full-src');
+                    var $ov = $('#sv-avatar-overlay');
+                    if ($ov.length && $ov.is(':visible') && $ov.attr('data-src') === fullSrc) {
+                        $ov.hide();
+                        return;
+                    }
+                    if (!$ov.length) {
+                        $ov = $('<div id="sv-avatar-overlay" style="display:none;position:fixed;top:60px;left:20px;z-index:9999;border:2px solid #fff;box-shadow:0 2px 12px rgba(0,0,0,0.4);background:#fff;padding:4px;"></div>');
+                        $('body').append($ov);
+                    }
+                    $ov.empty().append('<img src="' + fullSrc + '" style="max-width:300px;max-height:300px;display:block;" onerror="this.style.display=\'none\'">').attr('data-src', fullSrc).show();
+                });
+                $avatarTd.append($avatar);
+                $tr.append($avatarTd);
+                // 观众名 - clickable to space
+                var $nameTd = $('<td style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;"></td>');
+                var $nameLink = $('<a href="https://space.bilibili.com/' + r.uid + '" target="_blank"></a>').text(r.name || '');
+                $nameTd.append($nameLink);
+                $tr.append($nameTd);
+                // 打分类型
+                $tr.append($('<td style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;"></td>').text(r.scoreTypes || ''));
+                // 次数
+                $tr.append($('<td style="white-space:nowrap;"></td>').text(r.count || 0));
+                // 场次
+                $tr.append($('<td style="white-space:nowrap;"></td>').text(r.session || 0));
+                // 拉黑
+                var $blockTd = $('<td style="white-space:nowrap;"></td>');
+                var isBlocked = r.blocked === true || r.blocked === 'true' || r.blocked === 1 || r.blocked === '1';
+                var blockLabel = isBlocked ? '解除拉黑' : '拉黑';
+                var $blockBtn = $('<button class="btn btn-sm ' + (isBlocked ? 'btn-warning' : 'btn-danger') + '"></button>')
+                    .text(blockLabel)
+                    .attr('data-uid', r.uid)
+                    .attr('data-blocked', r.blocked ? '1' : '0');
+                // Hover tooltip with logSb
+                $blockBtn.on('mouseenter', function () {
+                    var logSb = r.logSb || '';
+                    var $tip = $('<div class="sv-logtip" style="position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:4px 8px;border-radius:4px;font-size:11px;max-width:300px;word-break:break-all;z-index:999;white-space:pre-wrap;"></div>').text(logSb);
+                    $(this).css('position', 'relative').append($tip);
+                }).on('mouseleave', function () {
+                    $(this).find('.sv-logtip').remove();
+                }).on('click', function () {
+                    var uid = $(this).attr('data-uid');
+                    method._svToggleBlock(uid);
+                });
+                $blockTd.append($blockBtn);
+                $tr.append($blockTd);
+            } else {
+                // Placeholder empty row to keep 10-row height
+                $tr.append($('<td colspan="7" style="height:42px;">&nbsp;</td>'));
+            }
+            $tbody.append($tr);
+        }
+
+        // Pagination
+        $('#sv-page-info').text('第' + svState.page + '页 / 共' + svState.totalPages + '页');
+        $('#sv-first-btn, #sv-prev-btn').prop('disabled', svState.page <= 1);
+        $('#sv-next-btn, #sv-last-btn').prop('disabled', svState.page >= svState.totalPages);
+        $('#sv-page-jump').attr('max', svState.totalPages);
+    },
+
+    _svGoPage: function (p) {
+        if (p < 1 || p > svState.totalPages) return;
+        svState.page = p;
+        method.loadSvData();
+    },
+
+    _svToggleBlock: function (uid) {
+        $.post('/strangerViewerBlock', { uid: uid }, function (resp) {
+            if (resp && resp.code == "200") {
+                // Update local records
+                for (var i = 0; i < svState.records.length; i++) {
+                    if (svState.records[i].uid === uid) {
+                        svState.records[i].blocked = !svState.records[i].blocked;
+                        break;
+                    }
+                }
+                method._renderSvTable();
+            }
+        });
+    },
+
+    // WebSocket handler for stranger viewer updates
+    _handleStrangerViewer: function (data) {
+        if (!data || !data.uid) return;
+        if ($('#tab-stranger-board').hasClass('active')) {
+            method.loadSvData();
+        }
+    },
+
+    _handleStrangerBlock: function (data) {
+        if (!data || !data.uid) return;
+        for (var i = 0; i < svState.records.length; i++) {
+            if (svState.records[i].uid === data.uid) {
+                svState.records[i].blocked = data.blocked;
+                break;
+            }
+        }
+        if ($('#tab-stranger-board').hasClass('active')) {
+            method._renderSvTable();
+        }
     }
 
 
@@ -5004,6 +5213,11 @@ function switchTab(tabId, el) {
             method.loadGftCsvFileList();
         }
     }
+    // 切换到陌生观众看板时加载数据
+    if (tabId === 'stranger-board') {
+        method._initSv();
+        method.loadSvData();
+    }
     // 管理页面自动刷新（每60秒）
     if (window._mgrRefreshTimer) { clearInterval(window._mgrRefreshTimer); window._mgrRefreshTimer = null; }
     var mgrLoadFn = null;
@@ -5013,6 +5227,7 @@ function switchTab(tabId, el) {
     else if (tabId === 'match-mgr') mgrLoadFn = method.loadMtchData;
     else if (tabId === 'follow-mgr') mgrLoadFn = method.loadFlwData;
     else if (tabId === 'gift-mgr') mgrLoadFn = method.loadGftData;
+    else if (tabId === 'stranger-board') mgrLoadFn = method.loadSvData;
     if (mgrLoadFn) {
         window._mgrRefreshTimer = setInterval(function () {
             if (typeof mgrLoadFn === 'function') mgrLoadFn();

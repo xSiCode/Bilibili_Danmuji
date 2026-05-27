@@ -3457,6 +3457,35 @@ public class WebController {
         }
     }
 
+    // ========== 实时陌生观众看板 ==========
+
+    @ResponseBody
+    @GetMapping(value = "/strangerViewerData")
+    public Response<?> strangerViewerData(@RequestParam(defaultValue = "1") int page,
+                                          @RequestParam(defaultValue = "10") int pageSize,
+                                          @RequestParam(required = false) String search,
+                                          HttpServletRequest req) {
+        try {
+            Map<String, Object> data = xyz.acproject.danmuji.service.StrangerViewerService.getPageData(page, pageSize, search);
+            return Response.success(data, req);
+        } catch (Exception e) {
+            LOGGER.error("strangerViewerData error", e);
+            return Response.success(null, req);
+        }
+    }
+
+    @ResponseBody
+    @PostMapping(value = "/strangerViewerBlock")
+    public Response<?> strangerViewerBlock(@RequestParam("uid") long uid, HttpServletRequest req) {
+        try {
+            boolean blocked = xyz.acproject.danmuji.service.StrangerViewerService.toggleBlock(uid);
+            return Response.success(blocked ? 1 : 0, req);
+        } catch (Exception e) {
+            LOGGER.error("strangerViewerBlock error", e);
+            return Response.success(-1, req);
+        }
+    }
+
     @Autowired
     public void setCheckService(SetService checkService) {
         this.checkService = checkService;

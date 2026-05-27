@@ -828,7 +828,9 @@ public class HttpRoomData {
                     blackWhiteTypeList.append(type);
                     logSbEnd.insert(0,type);
 
-                    // todo 实时陌生观众看板
+                    // 实时陌生观众看板
+                    xyz.acproject.danmuji.service.StrangerViewerService.addRecord(
+                            vmid, name, face, score, blackWhiteTypeList.toString(), String.valueOf(logSb));
 
                     SelfTools.appendAt(logSb, 180, logSbEnd.toString());
                     LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
