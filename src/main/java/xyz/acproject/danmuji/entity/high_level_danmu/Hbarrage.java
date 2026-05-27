@@ -49,6 +49,12 @@ public class Hbarrage implements Serializable, Cloneable {
     private Short ulevel;
     // 用户本房间舰队身份(0非舰队，1总督，2提督，3舰长)位置info[7]
     private Short uguard;
+    // 表情弹幕(0否 1是)
+    private Short msg_emoticon;
+    // 表情弹幕图片地址
+    private String msg_emoticon_url;
+    // 表情弹幕名字
+    private String msg_emoticon_name;
 
 
     private Hbarrage() {
@@ -107,6 +113,9 @@ public class Hbarrage implements Serializable, Cloneable {
             h.setMedal_room(barrage.getMedal_room());
             h.setUlevel(barrage.getUlevel());
             h.setUguard(barrage.getUguard());
+            h.setMsg_emoticon(barrage.getMsg_emoticon());
+            h.setMsg_emoticon_url(barrage.getMsg_emoticon_url());
+            h.setMsg_emoticon_name(barrage.getMsg_emoticon_name());
             return h;
         } catch (Exception e) {
             // TODO 自动生成的 catch 块

@@ -40,7 +40,6 @@ import java.net.URLEncoder;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
-
 import java.util.stream.Collectors;
 import xyz.acproject.danmuji.tools.RoomInfoLogTools;
 
@@ -118,6 +117,11 @@ public class WebController {
     @RequestMapping(value = "/danmu_widget")
     public String danmu_widget(Model model) {
         return "danmu_widget";
+    }
+
+    @RequestMapping(value = "/obs_danmaku")
+    public String obs_danmaku(Model model) {
+        return "obs_danmaku";
     }
 
     @RequestMapping(value = "/login")

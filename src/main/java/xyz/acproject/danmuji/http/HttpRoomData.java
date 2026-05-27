@@ -576,10 +576,10 @@ public class HttpRoomData {
                 if (dynData.contains(resultStartStr)) {
                     if (dynData.length() < 100) {
                         blackWhiteScore --;
-                        blackWhiteType = "[关注和动态都不可见  得分："+blackWhiteScore+"]";
+                        blackWhiteType = "[关注和动态都隐藏，得分："+blackWhiteScore+"]";
                     } else {
                         blackWhiteScore += getKeyWordsScore(dynData, logSb);
-                        blackWhiteType = "[关注不可见 动态平分 总得分: " + blackWhiteScore + "]";
+                        blackWhiteType = "[关注隐藏动态可见，得分: " + blackWhiteScore + "]";
                     }
                     logSb.append(blackWhiteType);
 
@@ -684,7 +684,7 @@ public class HttpRoomData {
         }
 
         if (!matchedList.isEmpty()) {
-            logSbEnd.append(" [关注列表黑白分:").append(blackWhiteScore).append("]")
+            logSbEnd.append(" [关注黑白分:").append(blackWhiteScore).append("]")
                     .append(" [分裂度:").append(blackCount * whiteCount)
                     .append("] [匹配数:").append(matchedList.size())
                     .append("] 黑白名单:").append(matchedList.toJSONString());
@@ -788,7 +788,7 @@ public class HttpRoomData {
 
                     // LogFileTools.getlogFileTools().logTestFile(String.valueOf(cardInfo));
 
-                    type = " [用户卡片黑白分:" + score + "]";
+                    type = " [动态和卡片黑白分:" + score + "]";
                     logSb.append(type);
 
                     SelfTools.appendAt(logSb, 180, logSbEnd.toString());

@@ -1,0 +1,224 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="referrer" content="never">
+    <meta name="renderer" content="webkit">
+    <title>OBS弹幕看板</title>
+    <link rel="shortcut icon" th:href="@{/img/favicon.png}">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+            overflow: hidden;
+        }
+        #wrap {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            overflow: hidden;
+        }
+        #list {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 0.2em;
+            padding: 0.1em 0;
+        }
+        .dm-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.25em;
+            width: 100%;
+            animation: slideUp 0.35s ease-out;
+        }
+        .dm-avatar {
+            width: 1.5em;
+            height: 1.5em;
+            border-radius: 50%;
+            flex-shrink: 0;
+            margin-top: 0.1em;
+            object-fit: cover;
+            font-weight: bold;
+            color: #fff;
+            text-align: center;
+            line-height: 1.5em;
+            font-size: 1em;
+            overflow: hidden;
+        }
+        .dm-bubble {
+            max-width: calc(100% - 3.25em);
+            padding: 0.15em 0.45em;
+            border-radius: 0.25em;
+            line-height: 1.5;
+            word-break: break-word;
+            text-shadow: 0 0 0.12em rgba(0,0,0,0.5);
+            color: #fff;
+        }
+        .dm-bubble .emoticon-img {
+            height: 1.4em;
+            vertical-align: middle;
+            margin: 0 0.05em;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(0.9em); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+    <script type="text/javascript" th:src="@{/js/jquery-3.7.0.min.js}"></script>
+</head>
+<body>
+<div id="wrap"><div id="list"></div></div>
+
+<script type="text/javascript">
+    var maxItems = Math.max(8, Math.floor(window.innerHeight / 24));
+
+    // --- responsive font size: 6% of viewport width ---
+    function resizeFont() {
+        var w = document.body.clientWidth || window.innerWidth || 400;
+        var fs = Math.max(10, w * 0.06);
+        document.documentElement.style.fontSize = fs + 'px';
+    }
+    $(window).on('resize', resizeFont);
+    resizeFont();
+
+    // --- helpers ---
+    function hashInt(str) {
+        var h = 0;
+        var s = String(str || 0);
+        for (var i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+        return Math.abs(h);
+    }
+
+    var palette = [
+        '#e74c3c','#c0392b','#e67e22','#d35400','#f39c12','#e8b40a',
+        '#2ecc71','#27ae60','#1abc9c','#16a085','#3498db','#2980b9',
+        '#2980b9','#2471a3','#9b59b6','#8e44ad','#e91e63','#c2185b',
+        '#ff6f00','#ef6c00','#827717','#9e9d24','#00838f','#006064',
+        '#1e88e5','#1565c0','#5e35b1','#4527a0','#6d4c41','#4e342e',
+        '#546e7a','#37474f','#c62828','#ad1457','#6a1b9a','#4a148c',
+        '#283593','#1a237e','#004d40','#1b5e20','#e65100','#bf360c',
+        '#33691e','#558b2f','#0d47a1','#01579b','#880e4f','#4e0028',
+        '#3e2723','#263238','#f4511e','#d84315','#00acc1','#00897b',
+        '#43a047','#2e7d32','#3949ab','#303f9f','#8e24aa','#7b1fa2',
+        '#d32f2f','#b71c1c','#f57c00','#e65100'
+    ];
+    function bgColor(uid) {
+        return palette[hashInt(uid) % palette.length];
+    }
+
+    function avatarChar(uname) {
+        return (uname || '?').charAt(0);
+    }
+
+    function buildEmoticonHtml(msg, url, name) {
+        if (url) {
+            return '<img class="emoticon-img" src="' + he(url) + '" title="' + he(name || '') + '" onerror="this.replaceWith(\'[\'+(this.title||\'表情\')+\']\')">';
+        }
+        return '[' + he(name || '表情') + ']';
+    }
+
+    function avatarHtml(uid, uname) {
+        var bg = bgColor(uid);
+        var ch = avatarChar(uname);
+        return '<div class="dm-avatar" style="background:' + bg + ';">' + he(ch) + '</div>';
+    }
+
+    function addDanmaku(uid, uname, msg, emoticonUrl, emoticonName) {
+        var content;
+        if (emoticonUrl) {
+            content = buildEmoticonHtml(msg, emoticonUrl, emoticonName);
+        } else {
+            content = he(msg || '');
+        }
+        var $row = $('<div class="dm-row"></div>');
+        $row.append(avatarHtml(uid, uname));
+        $row.append('<div class="dm-bubble" style="background:' + bgColor(uid) + ';">' + content + '</div>');
+        $('#list').append($row);
+        trimList();
+    }
+
+    function addGift(uid, uname, giftName, num) {
+        var text = '赠送 ' + he(giftName || '') + ' x' + (num || 1);
+        var $row = $('<div class="dm-row"></div>');
+        $row.append(avatarHtml(uid, uname));
+        $row.append('<div class="dm-bubble" style="background:rgba(220,80,140,0.85);">' + text + '</div>');
+        $('#list').append($row);
+        trimList();
+    }
+
+    function addSuperchat(uid, uname, msg) {
+        var $row = $('<div class="dm-row"></div>');
+        $row.append(avatarHtml(uid, uname));
+        $row.append('<div class="dm-bubble" style="background:rgba(255,100,60,0.9);">' + he(msg || '') + '</div>');
+        $('#list').append($row);
+        trimList();
+    }
+
+    function trimList() {
+        while ($('#list').children().length > maxItems) {
+            $('#list').children().first().remove();
+        }
+    }
+
+    function he(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    var wsRetryDelay = 3000;
+
+    function connectWs() {
+        try {
+            var proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            var ws = new WebSocket(proto + '//' + window.location.host + '/danmu/sub');
+            var closed = false;
+            ws.onopen = function() {
+                console.log('OBS ws ok');
+                wsRetryDelay = 3000; // reset on success
+            };
+            ws.onmessage = function(e) {
+                try {
+                    var data = JSON.parse(e.data);
+                    if (data.cmd === 'danmu' && data.result) {
+                        var r = data.result;
+                        addDanmaku(r.uid, r.uname, r.msg, r.msg_emoticon_url, r.msg_emoticon_name);
+                    } else if (data.cmd === 'gift' && data.result) {
+                        var r = data.result;
+                        addGift(r.uid, r.uname, r.giftName, r.num);
+                    } else if (data.cmd === 'superchat' && data.result) {
+                        var r = data.result;
+                        addSuperchat(r.uid, r.uname, r.msg || r.message);
+                    }
+                } catch(ignore) {}
+            };
+            ws.onclose = function() {
+                if (closed) return;
+                closed = true;
+                console.log('ws closed, retry in ' + (wsRetryDelay / 1000) + 's');
+                setTimeout(connectWs, wsRetryDelay);
+                wsRetryDelay = Math.min(wsRetryDelay * 1.5, 30000);
+            };
+            ws.onerror = function() {
+                if (closed) return;
+                closed = true;
+                try { ws.close(); } catch(e) {}
+                console.log('ws error, retry in ' + (wsRetryDelay / 1000) + 's');
+                setTimeout(connectWs, wsRetryDelay);
+                wsRetryDelay = Math.min(wsRetryDelay * 1.5, 30000);
+            };
+        } catch(e) {
+            console.log('ws init fail, retry in ' + (wsRetryDelay / 1000) + 's');
+            setTimeout(connectWs, wsRetryDelay);
+            wsRetryDelay = Math.min(wsRetryDelay * 1.5, 30000);
+        }
+    }
+
+    $(function() { connectWs(); });
+</script>
+</body>
+</html>
