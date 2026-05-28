@@ -574,14 +574,14 @@ public class HttpRoomData {
                 String resultStartStr = "{\"code\":0,\"message\":\"OK\"";
                 LogFileTools.getlogFileTools().logTestFile(logSb + dynData.substring(0, Math.min(84, dynData.length())));
 
-
                 if (dynData.contains(resultStartStr)) {
                     if (dynData.length() < 100) {
                         blackWhiteScore--;
-                        blackWhiteType = "[动态隐藏:" + blackWhiteScore + "]";  // -2
+                        blackWhiteType = "[动态隐藏-1]";  // -2
                     } else {
-                        blackWhiteScore += getKeyWordsScore(dynData, logSb);
-                        blackWhiteType = "[动态可见:" + blackWhiteScore + "]"; // -1 如果动态可见正常，则动态0分，总分值-1
+                        int keyWordsScore = getKeyWordsScore(dynData, logSb);
+                        blackWhiteScore += keyWordsScore;
+                        blackWhiteType = "[动态关键词:" + keyWordsScore + "]"; // -1 如果动态可见正常，则动态0分，总分值-1
                     }
                     logSb.append(blackWhiteType);
 
