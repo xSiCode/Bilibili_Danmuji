@@ -1626,3 +1626,17 @@ div .link-popup-panel .popup-content-ctnr p {
 #gft-data-table th[data-sort]:hover { color: #0a58ca; text-decoration: underline; }
 #gft-charts-row .card { min-height: 260px; }
 #gft-charts-row canvas { max-height: 200px; }
+
+/* 陌生观众看板 */
+#sv-data-table { table-layout: fixed; }
+#sv-data-table tr { height: 42px; }
+#sv-data-table .sv-td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#sv-data-table .sv-td a { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+/* 列宽：次数42px / 场次42px / 拉黑90px，其余百分比 */
+#sv-data-table th:nth-child(1), #sv-data-table td:nth-child(1) { width: 180px; }
+#sv-data-table th:nth-child(2), #sv-data-table td:nth-child(2) { width: 42px; }
+#sv-data-table th:nth-child(3), #sv-data-table td:nth-child(3) { width: 20%; }
+#sv-data-table th:nth-child(5), #sv-data-table td:nth-child(5) { width: 42px; }
+#sv-data-table th:nth-child(6), #sv-data-table td:nth-child(6) { width: 42px; }
+#sv-data-table th:nth-child(4), #sv-data-table td:nth-child(4) { text-align: right; }
+#sv-data-table th:nth-child(7), #sv-data-table td:nth-child(7) { width: 90px; }

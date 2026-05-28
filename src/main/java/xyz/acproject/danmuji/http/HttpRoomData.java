@@ -444,8 +444,8 @@ public class HttpRoomData {
 
 
     // 用户 卡片信息冷却调用
-    static final ScheduledExecutorService schedulerCardInfoService = new ScheduledThreadPoolExecutor(1);
-    static final AtomicBoolean schedulerCardInfoColdWait = new AtomicBoolean(false);
+    static final ScheduledExecutorService schedulercardJOService = new ScheduledThreadPoolExecutor(1);
+    static final AtomicBoolean schedulercardJOColdWait = new AtomicBoolean(false);
 
     // ---- 异步 HTTP 辅助方法 ----
 
@@ -577,8 +577,8 @@ public class HttpRoomData {
 
                 if (dynData.contains(resultStartStr)) {
                     if (dynData.length() < 100) {
-                        blackWhiteScore --;
-                        blackWhiteType = "[动态隐藏:"+blackWhiteScore+"]";  // -2
+                        blackWhiteScore--;
+                        blackWhiteType = "[动态隐藏:" + blackWhiteScore + "]";  // -2
                     } else {
                         blackWhiteScore += getKeyWordsScore(dynData, logSb);
                         blackWhiteType = "[动态可见:" + blackWhiteScore + "]"; // -1 如果动态可见正常，则动态0分，总分值-1
@@ -599,7 +599,7 @@ public class HttpRoomData {
                 return proceedToCardCheck(vmid, logSb, logSbEnd, blackWhiteScore, blackWhiteType);
             });
         } else {
-            return proceedToCardCheck(vmid, logSb, logSbEnd, -1, "关注隐藏，动态未查看");
+            return proceedToCardCheck(vmid, logSb, logSbEnd, -1, "[关注隐藏-1]");
         }
     }
 
@@ -612,7 +612,7 @@ public class HttpRoomData {
             for (String s : PublicDataConf.centerSetConf.getBlack().getNames()) {
                 if (StringUtils.isBlank(s)) continue;
                 if (StringUtils.contains(dataStr, s)) {
-                    blackWhiteScore-=2;
+                    blackWhiteScore -= 2;
                     logSb.append(" [").append(s).append("-1]");
                 }
             }
@@ -673,7 +673,7 @@ public class HttpRoomData {
 //        } else {
 //            logSbEnd.append("[成分:关注普通]");
 //        }
-        blackWhiteScore +=followersNameSignScore;
+        blackWhiteScore += followersNameSignScore;
 
         // 1 当前观众就在本地黑白名单里
         Integer pnScore = pnScoreMap.get(vmid);
@@ -705,7 +705,7 @@ public class HttpRoomData {
      */
     private static CompletableFuture<Pair<Integer, String>> proceedToCardCheck(long vmid, StringBuilder logSb, StringBuilder logSbEnd,
                                                                                int blackWhiteScore, String blackWhiteType) {
-        if (schedulerCardInfoColdWait.get()) {
+        if (schedulercardJOColdWait.get()) {
             SelfTools.appendAt(logSb, 180, logSbEnd.toString());
             LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
 
@@ -715,132 +715,115 @@ public class HttpRoomData {
         return asyncHttpGetUserCard(vmid).thenApply(dataX -> {
             int score = blackWhiteScore;
             String type = blackWhiteType;
-            StringBuilder blackWhiteTypeList = new StringBuilder(blackWhiteType);
 
             if (dataX != null && dataX.getShort("code") == 0) {
-                JSONObject dataCard = dataX.getJSONObject("data");
-                if (dataCard != null) {
-                    JSONObject cardInfo = dataCard.getJSONObject("card");
+                JSONObject dataJO = dataX.getJSONObject("data");
 
-                    String name = cardInfo != null ? cardInfo.getString("name"):"";
-                    String sex = cardInfo != null ? cardInfo.getString("sex"):"";
-                    String face = cardInfo != null ? cardInfo.getString("face"):""; // 头像链接  "https://i1.hdslb.com/bfs/face/0daf1ee1cd504a33ffe3b995a6692b3054319291.jpg",
-                    long fans = cardInfo != null ? cardInfo.getLongValue("fans") : -2;
-                    long attention = cardInfo != null ? cardInfo.getLongValue("attention") : -2;
+                if (dataJO != null) {
+                    JSONObject cardJO = dataJO.getJSONObject("card");
 
-                    int currentLevel = -1;
-                    if (cardInfo != null) {
-                        JSONObject levelInfo = cardInfo.getJSONObject("level_info");
+                    if (cardJO != null) {
+                        String name = cardJO.getString("name");
+                        String sex = cardJO.getString("sex");
+                        String sign = cardJO.getString("sign");
+                        String face = cardJO.getString("face"); // 头像链接  "https://i1.hdslb.com/bfs/face/0daf1ee1cd504a33ffe3b995a6692b3054319291.jpg",
+                        long fans = cardJO.getLongValue("fans");
+                        long attention = cardJO.getLongValue("attention");
+
+                        boolean following = dataJO.getBooleanValue("following");
+                        long archiveCount = dataJO.getLongValue("archive_count");
+                        long article_count = dataJO.getLongValue("article"); // 专栏
+                        long likeNum = dataJO.getLongValue("like_num");
+
+                        SelfTools.appendAt(logSb, 90, "");
+                        logSb.append("[投稿:").append(archiveCount)
+                                .append("][关注:").append(attention)
+                                .append("][粉丝:").append(fans)
+                                .append("][获赞:").append(likeNum)
+                                .append("]");
+
+                        long KolLevel = fans / 1000 + archiveCount / 100 + article_count / 50 + likeNum / 10_0000;
+                        if (KolLevel != 0) {
+                            score++;
+                            type = "[KOL+1]";
+                            logSb.append(" [KOL:").append(KolLevel).append("]").append(type);
+                        }
+
+                        if (following) {
+                            score += 2;
+                            type = "[已关注+2]";
+                            logSb.append(type);
+                        } else if ((fans < 50 && attention > 4500) || (attention > 4990)) {
+                            score--;
+                            type = "[疑似人机-1]";
+                            logSb.append(type);
+                        } else if (attention == 0 && fans == 0) {
+                            score--;
+                            type = "[疑似人机-1]";
+                            logSb.append(type);
+                        }
+
+                        JSONObject levelInfo = cardJO.getJSONObject("level_info");
                         if (levelInfo != null) {
-                            currentLevel = levelInfo.getIntValue("current_level");
-                        }
-                    }
+                            int currentLevel = levelInfo.getIntValue("current_level");  //
 
-                    String officialTitle = "";
-                    if (cardInfo != null) {
-                        JSONObject official = cardInfo.getJSONObject("Official");
+                            if (currentLevel == 0) {
+                                score = score - 2;
+                                type = "[Lv0 -2]";
+                                logSb.append(type);
+                            } else if (currentLevel <= 2 && (name.startsWith("bili_") || sex.equals("保密"))) {
+                                score = score - 1;
+                                type = "[Lv" + currentLevel + " -1]";
+                                logSb.append(type);
+                            } else if (currentLevel <= 4) {
+                                logSb.append(" [Lv").append(currentLevel).append("]");
+                            } else if (currentLevel <= 6) {
+                                score = score + 1;
+                                type = "[Lv" + currentLevel + " +1]";
+                                logSb.append(type);
+                            }
+                        }
+
+                        JSONObject official = cardJO.getJSONObject("Official");
                         if (official != null) {
-                            officialTitle = official.getString("title");
+                            String officialTitle = official.getString("title");  //
+
+                            if (!officialTitle.isEmpty()) { //认证用户
+                                score += 1;
+                                type = "[认证+1]";
+                                logSb.append("[").append(officialTitle).append("]").append(type);
+                            }
                         }
+
+                        JSONObject vip = cardJO.getJSONObject("vip");
+                        if (vip != null) {
+                            JSONObject label = vip.getJSONObject("label");
+                            if (label != null) {
+                                String vipLabelText = label.getString("text"); //
+
+                                if (StringUtils.contains(vipLabelText, "大会员")) {
+                                    score = score + 1;
+                                    type = "[大会员+1]";
+                                    logSb.append(type);
+                                }
+                            }
+                        }
+                        score += getKeyWordsScore(name + sign, logSb); // 姓名，签名
+                        type = " [个人黑白分:" + score + "]";
+                        // 实时陌生观众看板
+                        xyz.acproject.danmuji.service.StrangerViewerService.addRecord(vmid, name, face, score,  sign + " : " +score );
+
+                        logSbEnd.insert(0, type);
+                        SelfTools.appendAt(logSb, 180, logSbEnd.toString());
+                        LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
                     }
-
-                    boolean following = dataCard.getBooleanValue("following");
-                    long archiveCount = dataCard.getLongValue("archive_count");
-                    long article_count = dataCard.getLongValue("article_count"); // 专栏
-                    long likeNum = dataCard.getLongValue("like_num");
-
-                    SelfTools.appendAt(logSb, 90, "");
-                    logSb.append("[投稿:").append(archiveCount)
-                            .append("][关注:").append(attention)
-                            .append("][粉丝:").append(fans)
-                            .append("][获赞:").append(likeNum)
-                            .append("]");
-
-                    long KolLevel = fans / 1000 + archiveCount / 100 + article_count/50 +likeNum / 10_0000;
-                    if (KolLevel !=0 ) {
-                        score++;
-                        type = "[KOL+1]";
-                        blackWhiteTypeList.append(type);
-                        logSb.append(" [KOL:").append(KolLevel).append("]").append(type);
-                    }
-
-                    if (following) {
-                        score += 2;
-                        type = "[已关注+2]";
-                        blackWhiteTypeList.append(type);
-                        logSb.append(type);
-                    } else if ((fans < 50 && attention > 4500) || (attention > 4990)) {
-                        score--;
-                        type = "[疑似人机-1]";
-                        blackWhiteTypeList.append(type);
-                        logSb.append(type);
-                    } else if (attention == 0 && fans == 0) {
-                        score--;
-                        type = "[疑似人机-1]";
-                        blackWhiteTypeList.append(type);
-                        logSb.append(type);
-                    } else  if (name.startsWith("bili_") && sex.equals("保密") && currentLevel <=3){
-                        score--;
-                        type = "[疑似人机-1]";
-                        blackWhiteTypeList.append(type);
-                        logSb.append(type);
-                    }
-
-                    if (currentLevel == 0) {
-                        score = score - 2;
-                        type = "[Lv0 -2]";
-                        blackWhiteTypeList.append(type);
-                        logSb.append(type);
-                    } else if (currentLevel <= 2) {
-                        score = score - 1;
-                        type = "[Lv" + currentLevel + " -1]";
-                        blackWhiteTypeList.append(type);
-                        logSb.append(type);
-                    } else if (currentLevel <= 4) {
-                        logSb.append(" [Lv").append(currentLevel).append("]");
-                    } else {
-                        score = score + 1;
-                        type = "[Lv" + currentLevel + " +1]";
-                        blackWhiteTypeList.append(type);
-                        logSb.append(type);
-                    }
-
-                    if (StringUtils.contains(String.valueOf(cardInfo), "大会员")) {
-                        score = score + 1;
-                        type = "[大会员+1]";
-                        blackWhiteTypeList.append(type);
-                        logSb.append(type);
-                    }
-
-                    if(!officialTitle.isEmpty()){ //认证用户
-                        score += 1;
-                        type = "[认证+1]";
-                        blackWhiteTypeList.append(type);
-                        logSb.append("[").append(officialTitle).append("]").append(type);
-                    }
-
-                    score += getKeyWordsScore(String.valueOf(cardInfo), logSb); // 姓名，签名
-
-
-                    // LogFileTools.getlogFileTools().logTestFile(String.valueOf(cardInfo));
-
-                    type = " [个人黑白分:" + score + "]";
-                    blackWhiteTypeList.append(type);
-                    logSbEnd.insert(0,type);
-
-                    // 实时陌生观众看板
-                    xyz.acproject.danmuji.service.StrangerViewerService.addRecord(
-                            vmid, name, face, score, blackWhiteTypeList.toString(), String.valueOf(logSb));
-
-                    SelfTools.appendAt(logSb, 180, logSbEnd.toString());
-                    LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
                 } else {
                     logSb.append("[用户信息解析异常]");
                 }
             } else {
-                if (schedulerCardInfoColdWait.compareAndSet(false, true)) {
-                    schedulerCardInfoService.schedule(() -> {
-                        schedulerCardInfoColdWait.set(false);
+                if (schedulercardJOColdWait.compareAndSet(false, true)) {
+                    schedulercardJOService.schedule(() -> {
+                        schedulercardJOColdWait.set(false);
                         System.out.println("5分钟延迟已到，开始执行任务！当前时间：" + System.currentTimeMillis());
                     }, 5, TimeUnit.MINUTES);
                 }

@@ -4908,14 +4908,6 @@ const method = {
         if (method._svInitialized) return;
         method._svInitialized = true;
 
-        // Close avatar overlay on any click outside
-        $(document).on('click', function (e) {
-            var $ov = $('#sv-avatar-overlay');
-            if ($ov.length && $ov.is(':visible') && !$(e.target).closest('#sv-avatar-overlay').length && !$(e.target).is('img[data-full-src]')) {
-                $ov.hide();
-            }
-        });
-
         // Search
         $('#sv-btn-search').on('click', function () {
             svState.search = $('#sv-search-input').val().trim();
@@ -4987,53 +4979,45 @@ const method = {
             if (i < records.length) {
                 let r = records[i];
                 // 时间
-                $tr.append($('<td style="white-space:nowrap;"></td>').text(r.time || ''));
-                // 头像
-                var $avatarTd = $('<td style="white-space:nowrap;position:relative;"></td>');
-                var $avatar = $('<img src="' + (r.face || '') + '" style="width:32px;height:32px;border-radius:50%;cursor:pointer;" data-full-src="' + (r.face || '') + '">');
-                $avatar.on('click', function (e) {
-                    e.stopPropagation();
+                $tr.append($('<td class="sv-td"></td>').text(r.time || ''));
+                // 头像 - hover 显示原图
+                var $avatarTd = $('<td class="sv-td"></td>');
+                var $avatar = $('<img src="' + (r.face || '') + '" style="width:32px;height:32px;border-radius:50%;cursor:default;" data-full-src="' + (r.face || '') + '">');
+                $avatar.on('mouseenter', function () {
                     var fullSrc = $(this).attr('data-full-src');
+                    if (!fullSrc) return;
                     var $ov = $('#sv-avatar-overlay');
-                    if ($ov.length && $ov.is(':visible') && $ov.attr('data-src') === fullSrc) {
-                        $ov.hide();
-                        return;
-                    }
                     if (!$ov.length) {
                         $ov = $('<div id="sv-avatar-overlay" style="display:none;position:fixed;top:60px;left:20px;z-index:9999;border:2px solid #fff;box-shadow:0 2px 12px rgba(0,0,0,0.4);background:#fff;padding:4px;"></div>');
                         $('body').append($ov);
                     }
-                    $ov.empty().append('<img src="' + fullSrc + '" style="max-width:300px;max-height:300px;display:block;" onerror="this.style.display=\'none\'">').attr('data-src', fullSrc).show();
+                    $ov.empty().append('<img src="' + fullSrc + '" style="max-width:300px;max-height:300px;display:block;" onerror="this.style.display=\'none\'">').show();
+                }).on('mouseleave', function () {
+                    var $ov = $('#sv-avatar-overlay');
+                    if ($ov.length) $ov.hide();
                 });
                 $avatarTd.append($avatar);
                 $tr.append($avatarTd);
                 // 观众名 - clickable to space
-                var $nameTd = $('<td style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;"></td>');
+                var $nameTd = $('<td class="sv-td"></td>');
                 var $nameLink = $('<a href="https://space.bilibili.com/' + r.uid + '" target="_blank"></a>').text(r.name || '');
                 $nameTd.append($nameLink);
                 $tr.append($nameTd);
                 // 打分类型
-                $tr.append($('<td style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;"></td>').text(r.scoreTypes || ''));
+                $tr.append($('<td class="sv-td"></td>').text(r.scoreTypes || ''));
                 // 次数
-                $tr.append($('<td style="white-space:nowrap;"></td>').text(r.count || 0));
+                $tr.append($('<td class="sv-td"></td>').text(r.count || 0));
                 // 场次
-                $tr.append($('<td style="white-space:nowrap;"></td>').text(r.session || 0));
+                $tr.append($('<td class="sv-td"></td>').text(r.session || 0));
                 // 拉黑
-                var $blockTd = $('<td style="white-space:nowrap;"></td>');
+                var $blockTd = $('<td class="sv-td"></td>');
                 var isBlocked = r.blocked === true || r.blocked === 'true' || r.blocked === 1 || r.blocked === '1';
                 var blockLabel = isBlocked ? '解除拉黑' : '拉黑';
                 var $blockBtn = $('<button class="btn btn-sm ' + (isBlocked ? 'btn-warning' : 'btn-danger') + '"></button>')
                     .text(blockLabel)
                     .attr('data-uid', r.uid)
-                    .attr('data-blocked', r.blocked ? '1' : '0');
-                // Hover tooltip with logSb
-                $blockBtn.on('mouseenter', function () {
-                    var logSb = r.logSb || '';
-                    var $tip = $('<div class="sv-logtip" style="position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:4px 8px;border-radius:4px;font-size:11px;max-width:300px;word-break:break-all;z-index:999;white-space:pre-wrap;"></div>').text(logSb);
-                    $(this).css('position', 'relative').append($tip);
-                }).on('mouseleave', function () {
-                    $(this).find('.sv-logtip').remove();
-                }).on('click', function () {
+                    .attr('data-blocked', r.blocked ? '1' : '0')
+                    .on('click', function () {
                     var uid = $(this).attr('data-uid');
                     method._svToggleBlock(uid);
                 });

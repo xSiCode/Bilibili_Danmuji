@@ -20,7 +20,6 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public class StrangerViewerService {
     private static final Logger LOGGER = LogManager.getLogger(StrangerViewerService.class);
@@ -41,7 +40,6 @@ public class StrangerViewerService {
 
     private static String jarDir;
     private static volatile boolean mdScheduled = false;
-    private static final AtomicBoolean avatarInit = new AtomicBoolean(false);
 
     static {
         initBase();
@@ -72,7 +70,7 @@ public class StrangerViewerService {
         return jarDir + File.separator + "Danmuji_log" + File.separator + roomKey() + "_" + name + "_陌生观众头像";
     }
 
-    public static void addRecord(long uid, String name, String face, int score, String scoreTypes, String logSb) {
+    public static void addRecord(long uid, String name, String face, int score, String scoreTypes ) {
         if (uid <= 0) return;
 
         int[] cv = VisitorCountTools.getCountAndSession(uid);
@@ -84,7 +82,7 @@ public class StrangerViewerService {
             blockedUids.add(uid);
         }
 
-        StrangerRecord record = new StrangerRecord(uid, name, face, score, scoreTypes, count, session, logSb);
+        StrangerRecord record = new StrangerRecord(uid, name, face, score, scoreTypes, count, session );
         recordMap.put(uid, record);
         dirtyUids.add(uid);
 
@@ -139,7 +137,6 @@ public class StrangerViewerService {
             data.put("count", record.count);
             data.put("session", record.session);
             data.put("blocked", blockedUids.contains(record.uid));
-            data.put("logSb", record.logSb);
             data.put("time", JodaTimeUtils.formatDateTime(System.currentTimeMillis()));
             ws.sendMessage(WsPackage.toJson("stranger_viewer", (short) 0, data));
         } catch (Exception e) {
@@ -157,14 +154,9 @@ public class StrangerViewerService {
         if (records.isEmpty()) return;
         records.sort(Comparator.comparingLong(a -> a.time));
 
-        String path = mdFilePath();
-        File file = new File(path);
-        if (!file.getParentFile().exists()) file.getParentFile().mkdirs();
-
-        // Write full markdown
         List<StrangerRecord> allRecords = new ArrayList<>(recordMap.values());
         allRecords.sort(Comparator.comparingLong(a -> a.time));
-        writeMarkdown(path, allRecords);
+        writeMarkdown(mdFilePath(), allRecords);
 
         dirtyUids.clear();
     }
@@ -178,29 +170,26 @@ public class StrangerViewerService {
             writer.write("更新时间：" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
             writer.newLine();
             writer.newLine();
-            writer.write("| 时间 | 头像 | 观众名 | 打分 | 打分类型 | 次数 | 场次 | 详情 |");
+            writer.write("| 时间 | 头像 | id | 观众名 | 打分类型 | 次数 | 场次 |");
             writer.newLine();
-            writer.write("|------|------|--------|------|----------|------|------|------|");
+            writer.write("|------|------|----|--------|----------|------|------|");
             writer.newLine();
             for (StrangerRecord r : records) {
                 StringBuilder sb = new StringBuilder();
                 sb.append("| ");
                 sb.append(JodaTimeUtils.formatDateTime(r.time));
                 sb.append(" | ");
-                // Avatar image reference
                 sb.append("![avatar](").append(avatarSubDir).append("/").append(r.uid).append(".jpg)");
                 sb.append(" | ");
-                sb.append(escapeMd(r.name));
+                sb.append(r.uid);
                 sb.append(" | ");
-                sb.append(r.score);
+                sb.append(escapeMd(r.name));
                 sb.append(" | ");
                 sb.append(escapeMd(r.scoreTypes));
                 sb.append(" | ");
                 sb.append(r.count);
                 sb.append(" | ");
                 sb.append(r.session);
-                sb.append(" | ");
-                sb.append(escapeMd(r.logSb != null ? r.logSb : ""));
                 sb.append(" |");
                 writer.write(sb.toString());
                 writer.newLine();
@@ -253,7 +242,6 @@ public class StrangerViewerService {
             row.put("count", r.count);
             row.put("session", r.session);
             row.put("blocked", blockedUids.contains(r.uid));
-            row.put("logSb", r.logSb);
             rows.add(row);
         }
 
@@ -315,10 +303,9 @@ public class StrangerViewerService {
         volatile String scoreTypes;
         volatile int count;
         volatile int session;
-        volatile String logSb;
         volatile long time;
 
-        StrangerRecord(long uid, String name, String face, int score, String scoreTypes, int count, int session, String logSb) {
+        StrangerRecord(long uid, String name, String face, int score, String scoreTypes, int count, int session ) {
             this.uid = uid;
             this.name = name;
             this.face = face;
@@ -326,7 +313,6 @@ public class StrangerViewerService {
             this.scoreTypes = scoreTypes;
             this.count = count;
             this.session = session;
-            this.logSb = logSb;
             this.time = System.currentTimeMillis();
         }
     }
