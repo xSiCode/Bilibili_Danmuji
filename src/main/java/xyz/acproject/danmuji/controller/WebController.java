@@ -3464,9 +3464,11 @@ public class WebController {
     public Response<?> strangerViewerData(@RequestParam(defaultValue = "1") int page,
                                           @RequestParam(defaultValue = "10") int pageSize,
                                           @RequestParam(required = false) String search,
+                                          @RequestParam(defaultValue = "time") String sortField,
+                                          @RequestParam(defaultValue = "asc") String sortOrder,
                                           HttpServletRequest req) {
         try {
-            Map<String, Object> data = xyz.acproject.danmuji.service.StrangerViewerService.getPageData(page, pageSize, search);
+            Map<String, Object> data = xyz.acproject.danmuji.service.StrangerViewerService.getPageData(page, pageSize, search, sortField, sortOrder);
             return Response.success(data, req);
         } catch (Exception e) {
             LOGGER.error("strangerViewerData error", e);

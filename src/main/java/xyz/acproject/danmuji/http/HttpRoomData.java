@@ -811,7 +811,7 @@ public class HttpRoomData {
                         score += getKeyWordsScore(name + sign, logSb); // 姓名，签名
                         type = " [个人黑白分:" + score + "]";
                         // 实时陌生观众看板
-                        xyz.acproject.danmuji.service.StrangerViewerService.addRecord(vmid, name, face, score,  sign + " [" +score+"]" );
+                        xyz.acproject.danmuji.service.StrangerViewerService.addRecord(vmid, name, face, score,  sign  );
 
                         logSbEnd.insert(0, type);
                         SelfTools.appendAt(logSb, 180, logSbEnd.toString());

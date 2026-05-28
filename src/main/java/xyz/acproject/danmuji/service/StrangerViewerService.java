@@ -40,6 +40,8 @@ public class StrangerViewerService {
 
     private static String jarDir;
     private static volatile boolean mdScheduled = false;
+    private static volatile String lastRoomId;
+    private static volatile String lastAnchorName;
 
     static {
         initBase();
@@ -48,6 +50,8 @@ public class StrangerViewerService {
     private static void initBase() {
         ApplicationHome home = new ApplicationHome(StrangerViewerService.class);
         jarDir = home.getSource().getParentFile().getAbsolutePath();
+        lastRoomId = roomKey();
+        lastAnchorName = safeFileName(PublicDataConf.ANCHOR_NAME);
     }
 
     private static String roomKey() {
@@ -72,6 +76,19 @@ public class StrangerViewerService {
 
     public static void addRecord(long uid, String name, String face, int score, String scoreTypes ) {
         if (uid <= 0) return;
+
+        // 检测房间切换
+        String rk = roomKey();
+        if (!rk.equals(lastRoomId)) {
+            synchronized (StrangerViewerService.class) {
+                if (!rk.equals(lastRoomId)) {
+                    recordMap.clear();
+                    dirtyUids.clear();
+                    lastRoomId = rk;
+                    lastAnchorName = safeFileName(PublicDataConf.ANCHOR_NAME);
+                }
+            }
+        }
 
         int[] cv = VisitorCountTools.getCountAndSession(uid);
         int count = cv[0];
@@ -145,20 +162,29 @@ public class StrangerViewerService {
     }
 
     private static synchronized void flushToMd() {
-        if (dirtyUids.isEmpty()) return;
-        List<StrangerRecord> records = new ArrayList<>();
-        for (Long uid : dirtyUids) {
-            StrangerRecord r = recordMap.get(uid);
-            if (r != null) records.add(r);
+        String rk = roomKey();
+        if (!rk.equals(lastRoomId)) {
+            // 房间切换：写出旧房间最终 MD
+            String oldAnchor = lastAnchorName;
+            if (oldAnchor != null) {
+                String oldPath = jarDir + File.separator + "Danmuji_log" + File.separator
+                        + lastRoomId + "_" + oldAnchor + "_7_陌生观众.md";
+                List<StrangerRecord> oldRecords = new ArrayList<>(recordMap.values());
+                oldRecords.sort(Comparator.comparingLong(a -> a.time));
+                writeMarkdown(oldPath, oldRecords);
+            }
+            recordMap.clear();
+            dirtyUids.clear();
+            lastRoomId = rk;
+            lastAnchorName = safeFileName(PublicDataConf.ANCHOR_NAME);
+            return;
         }
-        if (records.isEmpty()) return;
-        records.sort(Comparator.comparingLong(a -> a.time));
-
+        if (dirtyUids.isEmpty()) return;
+        Set<Long> snapshot = new HashSet<>(dirtyUids);
+        dirtyUids.clear();
         List<StrangerRecord> allRecords = new ArrayList<>(recordMap.values());
         allRecords.sort(Comparator.comparingLong(a -> a.time));
         writeMarkdown(mdFilePath(), allRecords);
-
-        dirtyUids.clear();
     }
 
     private static void writeMarkdown(String path, List<StrangerRecord> records) {
@@ -170,9 +196,9 @@ public class StrangerViewerService {
             writer.write("更新时间：" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
             writer.newLine();
             writer.newLine();
-            writer.write("| 时间 | 头像 | id | 观众名 | 打分类型 | 次数 | 场次 |");
+            writer.write("| 时间 | 头像 | id | 观众名 | 打分 | 次数 | 场次 |");
             writer.newLine();
-            writer.write("|------|------|----|--------|----------|------|------|");
+            writer.write("|------|------|----|--------|------|------|------|");
             writer.newLine();
             for (StrangerRecord r : records) {
                 StringBuilder sb = new StringBuilder();
@@ -185,7 +211,7 @@ public class StrangerViewerService {
                 sb.append(" | ");
                 sb.append(escapeMd(r.name));
                 sb.append(" | ");
-                sb.append(escapeMd(r.scoreTypes));
+                sb.append(r.score);
                 sb.append(" | ");
                 sb.append(r.count);
                 sb.append(" | ");
@@ -204,11 +230,10 @@ public class StrangerViewerService {
         return s.replace("|", "\\|").replace("\n", " ").replace("\r", "");
     }
 
-    public static Map<String, Object> getPageData(int page, int pageSize, String search) {
+    public static Map<String, Object> getPageData(int page, int pageSize, String search, String sortField, String sortOrder) {
         List<StrangerRecord> all = new ArrayList<>(recordMap.values());
-        all.sort(Comparator.comparingLong(a -> a.time));
 
-        // Filter by search
+        // Filter by search first (reduce sort cost)
         if (search != null && !search.isEmpty()) {
             String lower = search.toLowerCase();
             List<StrangerRecord> filtered = new ArrayList<>();
@@ -221,6 +246,24 @@ public class StrangerViewerService {
             }
             all = filtered;
         }
+
+        // Sort filtered dataset
+        boolean asc = !"desc".equalsIgnoreCase(sortOrder);
+        Comparator<StrangerRecord> cmp;
+        if ("score".equals(sortField)) {
+            cmp = Comparator.comparingInt(a -> a.score);
+        } else if ("count".equals(sortField)) {
+            cmp = Comparator.comparingInt(a -> a.count);
+        } else if ("session".equals(sortField)) {
+            cmp = Comparator.comparingInt(a -> a.session);
+        } else if ("name".equals(sortField)) {
+            cmp = Comparator.comparing(a -> a.name);
+        } else if ("scoreTypes".equals(sortField)) {
+            cmp = Comparator.comparing(a -> a.scoreTypes);
+        } else {
+            cmp = Comparator.comparingLong(a -> a.time);
+        }
+        all.sort(asc ? cmp : cmp.reversed());
 
         int total = all.size();
         int totalPages = total == 0 ? 0 : (int) Math.ceil((double) total / pageSize);
@@ -258,23 +301,24 @@ public class StrangerViewerService {
             // unblock
             try {
                 HttpUserData.httpPostDeleteBadList(uid);
+                blockedUids.remove(uid);
+                pushBlockUpdate(uid, false);
+                return false;
             } catch (Exception e) {
                 LOGGER.error("unblock error uid={}", uid, e);
+                return true; // still blocked
             }
-            blockedUids.remove(uid);
-            // Push update
-            pushBlockUpdate(uid, false);
-            return false;
         } else {
             // block
             try {
                 HttpUserData.httpPostAddBadList(uid);
+                blockedUids.add(uid);
+                pushBlockUpdate(uid, true);
+                return true;
             } catch (Exception e) {
                 LOGGER.error("block error uid={}", uid, e);
+                return false; // still not blocked
             }
-            blockedUids.add(uid);
-            pushBlockUpdate(uid, true);
-            return true;
         }
     }
 

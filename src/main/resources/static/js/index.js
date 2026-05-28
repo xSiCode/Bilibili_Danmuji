@@ -142,7 +142,9 @@ let svState = {
     search: '',
     totalPages: 1,
     totalRecords: 0,
-    defaultToLast: true
+    defaultToLast: true,
+    sortField: 'time',
+    sortOrder: 'asc'
 };
 
 $(function () {
@@ -4908,6 +4910,21 @@ const method = {
         if (method._svInitialized) return;
         method._svInitialized = true;
 
+        // Sort header click
+        $('#sv-data-table').on('click', 'th.sv-sort', function () {
+            var col = $(this).attr('data-sort');
+            if (!col) return;
+            if (svState.sortField === col) {
+                svState.sortOrder = svState.sortOrder === 'asc' ? 'desc' : 'asc';
+            } else {
+                svState.sortField = col;
+                svState.sortOrder = 'asc';
+            }
+            svState.defaultToLast = false;
+            svState.page = 1;
+            method.loadSvData();
+        });
+
         // Search
         $('#sv-btn-search').on('click', function () {
             svState.search = $('#sv-search-input').val().trim();
@@ -4939,7 +4956,7 @@ const method = {
 
     loadSvData: function () {
         method._initSv();
-        var params = { page: svState.page, pageSize: svState.pageSize };
+        var params = { page: svState.page, pageSize: svState.pageSize, sortField: svState.sortField, sortOrder: svState.sortOrder };
         if (svState.search) params.search = svState.search;
         $.get('/strangerViewerData', params, function (resp) {
             if (resp && resp.code == "200" && resp.result) {
@@ -4974,7 +4991,16 @@ const method = {
         $('#sv-empty-msg').hide();
         $('#sv-total-info').text('共 ' + svState.totalRecords + ' 条记录');
 
-        for (let i = 0; i < 10; i++) {
+        // Sort indicator on headers
+        var sf = svState.sortField || 'time';
+        var asc = svState.sortOrder === 'asc';
+        $('#sv-data-table th.sv-sort').each(function () {
+            var col = $(this).attr('data-sort');
+            $(this).text(function (i, txt) { return txt.replace(/ [▲▼]/, ''); });
+            if (col === sf) $(this).append(asc ? ' ▲' : ' ▼');
+        });
+
+        for (let i = 0; i < svState.pageSize; i++) {
             var $tr = $('<tr></tr>');
             if (i < records.length) {
                 let r = records[i];
@@ -5002,8 +5028,10 @@ const method = {
                 $tr.append($avatarTd);
                 // 观众名
                 $tr.append($('<td class="sv-td"></td>').text(r.name || ''));
-                // 打分类型
-                $tr.append($('<td class="sv-td"></td>').text(r.scoreTypes || ''));
+                // 签名
+                $tr.append($('<td class="sv-td"></td>').text(r.scoreTypes || '').attr('title', r.scoreTypes || ''));
+                // 打分
+                $tr.append($('<td class="sv-td"></td>').text(r.score != null ? r.score : ''));
                 // 次数
                 $tr.append($('<td class="sv-td"></td>').text(r.count || 0));
                 // 场次
@@ -5023,8 +5051,7 @@ const method = {
                 $blockTd.append($blockBtn);
                 $tr.append($blockTd);
             } else {
-                // Placeholder empty row to keep 10-row height
-                $tr.append($('<td colspan="7" style="height:42px;">&nbsp;</td>'));
+                $tr.append($('<td colspan="8" style="height:42px;">&nbsp;</td>'));
             }
             $tbody.append($tr);
         }
