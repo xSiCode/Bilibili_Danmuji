@@ -4980,9 +4980,9 @@ const method = {
                 let r = records[i];
                 // 时间
                 $tr.append($('<td class="sv-td"></td>').text(r.time || ''));
-                // 头像 - hover 显示原图
+                // 头像 - hover 显示原图，点击跳转主页
                 var $avatarTd = $('<td class="sv-td"></td>');
-                var $avatar = $('<img src="' + (r.face || '') + '" style="width:32px;height:32px;border-radius:50%;cursor:default;" data-full-src="' + (r.face || '') + '">');
+                var $avatar = $('<img src="' + (r.face || '') + '" style="width:32px;height:32px;border-radius:50%;cursor:pointer;" data-full-src="' + (r.face || '') + '">');
                 $avatar.on('mouseenter', function () {
                     var fullSrc = $(this).attr('data-full-src');
                     if (!fullSrc) return;
@@ -4995,14 +4995,13 @@ const method = {
                 }).on('mouseleave', function () {
                     var $ov = $('#sv-avatar-overlay');
                     if ($ov.length) $ov.hide();
+                }).on('click', function () {
+                    window.open('https://space.bilibili.com/' + r.uid, '_blank');
                 });
                 $avatarTd.append($avatar);
                 $tr.append($avatarTd);
-                // 观众名 - clickable to space
-                var $nameTd = $('<td class="sv-td"></td>');
-                var $nameLink = $('<a href="https://space.bilibili.com/' + r.uid + '" target="_blank"></a>').text(r.name || '');
-                $nameTd.append($nameLink);
-                $tr.append($nameTd);
+                // 观众名
+                $tr.append($('<td class="sv-td"></td>').text(r.name || ''));
                 // 打分类型
                 $tr.append($('<td class="sv-td"></td>').text(r.scoreTypes || ''));
                 // 次数

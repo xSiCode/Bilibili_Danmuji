@@ -1635,7 +1635,7 @@ div .link-popup-panel .popup-content-ctnr p {
 /* 列宽：次数42px / 场次42px / 拉黑90px，其余百分比 */
 #sv-data-table th:nth-child(1), #sv-data-table td:nth-child(1) { width: 180px; }
 #sv-data-table th:nth-child(2), #sv-data-table td:nth-child(2) { width: 42px; }
-#sv-data-table th:nth-child(3), #sv-data-table td:nth-child(3) { width: 20%; }
+#sv-data-table th:nth-child(3), #sv-data-table td:nth-child(3) { width: 180px; }
 #sv-data-table th:nth-child(5), #sv-data-table td:nth-child(5) { width: 42px; }
 #sv-data-table th:nth-child(6), #sv-data-table td:nth-child(6) { width: 42px; }
 #sv-data-table th:nth-child(4), #sv-data-table td:nth-child(4) { text-align: right; }

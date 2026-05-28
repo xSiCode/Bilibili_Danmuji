@@ -599,7 +599,7 @@ public class HttpRoomData {
                 return proceedToCardCheck(vmid, logSb, logSbEnd, blackWhiteScore, blackWhiteType);
             });
         } else {
-            return proceedToCardCheck(vmid, logSb, logSbEnd, -1, "[关注隐藏-1]");
+            return proceedToCardCheck(vmid, logSb, logSbEnd, 0, null);
         }
     }
 
@@ -811,7 +811,7 @@ public class HttpRoomData {
                         score += getKeyWordsScore(name + sign, logSb); // 姓名，签名
                         type = " [个人黑白分:" + score + "]";
                         // 实时陌生观众看板
-                        xyz.acproject.danmuji.service.StrangerViewerService.addRecord(vmid, name, face, score,  sign + " : " +score );
+                        xyz.acproject.danmuji.service.StrangerViewerService.addRecord(vmid, name, face, score,  sign + " [" +score+"]" );
 
                         logSbEnd.insert(0, type);
                         SelfTools.appendAt(logSb, 180, logSbEnd.toString());
