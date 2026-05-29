@@ -20,6 +20,9 @@ public class SubAccount implements Serializable {
     /** 头像URL */
     private String face;
 
+    /** B站用户等级 (0-6) */
+    private int level;
+
     /** 原始 Cookie 字符串 */
     private String cookie;
 
@@ -78,6 +81,14 @@ public class SubAccount implements Serializable {
 
     public void setFace(String face) {
         this.face = face;
+    }
+
+    public int getLevel() {
+        return level;
+    }
+
+    public void setLevel(int level) {
+        this.level = level;
     }
 
     public String getCookie() {

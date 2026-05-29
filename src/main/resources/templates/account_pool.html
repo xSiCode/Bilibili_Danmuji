@@ -23,13 +23,13 @@
         .qrcode-img { width: 180px; height: 180px; cursor: pointer; }
         .qrcode-wrapper { text-align: center; padding: 15px; }
         .modal-qr-spinner { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
-        /* 表格紧凑样式 */
+        /* 表格：完全自适应列宽，内容不换行 */
         .table-accounts { table-layout: auto; width: 100%; }
-        .table-accounts th, .table-accounts td { padding: 6px 4px; vertical-align: middle; font-size: 0.88rem; }
-        .table-accounts th { white-space: nowrap; font-size: 0.82rem; }
-        .table-accounts .btn-sm { padding: 2px 6px; font-size: 0.75rem; line-height: 1.2; }
-        .table-accounts .actions-cell { white-space: nowrap; }
-        .table-accounts .actions-cell .btn + .btn { margin-left: 2px; }
+        .table-accounts th, .table-accounts td { padding: 5px 6px; vertical-align: middle; font-size: 0.87rem; white-space: nowrap; }
+        .table-accounts th { font-size: 0.8rem; }
+        .table-accounts td { overflow: hidden; text-overflow: ellipsis; }
+        .table-accounts .btn-sm { padding: 1px 5px; font-size: 0.73rem; line-height: 1.25; }
+        .table-accounts .actions-cell .btn + .btn { margin-left: 1px; }
     </style>
 </head>
 
@@ -81,12 +81,12 @@
                         <input type="number" class="form-control" id="cooldownSeconds" min="60" value="300">
                     </div>
                     <div class="col-md-2">
-                        <label class="form-label">动态API速率(req/s)</label>
-                        <input type="number" class="form-control" id="dynamicRate" min="0.1" step="0.1" value="0.5">
+                        <label class="form-label">动态速率(req/s) <small class="text-muted">≤20/min</small></label>
+                        <input type="number" class="form-control" id="dynamicRate" min="0.1" step="0.05" value="0.3">
                     </div>
                     <div class="col-md-2">
-                        <label class="form-label">卡片API速率(req/s)</label>
-                        <input type="number" class="form-control" id="cardRate" min="0.1" step="0.1" value="1.0">
+                        <label class="form-label">卡片速率(req/s) <small class="text-muted">≤100/min</small></label>
+                        <input type="number" class="form-control" id="cardRate" min="0.1" step="0.1" value="1.5">
                     </div>
                     <div class="col-md-2">
                         <label class="form-label">缓存TTL(秒)</label>
@@ -199,10 +199,10 @@
                                 <th>类型</th>
                                 <th>UID</th>
                                 <th>名称</th>
+                                <th>LV</th>
                                 <th>Cookie</th>
                                 <th>状态</th>
                                 <th>使用/限流</th>
-                                <th>最近</th>
                                 <th>操作</th>
                             </tr>
                         </thead>
@@ -362,21 +362,21 @@
                             actions += '<button class="btn btn-sm btn-outline-danger delete-btn" data-uid="' + acc.uid + '" title="删除">删</button>';
                         }
 
-                        var lastUsed = acc.lastUsedTime > 0 ? new Date(acc.lastUsedTime).toLocaleTimeString() : '-';
+                        var lv = acc.level || 0;
+                        var lvHtml = lv > 0 ? '<span class="badge bg-info">Lv' + lv + '</span>' : '<span class="text-muted">-</span>';
                         var rowClass = isMain ? 'table-primary' : (acc.coolingDown ? 'table-warning' : (acc.enabled ? '' : 'table-secondary'));
 
-                        // 用data属性存储face URL，后续JS设置src
                         var rowHtml =
                             '<tr class="' + rowClass + '">' +
                             '<td><img class="avatar-sm acc-avatar" data-face="' + escAttr(acc.face || '') + '" src="' + FALLBACK_AVATAR + '" alt=""></td>' +
                             '<td>' + typeBadge + '</td>' +
                             '<td>' + (acc.uid || '-') + '</td>' +
                             '<td>' + escHtml(acc.name || '-') + '</td>' +
+                            '<td>' + lvHtml + '</td>' +
                             '<td><span class="cookie-preview" title="' + escAttr(acc.cookiePreview || '') + '">' + escHtml(acc.cookiePreview || '-') + '</span></td>' +
                             '<td><span class="' + statusClass + ' status-badge">' + acc.status + '</span>' +
                                 (acc.cooldownRemaining > 0 ? ' <small class="text-muted">' + formatCooldown(acc.cooldownRemaining) + '</small>' : '') + '</td>' +
                             '<td><small>' + (acc.useCount || 0) + ' / ' + (acc.rateLimitedCount || 0) + '</small></td>' +
-                            '<td><small>' + lastUsed + '</small></td>' +
                             '<td class="actions-cell">' + actions + '</td>' +
                             '</tr>';
                         tbody.append(rowHtml);

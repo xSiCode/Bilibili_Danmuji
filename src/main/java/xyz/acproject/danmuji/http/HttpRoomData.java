@@ -452,11 +452,11 @@ public class HttpRoomData {
 
     /** 动态API令牌桶限流器（默认0.5 QPS，从AccountPoolConf读取） */
     static volatile TokenBucketRateLimiter dynamicRateLimiter =
-            new TokenBucketRateLimiter(0.5, 1.0);
+            new TokenBucketRateLimiter(0.3, 1.0);
 
-    /** 卡片API令牌桶限流器（默认1.0 QPS，从AccountPoolConf读取） */
+    /** 卡片API令牌桶限流器（默认1.5 QPS ≈ 90次/分钟，B站限制约100次/分钟） */
     static volatile TokenBucketRateLimiter cardRateLimiter =
-            new TokenBucketRateLimiter(1.0, 2.0);
+            new TokenBucketRateLimiter(1.5, 3.0);
 
     /** Cookie池管理器 */
     static final CookiePoolManager cookiePool = CookiePoolManager.getInstance();
@@ -1117,19 +1117,27 @@ public class HttpRoomData {
 
     /**
      * 从 AccountPoolConf 同步限流器配置和缓存TTL。
+     * 速率 = 基础速率 × 可用Cookie数量（含主账号），账号越多总吞吐越高。
      * 当用户在UI中修改账号池配置时调用。
      */
     public static void syncRateLimiterConfig(xyz.acproject.danmuji.conf.set.AccountPoolConf conf) {
         if (conf == null) return;
-        double newDynamicRate = conf.getDynamicRate();
-        double newCardRate = conf.getCardRate();
+
+        // 可用账号数 = 主账号(1) + 健康的子账号数
+        int availableCount = cookiePool.getTotalAvailableCount();
+        if (availableCount < 1) availableCount = 1;
+
+        // 单账号基础速率 × 可用账号数 = 总吞吐量
+        double newDynamicRate = conf.getDynamicRate() * availableCount;
+        double newCardRate = conf.getCardRate() * availableCount;
+
         if (newDynamicRate > 0 && Math.abs(newDynamicRate - dynamicRateLimiter.getPermitsPerSecond()) > 0.001) {
             dynamicRateLimiter = new TokenBucketRateLimiter(newDynamicRate, Math.max(newDynamicRate, 1.0));
-            LOGGER.info("动态API限流器已更新: {} req/s", newDynamicRate);
+            LOGGER.info("动态API限流器已更新: {} req/s (基础{}×{}账号)", newDynamicRate, conf.getDynamicRate(), availableCount);
         }
         if (newCardRate > 0 && Math.abs(newCardRate - cardRateLimiter.getPermitsPerSecond()) > 0.001) {
             cardRateLimiter = new TokenBucketRateLimiter(newCardRate, Math.max(newCardRate * 2, 2.0));
-            LOGGER.info("卡片API限流器已更新: {} req/s", newCardRate);
+            LOGGER.info("卡片API限流器已更新: {} req/s (基础{}×{}账号)", newCardRate, conf.getCardRate(), availableCount);
         }
         apiCache.syncFromConfig(conf);
     }

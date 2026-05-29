@@ -160,11 +160,11 @@ public class CookiePoolManager {
      * 验证一个 Cookie 是否有效（调用 B站 nav API）。
      *
      * @param cookie 待验证的 Cookie 字符串
-     * @return [isValid, uid, uname, face] - 失败时后三项为空字符串
+     * @return [isValid, uid, uname, face, level] - 失败时后四项为空字符串
      */
     public String[] validateCookie(String cookie) {
         if (StringUtils.isBlank(cookie)) {
-            return new String[]{"false", "", "", ""};
+            return new String[]{"false", "", "", "", ""};
         }
 
         try {
@@ -190,10 +190,18 @@ public class CookiePoolManager {
                             String uid = data.getString("mid");
                             String uname = data.getString("uname");
                             String face = data.getString("face");
+                            // 提取等级: level_info.current_level
+                            String level = "";
+                            JSONObject levelInfo = data.getJSONObject("level_info");
+                            if (levelInfo != null) {
+                                Integer lv = levelInfo.getInteger("current_level");
+                                level = lv != null ? String.valueOf(lv) : "";
+                            }
                             return new String[]{"true",
                                     uid != null ? uid : "",
                                     uname != null ? uname : "",
-                                    face != null ? face : ""};
+                                    face != null ? face : "",
+                                    level};
                         }
                     }
                 }
@@ -201,7 +209,7 @@ public class CookiePoolManager {
         } catch (Exception e) {
             LOGGER.error("CookiePool: 验证 Cookie 异常", e);
         }
-        return new String[]{"false", "", "", ""};
+        return new String[]{"false", "", "", "", ""};
     }
 
     // ==================== 账号管理 ====================
@@ -349,7 +357,7 @@ public class CookiePoolManager {
      * 调用方负责更新 PublicDataConf 并持久化 profile。
      *
      * @param targetUid 要提升为主账号的子账号UID
-     * @return [newCookie, newUid, newName, newFace] 或 null（失败时）
+     * @return [newCookie, newUid, newName, newFace, newLevel] 或 null（失败时）
      */
     public String[] prepareSwitchMain(String targetUid) {
         if (targetUid == null || poolConf == null) return null;
@@ -372,6 +380,7 @@ public class CookiePoolManager {
         String newUid = validation[1];
         String newName = validation[2];
         String newFace = validation[3];
+        String newLevel = validation[4];
 
         // 如果原主账号已登录，将其降级为子账号
         if (PublicDataConf.USER != null && StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
@@ -399,7 +408,7 @@ public class CookiePoolManager {
         removeAccount(targetUid);
         LOGGER.info("CookiePool: 准备切换主账号 {} -> {} ({})",
                 PublicDataConf.USER != null ? PublicDataConf.USER.getUname() : "null", newName, newUid);
-        return new String[]{newCookie, newUid, newName, newFace};
+        return new String[]{newCookie, newUid, newName, newFace, newLevel};
     }
 
     /** 内部添加，不触发额外验证 */
@@ -426,6 +435,30 @@ public class CookiePoolManager {
         }
         if (this.poolConf == null) {
             this.poolConf = AccountPoolConf.createDefault();
+        }
+
+        // 回填旧账号缺失的 LV 等级（新增字段后的兼容处理）
+        backfillMissingLevels();
+    }
+
+    /** 为已验证但缺少等级的旧账号回填 LV */
+    private void backfillMissingLevels() {
+        if (poolConf == null || poolConf.getAccounts().isEmpty()) return;
+        boolean changed = false;
+        for (SubAccount acc : poolConf.getAccounts()) {
+            if (acc.getLevel() == 0 && acc.isValidated() && StringUtils.isNotBlank(acc.getCookie())) {
+                String[] result = validateCookie(acc.getCookie());
+                if ("true".equals(result[0]) && result.length > 4 && !result[4].isEmpty()) {
+                    try {
+                        acc.setLevel(Integer.parseInt(result[4]));
+                        changed = true;
+                        LOGGER.info("CookiePool: 回填账号 [{}] 等级 Lv{}", acc.getName(), acc.getLevel());
+                    } catch (NumberFormatException ignored) {}
+                }
+            }
+        }
+        if (changed) {
+            saveToFile();
         }
     }
 

@@ -3581,6 +3581,9 @@ public class WebController {
                 if (StringUtils.isNotBlank(result[3])) {
                     account.setFace(result[3]);
                 }
+                if (result.length > 4 && StringUtils.isNotBlank(result[4])) {
+                    try { account.setLevel(Integer.parseInt(result[4])); } catch (NumberFormatException ignored) {}
+                }
                 account.setValidated(true);
                 account.setLastValidatedTime(System.currentTimeMillis());
             }
@@ -3619,6 +3622,9 @@ public class WebController {
                 if (StringUtils.isNotBlank(result[1])) account.setUid(result[1]);
                 if (StringUtils.isNotBlank(result[2])) account.setName(result[2]);
                 if (StringUtils.isNotBlank(result[3])) account.setFace(result[3]);
+                if (result.length > 4 && StringUtils.isNotBlank(result[4])) {
+                    try { account.setLevel(Integer.parseInt(result[4])); } catch (NumberFormatException ignored) {}
+                }
                 account.setValidated(true);
                 account.setLastValidatedTime(System.currentTimeMillis());
             }
@@ -3640,6 +3646,9 @@ public class WebController {
                 }
             }
             boolean ok = pool.updateAccount(uid, account);
+            if (ok) {
+                xyz.acproject.danmuji.http.HttpRoomData.syncRateLimiterConfig(pool.getPoolConf());
+            }
             return Response.success(ok, req);
         } catch (Exception e) {
             LOGGER.error("accountPoolUpdate error", e);
@@ -3659,6 +3668,9 @@ public class WebController {
             }
             xyz.acproject.danmuji.http.CookiePoolManager pool = xyz.acproject.danmuji.http.CookiePoolManager.getInstance();
             boolean ok = pool.removeAccount(uid);
+            if (ok) {
+                xyz.acproject.danmuji.http.HttpRoomData.syncRateLimiterConfig(pool.getPoolConf());
+            }
             return Response.success(ok, req);
         } catch (Exception e) {
             LOGGER.error("accountPoolRemove error", e);
@@ -3680,6 +3692,9 @@ public class WebController {
             }
             xyz.acproject.danmuji.http.CookiePoolManager pool = xyz.acproject.danmuji.http.CookiePoolManager.getInstance();
             boolean ok = pool.setAccountEnabled(uid, enabled);
+            if (ok) {
+                xyz.acproject.danmuji.http.HttpRoomData.syncRateLimiterConfig(pool.getPoolConf());
+            }
             return Response.success(ok, req);
         } catch (Exception e) {
             LOGGER.error("accountPoolToggle error", e);
@@ -3699,6 +3714,9 @@ public class WebController {
             }
             xyz.acproject.danmuji.http.CookiePoolManager pool = xyz.acproject.danmuji.http.CookiePoolManager.getInstance();
             boolean ok = pool.clearCooldown(uid);
+            if (ok) {
+                xyz.acproject.danmuji.http.HttpRoomData.syncRateLimiterConfig(pool.getPoolConf());
+            }
             return Response.success(ok, req);
         } catch (Exception e) {
             LOGGER.error("accountPoolClearCooldown error", e);
@@ -3720,6 +3738,7 @@ public class WebController {
             json.put("uid", result[1]);
             json.put("uname", result[2]);
             json.put("face", result.length > 3 ? result[3] : "");
+            json.put("level", result.length > 4 ? result[4] : "0");
             return Response.success(json, req);
         } catch (Exception e) {
             LOGGER.error("accountPoolValidate error", e);
@@ -3751,6 +3770,7 @@ public class WebController {
             String newUid = result[1];
             String newName = result[2];
             String newFace = result[3];
+            String newLevel = result.length > 4 ? result[4] : "0";
 
             // 1. 更新全局Cookie
             PublicDataConf.USERCOOKIE = newCookie;
@@ -3785,6 +3805,7 @@ public class WebController {
             resp.put("uid", newUid);
             resp.put("name", newName);
             resp.put("face", newFace != null ? newFace : "");
+            resp.put("level", newLevel != null ? newLevel : "0");
             resp.put("message", "已切换主账号为: " + newName + "（原主账号已降级为子账号）");
             LOGGER.info("主账号切换成功: {} -> {}", newUid, newName);
             return Response.success(resp, req);
@@ -3910,6 +3931,7 @@ public class WebController {
                     result.put("uid", validateResult[1]);
                     result.put("uname", validateResult[2]);
                     result.put("face", validateResult[3]);
+                    result.put("level", validateResult.length > 4 ? validateResult[4] : "0");
                 }
 
                 // 清除session中的临时key

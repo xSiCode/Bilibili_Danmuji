@@ -37,13 +37,13 @@ public class AccountPoolConf implements Serializable {
     @JSONField(name = "cooldown_seconds")
     private int cooldownSeconds = 300;
 
-    /** 动态 API 限流速率（每秒请求数），默认 0.5 */
+    /** 动态 API 限流速率（每秒请求数），默认 0.3。B站限制约20次/分钟，0.3≈18次/分钟，留有10%安全余量 */
     @JSONField(name = "dynamic_rate")
-    private double dynamicRate = 0.5;
+    private double dynamicRate = 0.3;
 
-    /** 卡片 API 限流速率（每秒请求数），默认 1.0 */
+    /** 卡片 API 限流速率（每秒请求数），默认 1.5。B站限制约100次/分钟，1.5≈90次/分钟，留有10%安全余量 */
     @JSONField(name = "card_rate")
-    private double cardRate = 1.0;
+    private double cardRate = 1.5;
 
     /** 缓存 TTL（秒），默认 300 秒 = 5 分钟 */
     @JSONField(name = "cache_ttl_seconds")
@@ -190,13 +190,22 @@ public class AccountPoolConf implements Serializable {
         json.put("enabledCount", getEnabledCount());
         json.put("totalCount", accounts.size());
 
-        // 主账号信息
+        // 主账号信息（通过nav API获取正确的LV）
         JSONObject mainJson = new JSONObject();
         if (xyz.acproject.danmuji.conf.PublicDataConf.USER != null) {
             mainJson.put("uid", String.valueOf(xyz.acproject.danmuji.conf.PublicDataConf.USER.getUid()));
             mainJson.put("name", xyz.acproject.danmuji.conf.PublicDataConf.USER.getUname());
             mainJson.put("face", xyz.acproject.danmuji.conf.PublicDataConf.USER.getFace());
-            mainJson.put("level", xyz.acproject.danmuji.conf.PublicDataConf.USER.getUser_level());
+            // 通过nav API获取准确的等级（live API的字段可能不匹配）
+            int mainLevel = 0;
+            if (org.apache.commons.lang3.StringUtils.isNotBlank(xyz.acproject.danmuji.conf.PublicDataConf.USERCOOKIE)) {
+                String[] validateResult = xyz.acproject.danmuji.http.CookiePoolManager.getInstance()
+                        .validateCookie(xyz.acproject.danmuji.conf.PublicDataConf.USERCOOKIE);
+                if ("true".equals(validateResult[0]) && validateResult.length > 4 && !validateResult[4].isEmpty()) {
+                    try { mainLevel = Integer.parseInt(validateResult[4]); } catch (NumberFormatException ignored) {}
+                }
+            }
+            mainJson.put("level", mainLevel);
         }
         json.put("mainAccount", mainJson);
 
@@ -217,6 +226,9 @@ public class AccountPoolConf implements Serializable {
             mainRow.put("coolingDown", false);
             mainRow.put("cooldownRemaining", 0);
             mainRow.put("isMain", true);
+            // 主账号的LV
+            int mainLv = mainJson.getIntValue("level");
+            mainRow.put("level", mainLv);
             // 主账号的统计
             xyz.acproject.danmuji.http.CookiePoolManager pool = xyz.acproject.danmuji.http.CookiePoolManager.getInstance();
             mainRow.put("useCount", pool.getMainUseCount());
@@ -229,8 +241,9 @@ public class AccountPoolConf implements Serializable {
             JSONObject accJson = new JSONObject();
             accJson.put("uid", acc.getUid());
             accJson.put("name", acc.getName());
-            // 头像
+            // 头像和等级
             accJson.put("face", acc.getFace() != null ? acc.getFace() : "");
+            accJson.put("level", acc.getLevel());
             // 只显示 cookie 的前后各8个字符
             String cookie = acc.getCookie();
             if (cookie != null && cookie.length() > 20) {
