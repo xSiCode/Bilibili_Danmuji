@@ -1,0 +1,767 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="referrer" content="never">
+    <meta name="renderer" content="webkit">
+    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport">
+    <title>弹幕姬-账号池管理</title>
+    <link rel="apple-touch-icon-precomposed" href="../../img/headlogo.png" th:href="@{/img/favicon.png}">
+    <link rel="shortcut icon" href="../../img/headlogo.png" th:href="@{/img/favicon.png}">
+    <link rel="stylesheet" href="../../css/style.css" th:href="@{/css/style.css}" type="text/css" media="all">
+    <link rel="stylesheet" href="../../css/bootstrap.min.css" th:href="@{/css/bootstrap.min.css}" type="text/css" media="all">
+    <script type="text/javascript" src="../../js/jquery-3.7.0.min.js" th:src="@{/js/jquery-3.7.0.min.js}"></script>
+    <script type="text/javascript" src="../../js/popper.min.js" th:src="@{/js/popper.min.js}"></script>
+    <script type="text/javascript" src="../../js/bootstrap.min.js" th:src="@{/js/bootstrap.min.js}"></script>
+    <style>
+        .status-badge { font-size: 0.82rem; white-space: nowrap; }
+        .stats-card { min-height: 110px; }
+        .cookie-preview { font-family: monospace; font-size: 0.75rem; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; vertical-align: middle; }
+        .avatar-sm { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 2px solid #dee2e6; background: #eee; flex-shrink: 0; }
+        .avatar-md { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; border: 2px solid #6c757d; background: #eee; }
+        .avatar-lg { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 3px solid #0d6efd; background: #eee; }
+        .qrcode-img { width: 180px; height: 180px; cursor: pointer; }
+        .qrcode-wrapper { text-align: center; padding: 15px; }
+        .modal-qr-spinner { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+        /* 表格紧凑样式 */
+        .table-accounts { table-layout: auto; width: 100%; }
+        .table-accounts th, .table-accounts td { padding: 6px 4px; vertical-align: middle; font-size: 0.88rem; }
+        .table-accounts th { white-space: nowrap; font-size: 0.82rem; }
+        .table-accounts .btn-sm { padding: 2px 6px; font-size: 0.75rem; line-height: 1.2; }
+        .table-accounts .actions-cell { white-space: nowrap; }
+        .table-accounts .actions-cell .btn + .btn { margin-left: 2px; }
+    </style>
+</head>
+
+<body>
+<div class="app">
+    <div class="container-fluid mt-3 mb-5">
+        <div class="d-flex align-items-center mb-3">
+            <h4 class="mb-0">账号池管理</h4>
+            <a th:href="@{/}" class="btn btn-link ms-3">← 返回主页</a>
+        </div>
+
+        <!-- ====== 主账号信息区 ====== -->
+        <div class="card border-primary mb-3" id="mainAccountCard">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <strong>👑 当前主账号</strong>
+                <small class="text-muted">所有弹幕发送、直播间操作均使用此账号</small>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-center" id="mainAccountInfo">
+                    <img id="mainAvatar" class="avatar-lg me-3" src="/img/headlogo.png" alt="头像">
+                    <div>
+                        <h5 id="mainName" class="mb-1">未登录</h5>
+                        <span class="text-muted me-2" id="mainUid"></span>
+                        <span class="badge bg-info me-2" id="mainLevel" style="display:none;"></span>
+                    </div>
+                    <div class="ms-auto text-end" id="mainStats">
+                        <small class="text-muted">API轮询: <span id="mainUse">0</span> 次</small><br>
+                        <small class="text-danger">被限流: <span id="mainRateLimited">0</span> 次</small><br>
+                        <small class="text-muted" style="font-size:0.7rem;" title="主账号仅在子账号全部不可用时才参与API轮换">(兜底保护)</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ====== 全局配置区 ====== -->
+        <div class="card border-second mb-3">
+            <div class="card-header"><strong>全局配置</strong></div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-2">
+                        <label class="form-label">账号池开关</label>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="poolEnabled">
+                            <label class="form-check-label" id="poolEnabledLabel">关闭</label>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">冷却时间(秒)</label>
+                        <input type="number" class="form-control" id="cooldownSeconds" min="60" value="300">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">动态API速率(req/s)</label>
+                        <input type="number" class="form-control" id="dynamicRate" min="0.1" step="0.1" value="0.5">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">卡片API速率(req/s)</label>
+                        <input type="number" class="form-control" id="cardRate" min="0.1" step="0.1" value="1.0">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">缓存TTL(秒)</label>
+                        <input type="number" class="form-control" id="cacheTtlSeconds" min="30" value="300">
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button class="btn btn-primary w-100" id="saveConfigBtn">保存配置</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ====== 实时状态区 ====== -->
+        <div class="row g-3 mb-3">
+            <div class="col-md-3">
+                <div class="card stats-card border-info">
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-2 text-muted">可用Cookie</h6>
+                        <h3 class="card-title text-info" id="availableCookies">0</h3>
+                        <small class="text-muted">含主账号</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stats-card border-success">
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-2 text-muted">缓存命中率</h6>
+                        <h3 class="card-title text-success" id="cacheHitRate">0%</h3>
+                        <small class="text-muted"><span id="cacheSize">0</span>条 | <span id="cacheHits">0</span>命中 / <span id="cacheMisses">0</span>未命中</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stats-card border-warning">
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-2 text-muted">动态API</h6>
+                        <span id="dynamicRateDisplay">0.5 req/s</span><br>
+                        <span class="text-muted">请求:<span id="dynamicTotal">0</span></span> |
+                        <span class="text-warning">限流:<span id="dynamicThrottled">0</span></span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stats-card border-danger">
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-2 text-muted">卡片API</h6>
+                        <span id="cardRateDisplay">1.0 req/s</span><br>
+                        <span class="text-muted">请求:<span id="cardTotal">0</span></span> |
+                        <span class="text-danger">限流:<span id="cardThrottled">0</span></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ====== 添加/编辑账号表单 ====== -->
+        <div class="card border-second mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <strong id="formTitle">添加子账号</strong>
+                <div>
+                    <button class="btn btn-info btn-sm me-2" id="qrScanBtn">📱 扫码添加</button>
+                    <button class="btn btn-sm btn-outline-secondary" id="cancelEditBtn" style="display:none;">取消编辑</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <input type="hidden" id="editingUid" value="">
+                <input type="hidden" id="accountFace" value="">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-1 text-center">
+                        <img id="formAvatar" class="avatar-md" src="/img/headlogo.png" alt="?">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">B站UID</label>
+                        <input type="text" class="form-control" id="accountUid" placeholder="扫码自动填充" readonly>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">显示名称</label>
+                        <input type="text" class="form-control" id="accountName" placeholder="扫码自动填充">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Cookie字符串 <small class="text-muted">(扫码自动填充)</small></label>
+                        <input type="text" class="form-control" id="accountCookie" style="font-size:0.78rem;"
+                               placeholder="完整Cookie: DedeUserID=xxx;SESSDATA=xxx;bili_jct=xxx;...">
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end gap-2">
+                        <button class="btn btn-success" id="addAccountBtn">添加</button>
+                        <button class="btn btn-outline-info" id="validateCookieBtn">验证Cookie</button>
+                        <span id="validateResult"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ====== 账号列表 ====== -->
+        <div class="card border-second">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <strong>账号列表</strong>
+                <div>
+                    <span class="badge bg-primary" id="mainCount">主:0</span>
+                    <span class="badge bg-success" id="enabledCount">子启用:0</span>
+                    <span class="badge bg-warning" id="cooldownCount">冷却:0</span>
+                    <span class="badge bg-secondary" id="disabledCount">禁用:0</span>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle table-accounts">
+                        <thead class="table-light">
+                            <tr>
+                                <th></th>
+                                <th>类型</th>
+                                <th>UID</th>
+                                <th>名称</th>
+                                <th>Cookie</th>
+                                <th>状态</th>
+                                <th>使用/限流</th>
+                                <th>最近</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="accountTableBody">
+                            <tr id="noAccountRow">
+                                <td colspan="9" class="text-center text-muted py-4">未登录主账号，请先在主页登录</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer text-muted small d-flex justify-content-between">
+                <span>提示：子账号仅用于动态API和卡片信息API的Cookie轮换，主账号的所有功能不受影响。</span>
+                <button class="btn btn-outline-danger btn-sm" id="clearCacheBtn">清空API缓存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ====== 扫码登录弹窗 ====== -->
+<div class="modal fade" id="qrModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">📱 扫码添加子账号</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body">
+                <div class="qrcode-wrapper">
+                    <div class="position-relative d-inline-block">
+                        <img id="qrImg" class="qrcode-img border rounded" src="#" alt="二维码">
+                        <div id="qrSpinner" class="spinner-border text-primary modal-qr-spinner" style="display:none;"></div>
+                    </div>
+                    <p class="mt-2 text-muted small">请使用<strong>子账号手机</strong>的B站客户端扫码</p>
+                    <p class="text-muted small">点击二维码可刷新</p>
+                </div>
+                <div id="qrStatus" class="text-center mt-2">
+                    <span class="text-info">等待扫码...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript">
+    var FALLBACK_AVATAR = '/img/headlogo.png';
+    var currentAccounts = [];
+    var qrPollTimer = null;
+
+    /** 安全设置图片src，带onerror防抖 */
+    function safeSetImgSrc($img, url) {
+        if (!url || url.length < 5) {
+            $img.attr('src', FALLBACK_AVATAR);
+            return;
+        }
+        // 先解绑旧的onerror，避免循环
+        $img.off('error.avatar').on('error.avatar', function() {
+            $(this).off('error.avatar').attr('src', FALLBACK_AVATAR);
+        });
+        $img.attr('src', url);
+    }
+
+    $(function() {
+        loadAccountList();
+        loadStats();
+        setInterval(loadStats, 30000);
+        setInterval(loadAccountList, 60000);
+    });
+
+    // ====== 加载账号列表和全局配置 ======
+    function loadAccountList() {
+        $.ajax({
+            url: '../api/accountPool/list',
+            async: true, cache: false, type: 'GET', dataType: 'json',
+            success: function(data) {
+                if (!data || !data.result) return;
+                var result = data.result;
+                currentAccounts = result.accounts || [];
+
+                // --- 更新主账号独立卡片 ---
+                var main = result.mainAccount;
+                var mainUse = 0, mainRL = 0;
+                if (currentAccounts.length > 0 && currentAccounts[0].isMain) {
+                    mainUse = currentAccounts[0].useCount || 0;
+                    mainRL = currentAccounts[0].rateLimitedCount || 0;
+                }
+                if (main && main.name) {
+                    $('#mainName').text(main.name);
+                    $('#mainUid').text('UID: ' + (main.uid || '-'));
+                    $('#mainUse').text(mainUse);
+                    $('#mainRateLimited').text(mainRL);
+                    safeSetImgSrc($('#mainAvatar'), main.face);
+                    if (main.level !== undefined && main.level !== null) {
+                        $('#mainLevel').text('Lv' + main.level).show();
+                    } else {
+                        $('#mainLevel').hide();
+                    }
+                    $('#mainAccountCard').show();
+                } else {
+                    $('#mainName').text('未登录');
+                    $('#mainUid').text('');
+                    $('#mainUse').text('0');
+                    $('#mainRateLimited').text('0');
+                    $('#mainLevel').hide();
+                    $('#mainAvatar').attr('src', FALLBACK_AVATAR);
+                }
+
+                // --- 更新全局配置 ---
+                $('#poolEnabled').prop('checked', result.enabled);
+                $('#poolEnabledLabel').text(result.enabled ? '开启' : '关闭');
+                $('#cooldownSeconds').val(result.cooldownSeconds);
+                $('#dynamicRate').val(result.dynamicRate);
+                $('#cardRate').val(result.cardRate);
+                $('#cacheTtlSeconds').val(result.cacheTtlSeconds);
+
+                // --- 计数 ---
+                var enabled = 0, cooldown = 0, disabled = 0, hasMain = false;
+                currentAccounts.forEach(function(a) {
+                    if (a.isMain) { hasMain = true; return; }
+                    if (!a.enabled) disabled++;
+                    else if (a.coolingDown) cooldown++;
+                    else enabled++;
+                });
+                $('#mainCount').text('主:' + (hasMain ? '1' : '0'));
+                $('#enabledCount').text('子启用:' + enabled);
+                $('#cooldownCount').text('冷却:' + cooldown);
+                $('#disabledCount').text('禁用:' + disabled);
+                $('#availableCookies').text(hasMain ? enabled + 1 : enabled);
+
+                // --- 渲染表格 ---
+                var tbody = $('#accountTableBody');
+                tbody.empty();
+                if (currentAccounts.length === 0) {
+                    tbody.append('<tr id="noAccountRow"><td colspan="9" class="text-center text-muted py-4">未登录主账号，请先在主页登录</td></tr>');
+                } else {
+                    currentAccounts.forEach(function(acc) {
+                        var isMain = acc.isMain === true;
+                        var statusClass = 'badge bg-' + acc.statusColor;
+                        var typeBadge = isMain
+                            ? '<span class="badge bg-primary">主</span>'
+                            : '<span class="badge bg-secondary">子</span>';
+
+                        var actions = '';
+                        if (isMain) {
+                            actions = '<small class="text-muted">—</small>';
+                        } else {
+                            actions += '<button class="btn btn-sm btn-outline-primary switch-main-btn" data-uid="' + acc.uid + '" data-name="' + escHtml(acc.name || acc.uid) + '" title="设为主账号">主</button>';
+                            if (acc.enabled) {
+                                actions += '<button class="btn btn-sm btn-outline-warning disable-btn" data-uid="' + acc.uid + '" title="禁用">停</button>';
+                            } else {
+                                actions += '<button class="btn btn-sm btn-outline-success enable-btn" data-uid="' + acc.uid + '" title="启用">启</button>';
+                            }
+                            if (acc.coolingDown) {
+                                actions += '<button class="btn btn-sm btn-outline-info clear-btn" data-uid="' + acc.uid + '" title="解除冷却">解</button>';
+                            }
+                            actions += '<button class="btn btn-sm btn-outline-primary edit-btn" data-uid="' + acc.uid + '" title="编辑">编</button>';
+                            actions += '<button class="btn btn-sm btn-outline-danger delete-btn" data-uid="' + acc.uid + '" title="删除">删</button>';
+                        }
+
+                        var lastUsed = acc.lastUsedTime > 0 ? new Date(acc.lastUsedTime).toLocaleTimeString() : '-';
+                        var rowClass = isMain ? 'table-primary' : (acc.coolingDown ? 'table-warning' : (acc.enabled ? '' : 'table-secondary'));
+
+                        // 用data属性存储face URL，后续JS设置src
+                        var rowHtml =
+                            '<tr class="' + rowClass + '">' +
+                            '<td><img class="avatar-sm acc-avatar" data-face="' + escAttr(acc.face || '') + '" src="' + FALLBACK_AVATAR + '" alt=""></td>' +
+                            '<td>' + typeBadge + '</td>' +
+                            '<td>' + (acc.uid || '-') + '</td>' +
+                            '<td>' + escHtml(acc.name || '-') + '</td>' +
+                            '<td><span class="cookie-preview" title="' + escAttr(acc.cookiePreview || '') + '">' + escHtml(acc.cookiePreview || '-') + '</span></td>' +
+                            '<td><span class="' + statusClass + ' status-badge">' + acc.status + '</span>' +
+                                (acc.cooldownRemaining > 0 ? ' <small class="text-muted">' + formatCooldown(acc.cooldownRemaining) + '</small>' : '') + '</td>' +
+                            '<td><small>' + (acc.useCount || 0) + ' / ' + (acc.rateLimitedCount || 0) + '</small></td>' +
+                            '<td><small>' + lastUsed + '</small></td>' +
+                            '<td class="actions-cell">' + actions + '</td>' +
+                            '</tr>';
+                        tbody.append(rowHtml);
+                    });
+
+                    // 渲染完成后设置头像，避免onerror循环
+                    tbody.find('.acc-avatar').each(function() {
+                        var $img = $(this);
+                        var face = $img.data('face');
+                        safeSetImgSrc($img, face);
+                    });
+                }
+            }
+        });
+    }
+
+    function escHtml(s) {
+        if (!s) return '';
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    function escAttr(s) {
+        if (!s) return '';
+        return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+    function formatCooldown(seconds) {
+        if (seconds <= 0) return '';
+        if (seconds >= 60) return Math.floor(seconds/60) + 'm' + (seconds%60) + 's';
+        return seconds + 's';
+    }
+
+    // ====== 加载实时统计 ======
+    function loadStats() {
+        $.ajax({
+            url: '../api/accountPool/stats',
+            async: true, cache: false, type: 'GET', dataType: 'json',
+            success: function(data) {
+                if (!data || !data.result) return;
+                var s = data.result;
+                $('#cacheHitRate').text(s.cache.hitRate + '%');
+                $('#cacheSize').text(s.cache.size);
+                $('#cacheHits').text(s.cache.hitCount);
+                $('#cacheMisses').text(s.cache.missCount);
+                $('#dynamicRateDisplay').text(s.dynamic.rate + ' req/s');
+                $('#dynamicTotal').text(s.dynamic.totalRequests);
+                $('#dynamicThrottled').text(s.dynamic.throttledRequests);
+                $('#cardRateDisplay').text(s.card.rate + ' req/s');
+                $('#cardTotal').text(s.card.totalRequests);
+                $('#cardThrottled').text(s.card.throttledRequests);
+                $('#availableCookies').text(s.availableCookies);
+            }
+        });
+    }
+
+    // ====== 保存全局配置 ======
+    $('#saveConfigBtn').click(function() {
+        $.ajax({
+            url: '../api/accountPool/config',
+            async: true, cache: false, type: 'POST',
+            data: {
+                enabled: $('#poolEnabled').is(':checked'),
+                cooldownSeconds: parseInt($('#cooldownSeconds').val()) || 300,
+                dynamicRate: parseFloat($('#dynamicRate').val()) || 0.5,
+                cardRate: parseFloat($('#cardRate').val()) || 1.0,
+                cacheTtlSeconds: parseInt($('#cacheTtlSeconds').val()) || 300
+            },
+            dataType: 'json',
+            success: function(data) {
+                if (data && data.result) {
+                    showToast('配置已保存！', 'success');
+                    loadAccountList();
+                    loadStats();
+                } else {
+                    showToast('保存失败', 'danger');
+                }
+            }
+        });
+    });
+
+    // ====== 添加/更新账号 ======
+    $('#addAccountBtn').click(function() {
+        var uid = $('#accountUid').val().trim();
+        var name = $('#accountName').val().trim();
+        var cookie = $('#accountCookie').val().trim();
+        if (!cookie) { showToast('请先扫码或输入Cookie', 'warning'); return; }
+
+        var editingUid = $('#editingUid').val();
+        var url = editingUid ? '../api/accountPool/update' : '../api/accountPool/add';
+        var $btn = $(this);
+        $btn.prop('disabled', true).text('处理中...');
+        $.ajax({
+            url: url,
+            async: true, cache: false, type: 'POST',
+            data: { uid: uid, name: name, cookie: cookie },
+            dataType: 'json',
+            success: function(data) {
+                $btn.prop('disabled', false);
+                if (data && data.result) {
+                    showToast(editingUid ? '更新成功！' : '添加成功！', 'success');
+                    resetForm();
+                    loadAccountList();
+                    loadStats();
+                } else {
+                    showToast('操作失败，可能UID重复或数据无效', 'danger');
+                }
+            },
+            error: function() {
+                $btn.prop('disabled', false);
+            }
+        });
+    });
+
+    // ====== 验证Cookie ======
+    $('#validateCookieBtn').click(function() {
+        var cookie = $('#accountCookie').val().trim();
+        if (!cookie) { showToast('请先输入Cookie', 'warning'); return; }
+        var $btn = $(this);
+        $btn.prop('disabled', true).text('验证中...');
+        $('#validateResult').text('');
+        $.ajax({
+            url: '../api/accountPool/validate',
+            async: true, cache: false, type: 'POST',
+            data: { cookie: cookie },
+            dataType: 'json',
+            success: function(data) {
+                $btn.prop('disabled', false).text('验证Cookie');
+                if (data && data.result) {
+                    var r = data.result;
+                    if (r.valid) {
+                        $('#validateResult').html('<span class="text-success">✓ 有效: ' + escHtml(r.uname || r.uid) + '</span>');
+                        $('#accountUid').val(r.uid);
+                        $('#accountName').val(r.uname);
+                        if (r.face) {
+                            $('#accountFace').val(r.face);
+                            safeSetImgSrc($('#formAvatar'), r.face);
+                        }
+                    } else {
+                        $('#validateResult').html('<span class="text-danger">✗ Cookie无效或已过期</span>');
+                    }
+                }
+            },
+            error: function() {
+                $btn.prop('disabled', false).text('验证Cookie');
+                $('#validateResult').html('<span class="text-danger">验证请求失败</span>');
+            }
+        });
+    });
+
+    // ====== 清空缓存 ======
+    $('#clearCacheBtn').click(function() {
+        if (!confirm('确定清空所有API缓存吗？')) return;
+        var origTtl = parseInt($('#cacheTtlSeconds').val()) || 300;
+        // 先设为1秒触发缓存过期重建
+        $.ajax({
+            url: '../api/accountPool/config',
+            async: true, cache: false, type: 'POST',
+            data: {
+                enabled: $('#poolEnabled').is(':checked'),
+                cooldownSeconds: parseInt($('#cooldownSeconds').val()) || 300,
+                dynamicRate: parseFloat($('#dynamicRate').val()) || 0.5,
+                cardRate: parseFloat($('#cardRate').val()) || 1.0,
+                cacheTtlSeconds: 1
+            },
+            dataType: 'json',
+            success: function() {
+                setTimeout(function() {
+                    $.ajax({
+                        url: '../api/accountPool/config',
+                        async: true, cache: false, type: 'POST',
+                        data: {
+                            enabled: $('#poolEnabled').is(':checked'),
+                            cooldownSeconds: parseInt($('#cooldownSeconds').val()) || 300,
+                            dynamicRate: parseFloat($('#dynamicRate').val()) || 0.5,
+                            cardRate: parseFloat($('#cardRate').val()) || 1.0,
+                            cacheTtlSeconds: origTtl
+                        },
+                        dataType: 'json'
+                    });
+                }, 2000);
+                showToast('缓存已清空', 'info');
+                loadStats();
+            }
+        });
+    });
+
+    // ====== 扫码登录弹窗 ======
+    $('#qrScanBtn').click(function() {
+        $('#qrModal').modal('show');
+        startQrLogin();
+    });
+    $('#qrModal').on('hidden.bs.modal', function() {
+        stopQrPoll();
+    });
+    $('#qrImg').click(function() {
+        startQrLogin();
+    });
+
+    function startQrLogin() {
+        stopQrPoll();
+        $('#qrSpinner').show();
+        $('#qrStatus').html('<span class="text-info">生成二维码中...</span>');
+        $.ajax({
+            url: '../api/accountPool/qrcodeUrl',
+            async: true, cache: false, type: 'POST',
+            dataType: 'json',
+            success: function(data) {
+                $('#qrSpinner').hide();
+                if (data && data.result) {
+                    $('#qrImg').attr('src', '../api/accountPool/qrcodeImage?url=' + encodeURIComponent(data.result));
+                    $('#qrStatus').html('<span class="text-info">等待扫码...</span>');
+                    startQrPoll();
+                } else {
+                    $('#qrStatus').html('<span class="text-danger">二维码生成失败</span>');
+                }
+            },
+            error: function() {
+                $('#qrSpinner').hide();
+                $('#qrStatus').html('<span class="text-danger">请求失败</span>');
+            }
+        });
+    }
+
+    function startQrPoll() {
+        qrPollTimer = setInterval(function() {
+            $.ajax({
+                url: '../api/accountPool/qrcodePoll',
+                async: true, cache: false, type: 'POST',
+                dataType: 'json',
+                success: function(data) {
+                    if (!data || !data.result) return;
+                    var r = data.result;
+                    var code = r.code;
+                    if (code === 0) {
+                        stopQrPoll();
+                        $('#qrStatus').html('<span class="text-success">✓ 扫码成功！' + escHtml(r.uname || '') + '</span>');
+                        $('#accountCookie').val(r.cookie);
+                        $('#accountUid').val(r.uid);
+                        $('#accountName').val(r.uname);
+                        if (r.face) {
+                            $('#accountFace').val(r.face);
+                            safeSetImgSrc($('#formAvatar'), r.face);
+                        }
+                        $('#validateResult').html('<span class="text-success">✓ 扫码成功: ' + escHtml(r.uname || r.uid) + '</span>');
+                        setTimeout(function() { $('#qrModal').modal('hide'); }, 1000);
+                    } else if (code === 86038) {
+                        $('#qrStatus').html('<span class="text-warning">二维码已过期，点击刷新</span>');
+                    } else if (code === 86090) {
+                        $('#qrStatus').html('<span class="text-primary">已扫码，请在手机上确认登录...</span>');
+                    } else if (code === 86101) {
+                        $('#qrStatus').html('<span class="text-info">等待扫码...</span>');
+                    } else if (code != null) {
+                        $('#qrStatus').html('<span class="text-danger">错误码: ' + code + '</span>');
+                    }
+                }
+            });
+        }, 3000);
+    }
+
+    function stopQrPoll() {
+        if (qrPollTimer) {
+            clearInterval(qrPollTimer);
+            qrPollTimer = null;
+        }
+    }
+
+    // ====== 切换主账号 ======
+    $('#accountTableBody').on('click', '.switch-main-btn', function() {
+        var uid = $(this).data('uid');
+        var name = $(this).data('name');
+        if (!confirm('确定要将主账号切换为 "' + name + '" 吗？\n\n切换后：\n• 新主账号将用于所有功能（弹幕发送、直播间操作等）\n• 原主账号将降级为子账号存入账号池\n• 可能需要重新连接直播间')) {
+            return;
+        }
+        var $btn = $(this);
+        $btn.prop('disabled', true).text('切换中...');
+        $.ajax({
+            url: '../api/accountPool/switchMain',
+            async: true, cache: false, type: 'POST',
+            data: { uid: uid },
+            dataType: 'json',
+            success: function(data) {
+                if (data && data.result) {
+                    var r = data.result;
+                    if (r.success) {
+                        showToast('✓ ' + r.message, 'success');
+                        loadAccountList();
+                        loadStats();
+                    } else {
+                        showToast('✗ ' + (r.message || '切换失败'), 'danger');
+                    }
+                } else {
+                    showToast('切换请求失败', 'danger');
+                }
+            },
+            error: function() {
+                showToast('切换请求异常', 'danger');
+            },
+            complete: function() {
+                $btn.prop('disabled', false).text('设为主');
+            }
+        });
+    });
+
+    // ====== 表格操作事件委托 ======
+    $('#accountTableBody').on('click', '.disable-btn', function() {
+        toggleAccount($(this).data('uid'), false);
+    });
+    $('#accountTableBody').on('click', '.enable-btn', function() {
+        toggleAccount($(this).data('uid'), true);
+    });
+    $('#accountTableBody').on('click', '.clear-btn', function() {
+        if (!confirm('确定要手动清除该账号的冷却状态吗？')) return;
+        $.ajax({
+            url: '../api/accountPool/clearCooldown',
+            async: true, cache: false, type: 'POST',
+            data: { uid: $(this).data('uid') },
+            dataType: 'json',
+            success: function(data) {
+                if (data && data.result) { loadAccountList(); loadStats(); }
+                else showToast('操作失败', 'danger');
+            }
+        });
+    });
+    $('#accountTableBody').on('click', '.delete-btn', function() {
+        if (!confirm('确定删除该子账号吗？此操作不可恢复！')) return;
+        $.ajax({
+            url: '../api/accountPool/remove',
+            async: true, cache: false, type: 'POST',
+            data: { uid: $(this).data('uid') },
+            dataType: 'json',
+            success: function(data) {
+                if (data && data.result) { loadAccountList(); loadStats(); }
+                else showToast('删除失败', 'danger');
+            }
+        });
+    });
+    $('#accountTableBody').on('click', '.edit-btn', function() {
+        var uid = $(this).data('uid');
+        var account = currentAccounts.find(function(a) { return a.uid == uid; });
+        if (!account) return;
+        $('#editingUid').val(uid);
+        $('#formTitle').text('编辑子账号: ' + (account.name || uid));
+        $('#accountUid').val(account.uid);
+        $('#accountName').val(account.name);
+        $('#accountFace').val(account.face || '');
+        safeSetImgSrc($('#formAvatar'), account.face);
+        $('#accountCookie').val('').attr('placeholder', '输入新Cookie（留空则不更新Cookie）');
+        $('#addAccountBtn').text('更新').removeClass('btn-success').addClass('btn-warning');
+        $('#cancelEditBtn').show();
+        $('#validateResult').text('');
+        $('html, body').animate({ scrollTop: $('#accountCookie').offset().top - 100 }, 300);
+    });
+    $('#cancelEditBtn').click(function() { resetForm(); });
+
+    function toggleAccount(uid, enabled) {
+        $.ajax({
+            url: '../api/accountPool/toggle',
+            async: true, cache: false, type: 'POST',
+            data: { uid: uid, enabled: enabled },
+            dataType: 'json',
+            success: function(data) {
+                if (data && data.result) { loadAccountList(); loadStats(); }
+                else showToast('操作失败', 'danger');
+            }
+        });
+    }
+
+    function resetForm() {
+        $('#editingUid').val('');
+        $('#formTitle').text('添加子账号');
+        $('#accountUid').val('');
+        $('#accountName').val('');
+        $('#accountFace').val('');
+        $('#formAvatar').attr('src', FALLBACK_AVATAR);
+        $('#accountCookie').val('').attr('placeholder', '完整Cookie: DedeUserID=xxx;SESSDATA=xxx;bili_jct=xxx;...');
+        $('#addAccountBtn').text('添加').removeClass('btn-warning').addClass('btn-success');
+        $('#cancelEditBtn').hide();
+        $('#validateResult').text('');
+    }
+
+    function showToast(message, type) {
+        var id = 'toast-' + Date.now();
+        var div = $('<div id="' + id + '" class="alert alert-' + type + ' alert-dismissible fade show position-fixed" style="top:10px;right:10px;z-index:9999;min-width:250px;">' +
+            message + '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="关闭"></button></div>');
+        $('body').append(div);
+        setTimeout(function() { $('#' + id).fadeOut(function() { $(this).remove(); }); }, 3500);
+    }
+</script>
+</body>
+</html>

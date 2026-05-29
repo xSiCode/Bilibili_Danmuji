@@ -119,6 +119,11 @@ public class WebController {
         return "danmu_widget";
     }
 
+    @RequestMapping(value = "/account_pool")
+    public String account_pool(Model model) {
+        return "account_pool";
+    }
+
     @RequestMapping(value = "/obs_danmaku")
     public String obs_danmaku(Model model) {
         return "obs_danmaku";
@@ -151,6 +156,14 @@ public class WebController {
         if (req.getSession().getAttribute("status") != null)
             return;
         QrcodeUtils.creatRrCode(url, 140, 140, resp);
+    }
+
+    /** 账号池扫码专用 — 不检查主账号登录状态 */
+    @ResponseBody
+    @GetMapping(value = "/api/accountPool/qrcodeImage")
+    public void accountPoolQrcodeImage(HttpServletRequest req, HttpServletResponse resp,
+                                        @RequestParam("url") String url) {
+        QrcodeUtils.creatRrCode(url, 180, 180, resp);
     }
 
     @ResponseBody
@@ -3501,5 +3514,412 @@ public class WebController {
     @Autowired
     public void setTaskRegisterComponent(TaskRegisterComponent taskRegisterComponent) {
         this.taskRegisterComponent = taskRegisterComponent;
+    }
+
+    // ==================== 账号池管理 API ====================
+
+    /**
+     * 获取账号池展示数据（不含完整Cookie）
+     */
+    @ResponseBody
+    @GetMapping(value = "/api/accountPool/list")
+    public Response<?> accountPoolList(HttpServletRequest req) {
+        try {
+            xyz.acproject.danmuji.http.CookiePoolManager pool = xyz.acproject.danmuji.http.CookiePoolManager.getInstance();
+            xyz.acproject.danmuji.conf.set.AccountPoolConf conf = pool.getPoolConf();
+            com.alibaba.fastjson.JSONObject result = conf != null
+                    ? conf.toDisplayJson()
+                    : xyz.acproject.danmuji.conf.set.AccountPoolConf.createDefault().toDisplayJson();
+            return Response.success(result, req);
+        } catch (Exception e) {
+            LOGGER.error("accountPoolList error", e);
+            return Response.success(null, req);
+        }
+    }
+
+    /**
+     * 获取限流器和缓存统计
+     */
+    @ResponseBody
+    @GetMapping(value = "/api/accountPool/stats")
+    public Response<?> accountPoolStats(HttpServletRequest req) {
+        try {
+            com.alibaba.fastjson.JSONObject stats = xyz.acproject.danmuji.http.HttpRoomData.getRateLimiterStats();
+            return Response.success(stats, req);
+        } catch (Exception e) {
+            LOGGER.error("accountPoolStats error", e);
+            return Response.success(null, req);
+        }
+    }
+
+    /**
+     * 添加子账号（自动验证Cookie并填充头像等信息）
+     */
+    @ResponseBody
+    @PostMapping(value = "/api/accountPool/add")
+    public Response<?> accountPoolAdd(@RequestParam("uid") String uid,
+                                      @RequestParam("name") String name,
+                                      @RequestParam("cookie") String cookie,
+                                      HttpServletRequest req) {
+        try {
+            if (StringUtils.isBlank(cookie)) {
+                return Response.success(false, req);
+            }
+            xyz.acproject.danmuji.http.CookiePoolManager pool = xyz.acproject.danmuji.http.CookiePoolManager.getInstance();
+            xyz.acproject.danmuji.entity.user_data.SubAccount account =
+                    new xyz.acproject.danmuji.entity.user_data.SubAccount(uid, name, cookie);
+
+            // 自动验证并填充信息
+            String[] result = pool.validateCookie(cookie);
+            if ("true".equals(result[0])) {
+                if (StringUtils.isBlank(account.getUid()) && StringUtils.isNotBlank(result[1])) {
+                    account.setUid(result[1]);
+                }
+                if (StringUtils.isBlank(account.getName()) && StringUtils.isNotBlank(result[2])) {
+                    account.setName(result[2]);
+                }
+                if (StringUtils.isNotBlank(result[3])) {
+                    account.setFace(result[3]);
+                }
+                account.setValidated(true);
+                account.setLastValidatedTime(System.currentTimeMillis());
+            }
+
+            boolean ok = pool.addAccount(account);
+            if (ok) {
+                xyz.acproject.danmuji.http.HttpRoomData.syncRateLimiterConfig(pool.getPoolConf());
+            }
+            return Response.success(ok, req);
+        } catch (Exception e) {
+            LOGGER.error("accountPoolAdd error", e);
+            return Response.success(false, req);
+        }
+    }
+
+    /**
+     * 更新子账号（自动验证Cookie并更新头像等信息）
+     */
+    @ResponseBody
+    @PostMapping(value = "/api/accountPool/update")
+    public Response<?> accountPoolUpdate(@RequestParam("uid") String uid,
+                                         @RequestParam("name") String name,
+                                         @RequestParam("cookie") String cookie,
+                                         HttpServletRequest req) {
+        try {
+            if (StringUtils.isBlank(cookie) || StringUtils.isBlank(uid)) {
+                return Response.success(false, req);
+            }
+            xyz.acproject.danmuji.http.CookiePoolManager pool = xyz.acproject.danmuji.http.CookiePoolManager.getInstance();
+            xyz.acproject.danmuji.entity.user_data.SubAccount account =
+                    new xyz.acproject.danmuji.entity.user_data.SubAccount(uid, name, cookie);
+
+            // 自动验证并更新信息
+            String[] result = pool.validateCookie(cookie);
+            if ("true".equals(result[0])) {
+                if (StringUtils.isNotBlank(result[1])) account.setUid(result[1]);
+                if (StringUtils.isNotBlank(result[2])) account.setName(result[2]);
+                if (StringUtils.isNotBlank(result[3])) account.setFace(result[3]);
+                account.setValidated(true);
+                account.setLastValidatedTime(System.currentTimeMillis());
+            }
+
+            // 保留原有统计
+            for (xyz.acproject.danmuji.entity.user_data.SubAccount existing : pool.getAllAccounts()) {
+                if (uid.equals(existing.getUid())) {
+                    account.setEnabled(existing.isEnabled());
+                    account.setUseCount(existing.getUseCount());
+                    account.setRateLimitedCount(existing.getRateLimitedCount());
+                    if (!account.isValidated()) {
+                        account.setValidated(existing.isValidated());
+                        account.setLastValidatedTime(existing.getLastValidatedTime());
+                    }
+                    if (StringUtils.isBlank(account.getFace())) {
+                        account.setFace(existing.getFace());
+                    }
+                    break;
+                }
+            }
+            boolean ok = pool.updateAccount(uid, account);
+            return Response.success(ok, req);
+        } catch (Exception e) {
+            LOGGER.error("accountPoolUpdate error", e);
+            return Response.success(false, req);
+        }
+    }
+
+    /**
+     * 删除子账号
+     */
+    @ResponseBody
+    @PostMapping(value = "/api/accountPool/remove")
+    public Response<?> accountPoolRemove(@RequestParam("uid") String uid, HttpServletRequest req) {
+        try {
+            if (StringUtils.isBlank(uid)) {
+                return Response.success(false, req);
+            }
+            xyz.acproject.danmuji.http.CookiePoolManager pool = xyz.acproject.danmuji.http.CookiePoolManager.getInstance();
+            boolean ok = pool.removeAccount(uid);
+            return Response.success(ok, req);
+        } catch (Exception e) {
+            LOGGER.error("accountPoolRemove error", e);
+            return Response.success(false, req);
+        }
+    }
+
+    /**
+     * 启用/禁用子账号
+     */
+    @ResponseBody
+    @PostMapping(value = "/api/accountPool/toggle")
+    public Response<?> accountPoolToggle(@RequestParam("uid") String uid,
+                                         @RequestParam("enabled") boolean enabled,
+                                         HttpServletRequest req) {
+        try {
+            if (StringUtils.isBlank(uid)) {
+                return Response.success(false, req);
+            }
+            xyz.acproject.danmuji.http.CookiePoolManager pool = xyz.acproject.danmuji.http.CookiePoolManager.getInstance();
+            boolean ok = pool.setAccountEnabled(uid, enabled);
+            return Response.success(ok, req);
+        } catch (Exception e) {
+            LOGGER.error("accountPoolToggle error", e);
+            return Response.success(false, req);
+        }
+    }
+
+    /**
+     * 手动清除冷却状态
+     */
+    @ResponseBody
+    @PostMapping(value = "/api/accountPool/clearCooldown")
+    public Response<?> accountPoolClearCooldown(@RequestParam("uid") String uid, HttpServletRequest req) {
+        try {
+            if (StringUtils.isBlank(uid)) {
+                return Response.success(false, req);
+            }
+            xyz.acproject.danmuji.http.CookiePoolManager pool = xyz.acproject.danmuji.http.CookiePoolManager.getInstance();
+            boolean ok = pool.clearCooldown(uid);
+            return Response.success(ok, req);
+        } catch (Exception e) {
+            LOGGER.error("accountPoolClearCooldown error", e);
+            return Response.success(false, req);
+        }
+    }
+
+    /**
+     * 验证Cookie有效性（返回uid, uname, face）
+     */
+    @ResponseBody
+    @PostMapping(value = "/api/accountPool/validate")
+    public Response<?> accountPoolValidate(@RequestParam("cookie") String cookie, HttpServletRequest req) {
+        try {
+            xyz.acproject.danmuji.http.CookiePoolManager pool = xyz.acproject.danmuji.http.CookiePoolManager.getInstance();
+            String[] result = pool.validateCookie(cookie);
+            com.alibaba.fastjson.JSONObject json = new com.alibaba.fastjson.JSONObject();
+            json.put("valid", "true".equals(result[0]));
+            json.put("uid", result[1]);
+            json.put("uname", result[2]);
+            json.put("face", result.length > 3 ? result[3] : "");
+            return Response.success(json, req);
+        } catch (Exception e) {
+            LOGGER.error("accountPoolValidate error", e);
+            return Response.success(null, req);
+        }
+    }
+
+    /**
+     * 切换主账号：将指定子账号提升为主账号，原主账号降级为子账号。
+     * 会更新全局Cookie状态并持久化，影响所有功能模块。
+     */
+    @ResponseBody
+    @PostMapping(value = "/api/accountPool/switchMain")
+    public Response<?> accountPoolSwitchMain(@RequestParam("uid") String uid, HttpServletRequest req) {
+        try {
+            if (StringUtils.isBlank(uid)) {
+                return Response.success(false, req);
+            }
+            xyz.acproject.danmuji.http.CookiePoolManager pool = xyz.acproject.danmuji.http.CookiePoolManager.getInstance();
+            String[] result = pool.prepareSwitchMain(uid);
+            if (result == null) {
+                com.alibaba.fastjson.JSONObject err = new com.alibaba.fastjson.JSONObject();
+                err.put("success", false);
+                err.put("message", "切换失败：目标账号不存在、已禁用或Cookie已失效");
+                return Response.success(err, req);
+            }
+
+            String newCookie = result[0];
+            String newUid = result[1];
+            String newName = result[2];
+            String newFace = result[3];
+
+            // 1. 更新全局Cookie
+            PublicDataConf.USERCOOKIE = newCookie;
+
+            // 2. 重新解析Cookie
+            xyz.acproject.danmuji.tools.CurrencyTools.parseCookie(newCookie);
+
+            // 3. 调用B站API验证并获取完整用户信息
+            xyz.acproject.danmuji.http.HttpUserData.httpGetUserInfo();
+
+            // 4. 获取buvid等补充cookie信息
+            if (PublicDataConf.USER != null && PublicDataConf.COOKIE != null) {
+                PublicDataConf.COOKIE = xyz.acproject.danmuji.http.HttpUserData.httpBuvid34(PublicDataConf.COOKIE);
+                if (PublicDataConf.COOKIE != null) {
+                    PublicDataConf.USERCOOKIE = PublicDataConf.COOKIE.getCookie();
+                }
+            }
+
+            // 5. 持久化到主配置文件和账号池文件
+            checkService.changeSet(PublicDataConf.centerSetConf, false);
+
+            // 6. 更新限流器配置
+            xyz.acproject.danmuji.http.HttpRoomData.syncRateLimiterConfig(pool.getPoolConf());
+
+            // 7. 更新主账号session
+            if (PublicDataConf.USER != null) {
+                req.getSession().setAttribute("status", "login");
+            }
+
+            com.alibaba.fastjson.JSONObject resp = new com.alibaba.fastjson.JSONObject();
+            resp.put("success", true);
+            resp.put("uid", newUid);
+            resp.put("name", newName);
+            resp.put("face", newFace != null ? newFace : "");
+            resp.put("message", "已切换主账号为: " + newName + "（原主账号已降级为子账号）");
+            LOGGER.info("主账号切换成功: {} -> {}", newUid, newName);
+            return Response.success(resp, req);
+        } catch (Exception e) {
+            LOGGER.error("accountPoolSwitchMain error", e);
+            com.alibaba.fastjson.JSONObject err = new com.alibaba.fastjson.JSONObject();
+            err.put("success", false);
+            err.put("message", "切换异常: " + e.getMessage());
+            return Response.success(err, req);
+        }
+    }
+
+    /**
+     * 更新账号池全局配置
+     */
+    @ResponseBody
+    @PostMapping(value = "/api/accountPool/config")
+    public Response<?> accountPoolConfig(@RequestParam("enabled") boolean enabled,
+                                         @RequestParam("cooldownSeconds") int cooldownSeconds,
+                                         @RequestParam("dynamicRate") double dynamicRate,
+                                         @RequestParam("cardRate") double cardRate,
+                                         @RequestParam("cacheTtlSeconds") int cacheTtlSeconds,
+                                         HttpServletRequest req) {
+        try {
+            xyz.acproject.danmuji.http.CookiePoolManager pool = xyz.acproject.danmuji.http.CookiePoolManager.getInstance();
+            xyz.acproject.danmuji.conf.set.AccountPoolConf conf = pool.getPoolConf();
+            if (conf != null) {
+                conf.setEnabled(enabled);
+                conf.setCooldownSeconds(Math.max(60, cooldownSeconds));
+                conf.setDynamicRate(Math.max(0.1, dynamicRate));
+                conf.setCardRate(Math.max(0.1, cardRate));
+                conf.setCacheTtlSeconds(Math.max(30, cacheTtlSeconds));
+                pool.updatePoolConf(conf);
+                xyz.acproject.danmuji.http.HttpRoomData.syncRateLimiterConfig(conf);
+            }
+            return Response.success(true, req);
+        } catch (Exception e) {
+            LOGGER.error("accountPoolConfig error", e);
+            return Response.success(false, req);
+        }
+    }
+
+    // ==================== 子账号扫码登录 API ====================
+
+    /**
+     * 生成子账号扫码登录的二维码URL。
+     * 使用独立的session属性(subQrcodeKey)，不影响主账号登录。
+     */
+    @ResponseBody
+    @PostMapping(value = "/api/accountPool/qrcodeUrl")
+    public Response<?> accountPoolQrcodeUrl(HttpServletRequest req) {
+        try {
+            xyz.acproject.danmuji.entity.login_data.Qrcode qrcode =
+                    xyz.acproject.danmuji.http.HttpUserData.httpGenerateQrcode();
+            if (qrcode != null && qrcode.getUrl() != null) {
+                req.getSession().setAttribute("subQrcodeKey", qrcode.getQrcode_key());
+                return Response.success(qrcode.getUrl(), req);
+            }
+            return Response.success(null, req);
+        } catch (Exception e) {
+            LOGGER.error("accountPoolQrcodeUrl error", e);
+            return Response.success(null, req);
+        }
+    }
+
+    /**
+     * 轮询子账号扫码登录状态。
+     * 登录成功后从Set-Cookie提取cookie并返回，不清除主账号状态。
+     * @return {code: 0成功, 86038过期, 86090已扫码待确认, 86101未扫码, -1失败}
+     */
+    @ResponseBody
+    @PostMapping(value = "/api/accountPool/qrcodePoll")
+    public Response<?> accountPoolQrcodePoll(HttpServletRequest req) {
+        try {
+            String oauthKey = (String) req.getSession().getAttribute("subQrcodeKey");
+            if (StringUtils.isBlank(oauthKey)) {
+                return Response.success(null, req);
+            }
+
+            Map<String, String> headers = new HashMap<>(3);
+            headers.put("user-agent",
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36");
+            headers.put("Referer", "https://www.bilibili.com/");
+            Map<String, String> params = new HashMap<>(3);
+            params.put("qrcode_key", oauthKey);
+            params.put("source", "main-fe-header");
+
+            okhttp3.Response response = xyz.acproject.danmuji.utils.OkHttp3Utils.getHttp3Utils()
+                    .httpGet("https://passport.bilibili.com/x/passport-login/web/qrcode/poll", headers, params);
+            String data = response.body().string();
+            com.alibaba.fastjson.JSONObject jsonObject = com.alibaba.fastjson.JSONObject.parseObject(data);
+            com.alibaba.fastjson.JSONObject result = new com.alibaba.fastjson.JSONObject();
+
+            int code = jsonObject.getJSONObject("data").getIntValue("code");
+            result.put("code", code);
+
+            if (code == 0) {
+                // 登录成功，从Set-Cookie提取cookie
+                okhttp3.Headers responseHeaders = response.headers();
+                List<String> cookies = responseHeaders.values("Set-Cookie");
+                java.util.Set<String> cookieSet = new java.util.HashSet<>();
+                for (String s : cookies) {
+                    int semicolonIdx = s.indexOf(";");
+                    if (semicolonIdx > 0) {
+                        cookieSet.add(s.substring(0, semicolonIdx));
+                    }
+                }
+                StringBuilder sb = new StringBuilder(100);
+                java.util.Iterator<String> iter = cookieSet.iterator();
+                while (iter.hasNext()) {
+                    sb.append(iter.next());
+                    if (iter.hasNext()) sb.append(";");
+                }
+                String subCookie = sb.toString();
+                result.put("cookie", subCookie);
+
+                // 验证cookie并获取用户信息
+                if (StringUtils.isNotBlank(subCookie)) {
+                    xyz.acproject.danmuji.http.CookiePoolManager pool =
+                            xyz.acproject.danmuji.http.CookiePoolManager.getInstance();
+                    String[] validateResult = pool.validateCookie(subCookie);
+                    result.put("valid", "true".equals(validateResult[0]));
+                    result.put("uid", validateResult[1]);
+                    result.put("uname", validateResult[2]);
+                    result.put("face", validateResult[3]);
+                }
+
+                // 清除session中的临时key
+                req.getSession().removeAttribute("subQrcodeKey");
+            }
+
+            return Response.success(result, req);
+        } catch (Exception e) {
+            LOGGER.error("accountPoolQrcodePoll error", e);
+            return Response.success(null, req);
+        }
     }
 }

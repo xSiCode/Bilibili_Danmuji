@@ -121,6 +121,7 @@
                                           onclick="toggleSidebarSection(this);return false;">基本设置</span>
                                     <a href="javascript:void(0)" class="sidebar-link" th:classappend="${USER == null} ? 'active'" data-tab="account-set"
                                        onclick="switchTab('account-set', this);return false;">账号设置</a>
+                                    <a href="/account_pool" class="sidebar-link" target="_blank" style="color:#17a2b8;">账号池管理</a>
                                     <a href="javascript:void(0)" class="sidebar-link" th:classappend="${USER != null and ROOMID == null} ? 'active'" data-tab="room-set"
                                        onclick="switchTab('room-set', this);return false;">房间设置</a>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="common-set"

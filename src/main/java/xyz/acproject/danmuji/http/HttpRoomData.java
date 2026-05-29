@@ -439,14 +439,30 @@ public class HttpRoomData {
         return dynData;
     }
 
-    // 用户 用户动态冷却调用
+    // 用户 用户动态冷却调用 (旧版 — 作为所有Cookie耗尽时的兜底)
     static final ScheduledExecutorService schedulerDynamicService = new ScheduledThreadPoolExecutor(1);
     static final AtomicBoolean schedulerDynamicColdWait = new AtomicBoolean(false);
 
 
-    // 用户 卡片信息冷却调用
+    // 用户 卡片信息冷却调用 (旧版 — 作为所有Cookie耗尽时的兜底)
     static final ScheduledExecutorService schedulercardJOService = new ScheduledThreadPoolExecutor(1);
     static final AtomicBoolean schedulercardJOColdWait = new AtomicBoolean(false);
+
+    // ==================== 新版：令牌桶 + Cookie池 + 缓存 ====================
+
+    /** 动态API令牌桶限流器（默认0.5 QPS，从AccountPoolConf读取） */
+    static volatile TokenBucketRateLimiter dynamicRateLimiter =
+            new TokenBucketRateLimiter(0.5, 1.0);
+
+    /** 卡片API令牌桶限流器（默认1.0 QPS，从AccountPoolConf读取） */
+    static volatile TokenBucketRateLimiter cardRateLimiter =
+            new TokenBucketRateLimiter(1.0, 2.0);
+
+    /** Cookie池管理器 */
+    static final CookiePoolManager cookiePool = CookiePoolManager.getInstance();
+
+    /** API缓存管理器 */
+    static final ApiCacheManager apiCache = ApiCacheManager.getInstance();
 
     // ---- 异步 HTTP 辅助方法 ----
 
@@ -490,15 +506,57 @@ public class HttpRoomData {
                 .thenApply(body -> body != null ? JSONObject.parseObject(body) : null);
     }
 
+    /**
+     * 异步获取用户动态 — 集成缓存 + 令牌桶限流 + Cookie池轮换。
+     * 缓存命中直接返回；否则获取令牌后使用Cookie池中的可用Cookie发起请求。
+     */
     private static CompletableFuture<String> asyncHttpGetUserDynamic(long mid) {
+        // 1. 检查缓存
+        String cacheKey = ApiCacheManager.dynamicKey(mid);
+        String cached = apiCache.get(cacheKey);
+        if (cached != null) {
+            return CompletableFuture.completedFuture(cached);
+        }
+
+        // 2. 获取令牌（阻塞等待，最长30秒超时）
+        if (!dynamicRateLimiter.acquire(30, TimeUnit.SECONDS)) {
+            LOGGER.warn("动态API令牌获取超时 mid={}，降级跳过", mid);
+            return CompletableFuture.completedFuture(null);
+        }
+
+        // 3. 从Cookie池获取可用Cookie
+        String poolCookie = cookiePool.getNextCookie();
+        // 如果池返回null且主账号也没有cookie，使用空字符串（匿名请求可能受限）
+        if (poolCookie == null && StringUtils.isBlank(PublicDataConf.USERCOOKIE)) {
+            poolCookie = PublicDataConf.USERCOOKIE;
+        }
+
         Map<String, String> headers = new HashMap<>(3);
         headers.put("referer", "https://space.bilibili.com/" + mid);
         headers.put("user-agent",
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36");
-        if (StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
-            headers.put("cookie", PublicDataConf.USERCOOKIE);
+        if (StringUtils.isNotBlank(poolCookie)) {
+            headers.put("cookie", poolCookie);
         }
-        return asyncHttpGetBody("https://api.vc.bilibili.com/dynamic_svr/v1/dynamic_svr/space_history?host_uid=" + mid + "&offset_dynamic_id=0&need_top=1", headers, null);
+
+        final String usedCookie = poolCookie;
+
+        return asyncHttpGetBody("https://api.vc.bilibili.com/dynamic_svr/v1/dynamic_svr/space_history?host_uid=" + mid + "&offset_dynamic_id=0&need_top=1", headers, null)
+                .thenApply(result -> {
+                    if (result != null) {
+                        // 检查是否触发限流（B站返回的非正常响应）
+                        String resultStartStr = "{\"code\":0,\"message\":\"OK\"";
+                        if (result.contains(resultStartStr)) {
+                            // 正常响应，缓存结果
+                            apiCache.put(cacheKey, result);
+                        } else {
+                            // 异常响应，标记该Cookie被限流
+                            cookiePool.markRateLimited(usedCookie);
+                            LOGGER.warn("动态API异常响应 mid={}，已标记Cookie冷却", mid);
+                        }
+                    }
+                    return result;
+                });
     }
 
     private static CompletableFuture<JSONObject> asyncHttpGetMedalWall(long targetId) {
@@ -515,18 +573,64 @@ public class HttpRoomData {
                 .thenApply(body -> body != null ? JSONObject.parseObject(body) : null);
     }
 
+    /**
+     * 异步获取用户卡片信息 — 集成缓存 + 令牌桶限流 + Cookie池轮换。
+     * 缓存命中直接返回；否则获取令牌后使用Cookie池中的可用Cookie发起请求。
+     */
     private static CompletableFuture<JSONObject> asyncHttpGetUserCard(long mid) {
+        // 1. 检查缓存
+        String cacheKey = ApiCacheManager.cardKey(mid);
+        String cached = apiCache.get(cacheKey);
+        if (cached != null) {
+            try {
+                return CompletableFuture.completedFuture(JSONObject.parseObject(cached));
+            } catch (Exception e) {
+                LOGGER.warn("卡片缓存JSON解析失败 mid={}", mid, e);
+                apiCache.clearAll(); // 异常则清除所有缓存避免持续出错
+            }
+        }
+
+        // 2. 获取令牌（阻塞等待，最长30秒超时）
+        if (!cardRateLimiter.acquire(30, TimeUnit.SECONDS)) {
+            LOGGER.warn("卡片API令牌获取超时 mid={}，降级返回null", mid);
+            return CompletableFuture.completedFuture(null);
+        }
+
+        // 3. 从Cookie池获取可用Cookie
+        String poolCookie = cookiePool.getNextCookie();
+        if (poolCookie == null && StringUtils.isBlank(PublicDataConf.USERCOOKIE)) {
+            poolCookie = PublicDataConf.USERCOOKIE;
+        }
+
         Map<String, String> headers = new HashMap<>(3);
         headers.put("referer", "https://space.bilibili.com/" + mid + "/");
         headers.put("user-agent",
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36");
-        if (StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
-            headers.put("cookie", PublicDataConf.USERCOOKIE);
+        if (StringUtils.isNotBlank(poolCookie)) {
+            headers.put("cookie", poolCookie);
         }
+
+        final String usedCookie = poolCookie;
+
         Map<String, String> params = new HashMap<>(1);
         params.put("mid", String.valueOf(mid));
         return asyncHttpGetBody("https://api.bilibili.com/x/web-interface/card", headers, params)
-                .thenApply(body -> body != null ? JSONObject.parseObject(body) : null);
+                .thenApply(body -> {
+                    if (body != null) {
+                        JSONObject json = JSONObject.parseObject(body);
+                        if (json != null && json.getShort("code") == 0) {
+                            // 正常响应，缓存结果
+                            apiCache.put(cacheKey, body);
+                        } else {
+                            // 异常响应，标记该Cookie被限流
+                            cookiePool.markRateLimited(usedCookie);
+                            LOGGER.warn("卡片API异常响应 mid={} code={}，已标记Cookie冷却",
+                                    mid, json != null ? json.getShort("code") : -1);
+                        }
+                        return json;
+                    }
+                    return null;
+                });
     }
 
     /**
@@ -688,49 +792,54 @@ public class HttpRoomData {
 
         logSb.append(" [关注隐藏-1] ");
 
-        if (!schedulerDynamicColdWait.get()) {
-            return asyncHttpGetUserDynamic(vmid).thenCompose(dynData -> {
-                String blackWhiteType = null;
-
-                int blackWhiteScore = -1;
-                if (dynData == null) {
-                    blackWhiteScore--;
-                    blackWhiteType = "[动态解析异常-1]";
-                    logSb.append(blackWhiteType);
-                    logSbEnd.append(" [成份:关注隐藏]").append(blackWhiteType);
-                    return proceedToCardCheck(vmid, logSb, logSbEnd, blackWhiteScore, blackWhiteType);
-                }
-
-                String resultStartStr = "{\"code\":0,\"message\":\"OK\"";
-                LogFileTools.getlogFileTools().logTestFile(logSb + dynData.substring(0, Math.min(84, dynData.length())));
-
-                if (dynData.contains(resultStartStr)) {
-                    if (dynData.length() < 100) {
-                        blackWhiteScore--;
-                        blackWhiteType = "[动态隐藏-1]";  // -2
-                    } else {
-                        int keyWordsScore = getKeyWordsScore(dynData, logSb);
-                        blackWhiteScore += keyWordsScore;
-                        blackWhiteType = "[动态关键词:" + keyWordsScore + "]"; // -1 如果动态可见正常，则动态0分，总分值-1
-                    }
-                    logSb.append(blackWhiteType);
-
-                } else {
-                    if (schedulerDynamicColdWait.compareAndSet(false, true)) {
-                        System.out.println("字符串不包含目标片段。 API 调用超过频次，建议主动限制");
-                        schedulerDynamicService.schedule(() -> {
-                            schedulerDynamicColdWait.set(false);
-                            System.out.println("15分钟延迟已到，开始执行任务！当前时间：" + System.currentTimeMillis());
-                        }, 15, TimeUnit.MINUTES);
-                    }
-                    LogFileTools.getlogFileTools().logTestFile(logSb + " 用户动态API 调用超过频次，建议主动限制");
-                }
-
-                return proceedToCardCheck(vmid, logSb, logSbEnd, blackWhiteScore, blackWhiteType);
-            });
-        } else {
+        // 全局熔断兜底：如果所有Cookie都在冷却中，跳过API调用
+        if (schedulerDynamicColdWait.get()) {
+            logSb.append(" [动态API冷却=0] ");
             return proceedToCardCheck(vmid, logSb, logSbEnd, 0, null);
         }
+
+        return asyncHttpGetUserDynamic(vmid).thenCompose(dynData -> {
+            String blackWhiteType = null;
+
+            int blackWhiteScore = -1;
+            if (dynData == null) {
+                blackWhiteScore--;
+                blackWhiteType = "[动态解析异常-1]";
+                logSb.append(blackWhiteType);
+                logSbEnd.append(" [成份:关注隐藏]").append(blackWhiteType);
+                return proceedToCardCheck(vmid, logSb, logSbEnd, blackWhiteScore, blackWhiteType);
+            }
+
+            String resultStartStr = "{\"code\":0,\"message\":\"OK\"";
+            LogFileTools.getlogFileTools().logTestFile(logSb + dynData.substring(0, Math.min(84, dynData.length())));
+
+            if (dynData.contains(resultStartStr)) {
+                if (dynData.length() < 100) {
+                    blackWhiteScore--;
+                    blackWhiteType = "[动态隐藏-1]";  // -2
+                } else {
+                    int keyWordsScore = getKeyWordsScore(dynData, logSb);
+                    blackWhiteScore += keyWordsScore;
+                    blackWhiteType = "[动态关键词:" + keyWordsScore + "]"; // -1 如果动态可见正常，则动态0分，总分值-1
+                }
+                logSb.append(blackWhiteType);
+
+            } else {
+                // API异常 — CookiePool已经在asyncHttpGetUserDynamic中标记了当前Cookie冷却
+                // 如果所有子账号都在冷却且没有可用账号，触发全局熔断
+                if (cookiePool.getTotalAvailableCount() == 0
+                        && schedulerDynamicColdWait.compareAndSet(false, true)) {
+                    System.out.println("动态API: 所有账号Cookie均已冷却，触发全局熔断15分钟。建议添加更多子账号或降低请求频率。");
+                    schedulerDynamicService.schedule(() -> {
+                        schedulerDynamicColdWait.set(false);
+                        System.out.println("动态API: 15分钟全局熔断已解除，当前时间：" + System.currentTimeMillis());
+                    }, 15, TimeUnit.MINUTES);
+                }
+                LogFileTools.getlogFileTools().logTestFile(logSb + " 用户动态API 调用超过频次，已标记Cookie冷却");
+            }
+
+            return proceedToCardCheck(vmid, logSb, logSbEnd, blackWhiteScore, blackWhiteType);
+        });
     }
 
 
@@ -835,6 +944,7 @@ public class HttpRoomData {
      */
     private static CompletableFuture<Pair<Integer, String>> proceedToCardCheck(long vmid, StringBuilder logSb, StringBuilder logSbEnd,
                                                                                int blackWhiteScore, String blackWhiteType) {
+        // 全局熔断兜底：如果所有Cookie都在冷却中，跳过卡片API调用
         if (schedulercardJOColdWait.get()) {
             SelfTools.appendAt(logSb, 270, logSbEnd.toString());
             LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
@@ -951,13 +1061,16 @@ public class HttpRoomData {
                     logSb.append("[用户信息解析异常]");
                 }
             } else {
-                if (schedulercardJOColdWait.compareAndSet(false, true)) {
+                // API异常 — CookiePool已经在asyncHttpGetUserCard中标记了当前Cookie冷却
+                // 如果所有子账号都在冷却且没有可用账号，触发全局熔断
+                if (cookiePool.getTotalAvailableCount() == 0
+                        && schedulercardJOColdWait.compareAndSet(false, true)) {
                     schedulercardJOService.schedule(() -> {
                         schedulercardJOColdWait.set(false);
-                        System.out.println("5分钟延迟已到，开始执行任务！当前时间：" + System.currentTimeMillis());
+                        System.out.println("卡片API: 5分钟全局熔断已解除，当前时间：" + System.currentTimeMillis());
                     }, 5, TimeUnit.MINUTES);
                 }
-                LogFileTools.getlogFileTools().logTestFile(logSb + " 用户卡片信息API 调用超过频次，冷却5分钟");
+                LogFileTools.getlogFileTools().logTestFile(logSb + " 用户卡片信息API 调用超过频次，已标记Cookie冷却");
             }
 
 
@@ -998,6 +1111,67 @@ public class HttpRoomData {
 
     public static void reloadPnScoreMap() {
         pnScoreMap = loadNegativeBlackPositiveWhiteScores();
+    }
+
+    // ==================== 限流器 & Cookie池 管理接口 ====================
+
+    /**
+     * 从 AccountPoolConf 同步限流器配置和缓存TTL。
+     * 当用户在UI中修改账号池配置时调用。
+     */
+    public static void syncRateLimiterConfig(xyz.acproject.danmuji.conf.set.AccountPoolConf conf) {
+        if (conf == null) return;
+        double newDynamicRate = conf.getDynamicRate();
+        double newCardRate = conf.getCardRate();
+        if (newDynamicRate > 0 && Math.abs(newDynamicRate - dynamicRateLimiter.getPermitsPerSecond()) > 0.001) {
+            dynamicRateLimiter = new TokenBucketRateLimiter(newDynamicRate, Math.max(newDynamicRate, 1.0));
+            LOGGER.info("动态API限流器已更新: {} req/s", newDynamicRate);
+        }
+        if (newCardRate > 0 && Math.abs(newCardRate - cardRateLimiter.getPermitsPerSecond()) > 0.001) {
+            cardRateLimiter = new TokenBucketRateLimiter(newCardRate, Math.max(newCardRate * 2, 2.0));
+            LOGGER.info("卡片API限流器已更新: {} req/s", newCardRate);
+        }
+        apiCache.syncFromConfig(conf);
+    }
+
+    /**
+     * 获取限流器和缓存的状态信息（用于 UI 展示）。
+     */
+    public static com.alibaba.fastjson.JSONObject getRateLimiterStats() {
+        com.alibaba.fastjson.JSONObject json = new com.alibaba.fastjson.JSONObject();
+
+        com.alibaba.fastjson.JSONObject dynamic = new com.alibaba.fastjson.JSONObject();
+        dynamic.put("rate", dynamicRateLimiter.getPermitsPerSecond());
+        dynamic.put("availableTokens", Math.round(dynamicRateLimiter.getAvailableTokens() * 100.0) / 100.0);
+        dynamic.put("totalRequests", dynamicRateLimiter.getTotalRequests());
+        dynamic.put("throttledRequests", dynamicRateLimiter.getThrottledRequests());
+        json.put("dynamic", dynamic);
+
+        com.alibaba.fastjson.JSONObject card = new com.alibaba.fastjson.JSONObject();
+        card.put("rate", cardRateLimiter.getPermitsPerSecond());
+        card.put("availableTokens", Math.round(cardRateLimiter.getAvailableTokens() * 100.0) / 100.0);
+        card.put("totalRequests", cardRateLimiter.getTotalRequests());
+        card.put("throttledRequests", cardRateLimiter.getThrottledRequests());
+        json.put("card", card);
+
+        com.alibaba.fastjson.JSONObject cache = new com.alibaba.fastjson.JSONObject();
+        cache.put("size", apiCache.getSize());
+        cache.put("hitCount", apiCache.getHitCount());
+        cache.put("missCount", apiCache.getMissCount());
+        cache.put("hitRate", Math.round(apiCache.getHitRate() * 10000.0) / 100.0);
+        cache.put("ttlSeconds", apiCache.getTtlSeconds());
+        json.put("cache", cache);
+
+        json.put("availableCookies", cookiePool.getTotalAvailableCount());
+
+        return json;
+    }
+
+    /**
+     * 获取 CookiePoolManager 实例（供外部调用）。
+     */
+    public static CookiePoolManager getCookiePool() {
+        return cookiePool;
     }
 
     public static boolean isUidInPnScoreMap(long uid) {
