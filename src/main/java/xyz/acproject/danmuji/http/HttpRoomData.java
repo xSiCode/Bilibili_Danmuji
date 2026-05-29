@@ -11,6 +11,7 @@ import org.springframework.util.CollectionUtils;
 import xyz.acproject.danmuji.conf.PublicDataConf;
 import xyz.acproject.danmuji.entity.room_data.*;
 import xyz.acproject.danmuji.entity.server_data.Conf;
+import xyz.acproject.danmuji.entity.user_data.MedalWallItem;
 import xyz.acproject.danmuji.entity.user_data.UserNav;
 import xyz.acproject.danmuji.tools.CurrencyTools;
 import xyz.acproject.danmuji.tools.file.FileTools;
@@ -500,6 +501,20 @@ public class HttpRoomData {
         return asyncHttpGetBody("https://api.vc.bilibili.com/dynamic_svr/v1/dynamic_svr/space_history?host_uid=" + mid + "&offset_dynamic_id=0&need_top=1", headers, null);
     }
 
+    private static CompletableFuture<JSONObject> asyncHttpGetMedalWall(long targetId) {
+        Map<String, String> headers = new HashMap<>(3);
+        headers.put("referer", "https://space.bilibili.com/" + targetId + "/");
+        headers.put("user-agent",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36");
+        if (StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
+            headers.put("cookie", PublicDataConf.USERCOOKIE);
+        }
+        Map<String, String> datas = new HashMap<>(1);
+        datas.put("target_id", String.valueOf(targetId));
+        return asyncHttpGetBody("https://api.live.bilibili.com/xlive/web-ucenter/user/MedalWall", headers, datas)
+                .thenApply(body -> body != null ? JSONObject.parseObject(body) : null);
+    }
+
     private static CompletableFuture<JSONObject> asyncHttpGetUserCard(long mid) {
         Map<String, String> headers = new HashMap<>(3);
         headers.put("referer", "https://space.bilibili.com/" + mid + "/");
@@ -528,6 +543,9 @@ public class HttpRoomData {
                 .append(uname)
                 .append(" ");
 
+        // 粉丝勋章墙打印
+        CompletableFuture<Pair<Integer, String>> medalWallScore = asyncHttpGetMedalWall(vmid).thenCompose(medalData -> processMedalWall(medalData, logSb));
+
         // 2. 异步获取用户关注列表
         return asyncHttpGetFollowings(vmid, 1, 50).thenCompose(firstPage -> {
             short code = firstPage != null ? firstPage.getShort("code") : -1;
@@ -540,6 +558,118 @@ public class HttpRoomData {
                 return processVisibleFollowings(vmid, logSb, firstPage);
             }
         });
+    }
+
+    /**
+     * 处理粉丝勋章墙数据，匹配pnScoreMap计算勋章黑白分
+     * @return Pair(勋章总分, 得分类型)
+     */
+    private static CompletableFuture<Pair<Integer, String>> processMedalWall(JSONObject medalData, StringBuilder logSb) {
+        SelfTools.appendAt(logSb, 80, "");
+
+        if (medalData == null || medalData.getIntValue("code") != 0) {
+            LogFileTools.getlogFileTools().logTestFile(logSb + " 灯牌:API异常");
+            return CompletableFuture.completedFuture(Pair.of(0, ""));
+        }
+
+        JSONObject data = medalData.getJSONObject("data");
+        if (data == null || data.getIntValue("close_space_medal") == 1) {
+         //   LogFileTools.getlogFileTools().logFollowingsFile(logSb + " 灯牌:隐藏");
+
+            return CompletableFuture.completedFuture(Pair.of(-1, "[灯牌隐藏-1]"));
+        }
+
+        int count = data.getIntValue("count");
+        JSONArray list = data.getJSONArray("list");
+
+        if (count <= 0 || list == null || list.isEmpty() ) {
+           // LogFileTools.getlogFileTools().logTestFile(logSb + " 灯牌:0");
+            return CompletableFuture.completedFuture(Pair.of(0, ""));
+        }
+
+        int totalMedalScore = 0;
+        int totalLifeMedalScore = 0;
+        logSb.append(" [灯牌数:").append(count).append("]");
+        String blackWhiteType = null;
+
+        for (int i = 0; i < list.size(); i++) {
+            JSONObject item = list.getJSONObject(i);
+            JSONObject medalInfo = item.getJSONObject("medal_info");
+            MedalWallItem medal = new MedalWallItem();
+            medal.setTargetId(medalInfo.getLong("target_id"));
+            medal.setMedalId(medalInfo.getLong("medal_id"));
+            medal.setMedalName(medalInfo.getString("medal_name"));
+
+            medal.setLevel(medalInfo.getInteger("level"));
+            medal.setGuardLevel(medalInfo.getInteger("guard_level"));
+            medal.setWearingStatus(medalInfo.getInteger("wearing_status"));
+
+            medal.setTargetName(item.getString("target_name"));
+            medal.setLiveStatus(item.getInteger("live_status"));
+            medal.setOfficial(item.getInteger("official"));
+
+            // 匹配pnScoreMap: 用勋章主播ID(target_id)查找黑白名单分数
+            int currentMedalScore = 0;
+
+            //
+            int level = medal.getLevel() != null ? medal.getLevel() : 0;
+            int currentMedalLevelScore = (int)  (Math.log( level) /  Math.log(2));
+            currentMedalScore += currentMedalLevelScore;
+
+            //
+            Integer blackWhiteZhuboScore = pnScoreMap.get(medal.getTargetId());
+            if(blackWhiteZhuboScore!=null){
+                logSb.append( " [").append(medal.getTargetName())
+                        .append(":").append(blackWhiteZhuboScore)
+                        .append(", ").append(medal.getMedalName())
+                        .append(":").append(medal.getLevel())
+                        .append("->").append(currentMedalLevelScore);
+
+                int guardLevel = medal.getGuardLevel() != null ? medal.getGuardLevel() : 0;  /* 大航海等级: 0非舰长, 1总督, 2提督, 3舰长 */
+                if(guardLevel!=0){
+                    currentMedalScore +=guardLevel; // 大航海等级打分
+                   // logSb.append(", 舰长+").append(guardLevel);
+                }
+
+                if(medal.getOfficial() != null && medal.getOfficial() != 0){   // 认证 buff
+                    currentMedalScore += 1;
+                  //  logSb.append(" 认证+1");
+                }
+
+                if(medal.getWearingStatus() != null && medal.getWearingStatus() == 1){  // 佩戴 buff
+                    currentMedalScore += 1;
+                   // logSb.append(", 佩戴+");
+                }
+
+
+                if( blackWhiteZhuboScore > 0){
+                    currentMedalScore = currentMedalScore + blackWhiteZhuboScore;
+                    blackWhiteType = "白牌分:"+currentMedalScore;
+                    logSb.append(" ").append(blackWhiteType).append("]");
+                } else if( blackWhiteZhuboScore < 0){
+                    currentMedalScore  = -( currentMedalScore - blackWhiteZhuboScore);
+                    blackWhiteType = "黑牌分:"+currentMedalScore;
+                    logSb.append(" ").append(blackWhiteType).append("]");
+                }
+
+                totalMedalScore += currentMedalScore;
+            } else {
+                totalLifeMedalScore += currentMedalScore;
+            }
+
+
+        }
+        logSb.append(" [生活分:").append(totalLifeMedalScore).append( "]")
+                .append(" [灯牌黑白分:").append(totalMedalScore).append("]");
+
+        if (totalMedalScore != 0) {
+
+           // LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
+
+            return CompletableFuture.completedFuture(Pair.of(totalMedalScore, blackWhiteType));
+        }
+
+        return CompletableFuture.completedFuture(Pair.of(0, ""));
     }
 
     /**
@@ -692,7 +822,7 @@ public class HttpRoomData {
         logSbEnd.append(" 🍉🍉 关注列表:").append(followingsList.toJSONString());
 
         if (blackWhiteScore != 0) {
-            SelfTools.appendAt(logSb, 180, logSbEnd.toString());
+            SelfTools.appendAt(logSb, 270, logSbEnd.toString());
             LogFileTools.getlogFileTools().logFollowingsFile(logSb.toString());
             return CompletableFuture.completedFuture(Pair.of(blackWhiteScore, blackWhiteType.toString()));
         }
@@ -706,7 +836,7 @@ public class HttpRoomData {
     private static CompletableFuture<Pair<Integer, String>> proceedToCardCheck(long vmid, StringBuilder logSb, StringBuilder logSbEnd,
                                                                                int blackWhiteScore, String blackWhiteType) {
         if (schedulercardJOColdWait.get()) {
-            SelfTools.appendAt(logSb, 180, logSbEnd.toString());
+            SelfTools.appendAt(logSb, 270, logSbEnd.toString());
             LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
 
             return CompletableFuture.completedFuture(Pair.of(blackWhiteScore, blackWhiteType));
@@ -735,7 +865,7 @@ public class HttpRoomData {
                         long article_count = dataJO.getLongValue("article"); // 专栏
                         long likeNum = dataJO.getLongValue("like_num");
 
-                        SelfTools.appendAt(logSb, 90, "");
+                        SelfTools.appendAt(logSb, 180, "");
                         logSb.append("[投稿:").append(archiveCount)
                                 .append("][关注:").append(attention)
                                 .append("][粉丝:").append(fans)
@@ -814,7 +944,7 @@ public class HttpRoomData {
                         xyz.acproject.danmuji.service.StrangerViewerService.addRecord(vmid, name, face, score,  sign  );
 
                         logSbEnd.insert(0, type);
-                        SelfTools.appendAt(logSb, 180, logSbEnd.toString());
+                        SelfTools.appendAt(logSb, 270, logSbEnd.toString());
                         LogFileTools.getlogFileTools().logFollowingsFile(String.valueOf(logSb));
                     }
                 } else {
