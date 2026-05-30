@@ -543,7 +543,12 @@ public class HttpRoomData {
             return CompletableFuture.completedFuture(cached);
         }
 
-        // 2. 获取令牌（阻塞等待，最长30秒超时）
+        // 2. 全局熔断检查（所有Cookie耗尽，跳过请求）
+        if (schedulerDynamicColdWait.get()) {
+            return CompletableFuture.completedFuture(null);
+        }
+
+        // 3. 获取令牌（阻塞等待，最长30秒超时）
         if (!dynamicRateLimiter.acquire(30, TimeUnit.SECONDS)) {
             LOGGER.warn("动态API令牌获取超时 mid={}，降级跳过", mid);
             return CompletableFuture.completedFuture(null);
@@ -632,7 +637,12 @@ public class HttpRoomData {
             }
         }
 
-        // 2. 获取令牌（阻塞等待，最长30秒超时）
+        // 2. 全局熔断检查（所有Cookie耗尽，跳过请求）
+        if (schedulercardJOColdWait.get()) {
+            return CompletableFuture.completedFuture(null);
+        }
+
+        // 3. 获取令牌（阻塞等待，最长30秒超时）
         if (!cardRateLimiter.acquire(30, TimeUnit.SECONDS)) {
             LOGGER.warn("卡片API令牌获取超时 mid={}，降级返回null", mid);
             return CompletableFuture.completedFuture(null);
@@ -806,6 +816,7 @@ public class HttpRoomData {
         for (int i = 0; i < list.size(); i++) {
             JSONObject item = list.getJSONObject(i);
             JSONObject medalInfo = item.getJSONObject("medal_info");
+            if (medalInfo == null) continue;
             MedalWallItem medal = new MedalWallItem();
             medal.setTargetId(medalInfo.getLong("target_id"));
             medal.setMedalId(medalInfo.getLong("medal_id"));
@@ -905,7 +916,9 @@ public class HttpRoomData {
                 if (score < 0) blackCount++;
                 else whiteCount++;
             } else {
-                followersNameSignScore += getKeyWordsScore(String.valueOf(obj), logSb);
+                String followedSign = user.getString("sign");
+                followersNameSignScore += getKeyWordsScore(
+                        followedName + (followedSign != null ? followedSign : ""), logSb);
             }
         }
         blackWhiteScore += followersNameSignScore;
@@ -1008,7 +1021,7 @@ public class HttpRoomData {
 
                     // 认证
                     JSONObject official = cardJO.getJSONObject("Official");
-                    if (official != null && !official.getString("title").isEmpty()) {
+                    if (official != null && StringUtils.isNotEmpty(official.getString("title"))) {
                         r.score++;
                         r.type += "[认证+1]";
                         cardLog.append(" 认证+1 ");
@@ -1026,7 +1039,7 @@ public class HttpRoomData {
                     }
 
                     // 姓名+签名关键词
-                    int kw = getKeyWordsScore(r.name + r.sign, logSb);
+                    int kw = getKeyWordsScore((r.name != null ? r.name : "") + (r.sign != null ? r.sign : ""), logSb);
                     r.score += kw;
                     if (kw != 0) cardLog.append(" 签名关键词:").append(kw);
 
@@ -1054,22 +1067,31 @@ public class HttpRoomData {
 
     private static int getKeyWordsScore(String dataStr, StringBuilder logSb) {
         int blackWhiteScore = 0;
-        if (PublicDataConf.centerSetConf.getBlack() != null) {
+        boolean hasAny = false;
+
+        if (PublicDataConf.centerSetConf.getBlack() != null && PublicDataConf.centerSetConf.getBlack().getNames() != null) {
             for (String s : PublicDataConf.centerSetConf.getBlack().getNames()) {
                 if (StringUtils.isBlank(s)) continue;
+                hasAny = true;
                 if (StringUtils.contains(dataStr, s)) {
                     blackWhiteScore -= 2;
-                    logSb.append(" '").append(s).append("-1'");
+                    logSb.append(" '").append(s).append("-2'");
                 }
             }
+        }
+
+        if (PublicDataConf.centerSetConf.getWhite() != null && PublicDataConf.centerSetConf.getWhite().getNames() != null) {
             for (String s : PublicDataConf.centerSetConf.getWhite().getNames()) {
                 if (StringUtils.isBlank(s)) continue;
+                hasAny = true;
                 if (StringUtils.contains(dataStr, s)) {
                     blackWhiteScore++;
                     logSb.append(" '").append(s).append("+1'");
                 }
             }
-        } else {
+        }
+
+        if (!hasAny) {
             logSb.append(" [key没获取到]");
         }
         return blackWhiteScore;
@@ -1081,7 +1103,7 @@ public class HttpRoomData {
      */
     private static Pair<Integer, String> computeDynamicScore(String dynData, StringBuilder logSb) {
         if (dynData == null) {
-            logSb.append("❗[动态null:-1]");
+            logSb.append("❗[动态解析异常]");
             return Pair.of(0, "[动态解析异常]");
         }
 
