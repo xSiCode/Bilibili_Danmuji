@@ -802,7 +802,7 @@ public class HttpRoomData {
         int totalMedalScore = 0;
         int totalLifeMedalScore = 0;
 
-        logSb.append("    ✅[勋章数:").append(count).append(" ");
+        logSb.append("    ✅[勋章数:").append(count);
         for (int i = 0; i < list.size(); i++) {
             JSONObject item = list.getJSONObject(i);
             JSONObject medalInfo = item.getJSONObject("medal_info");
@@ -824,8 +824,9 @@ public class HttpRoomData {
 
             Integer blackWhiteZhuboScore = pnScoreMap.get(medal.getTargetId());
             if (blackWhiteZhuboScore != null) {
-                logSb.append(medal.getTargetName()).append(".").append(blackWhiteZhuboScore)
-                        .append(" ").append(medal.getMedalName()).append(".").append(level);
+                logSb.append(" ").append(medal.getTargetName()).append("+").append(blackWhiteZhuboScore)
+                        .append(" ").append(medal.getMedalName()).append(".").append(level)
+                        .append("->").append(currentMedalLevelScore);
 
                 int guardLevel = medal.getGuardLevel() != null ? medal.getGuardLevel() : 0;
                 if (guardLevel != 0){
@@ -848,7 +849,7 @@ public class HttpRoomData {
                 }
                 totalMedalScore += currentMedalScore;
                 logSb.append(" 黑白分:").append(currentMedalScore)
-                        .append("; ");
+                        .append(";");
             } else {
                 totalLifeMedalScore += currentMedalScore;
             }
@@ -860,7 +861,7 @@ public class HttpRoomData {
         if (totalMedalScore != 0) {
             return Pair.of(totalMedalScore, "[勋章黑白分:" + totalMedalScore + "]");
         } else
-            return Pair.of(0, "[勋章0分]");
+            return Pair.of(1, "[勋章生活+1]");
     }
 
     /**
