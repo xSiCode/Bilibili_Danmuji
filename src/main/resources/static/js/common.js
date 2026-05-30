@@ -5556,9 +5556,7 @@ method.renderWatchedRoomTable = function() {
             actionHtml = '<button class="btn btn-sm btn-outline-primary watched-connect-btn" data-roomid="' + room.roomId + '">连接</button>';
         }
         var row = '<tr' + (isCurrent ? ' class="table-active"' : '') + '>' +
-            '<td>' + (room.anchorUid || '-') + '</td>' +
             '<td>' + anchorHtml + '</td>' +
-            '<td>' + (room.roomId || '-') + '</td>' +
             '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + roomNameHtml + '</td>' +
             '<td>' + areaHtml + '</td>' +
             '<td>' + typeHtml + '</td>' +
