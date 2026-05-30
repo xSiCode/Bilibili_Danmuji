@@ -709,15 +709,16 @@ public class HttpRoomData {
                 .append(" https://space.bilibili.com/").append(vmid)
                 .append(" ").append(uname).append(" ");
 
-        // Phase 1: 三路并发，立即写入请求中标记
+        // Phase 1: 四路并发（关注列表双页同步请求）
         CompletableFuture<JSONObject> medalF = asyncHttpGetMedalWall(vmid);
         CompletableFuture<JSONObject> cardF = asyncHttpGetUserCard(vmid);
-        CompletableFuture<JSONObject> follF = asyncHttpGetFollowings(vmid, 1, 50);
-        // logSb.append("[勋章|关注|卡片:>请求中...]");
+        CompletableFuture<JSONObject> follF1 = asyncHttpGetFollowings(vmid, 1, 50);
+        CompletableFuture<JSONObject> follF2 = asyncHttpGetFollowings(vmid, 2, 50);
 
-        return CompletableFuture.allOf(medalF, follF, cardF).thenCompose(v -> {
+        return CompletableFuture.allOf(medalF, follF1, follF2, cardF).thenCompose(v -> {
             JSONObject medalJson = medalF.join();
-            JSONObject follJson = follF.join();
+            JSONObject follJson1 = follF1.join();
+            JSONObject follJson2 = follF2.join();
             JSONObject cardJson = cardF.join();
 
             // Phase 2a: 勋章墙
@@ -726,15 +727,30 @@ public class HttpRoomData {
             // Phase 2b: 卡片
             CardProcessResult cardResult = processCardDataSync(cardJson, logSb);
 
-            // Phase 2c: 关注列表
+            // Phase 2c: 关注列表（双页合并）
             Pair<Integer, String> follResult;
-            short follCode = follJson != null ? follJson.getShort("code") : -1;
-            JSONObject follData = follJson != null && follCode == 0 ? follJson.getJSONObject("data") : null;
+            short follCode = follJson1 != null ? follJson1.getShort("code") : -1;
+            JSONObject follData = follJson1 != null && follCode == 0 ? follJson1.getJSONObject("data") : null;
             long total = follData != null ? follData.getLongValue("total") : 0;
-            if (follJson == null || follCode != 0 || follData == null || total == 0) {
+            if (follJson1 == null || follCode != 0 || follData == null || total == 0) {
                 follResult = processHiddenFollowingsSync(vmid, logSb);
             } else {
-                follResult = processVisibleFollowingsSync(vmid, logSb, follJson);
+                // 合并两页的 list
+                JSONArray mergedList = follData.getJSONArray("list");
+                if (mergedList == null) mergedList = new JSONArray();
+                if (follJson2 != null && follJson2.getShort("code") == 0) {
+                    JSONObject follData2 = follJson2.getJSONObject("data");
+                    if (follData2 != null) {
+                        JSONArray list2 = follData2.getJSONArray("list");
+                        if (list2 != null && !list2.isEmpty()) {
+                            mergedList.addAll(list2);
+                        }
+                    }
+                }
+                JSONObject mergedData = new JSONObject();
+                mergedData.put("list", mergedList);
+                mergedData.put("total", total);
+                follResult = processVisibleFollowingsSync(vmid, logSb, mergedData);
             }
 
             // Phase 2d: 合并
@@ -892,8 +908,8 @@ public class HttpRoomData {
     /**
      * 关注列表可见 — 逐关注人打分 + pnScoreMap匹配 + 关键词扫描。
      */
-    private static Pair<Integer, String> processVisibleFollowingsSync(long vmid, StringBuilder logSb, JSONObject firstPage) {
-        JSONArray list = firstPage.getJSONObject("data").getJSONArray("list");
+    private static Pair<Integer, String> processVisibleFollowingsSync(long vmid, StringBuilder logSb, JSONObject follData) {
+        JSONArray list = follData.getJSONArray("list");
 
         int blackWhiteScore = 0;
         StringBuilder blackWhiteType = new StringBuilder(60);
