@@ -19,7 +19,7 @@
                     <th:block th:replace="~{fragments/layout :: sidebar(activePage='settings')}"></th:block>
                     <!-- 内容面板 -->
                     <div class="settings-content flex-grow-1">
-                        <div class="tab-pane active" id="tab-account-set">
+                        <div class="tab-pane" th:classappend="${#arrays.isEmpty(param.tab) || param.tab[0] == 'account-set'} ? 'active' : ''" id="tab-account-set">
                             <div class="input-group mb-1"><h5>账号设置</h5></div>
                             <div class="account-set">
                                 <ul class="ps-1">
@@ -37,7 +37,7 @@
                                 </ul>
                             </div>
                         </div>
-                        <div class="tab-pane" id="tab-room-set">
+                        <div class="tab-pane" th:classappend="${! #arrays.isEmpty(param.tab) && param.tab[0] == 'room-set'} ? 'active' : ''" id="tab-room-set">
                             <div class="input-group mb-1"><h5>房间设置</h5></div>
                             <!-- 房间连接栏 -->
                             <div class="card border-primary mb-3" th:if="${ROOMID}!=null and ${ROOM_INFO}!=null">
@@ -108,7 +108,7 @@
                                 <div id="watched-rooms-empty" class="text-muted" style="font-size:12px;">暂无关注直播间，输入房间号添加</div>
                             </div>
                         </div>
-                        <div class="tab-pane" id="tab-common-set">
+                        <div class="tab-pane" th:classappend="${! #arrays.isEmpty(param.tab) && param.tab[0] == 'common-set'} ? 'active' : ''" id="tab-common-set">
                             <div class="input-group mb-1"><h5>通用设置</h5></div>
                             <div class="row input-group mb-3 common-set" id="common-set">
                                 <div class="col-auto"><label class="form-check-label"><input class="form-check-input auto_save_set" type="checkbox"><span class="_description" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="是否自动保存配置，<span class='red-font'>每修改一次触发保存</span>">自动保存</span></label></div>
@@ -126,7 +126,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="tab-pane" id="tab-cmd-set">
+                        <div class="tab-pane" th:classappend="${! #arrays.isEmpty(param.tab) && param.tab[0] == 'cmd-set'} ? 'active' : ''" id="tab-cmd-set">
                             <div class="input-group mb-1"><h5>显示设置</h5></div>
                             <div class="row input-group mb-3 cmd-set" id="cmd-set">
                                 <div class="input-group mb-1"><h6>主要显示</h6></div>

@@ -14,7 +14,7 @@
                     <th:block th:replace="~{fragments/layout :: sidebar(activePage='blacklist')}"></th:block>
                     <div class="settings-content flex-grow-1">
                         <!-- 负黑正白姬 -->
-                        <div class="tab-pane active" id="tab-positiveWhite-set">
+                        <div class="tab-pane" th:classappend="${#arrays.isEmpty(param.tab) || param.tab[0] == 'positiveWhite-set'} ? 'active' : ''" id="tab-positiveWhite-set">
                             <div class="input-group mb-1"><h5>负黑正白姬</h5></div>
                             <div class="input-group mb-3 positiveWhite-set" id="positiveWhite-set">
                                 <div class="header-set"><div class="row align-items-center" style="margin-bottom:5px;--bs-gutter-x:5px">
@@ -30,7 +30,7 @@
                             <div class="input-group mb-3 set-control" data-file="pn"><div class="col-auto"><input class="import-file-input" style="display: none;" type="file" value="上传文件"/><button class="btn btn-warning export-set" title="导出设置到本地，弹幕姬配置文件夹set底下" type="button">导出</button><button class="btn btn-success export-set-web" title="网页实时下载配置" type="button">下载</button><button class="btn btn-info import-set" title="导入配置文件" type="button">导入"负黑正白判定表.json"</button></div></div>
                         </div>
                         <!-- 负黑自动拉黑姬 -->
-                        <div class="tab-pane" id="tab-autoBlock-set">
+                        <div class="tab-pane" th:classappend="${! #arrays.isEmpty(param.tab) && param.tab[0] == 'autoBlock-set'} ? 'active' : ''" id="tab-autoBlock-set">
                             <div class="input-group mb-1"><h5>负黑自动拉黑姬</h5></div>
                             <div class="input-group mb-3 autoBlock-set" id="autoBlock-set">
                                 <div class="header-set"><div class="row align-items-center" style="margin-bottom:5px;--bs-gutter-x:5px">
@@ -47,7 +47,7 @@
                             <div class="input-group mb-3 set-control" data-file="ab"><div class="col-auto"><input class="import-file-input" style="display: none;" type="file" value="上传文件"/><button class="btn btn-warning export-set" title="导出设置到本地，弹幕姬配置文件夹set底下" type="button">导出</button><button class="btn btn-success export-set-web" title="网页实时下载配置" type="button">下载</button><button class="btn btn-info import-set" title="导入配置文件" type="button">导入"负黑自动拉黑记录.json"</button></div></div>
                         </div>
                         <!-- 黑白过滤姬 -->
-                        <div class="tab-pane" id="tab-black-set">
+                        <div class="tab-pane" th:classappend="${! #arrays.isEmpty(param.tab) && param.tab[0] == 'black-set'} ? 'active' : ''" id="tab-black-set">
                             <div class="input-group mb-1"><h5>黑白名单姬</h5></div>
                             <div class="row">
                                 <div class="col-6"><div class="input-group mb-3 black-set" id="black-set"><h6 class="w-100">黑名单</h6>
@@ -75,7 +75,7 @@
                             </div>
                         </div>
                         <!-- 本地小黑屋 -->
-                        <div class="tab-pane" id="tab-badlist-set">
+                        <div class="tab-pane" th:classappend="${! #arrays.isEmpty(param.tab) && param.tab[0] == 'badlist-set'} ? 'active' : ''" id="tab-badlist-set">
                             <div class="input-group mb-1"><h5>本地小黑屋</h5></div>
                             <div class="input-group mb-3 badlist-set" id="badlist-set">
                                 <div class="header-set"><div class="row align-items-center mb-2">
@@ -88,7 +88,7 @@
                             </div>
                         </div>
                         <!-- Bili小黑屋 -->
-                        <div class="tab-pane" id="tab-bili-badlist-set">
+                        <div class="tab-pane" th:classappend="${! #arrays.isEmpty(param.tab) && param.tab[0] == 'bili-badlist-set'} ? 'active' : ''" id="tab-bili-badlist-set">
                             <div class="input-group mb-1"><h5>Bili小黑屋 <small class="text-muted">(B站端拉黑列表)</small></h5></div>
                             <div class="input-group mb-3 bili-badlist-wrap">
                                 <div class="d-flex align-items-center mb-2"><button class="btn btn-sm btn-outline-primary bili-badlist-load">刷新列表</button><span class="bili-badlist-total ms-2 text-muted" style="font-size:12px;"></span></div>

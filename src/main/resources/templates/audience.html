@@ -14,7 +14,7 @@
                     <th:block th:replace="~{fragments/layout :: sidebar(activePage='audience')}"></th:block>
                     <div class="settings-content flex-grow-1">
                         <!-- 欢迎凝视姬 -->
-                        <div class="tab-pane active" id="tab-gazeWelcome-set">
+                        <div class="tab-pane" th:classappend="${#arrays.isEmpty(param.tab) || param.tab[0] == 'gazeWelcome-set'} ? 'active' : ''" id="tab-gazeWelcome-set">
                             <div class="input-group mb-1"><h5>欢迎凝视姬</h5></div>
                             <div class="input-group mb-3 gazeWelcome-set" id="gazeWelcome-set">
                                 <div class="header-set">
@@ -27,7 +27,7 @@
                             </div>
                         </div>
                         <!-- 欢迎姬 -->
-                        <div class="tab-pane" id="tab-welcome-set">
+                        <div class="tab-pane" th:classappend="${! #arrays.isEmpty(param.tab) && param.tab[0] == 'welcome-set'} ? 'active' : ''" id="tab-welcome-set">
                             <div class="input-group mb-1"><h5>欢迎姬</h5></div>
                             <div class="input-group mb-3 thankFollow-set" id="welcome-set">
                                 <div class="header-set">
@@ -46,7 +46,7 @@
                             </div>
                         </div>
                         <!-- 关注姬 -->
-                        <div class="tab-pane" id="tab-thankFollow-set">
+                        <div class="tab-pane" th:classappend="${! #arrays.isEmpty(param.tab) && param.tab[0] == 'thankFollow-set'} ? 'active' : ''" id="tab-thankFollow-set">
                             <div class="input-group mb-1"><h5>关注姬</h5></div>
                             <div class="input-group mb-3 thankFollow-set" id="thankFollow-set">
                                 <div class="header-set">
@@ -63,7 +63,7 @@
                             </div>
                         </div>
                         <!-- 礼物姬 -->
-                        <div class="tab-pane" id="tab-thankGift-set">
+                        <div class="tab-pane" th:classappend="${! #arrays.isEmpty(param.tab) && param.tab[0] == 'thankGift-set'} ? 'active' : ''" id="tab-thankGift-set">
                             <div class="input-group mb-1"><h5>礼物姬</h5></div>
                             <div class="input-group mb-3 thankGift-set" id="thankGift-set">
                                 <div class="header-set">

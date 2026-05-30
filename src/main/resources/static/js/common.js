@@ -1,5 +1,6 @@
 let socket = null;
 let sliceh = 0;
+let autoSaveTimer = null; // 自动保存防抖计时器
 
 function applyHoursFilter(state, prefix) {
     var hoursVal = $(prefix + '-filter-hours').val();
@@ -605,8 +606,10 @@ $(function () {
             }
         }
     });
-    $('.auto_save_set').on('input propertychange', function () {
-        publicData.set.auto_save_set = $(".auto_save_set").is(':checked');
+    $('.auto_save_set').on('change', function () {
+        publicData.set.auto_save_set = $(this).is(':checked');
+        // 立即持久化自动保存开关状态，走静默保存流程
+        method.saveSet(true);
     });
 });
 //为弹幕看板打开一个新窗口
@@ -617,11 +620,14 @@ function openDanmuWindow(sub_url) {
 
     window.open(url, windowName, windowFeatures);
 }
-//实时保存
-$(document).on('input propertychange', '.live-save', function () {
-    if ($(".auto_save_set").is(':checked')) {
-        method.saveSet();
-    } else {
+//实时保存 (input用于文本输入, change用于复选框和下拉框)
+// 带防抖：连续修改只保存最后一次，避免逐字保存
+$(document).on('input change', '.live-save', function () {
+    if (publicData.set && publicData.set.auto_save_set) {
+        clearTimeout(autoSaveTimer);
+        autoSaveTimer = setTimeout(function() {
+            method.saveSet(true);
+        }, 800);
     }
 });
 //按钮保存
@@ -745,6 +751,9 @@ $(document)
                 // })
                 return new bootstrap.Tooltip(tooltipTriggerEl)
             });
+            if (publicData.set && publicData.set.auto_save_set) {
+                method.saveSet(true);
+            }
         });
 $(document)
     .on(
@@ -783,22 +792,21 @@ $(document)
                 // })
                 return new bootstrap.Tooltip(tooltipTriggerEl)
             });
+            if (publicData.set && publicData.set.auto_save_set) {
+                method.saveSet(true);
+            }
 
         });
 $(document).on('click', '.reply_delete', function () {
-
     $(this).parent().parent().remove();
-    if ($(".auto_save_set").is(':checked')) {
-        method.saveSet();
-    } else {
-
+    if (publicData.set && publicData.set.auto_save_set) {
+        method.saveSet(true);
     }
 });
 $(document).on('click', '.shieldgift_delete', function () {
     $(this).parent().parent().remove();
-    if ($(".auto_save_set").is(':checked')) {
-        method.saveSet();
-    } else {
+    if (publicData.set && publicData.set.auto_save_set) {
+        method.saveSet(true);
     }
 });
 
@@ -833,7 +841,7 @@ $(document).on('click', '.reply_edit', function () {
 
     $(".radd-body").find(".reply_delete_i").attr("z-index", index);
 });
-$(document).on('input propertychange', '.reply-sync', function (e) {
+$(document).on('input change', '.reply-sync', function (e) {
     let index = $(this).attr("z-index");
     let z_name = $(this).attr("z-name");
     if (z_name.startsWith("reply_open_")) {
@@ -847,9 +855,11 @@ $(document).on('input propertychange', '.reply-sync', function (e) {
     } else if (z_name.startsWith("reply_rs_")) {
         $(".replys-ul").children("li").eq(index).find(".reply_rs").val($(this).val());
     }
-    if ($(".auto_save_set").is(':checked')) {
-        method.saveSet();
-    } else {
+    if (publicData.set && publicData.set.auto_save_set) {
+        clearTimeout(autoSaveTimer);
+        autoSaveTimer = setTimeout(function() {
+            method.saveSet(true);
+        }, 800);
     }
 });
 $(document).on('click', '.reply_delete_i', function (e) {
@@ -857,7 +867,9 @@ $(document).on('click', '.reply_delete_i', function (e) {
     $(".replys-ul").children("li").eq(index).remove();
     e.stopPropagation();
     $('#reply-model-edit').modal('hide');
-    /*    $(".radd-mask").hide();*/
+    if (publicData.set && publicData.set.auto_save_set) {
+        method.saveSet(true);
+    }
 });
 $(document).on('click', '.btn-closeri', function () {
     /*    alert("1")*/
@@ -878,6 +890,9 @@ $(document).on('click', '.btn-closeri', function () {
                return;
            }*/
     $('#reply-model-edit').modal('hide');
+    if (publicData.set && publicData.set.auto_save_set) {
+        method.saveSet(true);
+    }
     /*        $(".radd-mask").hide();*/
     /*    }*/
 });
@@ -947,7 +962,11 @@ $(document).on('click', '.badlist_add_btn', function () {
                     badListData.push({uid: uid, uname: uname});
                 }
                 method.renderBadListTable(1);
-                method.saveSet();
+                if (publicData.set && publicData.set.auto_save_set) {
+                    method.saveSet(true);
+                } else {
+                    method.saveSet();
+                }
             }
         },
         error: function () {
@@ -970,7 +989,11 @@ $(document).on('click', '.badlist_del_btn', function () {
                     return item.uid !== uid;
                 });
                 method.renderBadListTable();
-                method.saveSet();
+                if (publicData.set && publicData.set.auto_save_set) {
+                    method.saveSet(true);
+                } else {
+                    method.saveSet();
+                }
             }
         },
         error: function () {
@@ -991,7 +1014,11 @@ $(document).on('click', '.badlist_row_del', function () {
                     return item.uid !== uid;
                 });
                 method.renderBadListTable();
-                method.saveSet();
+                if (publicData.set && publicData.set.auto_save_set) {
+                    method.saveSet(true);
+                } else {
+                    method.saveSet();
+                }
             }
         },
         error: function () {
@@ -1233,11 +1260,19 @@ $(document).on('click', '.ab-delete-btn', function () {
 });
 // 负黑自动拉黑姬 - 拉黑分数变更保存
 $(document).on('change', '.auto-block-score', function () {
-    method.saveSet();
+    if (publicData.set && publicData.set.auto_save_set) {
+        method.saveSet(true);
+    } else {
+        method.saveSet();
+    }
 });
 // 负黑自动拉黑姬 - 拉黑间隔时间变更保存
 $(document).on('change', '.auto-block-interval', function () {
-    method.saveSet();
+    if (publicData.set && publicData.set.auto_save_set) {
+        method.saveSet(true);
+    } else {
+        method.saveSet();
+    }
 });
 // 负黑自动拉黑姬 - 面板展开时重新加载数据（已改为tab切换触发，见switchTab函数）
 // 直播状态姬发送按钮
@@ -1259,11 +1294,14 @@ $(document).on('click', '.livestatus-room-lock-send', function () {
 // 定时姬
 $(document).on('click', '.timer-add-btn', function () {
     method.addTimerRow();
+    if (publicData.set && publicData.set.auto_save_set) {
+        method.saveSet(true);
+    }
 });
 $(document).on('click', '.timer-delete-btn', function () {
     $(this).closest('li').remove();
-    if ($(".auto_save_set").is(':checked')) {
-        method.saveSet();
+    if (publicData.set && publicData.set.auto_save_set) {
+        method.saveSet(true);
     }
 });
 $(document).on('click', '.timer-send-btn', function () {
@@ -1289,11 +1327,14 @@ $(document).on('click', '.timer-copy-btn', function () {
 // 欢迎凝视姬
 $(document).on('click', '.gazeWelcome-add-btn', function () {
     method.addGazeWelcomeRow();
+    if (publicData.set && publicData.set.auto_save_set) {
+        method.saveSet(true);
+    }
 });
 $(document).on('click', '.gazeWelcome-delete-btn', function () {
     $(this).closest('li').remove();
-    if ($(".auto_save_set").is(':checked')) {
-        method.saveSet();
+    if (publicData.set && publicData.set.auto_save_set) {
+        method.saveSet(true);
     }
 });
 $(document).on('click', '.gazeWelcome-send-btn', function () {
@@ -1303,14 +1344,16 @@ $(document).on('click', '.gazeWelcome-send-btn', function () {
 // 弹幕话术姬
 $(document).on('click', '.danmakuStore-add-btn', function () {
     method.addDanmakuStoreRow();
+    // 不在此触发自动保存：saveDanmakuStoreList 会过滤空文本行并重新渲染，
+    // 导致新添加的空行被移除。用户在输入框中输入内容后会通过 live-save 触发自动保存。
 });
 $(document).on('click', '.danmakuStore-sort-btn', function () {
     method.sortDanmakuStoreRows();
 });
 $(document).on('click', '.danmakuStore-delete-btn', function () {
     $(this).closest('li').remove();
-    if ($(".auto_save_set").is(':checked')) {
-        method.saveDanmakuStoreList();
+    if (publicData.set && publicData.set.auto_save_set) {
+        method.saveDanmakuStoreList(true);
     }
 });
 $(document).on('click', '.danmakuStore-copy-btn', function () {
@@ -1532,7 +1575,7 @@ const danmakuStoreData = {
     sortAsc: true
 }
 const method = {
-    saveSet: function () {
+    saveSet: function (silent) {
         let c1 = false;
         let c2 = false;
         let c3 = false;
@@ -1743,13 +1786,13 @@ const method = {
                 && $(".follow_follows").val().trim() !== "") {
             } else {
                 c1 = true;
-                showMessage("感谢关注语不能为空！配置保存失败!", "danger",3);
+                if (!silent) showMessage("感谢关注语不能为空！配置保存失败!", "danger",3);
             }
             if (Number($(".follow_num").val()) > 0) {
 
             } else {
                 c5 = true;
-                showMessage("感谢关注必须大于0！配置保存失败!", "danger",3);
+                if (!silent) showMessage("感谢关注必须大于0！配置保存失败!", "danger",3);
             }
         }
         if ($(".welcome_is_open").is(':checked')) {
@@ -1757,13 +1800,13 @@ const method = {
                 && $(".welcome_welcomes").val().trim() !== "") {
             } else {
                 c9 = true;
-                showMessage("感谢欢迎语不能为空！配置保存失败!", "danger",3);
+                if (!silent) showMessage("感谢欢迎语不能为空！配置保存失败!", "danger",3);
             }
             if (Number($(".welcome_num").val()) > 0) {
 
             } else {
                 c10 = true;
-                showMessage("感谢欢迎必须大于0！配置保存失败!", "danger",3);
+                if (!silent) showMessage("感谢欢迎必须大于0！配置保存失败!", "danger",3);
             }
         }
         if ($(".thankgift_is_open").is(':checked')) {
@@ -1772,18 +1815,18 @@ const method = {
 
             } else {
                 c2 = true;
-                showMessage("感谢礼物语不能为空！配置保存失败!", "danger",3);
+                if (!silent) showMessage("感谢礼物语不能为空！配置保存失败!", "danger",3);
             }
             if ($(".thankgift_is_guard_report").is(':checked')) {
                 if ($(".thankgift_report").val().trim() !== null
                     && $(".thankgift_report").val().trim() !== "") {
                     if ($(".thankgift_report").val().length >= 500) {
                         c6 = true;
-                        showMessage("上舰回复语不能超过500字！配置保存失败!", "danger",3);
+                        if (!silent) showMessage("上舰回复语不能超过500字！配置保存失败!", "danger",3);
                     }
                 } else {
                     c3 = true;
-                    showMessage("上舰回复语不能为空！配置保存失败!", "danger",3);
+                    if (!silent) showMessage("上舰回复语不能为空！配置保存失败!", "danger",3);
                 }
             }
         }
@@ -1792,7 +1835,7 @@ const method = {
                 && $(".advert_adverts").val().trim() !== "") {
             } else {
                 c4 = true;
-                showMessage("广告语不能为空！配置保存失败!", "danger",3);
+                if (!silent) showMessage("广告语不能为空！配置保存失败!", "danger",3);
             }
 
         }
@@ -1802,7 +1845,7 @@ const method = {
             }
         })
         if (c7) {
-            showMessage("自定义规则不能为空！配置保存失败!", "danger",3);
+            if (!silent) showMessage("自定义规则不能为空！配置保存失败!", "danger",3);
         }
         $(".replys-ul").children("li").each(function (i, v) {
             if ($(".reply_keywords").eq(i).val() === "") {
@@ -1815,37 +1858,41 @@ const method = {
         });
         if ($(".card-body").find(".logined").length > 0) {
             if (!c1 && !c2 && !c3 && !c4 && !c5 && !c6 && !c7 && !c8 && !c9 && !c10) {
-                publicData.set = method.initSet(set);
+                if (!silent) {
+                    publicData.set = method.initSet(set);
+                }
                 var edition = $("#app-version").attr("data-version");
                 set.edition = edition;
                 var result = method.sendSet(set);
                 if (result==1) {
                     method.saveDanmakuStoreList(true);
-                    if (!publicData.set.auto_save_set) {
-                        showMessage("保存配置成功!", "success",3);
-                    }else{
-                        showMessage("保存配置成功!", "success",2);
+                    if (!silent) {
+                        if (!publicData.set.auto_save_set) {
+                            showMessage("保存配置成功!", "success",3);
+                        }else{
+                            showMessage("保存配置成功!", "success",2);
+                        }
                     }
                 }else if(result==2){
                     location.reload();
                 }else {
-                    showMessage("修改配置失败!", "danger",3);
+                    if (!silent) showMessage("修改配置失败!", "danger",3);
                 }
             } else {
-                showMessage("修改配置失败!", "danger",3);
+                if (!silent) showMessage("修改配置失败!", "danger",3);
             }
         } else {
-            method.initSet(set);
+            if (!silent) method.initSet(set);
             var edition = $("#app-version").attr("data-version");
             set.edition = edition;
             var result = method.sendSet(set);
             if (result == 1) {
                 method.saveDanmakuStoreList(true);
-                showMessage("保存配置成功!", "success",3);
+                if (!silent) showMessage("保存配置成功!", "success",3);
             }else if(result==2){
                 location.reload();
             }else {
-                showMessage("修改配置失败!", "danger",3);
+                if (!silent) showMessage("修改配置失败!", "danger",3);
             }
         }
     },
@@ -2059,8 +2106,8 @@ const method = {
         $.each($lis, function (i, v) {
             $ul.append(v);
         });
-        if ($(".auto_save_set").is(':checked')) {
-            method.saveDanmakuStoreList();
+        if (publicData.set && publicData.set.auto_save_set) {
+            method.saveDanmakuStoreList(true);
         }
     },
     loadDanmakuStoreList: function () {
@@ -2088,8 +2135,8 @@ const method = {
                                 danmakuStoreData.list[i] = {type: '', text: danmakuStoreData.list[i]};
                             }
                         }
-                        // 自动保存到独立文件
-                        method.saveDanmakuStoreList();
+                        // 自动保存到独立文件（静默迁移，不弹提示）
+                        method.saveDanmakuStoreList(true);
                     } else {
                         danmakuStoreData.list = [];
                     }
@@ -2133,7 +2180,10 @@ const method = {
                 showMessage("话术列表保存失败!", "danger", 3);
             }
         }
-        method.renderDanmakuStoreRows(danmakuStoreData.list);
+        // 静默模式下跳过重新渲染，避免中断用户正在进行的编辑
+        if (!silent) {
+            method.renderDanmakuStoreRows(danmakuStoreData.list);
+        }
     },
     sendDanmakuStoreBarrage: function (text) {
         if (text.length > 40) {
@@ -5170,9 +5220,12 @@ function openSocket(ip, sliceh) {
 // 设置面板侧边栏导航切换（全局函数，onclick直接调用）
 function switchTab(tabId, el) {
     if (!tabId) return;
-    // 切换侧边栏active状态
-    $('.sidebar-link').removeClass('active');
-    if (el) $(el).addClass('active');
+    // 仅在 el 非空时操作侧边栏高亮（index.html 模式）
+    // 分页模式下侧边栏由服务端 th:classappend 管理
+    if (el) {
+        $('.sidebar-link').removeClass('active');
+        $(el).addClass('active');
+    }
     // 切换内容面板
     $('.settings-content .tab-pane').removeClass('active').hide();
     var targetPane = $('#tab-' + tabId);
@@ -5242,6 +5295,16 @@ function switchTab(tabId, el) {
         window._mgrRefreshTimer = setInterval(function () {
             if (typeof mgrLoadFn === 'function') mgrLoadFn();
         }, 60000);
+    }
+    // 侧边栏滚动到当前激活项
+    if (el) {
+        var $container = $(el).closest('.settings-sidebar');
+        if ($container.length) {
+            var containerTop = $container.offset().top;
+            var itemTop = $(el).offset().top;
+            var scrollTarget = $container.scrollTop() + (itemTop - containerTop) - $container.height() / 2 + $(el).height() / 2;
+            $container.animate({ scrollTop: scrollTarget }, 200);
+        }
     }
 }
 
@@ -5332,7 +5395,7 @@ function registerPageSave(pageId, fn) {
 }
 
 // 页面感知的保存：先加载完整配置 → 页面函数只修改本页字段 → 合并保存
-method.saveCurrentPage = function(pageId) {
+method.saveCurrentPage = function(pageId, silent) {
     var that = this;
     pageId = pageId || window.currentPageId;
     // 1. 从服务器加载完整配置
@@ -5345,33 +5408,42 @@ method.saveCurrentPage = function(pageId) {
         success: function (data) {
             // data 是 Response 包装: {code, msg, result(即CenterSetConf), timestamp}
             if (data && data.result) {
-                publicData = data;
+                // 更新publicData.set（publicData是const，不能整体赋值）
+                publicData.set = data.result;
                 var set = data.result;  // CenterSetConf 在 result 字段里
                 // 2. 调用页面特定的字段读取函数，只修改本页字段
                 var saveFn = window._pageSaveFields[pageId];
                 if (saveFn) {
                     saveFn(set);
                 }
-                // 3. 本地刷新UI
-                that.initSet(set);
+                // 3. 静默模式下跳过本地UI刷新（不清空用户正在编辑的内容）
+                if (!silent) {
+                    that.initSet(set);
+                }
                 // 4. 发送完整配置到服务器
                 var edition = $("#app-version").attr("data-version");
                 set.edition = edition;
                 var result = that.sendSet(set);
                 if (result == 1) {
-                    if (pageId === 'danmaku' || pageId === 'settings') {
+                    if (pageId === 'danmaku') {
                         try { that.saveDanmakuStoreList(true); } catch(e) {}
                     }
-                    showMessage("保存配置成功!", "success", 3);
+                    if (!silent) {
+                        showMessage("保存配置成功!", "success", 3);
+                    }
                 } else if (result == 2) {
                     location.reload();
                 } else {
-                    showMessage("修改配置失败!", "danger", 3);
+                    if (!silent) {
+                        showMessage("修改配置失败!", "danger", 3);
+                    }
                 }
             }
         },
         error: function() {
-            showMessage("加载配置失败，请刷新页面重试", "danger", 5);
+            if (!silent) {
+                showMessage("加载配置失败，请刷新页面重试", "danger", 5);
+            }
         }
     });
 };
@@ -5386,11 +5458,26 @@ function initPageTabs() {
         if ($pane.length) {
             $('.settings-content .tab-pane').removeClass('active').hide();
             $pane.addClass('active').show();
-            $('.sidebar-link').removeClass('active');
-            if ($link.length) $link.addClass('active');
+            // 仅在 index.html 模式（侧边栏链接有 data-tab 属性）下操作侧边栏高亮
+            // 分页模式（layout.html）下服务端已通过 th:classappend 设置正确的 activePage
+            var $sidebarTabs = $('.sidebar-link[data-tab]');
+            if ($sidebarTabs.length > 0) {
+                $('.sidebar-link').removeClass('active');
+                if ($link.length) $link.addClass('active');
+            }
             if (typeof switchTab === 'function') {
                 switchTab(tabParam, $link[0] || null);
             }
+        }
+    }
+    // 侧边栏立即滚动到激活项（无延迟、无动画）
+    var $active = $('.sidebar-link.active');
+    if ($active.length) {
+        var container = $active.closest('.settings-sidebar');
+        if (container.length) {
+            var containerTop = container.offset().top;
+            var itemTop = $active.offset().top;
+            container.scrollTop(container.scrollTop() + (itemTop - containerTop) - container.height() / 2 + $active.height() / 2);
         }
     }
 }
@@ -5408,28 +5495,37 @@ switchTab = function(tabId, el) {
 
 // 页面加载完成后初始化
 $(function() {
-    setTimeout(function() {
-        initPageTabs();
-    }, 100);
-
     // 浮动保存按钮点击事件
     $(document).off('click', '#floating-button.page-save');
     $(document).on('click', '#floating-button', function() {
         var pageId = $(this).attr('data-page') || window.currentPageId || 'settings';
         method.saveCurrentPage(pageId);
     });
+    // 侧边栏立即滚动到激活项（无延迟、无动画，避免先闪顶部再下滑）
+    (function scrollSidebarToActive() {
+        var $active = $('.sidebar-link.active');
+        if ($active.length) {
+            var container = $active.closest('.settings-sidebar');
+            if (container.length) {
+                var containerTop = container.offset().top;
+                var itemTop = $active.offset().top;
+                var scrollTarget = container.scrollTop() + (itemTop - containerTop) - container.height() / 2 + $active.height() / 2;
+                container.scrollTop(scrollTarget);
+            }
+        }
+    })();
 });
 
 // ========== 覆盖saveSet为页面感知的安全保存（防止跨页字段丢失） ==========
 var _originalSaveSet = method.saveSet;
-method.saveSet = function() {
+method.saveSet = function(silent) {
     var pageId = window.currentPageId || 'settings';
     // 如果当前页面注册了saveFields，走安全路径
     if (window._pageSaveFields[pageId]) {
-        return method.saveCurrentPage(pageId);
+        return method.saveCurrentPage(pageId, silent);
     }
     // 没有注册的页面（如原index.html），走原始保存逻辑
-    return _originalSaveSet.call(this);
+    return _originalSaveSet.call(this, silent);
 };
 
 // ========== 关注直播间列表 ==========

@@ -14,7 +14,7 @@
                     <th:block th:replace="~{fragments/layout :: sidebar(activePage='management')}"></th:block>
                     <div class="settings-content flex-grow-1">
 <!-- ==================== 直播间管理 ==================== -->
-<div class="tab-pane active" id="tab-live-room-mgr">
+<div class="tab-pane" th:classappend="${#arrays.isEmpty(param.tab) || param.tab[0] == 'live-room-mgr'} ? 'active' : ''" id="tab-live-room-mgr">
     <div class="input-group mb-1"><h5>直播间管理</h5></div>
     <div class="row g-2 mb-2 align-items-end">
         <div class="col-auto"><label class="form-label mb-0" style="font-size:12px;">CSV文件</label><select id="lrm-csv-select" class="form-select form-select-sm" style="width:260px;"><option value="">-- 选择文件 --</option></select></div>
@@ -43,7 +43,7 @@
     </div>
 </div>
 <!-- ==================== 弹幕管理 ==================== -->
-<div class="tab-pane" id="tab-danmaku-mgr">
+<div class="tab-pane" th:classappend="${! #arrays.isEmpty(param.tab) && param.tab[0] == 'danmaku-mgr'} ? 'active' : ''" id="tab-danmaku-mgr">
     <div class="input-group mb-1"><h5>弹幕管理</h5></div>
     <div class="row g-2 mb-2 align-items-end">
         <div class="col-auto"><label class="form-label mb-0" style="font-size:12px;">CSV文件</label><select id="dmgr-csv-select" class="form-select form-select-sm" style="width:260px;"><option value="">-- 选择文件 --</option></select></div>
@@ -75,7 +75,7 @@
     <div class="row g-2 mt-3" id="dmgr-scatter-row" style="display:none;"><div class="col-12"><div class="card"><div class="card-body p-2"><h6 class="card-title text-center" style="font-size:13px;">弹幕长度散点</h6><canvas id="dmgr-chart-scatter" height="260"></canvas></div></div></div></div>
 </div>
 <!-- ==================== 礼物管理 ==================== -->
-<div class="tab-pane" id="tab-gift-mgr">
+<div class="tab-pane" th:classappend="${! #arrays.isEmpty(param.tab) && param.tab[0] == 'gift-mgr'} ? 'active' : ''" id="tab-gift-mgr">
     <div class="input-group mb-1"><h5>礼物管理</h5></div>
     <div class="row g-2 mb-2 align-items-end">
         <div class="col-auto"><label class="form-label mb-0" style="font-size:12px;">CSV文件</label><select id="gft-csv-select" class="form-select form-select-sm" style="width:260px;"><option value="">-- 选择文件 --</option></select></div>
@@ -104,7 +104,7 @@
     </div>
 </div>
 <!-- ==================== 观众管理 ==================== -->
-<div class="tab-pane" id="tab-audience-mgr">
+<div class="tab-pane" th:classappend="${! #arrays.isEmpty(param.tab) && param.tab[0] == 'audience-mgr'} ? 'active' : ''" id="tab-audience-mgr">
     <div class="input-group mb-1"><h5>观众管理</h5></div>
     <div class="row g-2 mb-2 align-items-end">
         <div class="col-auto"><label class="form-label mb-0" style="font-size:12px;">CSV文件</label><select id="vst-csv-select" class="form-select form-select-sm" style="width:260px;"><option value="">-- 选择文件 --</option></select></div>
@@ -142,7 +142,7 @@
     </div>
 </div>
 <!-- ==================== 匹配管理 ==================== -->
-<div class="tab-pane" id="tab-match-mgr">
+<div class="tab-pane" th:classappend="${! #arrays.isEmpty(param.tab) && param.tab[0] == 'match-mgr'} ? 'active' : ''" id="tab-match-mgr">
     <div class="input-group mb-1"><h5>匹配管理</h5></div>
     <div class="row g-2 mb-2 align-items-end">
         <div class="col-auto"><label class="form-label mb-0" style="font-size:12px;">CSV文件</label><select id="mtch-csv-select" class="form-select form-select-sm" style="width:260px;"><option value="">-- 选择文件 --</option></select></div>
@@ -166,7 +166,7 @@
     </div>
 </div>
 <!-- ==================== 关注管理 ==================== -->
-<div class="tab-pane" id="tab-follow-mgr">
+<div class="tab-pane" th:classappend="${! #arrays.isEmpty(param.tab) && param.tab[0] == 'follow-mgr'} ? 'active' : ''" id="tab-follow-mgr">
     <div class="input-group mb-1"><h5>关注管理</h5></div>
     <div class="row g-2 mb-2 align-items-end">
         <div class="col-auto"><label class="form-label mb-0" style="font-size:12px;">CSV文件</label><select id="flw-csv-select" class="form-select form-select-sm" style="width:260px;"><option value="">-- 选择文件 --</option></select></div>

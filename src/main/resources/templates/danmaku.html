@@ -14,7 +14,7 @@
                     <th:block th:replace="~{fragments/layout :: sidebar(activePage='danmaku')}"></th:block>
                     <div class="settings-content flex-grow-1">
                         <!-- 话术姬 -->
-                        <div class="tab-pane active" id="tab-danmakuStore-set">
+                        <div class="tab-pane" th:classappend="${#arrays.isEmpty(param.tab) || param.tab[0] == 'danmakuStore-set'} ? 'active' : ''" id="tab-danmakuStore-set">
                             <div class="input-group mb-1"><h5>话术姬</h5></div>
                             <div class="input-group mb-3 danmakuStore-set" id="danmakuStore-set">
                                 <div class="header-set">
@@ -35,7 +35,7 @@
                             </div>
                         </div>
                         <!-- 自动回复姬 -->
-                        <div class="tab-pane" id="tab-autoReply-set">
+                        <div class="tab-pane" th:classappend="${! #arrays.isEmpty(param.tab) && param.tab[0] == 'autoReply-set'} ? 'active' : ''" id="tab-autoReply-set">
                             <div class="input-group mb-1"><h5>自动回复姬</h5></div>
                             <div class="input-group mb-3 autoReply-set" id="autoReply-set">
                                 <div class="header-set">

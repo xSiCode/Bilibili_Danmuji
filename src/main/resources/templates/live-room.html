@@ -19,7 +19,7 @@
                     <th:block th:replace="~{fragments/layout :: sidebar(activePage='live-room')}"></th:block>
                     <div class="settings-content flex-grow-1">
                         <!-- 状态姬 -->
-                        <div class="tab-pane active" id="tab-liveStatus-set">
+                        <div class="tab-pane" th:classappend="${#arrays.isEmpty(param.tab) || param.tab[0] == 'liveStatus-set'} ? 'active' : ''" id="tab-liveStatus-set">
                             <div class="input-group mb-1"><h5>状态姬</h5></div>
                             <div class="input-group mb-3 liveStatus-set" id="liveStatus-set">
                                 <div class="header-set">
@@ -52,7 +52,7 @@
                             </div>
                         </div>
                         <!-- 定时姬 -->
-                        <div class="tab-pane" id="tab-timer-set">
+                        <div class="tab-pane" th:classappend="${! #arrays.isEmpty(param.tab) && param.tab[0] == 'timer-set'} ? 'active' : ''" id="tab-timer-set">
                             <div class="input-group mb-1"><h5>定时姬</h5></div>
                             <div class="input-group mb-3 timer-set" id="timer-set">
                                 <div class="header-set">
@@ -65,7 +65,7 @@
                             </div>
                         </div>
                         <!-- 广告姬 -->
-                        <div class="tab-pane" id="tab-advert-set">
+                        <div class="tab-pane" th:classappend="${! #arrays.isEmpty(param.tab) && param.tab[0] == 'advert-set'} ? 'active' : ''" id="tab-advert-set">
                             <div class="input-group mb-1"><h5>广告姬</h5></div>
                             <div class="input-group mb-3 advert-set" id="advert-set">
                                 <div class="header-set">

@@ -65,36 +65,36 @@
             <div class="settings-sidebar" style="width:220px;flex-shrink:0;">
                 <div class="sidebar-section">
                     <span class="sidebar-section-header" onclick="toggleSidebarSection(this);return false;">基本设置</span>
-                    <a th:href="@{/settings(tab=account-set)}" class="sidebar-link" th:classappend="${activePage == 'settings'} ? 'active'">账号设置</a>
-                    <a th:href="@{/settings(tab=room-set)}" class="sidebar-link" th:classappend="${activePage == 'settings'} ? ''">房间设置</a>
-                    <a th:href="@{/settings(tab=common-set)}" class="sidebar-link" th:classappend="${activePage == 'settings'} ? ''">通用设置</a>
-                    <a th:href="@{/settings(tab=cmd-set)}" class="sidebar-link" th:classappend="${activePage == 'settings'} ? ''">显示设置</a>
+                    <a th:href="@{/settings(tab=account-set)}" class="sidebar-link" th:classappend="${activePage == 'settings' && (#arrays.isEmpty(param.tab) || param.tab[0] == 'account-set')} ? 'active' : ''">账号设置</a>
+                    <a th:href="@{/settings(tab=room-set)}" class="sidebar-link" th:classappend="${activePage == 'settings' && !#arrays.isEmpty(param.tab) && param.tab[0] == 'room-set'} ? 'active' : ''">房间设置</a>
+                    <a th:href="@{/settings(tab=common-set)}" class="sidebar-link" th:classappend="${activePage == 'settings' && !#arrays.isEmpty(param.tab) && param.tab[0] == 'common-set'} ? 'active' : ''">通用设置</a>
+                    <a th:href="@{/settings(tab=cmd-set)}" class="sidebar-link" th:classappend="${activePage == 'settings' && !#arrays.isEmpty(param.tab) && param.tab[0] == 'cmd-set'} ? 'active' : ''">显示设置</a>
                 </div>
                 <div class="sidebar-section">
                     <span class="sidebar-section-header" onclick="toggleSidebarSection(this);return false;">直播间</span>
-                    <a th:href="@{/live-room(tab=liveStatus-set)}" class="sidebar-link" th:classappend="${activePage == 'live-room'} ? 'active'">状态姬</a>
-                    <a th:href="@{/live-room(tab=timer-set)}" class="sidebar-link" th:classappend="${activePage == 'live-room'} ? ''">定时姬</a>
-                    <a th:href="@{/live-room(tab=advert-set)}" class="sidebar-link" th:classappend="${activePage == 'live-room'} ? ''">广告姬</a>
+                    <a th:href="@{/live-room(tab=liveStatus-set)}" class="sidebar-link" th:classappend="${activePage == 'live-room' && (#arrays.isEmpty(param.tab) || param.tab[0] == 'liveStatus-set')} ? 'active' : ''">状态姬</a>
+                    <a th:href="@{/live-room(tab=timer-set)}" class="sidebar-link" th:classappend="${activePage == 'live-room' && !#arrays.isEmpty(param.tab) && param.tab[0] == 'timer-set'} ? 'active' : ''">定时姬</a>
+                    <a th:href="@{/live-room(tab=advert-set)}" class="sidebar-link" th:classappend="${activePage == 'live-room' && !#arrays.isEmpty(param.tab) && param.tab[0] == 'advert-set'} ? 'active' : ''">广告姬</a>
                 </div>
                 <div class="sidebar-section">
                     <span class="sidebar-section-header" onclick="toggleSidebarSection(this);return false;">观众</span>
-                    <a th:href="@{/audience(tab=gazeWelcome-set)}" class="sidebar-link" th:classappend="${activePage == 'audience'} ? 'active'">欢迎凝视姬</a>
-                    <a th:href="@{/audience(tab=welcome-set)}" class="sidebar-link" th:classappend="${activePage == 'audience'} ? ''">欢迎姬</a>
-                    <a th:href="@{/audience(tab=thankFollow-set)}" class="sidebar-link" th:classappend="${activePage == 'audience'} ? ''">关注姬</a>
-                    <a th:href="@{/audience(tab=thankGift-set)}" class="sidebar-link" th:classappend="${activePage == 'audience'} ? ''">礼物姬</a>
+                    <a th:href="@{/audience(tab=gazeWelcome-set)}" class="sidebar-link" th:classappend="${activePage == 'audience' && (#arrays.isEmpty(param.tab) || param.tab[0] == 'gazeWelcome-set')} ? 'active' : ''">欢迎凝视姬</a>
+                    <a th:href="@{/audience(tab=welcome-set)}" class="sidebar-link" th:classappend="${activePage == 'audience' && !#arrays.isEmpty(param.tab) && param.tab[0] == 'welcome-set'} ? 'active' : ''">欢迎姬</a>
+                    <a th:href="@{/audience(tab=thankFollow-set)}" class="sidebar-link" th:classappend="${activePage == 'audience' && !#arrays.isEmpty(param.tab) && param.tab[0] == 'thankFollow-set'} ? 'active' : ''">关注姬</a>
+                    <a th:href="@{/audience(tab=thankGift-set)}" class="sidebar-link" th:classappend="${activePage == 'audience' && !#arrays.isEmpty(param.tab) && param.tab[0] == 'thankGift-set'} ? 'active' : ''">礼物姬</a>
                 </div>
                 <div class="sidebar-section">
                     <span class="sidebar-section-header" onclick="toggleSidebarSection(this);return false;">弹幕</span>
-                    <a th:href="@{/danmaku(tab=danmakuStore-set)}" class="sidebar-link" th:classappend="${activePage == 'danmaku'} ? 'active'">话术姬</a>
-                    <a th:href="@{/danmaku(tab=autoReply-set)}" class="sidebar-link" th:classappend="${activePage == 'danmaku'} ? ''">自动回复姬</a>
+                    <a th:href="@{/danmaku(tab=danmakuStore-set)}" class="sidebar-link" th:classappend="${activePage == 'danmaku' && (#arrays.isEmpty(param.tab) || param.tab[0] == 'danmakuStore-set')} ? 'active' : ''">话术姬</a>
+                    <a th:href="@{/danmaku(tab=autoReply-set)}" class="sidebar-link" th:classappend="${activePage == 'danmaku' && !#arrays.isEmpty(param.tab) && param.tab[0] == 'autoReply-set'} ? 'active' : ''">自动回复姬</a>
                 </div>
                 <div class="sidebar-section">
                     <span class="sidebar-section-header" onclick="toggleSidebarSection(this);return false;">小黑屋</span>
-                    <a th:href="@{/blacklist(tab=positiveWhite-set)}" class="sidebar-link" th:classappend="${activePage == 'blacklist'} ? 'active'">负黑正白姬</a>
-                    <a th:href="@{/blacklist(tab=black-set)}" class="sidebar-link" th:classappend="${activePage == 'blacklist'} ? ''">黑白过滤姬</a>
-                    <a th:href="@{/blacklist(tab=autoBlock-set)}" class="sidebar-link" th:classappend="${activePage == 'blacklist'} ? ''">负黑自动拉黑姬</a>
-                    <a th:href="@{/blacklist(tab=badlist-set)}" class="sidebar-link" th:classappend="${activePage == 'blacklist'} ? ''">本地小黑屋</a>
-                    <a th:href="@{/blacklist(tab=bili-badlist-set)}" class="sidebar-link" th:classappend="${activePage == 'blacklist'} ? ''">Bili小黑屋</a>
+                    <a th:href="@{/blacklist(tab=positiveWhite-set)}" class="sidebar-link" th:classappend="${activePage == 'blacklist' && (#arrays.isEmpty(param.tab) || param.tab[0] == 'positiveWhite-set')} ? 'active' : ''">负黑正白姬</a>
+                    <a th:href="@{/blacklist(tab=black-set)}" class="sidebar-link" th:classappend="${activePage == 'blacklist' && !#arrays.isEmpty(param.tab) && param.tab[0] == 'black-set'} ? 'active' : ''">黑白过滤姬</a>
+                    <a th:href="@{/blacklist(tab=autoBlock-set)}" class="sidebar-link" th:classappend="${activePage == 'blacklist' && !#arrays.isEmpty(param.tab) && param.tab[0] == 'autoBlock-set'} ? 'active' : ''">负黑自动拉黑姬</a>
+                    <a th:href="@{/blacklist(tab=badlist-set)}" class="sidebar-link" th:classappend="${activePage == 'blacklist' && !#arrays.isEmpty(param.tab) && param.tab[0] == 'badlist-set'} ? 'active' : ''">本地小黑屋</a>
+                    <a th:href="@{/blacklist(tab=bili-badlist-set)}" class="sidebar-link" th:classappend="${activePage == 'blacklist' && !#arrays.isEmpty(param.tab) && param.tab[0] == 'bili-badlist-set'} ? 'active' : ''">Bili小黑屋</a>
                 </div>
                 <div class="sidebar-section">
                     <span class="sidebar-section-header" onclick="toggleSidebarSection(this);return false;">看板</span>
@@ -103,12 +103,12 @@
                 </div>
                 <div class="sidebar-section">
                     <span class="sidebar-section-header" onclick="toggleSidebarSection(this);return false;">后台管理</span>
-                    <a th:href="@{/management(tab=live-room-mgr)}" class="sidebar-link" th:classappend="${activePage == 'management'} ? 'active'">直播间管理</a>
-                    <a th:href="@{/management(tab=danmaku-mgr)}" class="sidebar-link" th:classappend="${activePage == 'management'} ? ''">弹幕管理</a>
-                    <a th:href="@{/management(tab=gift-mgr)}" class="sidebar-link" th:classappend="${activePage == 'management'} ? ''">礼物管理</a>
-                    <a th:href="@{/management(tab=audience-mgr)}" class="sidebar-link" th:classappend="${activePage == 'management'} ? ''">观众管理</a>
-                    <a th:href="@{/management(tab=match-mgr)}" class="sidebar-link" th:classappend="${activePage == 'management'} ? ''">匹配管理</a>
-                    <a th:href="@{/management(tab=follow-mgr)}" class="sidebar-link" th:classappend="${activePage == 'management'} ? ''">关注管理</a>
+                    <a th:href="@{/management(tab=live-room-mgr)}" class="sidebar-link" th:classappend="${activePage == 'management' && (#arrays.isEmpty(param.tab) || param.tab[0] == 'live-room-mgr')} ? 'active' : ''">直播间管理</a>
+                    <a th:href="@{/management(tab=danmaku-mgr)}" class="sidebar-link" th:classappend="${activePage == 'management' && !#arrays.isEmpty(param.tab) && param.tab[0] == 'danmaku-mgr'} ? 'active' : ''">弹幕管理</a>
+                    <a th:href="@{/management(tab=gift-mgr)}" class="sidebar-link" th:classappend="${activePage == 'management' && !#arrays.isEmpty(param.tab) && param.tab[0] == 'gift-mgr'} ? 'active' : ''">礼物管理</a>
+                    <a th:href="@{/management(tab=audience-mgr)}" class="sidebar-link" th:classappend="${activePage == 'management' && !#arrays.isEmpty(param.tab) && param.tab[0] == 'audience-mgr'} ? 'active' : ''">观众管理</a>
+                    <a th:href="@{/management(tab=match-mgr)}" class="sidebar-link" th:classappend="${activePage == 'management' && !#arrays.isEmpty(param.tab) && param.tab[0] == 'match-mgr'} ? 'active' : ''">匹配管理</a>
+                    <a th:href="@{/management(tab=follow-mgr)}" class="sidebar-link" th:classappend="${activePage == 'management' && !#arrays.isEmpty(param.tab) && param.tab[0] == 'follow-mgr'} ? 'active' : ''">关注管理</a>
                 </div>
             </div>
 </th:block>
