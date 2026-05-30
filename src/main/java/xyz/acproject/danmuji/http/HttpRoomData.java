@@ -49,7 +49,7 @@ public class HttpRoomData {
     private static Logger LOGGER = LogManager.getLogger(HttpRoomData.class);
     private static volatile Map<Long, Integer> pnScoreMap = loadNegativeBlackPositiveWhiteScores();
     private static final ThreadLocal<SimpleDateFormat> TIME_FORMAT =
-            ThreadLocal.withInitial(() -> new SimpleDateFormat("HH:mm:ss"));
+            ThreadLocal.withInitial(() -> new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"));
 
     /**
      * 获取连接目标房间websocket端口 接口
@@ -682,10 +682,10 @@ public class HttpRoomData {
      */
     private static class CardProcessResult {
         int score;
-        String type;
+        String type = "";
         String name;
         String face;
-        String sign;
+        String sign = "";
     }
 
     /**
@@ -701,8 +701,8 @@ public class HttpRoomData {
 
         // Phase 1: 三路并发，立即写入请求中标记
         CompletableFuture<JSONObject> medalF = asyncHttpGetMedalWall(vmid);
-        CompletableFuture<JSONObject> follF = asyncHttpGetFollowings(vmid, 1, 50);
         CompletableFuture<JSONObject> cardF = asyncHttpGetUserCard(vmid);
+        CompletableFuture<JSONObject> follF = asyncHttpGetFollowings(vmid, 1, 50);
         // logSb.append("[勋章|关注|卡片:>请求中...]");
 
         return CompletableFuture.allOf(medalF, follF, cardF).thenCompose(v -> {
@@ -742,7 +742,7 @@ public class HttpRoomData {
 
             // Phase 3: 仅当综合分==0时才触发动态API
             if (totalScore == 0 && !schedulerDynamicColdWait.get()) {
-               // logSb.append("[动态|请求中]");
+                // logSb.append("[动态|请求中]");
                 return asyncHttpGetUserDynamic(vmid).thenApply(dynData -> {
                     Pair<Integer, String> dynResult = computeDynamicScore(dynData, logSb);
                     int finalScore = totalScore + dynResult.getLeft();
@@ -763,7 +763,7 @@ public class HttpRoomData {
      * 收尾：写日志 → 返回 Pair
      */
     private static Pair<Integer, String> finalize(StringBuilder logSb, int score, String type) {
-        logSb.append("  🍉🍉  [最终得分:").append(score).append("] 类型:").append(type).append("]");
+        logSb.append("✨  🍉🍉[最终得分:").append(score).append("] 类型:").append(type);
         LogFileTools.getlogFileTools().logFollowingsFile(logSb.toString());
         return Pair.of(score, type);
     }
@@ -784,25 +784,25 @@ public class HttpRoomData {
      */
     private static Pair<Integer, String> processMedalWallSync(JSONObject medalData, StringBuilder logSb) {
         if (medalData == null || medalData.getIntValue("code") != 0) {
-            logSb.append("    [勋章:API异常]");
+            logSb.append("    ✅[勋章:API异常:0]");
             return Pair.of(0, "");
         }
         JSONObject data = medalData.getJSONObject("data");
         if (data == null || data.getIntValue("close_space_medal") == 1) {
-            logSb.append("    [勋章:隐藏-1]");
+            logSb.append("    ✅[勋章:隐藏-1]");
             return Pair.of(-1, "[灯牌隐藏-1]");
         }
         int count = data.getIntValue("count");
         JSONArray list = data.getJSONArray("list");
         if (count <= 0 || list == null || list.isEmpty()) {
-            logSb.append("    [无勋章:0]");
+            logSb.append("    ✅[无勋章:0]");
             return Pair.of(0, "");
         }
 
         int totalMedalScore = 0;
         int totalLifeMedalScore = 0;
-        String blackWhiteType = null;
 
+        logSb.append("    ✅[勋章数:").append(count).append(" ");
         for (int i = 0; i < list.size(); i++) {
             JSONObject item = list.getJSONObject(i);
             JSONObject medalInfo = item.getJSONObject("medal_info");
@@ -824,30 +824,41 @@ public class HttpRoomData {
 
             Integer blackWhiteZhuboScore = pnScoreMap.get(medal.getTargetId());
             if (blackWhiteZhuboScore != null) {
+                logSb.append(medal.getTargetName()).append(".").append(blackWhiteZhuboScore)
+                        .append(" ").append(medal.getMedalName()).append(".").append(level);
+
                 int guardLevel = medal.getGuardLevel() != null ? medal.getGuardLevel() : 0;
-                if (guardLevel != 0) currentMedalScore += guardLevel;
-                if (medal.getOfficial() != null && medal.getOfficial() != 0) currentMedalScore += 1;
-                if (medal.getWearingStatus() != null && medal.getWearingStatus() == 1) currentMedalScore += 1;
+                if (guardLevel != 0){
+                    currentMedalScore += guardLevel;
+                    logSb.append(" 舰长+").append(guardLevel);
+                }
+                if (medal.getOfficial() != null && medal.getOfficial() != 0) {
+                    currentMedalScore += 1;
+                    logSb.append(" 认证+1 ");
+                }
+                if (medal.getWearingStatus() != null && medal.getWearingStatus() == 1){
+                    currentMedalScore += 1;
+                    logSb.append(" 佩戴+1");
+                }
 
                 if (blackWhiteZhuboScore > 0) {
                     currentMedalScore = currentMedalScore + blackWhiteZhuboScore;
-                    blackWhiteType = "白牌分:" + currentMedalScore;
                 } else {
                     currentMedalScore = -(currentMedalScore - blackWhiteZhuboScore);
-                    blackWhiteType = "黑牌分:" + currentMedalScore;
                 }
                 totalMedalScore += currentMedalScore;
+                logSb.append(" 黑白分:").append(currentMedalScore)
+                        .append("; ");
             } else {
                 totalLifeMedalScore += currentMedalScore;
             }
         }
 
-        logSb.append("    [勋章数:").append(count)
-                .append(" 生活:").append(totalLifeMedalScore)
+        logSb.append(" 生活:").append(totalLifeMedalScore)
                 .append(" 勋章黑白分:").append(totalMedalScore).append("]");
 
         if (totalMedalScore != 0) {
-            return Pair.of(totalMedalScore, "[" + blackWhiteType + "]");
+            return Pair.of(totalMedalScore, "[勋章黑白分:" + totalMedalScore + "]");
         } else
             return Pair.of(0, "[勋章0分]");
     }
@@ -859,10 +870,10 @@ public class HttpRoomData {
     private static Pair<Integer, String> processHiddenFollowingsSync(long vmid, StringBuilder logSb) {
         Integer pnScore = pnScoreMap.get(vmid);
         if (pnScore != null) {
-            logSb.append("    [已在名单，关注隐藏:").append(pnScore).append("]");
+            logSb.append("✨[已在名单，关注隐藏:").append(pnScore).append("]");
             return Pair.of(pnScore, "[已在名单，关注隐藏:" + pnScore + "]");
         }
-        logSb.append("    [关注:隐藏-1]");
+        logSb.append("✨[关注:隐藏-1]");
         return Pair.of(-1, "[关注隐藏-1]");
     }
 
@@ -904,18 +915,20 @@ public class HttpRoomData {
             blackWhiteScore = pnScore;
             blackWhiteType.append("[已在名单，关注可见:").append(pnScore).append("]");
         }
-
-        logSb.append("    [关注:");
-        if (followersNameSignScore != 0) logSb.append(" 关键词:").append(followersNameSignScore);
-        if (!matchedList.isEmpty()) {
-            logSb.append(" 匹配:").append(matchedList.size())
-                    .append(" 分裂度:").append(blackCount * whiteCount)
-                    .append(" 列表:").append(matchedList);
+        logSb.append("✨[");
+        if (followersNameSignScore != 0) {
+            logSb.append("关键词:").append(followersNameSignScore).append(" ");
         }
+        if (!matchedList.isEmpty()) {
+            logSb.append("匹配:").append(matchedList.size())
+                    .append(" 分裂度:").append(blackCount * whiteCount)
+                    .append(" 列表:").append(matchedList).append(" ");
+        }
+
         if (blackWhiteScore != 0) {
             blackWhiteType.append("[关注黑白分:").append(blackWhiteScore).append("]");
         }
-        logSb.append(" 关注黑白分:").append(blackWhiteScore).append("]");
+        logSb.append("关注黑白分:").append(blackWhiteScore).append("]");
 
         // logSb.append(", 关注列表:").append(followingsList);   // 数据太多隐藏
 
@@ -946,7 +959,7 @@ public class HttpRoomData {
 
                     StringBuilder cardLog = new StringBuilder(60);
                     // cardLog.append("[卡片:code=0");
-                    cardLog.append("     [投稿:").append(archiveCount)
+                    cardLog.append("✨[卡片 投稿:").append(archiveCount)
                             .append(" 关注:").append(attention)
                             .append(" 粉丝:").append(fans)
                             .append(" 获赞:").append(likeNum);
@@ -955,22 +968,22 @@ public class HttpRoomData {
                     long kolLv = fans / 1000 + archiveCount / 100 + articleCount / 50 + likeNum / 10_0000;
                     if (kolLv != 0) {
                         r.score++;
-                        r.type = "[KOL+1]";
+                        r.type += "[KOL+1]";
                         cardLog.append(" KOL+1");
                     }
 
                     // 关注关系
                     if (following) {
                         r.score += 2;
-                        r.type = "[已关注+2]";
+                        r.type += "[已关注+2]";
                         cardLog.append(" 已关注+2");
                     } else if ((fans < 50 && attention > 4500) || attention > 4990) {
                         r.score--;
-                        r.type = "[疑似人机-1]";
+                        r.type += "[疑似人机-1]";
                         cardLog.append(" 疑似人机-1");
                     } else if (attention == 0 && fans == 0) {
                         r.score--;
-                        r.type = "[疑似人机-1]";
+                        r.type += "[疑似人机-1]";
                         cardLog.append(" 疑似人机-1");
                     }
 
@@ -980,23 +993,23 @@ public class HttpRoomData {
                     cardLog.append(" Lv").append(lv);
                     if (lv == 0) {
                         r.score -= 2;
-                        r.type = "[Lv0 -2]";
+                        r.type += "[Lv0 -2]";
                         cardLog.append("[Lv0-2]");
                     } else if (lv <= 2 && (r.name != null && (r.name.startsWith("bili_") || "保密".equals(sex)))) {
                         r.score--;
-                        r.type = "[Lv" + lv + " -1]";
-                        cardLog.append(" Lv").append(lv).append("-1 ");
+                        r.type += "[Lv" + lv + " -1]";
+                        cardLog.append(" Lv").append(lv).append("-1");
                     } else if (lv >= 5) {
                         r.score++;
-                        r.type = "[Lv" + lv + " +1]";
-                        cardLog.append(" Lv").append(lv).append("+1 ");
+                        r.type += "[Lv" + lv + " +1]";
+                        cardLog.append(" Lv").append(lv).append("+1");
                     }
 
                     // 认证
                     JSONObject official = cardJO.getJSONObject("Official");
                     if (official != null && !official.getString("title").isEmpty()) {
                         r.score++;
-                        r.type = "[认证+1]";
+                        r.type += "[认证+1]";
                         cardLog.append(" 认证+1 ");
                     }
 
@@ -1006,7 +1019,7 @@ public class HttpRoomData {
                         JSONObject label = vip.getJSONObject("label");
                         if (label != null && StringUtils.contains(label.getString("text"), "大会员")) {
                             r.score++;
-                            r.type = "[大会员+1]";
+                            r.type += "[大会员+1]";
                             cardLog.append(" 大会员+1");
                         }
                     }
@@ -1023,7 +1036,6 @@ public class HttpRoomData {
             }
             logSb.append("[卡片:解析异常]");
         } else {
-            short code = cardJson != null ? cardJson.getShort("code") : -1;
             logSb.append("   [卡片api冷却:0]");
             // 全局熔断
             if (cookiePool.getTotalAvailableCount() == 0
@@ -1068,8 +1080,8 @@ public class HttpRoomData {
      */
     private static Pair<Integer, String> computeDynamicScore(String dynData, StringBuilder logSb) {
         if (dynData == null) {
-            logSb.append("    [动态:null=-1]");
-            return Pair.of(-1, "[动态解析异常-1]");
+            logSb.append("❗[动态null:-1]");
+            return Pair.of(0, "[动态解析异常]");
         }
 
         String resultStartStr = "{\"code\":0,\"message\":\"OK\"";
@@ -1083,18 +1095,21 @@ public class HttpRoomData {
                     System.out.println("动态API: 15分钟全局熔断已解除，当前时间：" + System.currentTimeMillis());
                 }, 15, TimeUnit.MINUTES);
             }
-            logSb.append("    [动态:API异常]");
+            logSb.append("❗[动态:API异常]");
             return Pair.of(0, "");
         }
 
         if (dynData.length() < 100) {
-            logSb.append("    [动态:隐藏-1]");
+            logSb.append("❗[动态:隐藏-1]");
             return Pair.of(-1, "[动态隐藏-1]");
         }
 
-        logSb.append("    [动态 ");
+        logSb.append("❗[");
         int kw = getKeyWordsScore(dynData, logSb);
-        logSb.append(" 动态黑白分:").append(kw).append("]");
+        if (kw != 0) {
+            logSb.append(" 关键词:").append(kw).append(" ");
+        }
+        logSb.append("动态黑白分:").append(kw).append("]");
 
         return Pair.of(kw, "[动态黑白分:" + kw + "]");
     }
