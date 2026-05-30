@@ -894,7 +894,7 @@ public class HttpRoomData {
             logSb.append(" 勋章黑白分:").append(totalMedalScore).append("]");
             return Pair.of(totalMedalScore, "[勋章黑白分:" + totalMedalScore + "]");
         } else{
-            logSb.append(" 勋章生活分:").append(totalLifeMedalScore).append("+1]");//需求如此
+            logSb.append(" 勋章生活分").append(totalLifeMedalScore).append(" +1]");//需求如此
             return Pair.of(1, "[勋章生活+1]");
         }
     }
