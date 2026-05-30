@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments/head :: head(pageCss='blacklist.css', pageTitle='弹幕姬-小黑屋')}"></th:block>
+</head>
+<body>
+<div class="app">
+    <div class="row align-items-center justify-content-center center-wrapper">
+        <div class="col-md-12 card-outer-wrap">
+            <div class="card border-primary">
+                <div class="card-header"><h2><span>BiLiBiLi Living 欢迎,关注,送礼,弹幕的,拉黑,查看</span><span style="float:right;font-size:13px;color:#888;font-weight:normal;line-height:2.2;" th:if="${BUILD_TIME} != ''" th:text="'Build: ' + ${BUILD_TIME}"></span></h2></div>
+                <div class="card-body p-1 pt-0">
+                    <th:block th:replace="~{fragments/layout :: status-bar}"></th:block>
+                    <th:block th:replace="~{fragments/layout :: sidebar(activePage='blacklist')}"></th:block>
+                    <div class="settings-content flex-grow-1">
+                        <!-- 负黑正白姬 -->
+                        <div class="tab-pane active" id="tab-positiveWhite-set">
+                            <div class="input-group mb-1"><h5>负黑正白姬</h5></div>
+                            <div class="input-group mb-3 positiveWhite-set" id="positiveWhite-set">
+                                <div class="header-set"><div class="row align-items-center" style="margin-bottom:5px;--bs-gutter-x:5px">
+                                    <div class="col-auto"><button class="btn btn-sm btn-primary pn-add-btn">添加</button></div>
+                                    <div class="col-auto"><button class="btn btn-sm btn-success pn-save-btn">保存</button></div>
+                                    <div class="col-auto" style="margin-left:8px;"><input class="form-control form-control-sm pn-search-input" type="text" placeholder="搜索uid/名字/分数..." style="width:200px;"></div>
+                                </div></div>
+                                <div class="form-group footer-set">
+                                    <table class="table table-bordered table-sm pn-table"><thead><tr><th class="pn-sortable pn-col-uid" data-col="uid" style="cursor:pointer;user-select:none">黑白id <span class="pn-sort-icon"></span></th><th class="pn-sortable pn-col-name" data-col="name" style="cursor:pointer;user-select:none">黑白名字 <span class="pn-sort-icon"></span></th><th class="pn-sortable pn-col-score" data-col="score" style="cursor:pointer;user-select:none">黑白分数 <span class="pn-sort-icon"></span></th><th class="pn-col-action">操作</th></tr></thead><tbody class="pn-tbody"></tbody></table>
+                                    <div class="pn-pagination d-flex justify-content-center align-items-center mt-2"><button class="btn btn-sm btn-outline-secondary pn-prev">上一页</button><span class="pn-page-info mx-2">第1页</span><button class="btn btn-sm btn-outline-secondary pn-next">下一页</button></div>
+                                </div>
+                            </div>
+                            <div class="input-group mb-3 set-control" data-file="pn"><div class="col-auto"><input class="import-file-input" style="display: none;" type="file" value="上传文件"/><button class="btn btn-warning export-set" title="导出设置到本地，弹幕姬配置文件夹set底下" type="button">导出</button><button class="btn btn-success export-set-web" title="网页实时下载配置" type="button">下载</button><button class="btn btn-info import-set" title="导入配置文件" type="button">导入"负黑正白判定表.json"</button></div></div>
+                        </div>
+                        <!-- 负黑自动拉黑姬 -->
+                        <div class="tab-pane" id="tab-autoBlock-set">
+                            <div class="input-group mb-1"><h5>负黑自动拉黑姬</h5></div>
+                            <div class="input-group mb-3 autoBlock-set" id="autoBlock-set">
+                                <div class="header-set"><div class="row align-items-center" style="margin-bottom:5px;--bs-gutter-x:5px">
+                                    <div class="col-auto"><label class="form-check-label"><input class="form-check-input is_auto_block live-save" type="checkbox"><span class="_description" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="开启后，当用户总分低于拉黑分数时自动拉黑">开关</span></label></div>
+                                    <div class="col-auto"><span>拉黑分数：</span><input class="form-control form-control-sm auto-block-score" type="number" style="width:80px;display:inline-block" value="-1"></div>
+                                    <div class="col-auto"><span>拉黑间隔时间(分钟)：</span><input class="form-control form-control-sm auto-block-interval" type="number" style="width:70px;display:inline-block" value="3" min="1"></div>
+                                    <div class="col-auto" style="margin-left:8px;"><input class="form-control form-control-sm ab-search-input" type="text" placeholder="搜索名字/uid/类型..." style="width:200px;"></div>
+                                </div></div>
+                                <div class="form-group footer-set">
+                                    <table class="table table-bordered table-sm auto-block-table"><thead><tr><th class="ab-col-time">时间</th><th class="ab-col-uname">被拉黑用户名</th><th class="ab-col-score">拉黑类型</th><th class="ab-col-unblock">解除拉黑</th><th class="ab-col-delete">删除显示</th></tr></thead><tbody class="auto-block-tbody"></tbody></table>
+                                    <div class="auto-block-pagination d-flex justify-content-center align-items-center mt-2"><button class="btn btn-sm btn-outline-secondary ab-prev">上一页</button><span class="ab-page-info mx-2">第1页</span><button class="btn btn-sm btn-outline-secondary ab-next">下一页</button></div>
+                                </div>
+                            </div>
+                            <div class="input-group mb-3 set-control" data-file="ab"><div class="col-auto"><input class="import-file-input" style="display: none;" type="file" value="上传文件"/><button class="btn btn-warning export-set" title="导出设置到本地，弹幕姬配置文件夹set底下" type="button">导出</button><button class="btn btn-success export-set-web" title="网页实时下载配置" type="button">下载</button><button class="btn btn-info import-set" title="导入配置文件" type="button">导入"负黑自动拉黑记录.json"</button></div></div>
+                        </div>
+                        <!-- 黑白过滤姬 -->
+                        <div class="tab-pane" id="tab-black-set">
+                            <div class="input-group mb-1"><h5>黑白名单姬</h5></div>
+                            <div class="row">
+                                <div class="col-6"><div class="input-group mb-3 black-set" id="black-set"><h6 class="w-100">黑名单</h6>
+                                    <div class="header-set"><div class="row align-items-center">
+                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input black_flag_parent is_black_all live-save" type="checkbox"><span class="_description" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="是否全局生效黑名单模式">全局</span></label></div>
+                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input black_flag_child is_black_gift live-save" type="checkbox"><span class="_description" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="是否仅礼物感谢姬生效">礼物</span></label></div>
+                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input black_flag_child is_black_welcome live-save" type="checkbox"><span class="_description" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="是否仅欢迎姬生效">欢迎</span></label></div>
+                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input black_flag_child is_black_follow live-save" type="checkbox"><span class="_description" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="是否仅关注姬生效">关注</span></label></div>
+                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input black_flag_child is_black_reply live-save" type="checkbox"><span class="_description" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="是否仅自动回复姬生效">回复</span></label></div>
+                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input black_flag_child is_black_dynamic live-save" type="checkbox"><span class="_description" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="是否启用动态内容审查（审查黑名单关键词在用户动态中出现）">动态</span></label></div>
+                                    </div></div>
+                                    <div class="form-group footer-set"><textarea class="form-control input-margin-b black_names live-save" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" placeholder="自定义屏蔽用户名字或拉黑关键词，一行一个，包含匹配（用户名包含关键字即屏蔽）" title="自定义屏蔽用户名字或拉黑关键词，一行一个，包含匹配（用户名包含关键字即屏蔽）"></textarea><textarea class="form-control input-margin-b black_uids live-save" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" placeholder="自定义屏蔽用户uid，一行一个" title="自定义屏蔽用户uid，一行一个"></textarea></div>
+                                </div></div>
+                                <div class="col-6"><div class="input-group mb-3 white-set" id="white-set"><h6 class="w-100">白名单</h6>
+                                    <div class="header-set"><div class="row align-items-center">
+                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input white_flag_parent is_white_all live-save" type="checkbox"><span class="_description" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="是否全局生效白名单模式">全局</span></label></div>
+                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input white_flag_child is_white_gift live-save" type="checkbox"><span class="_description" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="是否仅礼物感谢姬生效">礼物</span></label></div>
+                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input white_flag_child is_white_welcome live-save" type="checkbox"><span class="_description" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="是否仅欢迎姬生效">欢迎</span></label></div>
+                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input white_flag_child is_white_follow live-save" type="checkbox"><span class="_description" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="是否仅关注姬生效">关注</span></label></div>
+                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input white_flag_child is_white_reply live-save" type="checkbox"><span class="_description" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="是否仅自动回复姬生效">回复</span></label></div>
+                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input white_flag_child is_white_dynamic live-save" type="checkbox"><span class="_description" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="是否启用动态内容审查（白名单用户动态豁免）">动态</span></label></div>
+                                    </div></div>
+                                    <div class="form-group footer-set"><textarea class="form-control input-margin-b white_names live-save" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" placeholder="自定义白名单用户名字，一行一个，包含匹配（与黑名单冲突时以黑名单为准）" title="自定义白名单用户名字，一行一个，包含匹配（与黑名单冲突时以黑名单为准）"></textarea><textarea class="form-control input-margin-b white_uids live-save" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" placeholder="自定义白名单用户uid，一行一个（与黑名单冲突时以黑名单为准）" title="自定义白名单用户uid，一行一个（与黑名单冲突时以黑名单为准）"></textarea></div>
+                                </div></div>
+                            </div>
+                        </div>
+                        <!-- 本地小黑屋 -->
+                        <div class="tab-pane" id="tab-badlist-set">
+                            <div class="input-group mb-1"><h5>本地小黑屋</h5></div>
+                            <div class="input-group mb-3 badlist-set" id="badlist-set">
+                                <div class="header-set"><div class="row align-items-center mb-2">
+                                    <div class="col-auto"><label class="form-label mb-0">UID:</label><input class="form-control form-control-sm badlist_uid" style="width:150px;display:inline-block;" type="number" placeholder="输入用户UID"><button class="btn btn-sm btn-outline-secondary badlist_uid_lookup" title="根据UID查用户名">查</button></div>
+                                    <div class="col-auto"><label class="form-label mb-0">用户名:</label><input class="form-control form-control-sm badlist_uname" style="width:180px;display:inline-block;" type="text" placeholder="输入用户名搜索"><button class="btn btn-sm btn-outline-secondary badlist_uname_lookup" title="根据用户名查UID">查</button></div>
+                                    <div class="col-auto"><button class="btn btn-sm btn-danger badlist_add_btn">拉黑</button><button class="btn btn-sm btn-outline-danger badlist_del_btn">取消拉黑</button></div>
+                                </div></div>
+                                <div class="badlist-search-results mt-2" style="display:none;"><div class="d-flex justify-content-between align-items-center mb-1"><small class="text-muted">搜索结果，点击选择:</small><button class="btn btn-sm btn-outline-secondary badlist-result-close" style="font-size:10px;">关闭</button></div><div style="overflow-x:auto;width:100%;"><table class="table table-sm table-hover badlist-result-table mb-0"><thead><tr><th class="br-col-user">用户</th><th class="br-col-fans">粉丝</th><th class="br-col-attention">关注</th><th class="br-col-likes">获赞</th><th class="br-col-play">播放</th><th class="br-col-archive">作品</th><th class="br-col-visible">关注可见</th><th class="br-col-dynamic">最新动态</th><th class="br-col-action">操作</th></tr></thead><tbody class="badlist-result-tbody"></tbody></table></div></div>
+                                <div class="footer-set"><table class="table table-sm table-striped badlist-table" style="display:none;"><thead><tr><th>UID</th><th>用户名</th><th>操作</th></tr></thead><tbody class="badlist-tbody"></tbody></table><div class="badlist-pagination d-flex justify-content-center align-items-center mt-2" style="display:none;"><button class="btn btn-sm btn-outline-secondary badlist-prev">上一页</button><span class="badlist-page-info mx-2">第1页</span><button class="btn btn-sm btn-outline-secondary badlist-next">下一页</button></div><small class="text-muted">拉黑为B站用户层面的黑名单，非直播间禁言。需要登录后操作。</small></div>
+                            </div>
+                        </div>
+                        <!-- Bili小黑屋 -->
+                        <div class="tab-pane" id="tab-bili-badlist-set">
+                            <div class="input-group mb-1"><h5>Bili小黑屋 <small class="text-muted">(B站端拉黑列表)</small></h5></div>
+                            <div class="input-group mb-3 bili-badlist-wrap">
+                                <div class="d-flex align-items-center mb-2"><button class="btn btn-sm btn-outline-primary bili-badlist-load">刷新列表</button><span class="bili-badlist-total ms-2 text-muted" style="font-size:12px;"></span></div>
+                                <table class="table table-sm table-striped bili-badlist-table" style="display:none;"><thead><tr><th>头像</th><th>UID</th><th>用户名</th><th>签名</th><th>拉黑时间</th></tr></thead><tbody class="bili-badlist-tbody"></tbody></table>
+                                <div class="bili-badlist-pagination d-flex justify-content-center align-items-center mt-2" style="display:none;"><button class="btn btn-sm btn-outline-secondary bili-badlist-prev">上一页</button><span class="bili-badlist-page-info mx-2">第1页</span><button class="btn btn-sm btn-outline-secondary bili-badlist-next">下一页</button></div>
+                            </div>
+                        </div>
+                    </div>
+                </div></div>
+            </div>
+        </div>
+    </div>
+</div>
+<th:block th:replace="~{fragments/layout :: shared-modals}"></th:block>
+<th:block th:replace="~{fragments/layout :: toast-and-save(page='blacklist')}"></th:block>
+<script th:src="@{/js/common.js}" type="text/javascript"></script>
+<script th:src="@{/js/blacklist.js}" type="text/javascript"></script>
+<th:block th:replace="~{fragments/layout :: inline-scripts(page='blacklist')}"></th:block>
+</body>
+</html>

@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+
+<!-- ========== 状态栏片段 ========== -->
+<th:block th:fragment="status-bar">
+    <span id="app-version" th:data-version="${EDITION}" style="display:none"></span>
+    <div class="status-bar">
+        <div class="status-bar-row">
+            <span class="status-bar-label">用户：</span>
+            <span class="unlogin" th:if="!(${USER}?exists)" style="margin:0 12px 0 0;">
+                <span class="text-muted">未登录</span>
+                <a th:href="@{/login}" style="font-size:12px;">[扫码]</a>
+                <a th:href="@{/cookie_set}" style="font-size:12px;">[Cookie]</a>
+            </span>
+            <span class="logined" th:if="${USER}?exists" style="margin:0 12px 0 0;">
+                <a class="user-name window-open-x" th:href="@{'https://space.bilibili.com/'+${USER.uid}}" th:text="${USER.uname}" target="_blank" style="font-weight:600;"></a>
+                <span class="text-muted" style="font-size:12px;">UID:<span class="user-id" th:text="${USER.uid}"></span></span>
+            </span>
+            <span class="status-bar-sep">|</span>
+            <span class="status-bar-label">房间：</span>
+            <span th:if="${ROOMID}==null" class="text-muted" style="margin:0 12px 0 0;">未连接</span>
+            <span th:if="${ROOMID}!=null" style="margin:0 12px 0 0;">
+                <a class="window-open-x" th:text="${ROOM_TITLE}" th:href="@{'https://live.bilibili.com/'+${ROOMID}}" target="_blank" style="font-weight:600;color:#fff;text-decoration:none;" th:title="'房间号：'+${ROOMID}"></a>
+            </span>
+            <span class="status-bar-sep">|</span>
+            <span class="status-bar-label">主播：</span>
+            <span th:if="${ROOMID}!=null" style="margin:0 12px 0 0;">
+                <a class="ar-name window-open-x" th:href="@{'https://space.bilibili.com/'+${AUID}}" th:text="${ANAME}" target="_blank" style="font-weight:600;"></a>
+            </span>
+            <span th:if="${ROOMID}==null" class="text-muted" style="margin:0 12px 0 0;">-</span>
+            <span class="status-bar-sep">|</span>
+            <span class="status-bar-label">人气：</span>
+            <span class="popu _description" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" th:text="${POPU}" th:if="${ROOMID}!=null" title="部分人可能不能正确获取人气值（所以该值仅供参考）" style="margin:0 4px 0 0;"></span>
+            <span th:if="${ROOMID}==null" class="text-muted">-</span>
+            <span class="status-bar-sep">|</span>
+            <span class="status-bar-label">看过：</span>
+            <span class="room_watcher" th:text="${ROOM_WATCHER}" th:if="${ROOMID}!=null"></span>
+            <span th:if="${ROOMID}==null" class="text-muted">-</span>
+            <span class="status-bar-sep">|</span>
+            <span class="status-bar-label">在线：</span>
+            <span class="room-online" th:text="${ROOM_ONLINE}" th:if="${ROOMID}!=null"></span>
+            <span th:if="${ROOMID}==null" class="text-muted">-</span>
+            <span class="status-bar-sep">|</span>
+            <span class="status-bar-label">点赞：</span>
+            <span class="status-like" th:text="${ROOM_LIKE}" th:if="${ROOMID}!=null"></span>
+            <span th:if="${ROOMID}==null" class="text-muted">-</span>
+            <span class="status-bar-sep">|</span>
+            <span class="status-bar-label">状态：</span>
+            <span class="status-live" th:if="${ROOMID}!=null">
+                <span th:if="${LIVE_STATUS}==1" style="color:#4eff4e;">●直播中</span>
+                <span th:if="${LIVE_STATUS}!=1" style="color:#ff6b6b;">●未开播</span>
+            </span>
+            <span th:if="${ROOMID}==null" class="text-muted">-</span>
+        </div>
+    </div>
+</th:block>
+
+<!-- ========== 侧边栏导航片段 ========== -->
+<th:block th:fragment="sidebar(activePage)">
+    <div class="input-group mb-3">
+        <button aria-controls="set" aria-expanded="true" class="btn btn-secondary" data-bs-target="#set" data-bs-toggle="collapse" href="#set" id="set_open">设置</button>
+    </div>
+    <div class="collapse multi-collapse show" id="set">
+        <div class="settings-container">
+            <div class="settings-sidebar" style="width:220px;flex-shrink:0;">
+                <div class="sidebar-section">
+                    <span class="sidebar-section-header" onclick="toggleSidebarSection(this);return false;">基本设置</span>
+                    <a th:href="@{/settings(tab=account-set)}" class="sidebar-link" th:classappend="${activePage == 'settings'} ? 'active'">账号设置</a>
+                    <a th:href="@{/settings(tab=room-set)}" class="sidebar-link" th:classappend="${activePage == 'settings'} ? ''">房间设置</a>
+                    <a th:href="@{/settings(tab=common-set)}" class="sidebar-link" th:classappend="${activePage == 'settings'} ? ''">通用设置</a>
+                    <a th:href="@{/settings(tab=cmd-set)}" class="sidebar-link" th:classappend="${activePage == 'settings'} ? ''">显示设置</a>
+                </div>
+                <div class="sidebar-section">
+                    <span class="sidebar-section-header" onclick="toggleSidebarSection(this);return false;">直播间</span>
+                    <a th:href="@{/live-room(tab=liveStatus-set)}" class="sidebar-link" th:classappend="${activePage == 'live-room'} ? 'active'">状态姬</a>
+                    <a th:href="@{/live-room(tab=timer-set)}" class="sidebar-link" th:classappend="${activePage == 'live-room'} ? ''">定时姬</a>
+                    <a th:href="@{/live-room(tab=advert-set)}" class="sidebar-link" th:classappend="${activePage == 'live-room'} ? ''">广告姬</a>
+                </div>
+                <div class="sidebar-section">
+                    <span class="sidebar-section-header" onclick="toggleSidebarSection(this);return false;">观众</span>
+                    <a th:href="@{/audience(tab=gazeWelcome-set)}" class="sidebar-link" th:classappend="${activePage == 'audience'} ? 'active'">欢迎凝视姬</a>
+                    <a th:href="@{/audience(tab=welcome-set)}" class="sidebar-link" th:classappend="${activePage == 'audience'} ? ''">欢迎姬</a>
+                    <a th:href="@{/audience(tab=thankFollow-set)}" class="sidebar-link" th:classappend="${activePage == 'audience'} ? ''">关注姬</a>
+                    <a th:href="@{/audience(tab=thankGift-set)}" class="sidebar-link" th:classappend="${activePage == 'audience'} ? ''">礼物姬</a>
+                </div>
+                <div class="sidebar-section">
+                    <span class="sidebar-section-header" onclick="toggleSidebarSection(this);return false;">弹幕</span>
+                    <a th:href="@{/danmaku(tab=danmakuStore-set)}" class="sidebar-link" th:classappend="${activePage == 'danmaku'} ? 'active'">话术姬</a>
+                    <a th:href="@{/danmaku(tab=autoReply-set)}" class="sidebar-link" th:classappend="${activePage == 'danmaku'} ? ''">自动回复姬</a>
+                </div>
+                <div class="sidebar-section">
+                    <span class="sidebar-section-header" onclick="toggleSidebarSection(this);return false;">小黑屋</span>
+                    <a th:href="@{/blacklist(tab=positiveWhite-set)}" class="sidebar-link" th:classappend="${activePage == 'blacklist'} ? 'active'">负黑正白姬</a>
+                    <a th:href="@{/blacklist(tab=black-set)}" class="sidebar-link" th:classappend="${activePage == 'blacklist'} ? ''">黑白过滤姬</a>
+                    <a th:href="@{/blacklist(tab=autoBlock-set)}" class="sidebar-link" th:classappend="${activePage == 'blacklist'} ? ''">负黑自动拉黑姬</a>
+                    <a th:href="@{/blacklist(tab=badlist-set)}" class="sidebar-link" th:classappend="${activePage == 'blacklist'} ? ''">本地小黑屋</a>
+                    <a th:href="@{/blacklist(tab=bili-badlist-set)}" class="sidebar-link" th:classappend="${activePage == 'blacklist'} ? ''">Bili小黑屋</a>
+                </div>
+                <div class="sidebar-section">
+                    <span class="sidebar-section-header" onclick="toggleSidebarSection(this);return false;">看板</span>
+                    <a th:href="@{/dashboard}" class="sidebar-link" th:classappend="${activePage == 'dashboard'} ? 'active'">陌生观众看板</a>
+                    <a th:href="@{/account_pool}" class="sidebar-link" th:classappend="${activePage == 'account-pool'} ? 'active'">账号池管理</a>
+                </div>
+                <div class="sidebar-section">
+                    <span class="sidebar-section-header" onclick="toggleSidebarSection(this);return false;">后台管理</span>
+                    <a th:href="@{/management(tab=live-room-mgr)}" class="sidebar-link" th:classappend="${activePage == 'management'} ? 'active'">直播间管理</a>
+                    <a th:href="@{/management(tab=danmaku-mgr)}" class="sidebar-link" th:classappend="${activePage == 'management'} ? ''">弹幕管理</a>
+                    <a th:href="@{/management(tab=gift-mgr)}" class="sidebar-link" th:classappend="${activePage == 'management'} ? ''">礼物管理</a>
+                    <a th:href="@{/management(tab=audience-mgr)}" class="sidebar-link" th:classappend="${activePage == 'management'} ? ''">观众管理</a>
+                    <a th:href="@{/management(tab=match-mgr)}" class="sidebar-link" th:classappend="${activePage == 'management'} ? ''">匹配管理</a>
+                    <a th:href="@{/management(tab=follow-mgr)}" class="sidebar-link" th:classappend="${activePage == 'management'} ? ''">关注管理</a>
+                </div>
+            </div>
+</th:block>
+
+<!-- ========== 共享模态框片段 ========== -->
+<th:block th:fragment="shared-modals">
+    <!-- 感谢礼物规则屏蔽窗体 -->
+    <div class="modal" id="giftshield-model">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content shieldgifts-wrap" style="overflow: auto;resize: both;">
+                <div class="modal-header">
+                    <h4 class="modal-title">请自定义需要屏蔽的礼物规则</h4>
+                    <a class="shieldgift_add" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" href="javascript:;" id="shieldgift_add" title="新增规则">⊕</a>
+                    <button class="btn-close" data-bs-dismiss="modal" type="button"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="con">
+                        <table class="table table-bordered table-sm">
+                            <tbody class="shieldgifts-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- 通用-禁言窗体 -->
+    <div class="modal" id="block-model">
+        <div class="modal-dialog">
+            <div class="modal-content block-wrap" style="overflow: auto;resize: both;">
+                <div class="t">禁言窗口 <i class="btn-close-block"></i></div>
+                <div class="con">
+                    <div class="input-group mb-3">
+                        <div class="form-group block-set">
+                            <input class="form-control form-control-sm block-input" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" max="720" min="1" placeholder="禁言时间1-720小时" type="number" value="">
+                        </div>
+                        <div class="form-group block-button">
+                            <button class="btn btn-sm btn-primary btn-block" type="button">禁言</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Bili小黑屋-头像弹窗 -->
+    <div class="modal fade" id="avatar-modal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="background:transparent;border:none;">
+                <div class="modal-body text-center p-0">
+                    <img id="avatar-modal-img" src="" style="max-width:100%;border-radius:50%;">
+                </div>
+            </div>
+        </div>
+    </div>
+</th:block>
+
+<!-- ========== Toast/提示/保存按钮片段 ========== -->
+<th:block th:fragment="toast-and-save(page)">
+    <!-- 右下角消息提示 -->
+    <div class="tips-wrap"><div class="tips-t"></div></div>
+    <div aria-atomic="true" aria-live="polite" class="position-relative">
+        <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 3"></div>
+    </div>
+    <div id="top-message"></div>
+    <div id="floating-button" class="set-hold" th:data-page="${page}">保存</div>
+</th:block>
+
+<!-- ========== 内联脚本片段 ========== -->
+<th:block th:fragment="inline-scripts(page)">
+    <script type="text/javascript">
+        // 初始化提示框和Toast
+        $(function () {
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl)
+            });
+            var toastElList = [].slice.call(document.querySelectorAll('.toast'))
+            var toastList = toastElList.map(function (toastEl) {
+                return new bootstrap.Toast(toastEl)
+            })
+            $(document).click(".btn-secondary", function () {
+                if (!$('#set').hasClass("show")) {
+                    setTimeout(function () {
+                        $.each($("textarea"), function (i, n) {
+                            if ($(n).hasClass('form-control')) {
+                                $(n).css("height", n.scrollHeight + "px");
+                            }
+                        })
+                    }, 10)
+                }
+            });
+            function customOpen(event) {
+                event.preventDefault();
+                window.open(this.href, '_blank', 'height=500,width=500');
+            }
+            var links = document.getElementsByClassName('window-open-x');
+            for (var i = 0; i < links.length; i++) {
+                links[i].addEventListener('click', customOpen, false);
+            }
+        });
+    </script>
+    <!-- 按钮悬浮 -->
+    <script type="text/javascript">
+        let floatingButton = document.getElementById('floating-button');
+        let isDown = false;
+        let offset = [0, 0];
+        let mousePosition;
+        floatingButton.addEventListener('mousedown', function (e) {
+            isDown = true;
+            offset = [floatingButton.offsetLeft - e.clientX, floatingButton.offsetTop - e.clientY];
+        }, true);
+        document.addEventListener('mouseup', function () { isDown = false; }, true);
+        document.addEventListener('mousemove', function (event) {
+            event.preventDefault();
+            if (isDown) {
+                mousePosition = { x: event.clientX, y: event.clientY };
+                floatingButton.style.left = (mousePosition.x + offset[0]) + 'px';
+                floatingButton.style.top  = (mousePosition.y + offset[1]) + 'px';
+            }
+        }, true);
+        floatingButton.addEventListener('touchstart', function (e) {
+            isDown = true;
+            offset = [floatingButton.offsetLeft - e.touches[0].clientX, floatingButton.offsetTop - e.touches[0].clientY];
+        }, true);
+        document.addEventListener('touchend', function () { isDown = false; }, true);
+        document.addEventListener('touchmove', function (event) {
+            event.preventDefault();
+            if (isDown) {
+                mousePosition = { x: event.touches[0].clientX, y: event.touches[0].clientY };
+                floatingButton.style.left = (mousePosition.x + offset[0]) + 'px';
+                floatingButton.style.top  = (mousePosition.y + offset[1]) + 'px';
+            }
+        }, true);
+    </script>
+    <!-- 自定义cookie -->
+    <script type="text/javascript">
+        function cookie_set(key) {
+            $.ajax({
+                url: '../customCookie', async: false, cache: false, type: 'POST',
+                data: { cookie: key }, dataType: 'json',
+                success: function (data) {
+                    if (data.result == true) {
+                        showMessage("cookie设定成功", "success","2");
+                        $("#cookie_data").val("");
+                        setTimeout(function(){ window.location.reload(); }, 1000);
+                    } else {
+                        showMessage("cookie错误", "danger","3");
+                    }
+                }
+            })
+        }
+        $(document).on('click', '#cookie_set_send', function () {
+            cookie_set($("#cookie_data").val());
+        });
+    </script>
+</th:block>
+
+</html>

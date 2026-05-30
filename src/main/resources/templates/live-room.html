@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments/head :: head(pageCss='live-room.css', pageTitle='弹幕姬-直播间')}"></th:block>
+</head>
+<body>
+<div class="app">
+    <div class="row align-items-center justify-content-center center-wrapper">
+        <div class="col-md-12 card-outer-wrap">
+            <div class="card border-primary">
+                <div class="card-header">
+                    <h2>
+                        <span>BiLiBiLi Living 欢迎,关注,送礼,弹幕的,拉黑,查看</span>
+                        <span style="float:right;font-size:13px;color:#888;font-weight:normal;line-height:2.2;" th:if="${BUILD_TIME} != ''" th:text="'Build: ' + ${BUILD_TIME}"></span>
+                    </h2>
+                </div>
+                <div class="card-body p-1 pt-0">
+                    <th:block th:replace="~{fragments/layout :: status-bar}"></th:block>
+                    <th:block th:replace="~{fragments/layout :: sidebar(activePage='live-room')}"></th:block>
+                    <div class="settings-content flex-grow-1">
+                        <!-- 状态姬 -->
+                        <div class="tab-pane active" id="tab-liveStatus-set">
+                            <div class="input-group mb-1"><h5>状态姬</h5></div>
+                            <div class="input-group mb-3 liveStatus-set" id="liveStatus-set">
+                                <div class="header-set">
+                                    <div class="row align-items-center" style="margin-bottom:5px;--bs-gutter-x:5px">
+                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input livestatus_live_open live-save" type="checkbox"><span class="_description" data-bs-placement="top" data-bs-toggle="tooltip" title="开播时自动发送">上播</span></label></div>
+                                        <div class="col"><input class="form-control form-control-sm livestatus_live_text live-save" placeholder="开播时发送的弹幕内容"></div>
+                                        <div class="col-auto"><button class="btn btn-sm btn-primary livestatus-live-send">发送</button></div>
+                                    </div>
+                                    <div class="row align-items-center" style="margin-bottom:5px;--bs-gutter-x:5px">
+                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input livestatus_preparing_open live-save" type="checkbox"><span class="_description" data-bs-placement="top" data-bs-toggle="tooltip" title="下播时自动发送">下播</span></label></div>
+                                        <div class="col"><input class="form-control form-control-sm livestatus_preparing_text live-save" placeholder="下播时发送的弹幕内容"></div>
+                                        <div class="col-auto"><button class="btn btn-sm btn-primary livestatus-preparing-send">发送</button></div>
+                                    </div>
+                                    <div class="row align-items-center" style="margin-bottom:5px;--bs-gutter-x:5px">
+                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input livestatus_warning_open live-save" type="checkbox"><span class="_description" data-bs-placement="top" data-bs-toggle="tooltip" title="触发警告时自动发送">警告</span></label></div>
+                                        <div class="col"><input class="form-control form-control-sm livestatus_warning_text live-save" placeholder="警告时发送的弹幕内容"></div>
+                                        <div class="col-auto"><button class="btn btn-sm btn-primary livestatus-warning-send">发送</button></div>
+                                    </div>
+                                    <div class="row align-items-center" style="margin-bottom:5px;--bs-gutter-x:5px">
+                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input livestatus_cut_off_open live-save" type="checkbox"><span class="_description" data-bs-placement="top" data-bs-toggle="tooltip" title="直播被超管切断时自动发送">切断</span></label></div>
+                                        <div class="col"><input class="form-control form-control-sm livestatus_cut_off_text live-save" placeholder="切断时发送的弹幕内容"></div>
+                                        <div class="col-auto"><button class="btn btn-sm btn-primary livestatus-cut-off-send">发送</button></div>
+                                    </div>
+                                    <div class="row align-items-center" style="margin-bottom:5px;--bs-gutter-x:5px">
+                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input livestatus_room_lock_open live-save" type="checkbox"><span class="_description" data-bs-placement="top" data-bs-toggle="tooltip" title="直播间被封禁时自动发送">封禁</span></label></div>
+                                        <div class="col"><input class="form-control form-control-sm livestatus_room_lock_text live-save" placeholder="封禁时发送的弹幕内容"></div>
+                                        <div class="col-auto"><button class="btn btn-sm btn-primary livestatus-room-lock-send">发送</button></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 定时姬 -->
+                        <div class="tab-pane" id="tab-timer-set">
+                            <div class="input-group mb-1"><h5>定时姬</h5></div>
+                            <div class="input-group mb-3 timer-set" id="timer-set">
+                                <div class="header-set">
+                                    <div class="row align-items-center" style="margin-bottom:5px;--bs-gutter-x:5px">
+                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input timer_is_open live-save" type="checkbox"><span class="_description" data-bs-placement="top" data-bs-toggle="tooltip" title="是否启用定时姬">启用</span></label></div>
+                                        <div class="col-auto"><button class="btn btn-sm btn-success timer-add-btn">添加</button></div>
+                                    </div>
+                                    <div class="timer-list"><ul class="timer-ul list-unstyled mb-0" id="timer-ul"></ul></div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 广告姬 -->
+                        <div class="tab-pane" id="tab-advert-set">
+                            <div class="input-group mb-1"><h5>广告姬</h5></div>
+                            <div class="input-group mb-3 advert-set" id="advert-set">
+                                <div class="header-set">
+                                    <div class="row align-items-center">
+                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input advert_is_open live-save" type="checkbox"><span class="_description" data-bs-placement="top" data-bs-toggle="tooltip" title="是否打开">开关</span></label></div>
+                                        <div class="col-auto"><label class="form-check-label col-form-label"><input class="form-check-input advert_is_live_open live-save" type="checkbox"><span class="_description" data-bs-placement="top" data-bs-toggle="tooltip" title="仅在直播（开播）中有效">直播</span></label></div>
+                                        <div class="col-auto"><select class="form-select form-select-sm advert_status live-save" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="选择发送条件<br/>①:顺序是按你输入的顺序自上到下循环发送<br/>②:随机就是随机发送其中一条"><option selected="selected" value="1">顺序</option><option value="2">随机</option></select></div>
+                                        <div class="col-auto small-input-wrap"><input class="small-input advert_time live-save" data-bs-placement="top" data-bs-toggle="tooltip" min="1" onKeypress="return (/[\d]/.test(String.fromCharCode(event.keyCode)))" placeholder="time(s)" style="ime-mode: Disabled" title="多少秒发送一次（开始时间）" type="number" value="1"></div>
+                                        <div class="col-auto small-input-wrap"><input class="small-input advert_time2 live-save" data-bs-placement="top" data-bs-toggle="tooltip" min="0" onKeypress="return (/[\d]/.test(String.fromCharCode(event.keyCode)))" placeholder="time(s)" style="ime-mode: Disabled" title="多少秒发送一次（结束时间；0是关闭随机且固定开始时间）" type="number" value="1"></div>
+                                    </div>
+                                </div>
+                                <div class="form-group footer-set"><textarea class="form-control advert_adverts live-save" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" placeholder="多条语句下请以回车为分割每条语句" title="多条语句时候注意以回车为分割每条语句<br/>注意每条语句不要超出自己能发送的弹幕长度<br/>超出长度弹幕姬会自动分段发送"></textarea></div>
+                            </div>
+                        </div>
+                    </div>
+                </div></div>
+            </div>
+        </div>
+    </div>
+</div>
+<th:block th:replace="~{fragments/layout :: shared-modals}"></th:block>
+<th:block th:replace="~{fragments/layout :: toast-and-save(page='live-room')}"></th:block>
+<script th:src="@{/js/common.js}" type="text/javascript"></script>
+<script th:src="@{/js/live-room.js}" type="text/javascript"></script>
+<th:block th:replace="~{fragments/layout :: inline-scripts(page='live-room')}"></th:block>
+</body>
+</html>

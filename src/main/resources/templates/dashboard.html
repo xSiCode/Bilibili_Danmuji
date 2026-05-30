@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments/head :: head(pageCss='dashboard.css', pageTitle='弹幕姬-看板')}"></th:block>
+</head>
+<body>
+<div class="app">
+    <div class="row align-items-center justify-content-center center-wrapper">
+        <div class="col-md-12 card-outer-wrap">
+            <div class="card border-primary">
+                <div class="card-header"><h2><span>BiLiBiLi Living 欢迎,关注,送礼,弹幕的,拉黑,查看</span><span style="float:right;font-size:13px;color:#888;font-weight:normal;line-height:2.2;" th:if="${BUILD_TIME} != ''" th:text="'Build: ' + ${BUILD_TIME}"></span></h2></div>
+                <div class="card-body p-1 pt-0">
+                    <th:block th:replace="~{fragments/layout :: status-bar}"></th:block>
+                    <th:block th:replace="~{fragments/layout :: sidebar(activePage='dashboard')}"></th:block>
+                    <div class="settings-content flex-grow-1">
+                        <div class="tab-pane active" id="tab-stranger-board">
+                            <div class="input-group mb-1"><h5>实时陌生观众看板</h5></div>
+                            <div class="row g-2 mb-2 align-items-end">
+                                <div class="col-auto"><input type="text" id="sv-search-input" class="form-control form-control-sm" style="width:200px;" placeholder="搜索观众名/UID/类型..."></div>
+                                <div class="col-auto"><button id="sv-btn-search" class="btn btn-sm btn-primary">搜索</button><button id="sv-btn-reset" class="btn btn-sm btn-outline-secondary ms-1">重置</button></div>
+                                <div class="col-auto ms-auto"><span class="text-muted" style="font-size:12px;" id="sv-total-info"></span></div>
+                            </div>
+                            <div class="sv-table-wrap">
+                                <table id="sv-data-table" class="table table-sm table-striped" style="display:none;width:100%;">
+                                    <thead><tr><th data-sort="time" class="sv-sort">时间</th><th>头像</th><th data-sort="name" class="sv-sort">观众名</th><th data-sort="scoreTypes" class="sv-sort">签名</th><th data-sort="score" class="sv-sort">打分</th><th data-sort="count" class="sv-sort">次数</th><th data-sort="session" class="sv-sort">场次</th><th>拉黑</th></tr></thead>
+                                    <tbody id="sv-table-body"></tbody>
+                                </table>
+                                <div id="sv-pagination" class="d-flex justify-content-center align-items-center mt-2" style="display:none;">
+                                    <button id="sv-first-btn" class="btn btn-sm btn-outline-secondary">首页</button>
+                                    <button id="sv-prev-btn" class="btn btn-sm btn-outline-secondary ms-1">上一页</button>
+                                    <span id="sv-page-info" class="mx-2">第1页 / 共1页</span>
+                                    <button id="sv-next-btn" class="btn btn-sm btn-outline-secondary">下一页</button>
+                                    <button id="sv-last-btn" class="btn btn-sm btn-outline-secondary ms-1">尾页</button>
+                                    <span class="ms-3">跳至</span>
+                                    <input type="number" id="sv-page-jump" class="form-control form-control-sm" style="width:60px;" min="1"><span>页</span>
+                                    <button id="sv-btn-go" class="btn btn-sm btn-outline-primary ms-1">GO</button>
+                                </div>
+                                <div id="sv-empty-msg" class="text-muted text-center py-3" style="display:none;">暂无数据</div>
+                            </div>
+                        </div>
+                    </div>
+                </div></div>
+            </div>
+        </div>
+    </div>
+</div>
+<th:block th:replace="~{fragments/layout :: shared-modals}"></th:block>
+<th:block th:replace="~{fragments/layout :: toast-and-save(page='dashboard')}"></th:block>
+<script th:src="@{/js/common.js}" type="text/javascript"></script>
+<script th:src="@{/js/dashboard.js}" type="text/javascript"></script>
+<th:block th:replace="~{fragments/layout :: inline-scripts(page='dashboard')}"></th:block>
+</body>
+</html>

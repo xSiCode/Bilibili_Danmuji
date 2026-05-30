@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments/head :: head(pageCss='audience.css', pageTitle='弹幕姬-观众')}"></th:block>
+</head>
+<body>
+<div class="app">
+    <div class="row align-items-center justify-content-center center-wrapper">
+        <div class="col-md-12 card-outer-wrap">
+            <div class="card border-primary">
+                <div class="card-header"><h2><span>BiLiBiLi Living 欢迎,关注,送礼,弹幕的,拉黑,查看</span><span style="float:right;font-size:13px;color:#888;font-weight:normal;line-height:2.2;" th:if="${BUILD_TIME} != ''" th:text="'Build: ' + ${BUILD_TIME}"></span></h2></div>
+                <div class="card-body p-1 pt-0">
+                    <th:block th:replace="~{fragments/layout :: status-bar}"></th:block>
+                    <th:block th:replace="~{fragments/layout :: sidebar(activePage='audience')}"></th:block>
+                    <div class="settings-content flex-grow-1">
+                        <!-- 欢迎凝视姬 -->
+                        <div class="tab-pane active" id="tab-gazeWelcome-set">
+                            <div class="input-group mb-1"><h5>欢迎凝视姬</h5></div>
+                            <div class="input-group mb-3 gazeWelcome-set" id="gazeWelcome-set">
+                                <div class="header-set">
+                                    <div class="row align-items-center" style="margin-bottom:5px;--bs-gutter-x:5px">
+                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input gazeWelcome_is_open live-save" type="checkbox"><span class="_description" data-bs-placement="top" data-bs-toggle="tooltip" title="是否启用欢迎凝视姬">启用</span></label></div>
+                                        <div class="col-auto"><button class="btn btn-sm btn-success gazeWelcome-add-btn">添加</button></div>
+                                    </div>
+                                    <div class="gazeWelcome-list"><ul class="gazeWelcome-ul list-unstyled mb-0" id="gazeWelcome-ul"></ul></div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 欢迎姬 -->
+                        <div class="tab-pane" id="tab-welcome-set">
+                            <div class="input-group mb-1"><h5>欢迎姬</h5></div>
+                            <div class="input-group mb-3 thankFollow-set" id="welcome-set">
+                                <div class="header-set">
+                                    <div class="row align-items-center">
+                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input welcome_is_open live-save" type="checkbox"><span class="_description" data-bs-placement="top" data-bs-toggle="tooltip" title="是否打开">开关</span></label></div>
+                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input welcome_is_live_open live-save" type="checkbox"><span class="_description" data-bs-placement="top" data-bs-toggle="tooltip" title="仅在直播（开播）中有效">直播</span></label></div>
+                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input welcome_is_open_self live-save" type="checkbox"><span class="_description" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="是否识别来着自己的欢迎（默认不识别来着自己的欢迎）">自己</span></label></div>
+                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input welcome_tx_shield live-save" type="checkbox"><span class="_description" data-bs-placement="top" data-bs-toggle="tooltip" title="是否屏蔽天选状态下的欢迎">天选</span></label></div>
+                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input welcome_rd_shield live-save" type="checkbox"><span class="_description" data-bs-placement="top" data-bs-toggle="tooltip" title="是否屏蔽红包状态下的欢迎">红包</span></label></div>
+                                        <div class="col-auto small-input-wrap"><input class="small-input welcome_num live-save" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" min="1" onKeypress="return (/[\d]/.test(String.fromCharCode(event.keyCode)))" placeholder="多少人" style="ime-mode: Disabled" title="每次欢迎多少个人" type="number" value="1"></div>
+                                        <div class="col-auto small-input-wrap"><input class="small-input thankwelcome_delaytime live-save" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" min="0" placeholder="间隔(秒)" title="间隔多少秒发送一次欢迎<br/>最小值为0<br/><span class='red-font'>PS:每次欢迎完成后进入冷却期，冷却期内进入的观众不欢迎直接丢弃</span>" type="number" value="0"></div>
+                                        <div class="col-auto"><select class="custom-select-sm welcome_list_people_shield_status live-save" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="用户类型过滤：<br/>①:不屏蔽；<br/>②:仅佩戴本房间勋章；<br/>③:仅舰长；（2.7.0.6开始仅欢迎本房间舰长）"><option selected value="1">不屏蔽</option><option value="2">仅勋章</option><option value="3">仅舰长</option></select></div>
+                                    </div>
+                                </div>
+                                <div class="form-group footer-set"><textarea class="form-control input-margin-b welcome_welcomes live-save" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" placeholder="欢迎 %uNames% 进入直播间~" title="多条语句时候注意以回车为分割每条语句,多条语句会随机发送其中一条<br/>感谢语，可选参数<br/> <span class='red-font'>%uNames%</span>欢迎人名称集合"></textarea></div>
+                            </div>
+                        </div>
+                        <!-- 关注姬 -->
+                        <div class="tab-pane" id="tab-thankFollow-set">
+                            <div class="input-group mb-1"><h5>关注姬</h5></div>
+                            <div class="input-group mb-3 thankFollow-set" id="thankFollow-set">
+                                <div class="header-set">
+                                    <div class="row align-items-center">
+                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input follow_is_open live-save" type="checkbox"><span class="_description" data-bs-placement="top" data-bs-toggle="tooltip" title="是否打开">开关</span></label></div>
+                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input follow_is_live_open live-save" type="checkbox"><span class="_description" data-bs-placement="top" data-bs-toggle="tooltip" title="仅在直播（开播）中有效">直播</span></label></div>
+                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input follow_tx_shield live-save" type="checkbox"><span class="_description" data-bs-placement="top" data-bs-toggle="tooltip" title="是否屏蔽天选状态下的关注">天选</span></label></div>
+                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input follow_rd_shield live-save" type="checkbox"><span class="_description" data-bs-placement="top" data-bs-toggle="tooltip" title="是否屏蔽红包状态下的关注">红包</span></label></div>
+                                        <div class="col-auto small-input-wrap"><input class="small-input follow_num live-save" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" min="1" onKeypress="return (/[\d]/.test(String.fromCharCode(event.keyCode)))" placeholder="多少人" style="ime-mode: Disabled" title="每次感谢多少个人" type="number" value="1"></div>
+                                        <div class="col-auto small-input-wrap"><input class="small-input thankfollow_delaytime live-save" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" min="0" placeholder="间隔(秒)" title="间隔多少秒发送一次感谢<br/>最小值为0<br/><span class='red-font'>PS:每次感谢完成后进入冷却期，冷却期内的关注不感谢直接丢弃</span>" type="number" value="0"></div>
+                                    </div>
+                                </div>
+                                <div class="form-group footer-set"><textarea class="form-control input-margin-b follow_follows live-save" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" placeholder="谢谢 %uNames% 的关注~" title="多条语句时候注意以回车为分割每条语句,多条语句会随机发送其中一条<br/>感谢语，可选参数<br/> <span class='red-font'>%uNames%</span>关注人名称集合"></textarea></div>
+                            </div>
+                        </div>
+                        <!-- 礼物姬 -->
+                        <div class="tab-pane" id="tab-thankGift-set">
+                            <div class="input-group mb-1"><h5>礼物姬</h5></div>
+                            <div class="input-group mb-3 thankGift-set" id="thankGift-set">
+                                <div class="header-set">
+                                    <div class="row align-items-center">
+                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input thankgift_is_open live-save" type="checkbox"><span class="_description" data-bs-placement="top" data-bs-toggle="tooltip" title="是否打开">开关</span></label></div>
+                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input thankgift_is_live_open live-save" type="checkbox"><span class="_description" data-bs-placement="top" data-bs-toggle="tooltip" title="仅在直播（开播）中有效">直播</span></label></div>
+                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input thankgift_is_open_self live-save" type="checkbox"><span class="_description" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="是否识别来着自己的弹幕（默认不识别来着自己的弹幕）">自己</span></label></div>
+                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input thankgift_is_tx_shield live-save" type="checkbox"><span class="_description" data-bs-placement="top" data-bs-toggle="tooltip" title="是否屏蔽天选时刻赠送的礼物">天选</span></label></div>
+                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input thankgift_is_num live-save" type="checkbox"><span class="_description" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="是否显示礼物数量，默认为显示<br/><span class='red-font'>仅在单人多种和多人多种模式下使用，单人单种如果要屏蔽礼物数量请去除%Num参数%</span>">数量</span></label></div>
+                                        <div class="col-auto"><select class="custom-select-sm thankgift_shield_status live-save" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="屏蔽：<br/>①:自定义为(根据礼物名字屏蔽，空为不屏蔽)；<br/>②:免费为屏蔽所有免费礼物(不要钱的)<br/>③:低价为目前默认屏蔽单价低于礼花的电池礼物；<br/>④:规则为自定义规则；"><option selected value="1">自定义</option><option value="2">免费</option><option value="3">低价</option><option value="4">规则</option></select></div>
+                                        <div class="col-auto"><select class="custom-select-sm thankgift_list_gift_shield_status live-save" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="自定义礼物屏蔽模式选择（模式自定义）：<br/>①:黑名单（默认）；<br/>②:白名单（仅感谢叫这个名字的礼物）；"><option selected value="1">黑名单</option><option value="2">白名单</option></select></div>
+                                        <div class="col-auto"><select class="custom-select-sm thankgift_thank_status live-save" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" id="thankgift_thank_status" title="感谢礼物模式<br/><span class='red-font'>切换模式注意修改参数!</span><br/>①:单人单种就是一个人对应一种礼物感谢<br/>②:单人多种是合并感谢一个人间隔时间内赠送的多少种礼物(可修改)，默认合并2种<br/>③:多人多种就是间隔时间内合并多少个人(可修改)他们的多少种礼物(可修改)，默认合并2个人他们的2种<br/><span class='red-font'>切换模式注意修改参数!</span>"><option selected value="1">单人单种</option><option value="2">单人多种</option></select></div>
+                                        <div class="col-auto small-input-wrap"><input class="small-input thankgift_num live-save" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" min="2" onKeypress="return (/[\d]/.test(String.fromCharCode(event.keyCode)))" placeholder="多少种" style="ime-mode: Disabled" title="每次感谢同一个人最多可以多少种礼物或每次感谢多少个人与礼物<br/><span class='red-font'>仅在单人多种和多人多种模式下使用</span>" type="number" value="2"></div>
+                                        <div class="col-auto small-input-wrap"><input class="small-input thankgift_delaytime live-save" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" min="0" placeholder="间隔(秒)" title="间隔多少秒发送一次感谢<br/>最小值为0,默认为3,可以小数点,例如3.5<br/><span class='red-font'>PS:每次感谢完成后进入冷却期，冷却期内的礼物不感谢直接丢弃</span>" type="number" value="0"></div>
+                                        <div class="col-auto"><select class="custom-select-sm thankgift_list_people_shield_status live-save" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="用户类型过滤：<br/>①:不屏蔽；<br/>②:仅佩戴本房间勋章；<br/>③:仅舰长；注：所有舰长（不仅限于本房间舰长）"><option selected value="1">不屏蔽</option><option value="2">仅勋章</option><option value="3">仅舰长</option></select></div>
+                                        <div class="col-auto"><button class="btn btn-primary btn-sm" data-bs-target='#giftshield-model' data-bs-toggle='modal' id="gift-shield-btn">礼物自定义规则屏蔽设置</button></div>
+                                    </div>
+                                </div>
+                                <div class="form-group footer-set">
+                                    <textarea class="form-control input-margin-b thankgift_shield live-save" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" placeholder="自定义屏蔽礼物名字，以 中文逗号(，)为分割；示例：&#10;辣条，亿圆，友谊的小船&#10;注意：为空那时候是什么都不屏蔽，仅在自定义模式下有用&#10;默认黑名单，相反白名单（仅感谢填写的）" title="这里填写自定义屏蔽礼物名字，以 中文逗号(，)为分割；示例：<br/>辣条，亿圆，友谊的小船<br/><span class='red-font'>注意：为空那时候是什么都不屏蔽，仅在自定义模式下有用<br/>默认黑名单，相反白名单（仅感谢填写的）</span>"></textarea>
+                                    <textarea class="form-control input-margin-b thankgift_thank live-save" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" id="thankgift_thank" placeholder="感謝 %uName%%Type%的%GiftName% x%Num%~" title="模式:单人单种<br/>多条语句时候注意以回车为分割每条语句,多条语句会随机发送其中一条<br/>感谢语，可选参数<br/> <span class='red-font'>%uName%</span>送礼人名称<br/><span class='red-font'>%Type%</span>赠送类型<br/><span class='red-font'>%GiftName%</span>礼物名称<br/><span class='red-font'>%Num%</span>礼物数量"></textarea>
+                                </div>
+                                <h6 data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="上舰私信姬<br/>1.0.6后独立于礼物感谢姬<br/>既不受感谢姬开关影响<br/><span class='red-font'>现在某些破站up主有破站官方的私聊，请开启前询问自己的up主有没有开启这个功能</span>">上舰私信姬<span class="red-font">(开启前请指这里看必要解释)</span></h6>
+                                <div class="header-set">
+                                    <div class="row align-items-center">
+                                        <div class="col-auto"><label class="form-check-label is_guard_report_click"><input class="form-check-input thankgift_is_guard_local live-save" type="checkbox"><span class="_description" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="是否开启舰长储存在本地<br/>如在开启上舰私信的情况下：不开启既为有人上舰都私信<br/>主要用于防止重复发送私信<br/>本地文件夹guardFile下<br/><span class='red-font'>注意变动该配置都需要重启弹幕姬</span>">舰长存储本地</span></label></div>
+                                        <div class="col-auto"><label class="form-check-label is_guard_report_click"><input class="form-check-input thankgift_is_guard_report live-save" type="checkbox"><span class="_description" data-bs-placement="top" data-bs-toggle="tooltip" title="是否开启上舰后发送私信">上舰长私信(需要登录)</span></label></div>
+                                        <div class="col-auto"><label class="form-check-label is_guard_code_click"><input class="form-check-input thankgift_is_gift_code live-save" type="checkbox"><span class="_description" data-bs-placement="top" data-bs-toggle="tooltip" title="是否开启礼品码模式,需要开启上舰私信">礼品码</span></label></div>
+                                    </div>
+                                </div>
+                                <div class="form-group footer-set">
+                                    <textarea class="form-control input-margin-b thankgift_report live-save" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" placeholder="回车为换行，不能超过破站官方规定的500字&#10;可选参数%uName%，刚刚上舰的人的名称&#10;可选参数%guardLevel%，舰队等级&#10;可选参数%giftCode%，礼品码" title="回车为换行，不能超过破站官方规定的500字<br/>可选参数<span class='red-font'>%uName%</span>，刚刚上舰的人的名称<br/>可选参数<span class='red-font'>%guardLevel%</span>，舰队等级<br/>可选参数<span class='red-font'>%giftCode%</span>，礼品码"></textarea>
+                                    <input class="form-control input-margin-b thankgift_barrageReport live-save" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" placeholder="上舰私信发送成功后，发送的自定义弹幕，默认空不发送" title="上舰私信发送成功后，发送的自定义弹幕，默认空不发送">
+                                    <textarea class="form-control input-margin-b thankgift_codeStrings live-save" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" placeholder="礼品码区域，多个礼品码以回车为分割礼品码，礼品码发送会自动删除，请做好备份&#10;以舰长-开头表示赠送给舰长，提督-开头，总督-开头；例如： 舰长-code&#10;没有特殊开头表示全部舰队等级都会赠送" title="礼品码区域，多个礼品码以回车为分割礼品码，礼品码发送会自动删除，请做好备份<br/>以舰长-开头表示赠送给舰长，提督-开头，总督-开头；例如： 舰长-code<br/>没有特殊开头表示全部舰队等级都会赠送"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div></div>
+            </div>
+        </div>
+    </div>
+</div>
+<th:block th:replace="~{fragments/layout :: shared-modals}"></th:block>
+<th:block th:replace="~{fragments/layout :: toast-and-save(page='audience')}"></th:block>
+<script th:src="@{/js/common.js}" type="text/javascript"></script>
+<script th:src="@{/js/audience.js}" type="text/javascript"></script>
+<th:block th:replace="~{fragments/layout :: inline-scripts(page='audience')}"></th:block>
+</body>
+</html>

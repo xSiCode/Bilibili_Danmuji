@@ -64,7 +64,8 @@
       "Bash(awk 'NR>=2021 && NR<=2148' \"E:\\\\claudeCode\\\\Bilibili_Danmuji\\\\src\\\\main\\\\resources\\\\templates\\\\index.html\")",
       "Bash(awk 'NR>=35 && NR<=55')",
       "Bash(./gradlew compileJava -q)",
-      "Bash(java -version)"
+      "Bash(java -version)",
+      "Bash(awk '/id=\"tab-/{print NR\": \"$0}' E:/claudeCode/Bilibili_Danmuji/src/main/resources/templates/index.html)"
     ]
   }
 }

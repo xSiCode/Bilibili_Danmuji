@@ -61,8 +61,57 @@ public class WebController {
     private TaskRegisterComponent taskRegisterComponent;
     private static final Logger LOGGER = LogManager.getLogger(WebController.class);
 
+    // === 页面拆分：/ 和 /index 保留兼容，新增7个功能页面路由 ===
     @RequestMapping(value = {"/", "index"})
     public String index(HttpServletRequest req, Model model) {
+        addCommonModelAttributes(req, model);
+        return "index";
+    }
+
+    @RequestMapping(value = "/settings")
+    public String settings(HttpServletRequest req, Model model) {
+        addCommonModelAttributes(req, model);
+        return "settings";
+    }
+
+    @RequestMapping(value = "/live-room")
+    public String liveRoom(HttpServletRequest req, Model model) {
+        addCommonModelAttributes(req, model);
+        return "live-room";
+    }
+
+    @RequestMapping(value = "/audience")
+    public String audience(HttpServletRequest req, Model model) {
+        addCommonModelAttributes(req, model);
+        return "audience";
+    }
+
+    @RequestMapping(value = "/danmaku")
+    public String danmaku(HttpServletRequest req, Model model) {
+        addCommonModelAttributes(req, model);
+        return "danmaku";
+    }
+
+    @RequestMapping(value = "/blacklist")
+    public String blacklist(HttpServletRequest req, Model model) {
+        addCommonModelAttributes(req, model);
+        return "blacklist";
+    }
+
+    @RequestMapping(value = "/dashboard")
+    public String dashboard(HttpServletRequest req, Model model) {
+        addCommonModelAttributes(req, model);
+        return "dashboard";
+    }
+
+    @RequestMapping(value = "/management")
+    public String management(HttpServletRequest req, Model model) {
+        addCommonModelAttributes(req, model);
+        return "management";
+    }
+
+    /** 注入所有页面共享的模型属性（状态栏等） */
+    private void addCommonModelAttributes(HttpServletRequest req, Model model) {
         if (StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
             if (req.getSession().getAttribute("status") == null) {
                 req.getSession().setAttribute("status", "login");
@@ -87,8 +136,6 @@ public class WebController {
         model.addAttribute("SERVER_PORT", serverAddressComponent.getPort());
         model.addAttribute("ROOM_INFO", PublicDataConf.ROOM_INFO);
         model.addAttribute("BUILD_TIME", getBuildTime());
-
-        return "index";
     }
 
     private String getBuildTime() {
@@ -120,7 +167,8 @@ public class WebController {
     }
 
     @RequestMapping(value = "/account_pool")
-    public String account_pool(Model model) {
+    public String account_pool(HttpServletRequest req, Model model) {
+        addCommonModelAttributes(req, model);
         return "account_pool";
     }
 
