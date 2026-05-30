@@ -16,10 +16,11 @@ import java.lang.reflect.Type;
 public class CoinTypeDeserializer implements ObjectDeserializer {
 
     @Override
+    @SuppressWarnings("unchecked")
     public <T> T deserialze(DefaultJSONParser parser, Type type, Object fieldName) {
         String value = parser.parseObject(String.class);
         Short coin_type = ParseIndentityTools.parseCoin_type(value);
-        return (T)coin_type;
+        return (T) coin_type;
 
     }
 

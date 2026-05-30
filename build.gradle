@@ -53,6 +53,8 @@ dependencies {
 	implementation group: 'com.google.protobuf', name: 'protobuf-java', version: '4.31.1'
 	// https://mvnrepository.com/artifact/com.google.protobuf/protobuf-java-util
 	implementation group: 'com.google.protobuf', name: 'protobuf-java-util', version: '4.31.1'
+	// jsr305 annotations pulled by protobuf reference javax.annotation.meta.When
+	implementation 'com.google.code.findbugs:annotations:3.0.1u2'
 	implementation fileTree(dir: 'lib', includes: ['*.jar'])
 }
 configurations {

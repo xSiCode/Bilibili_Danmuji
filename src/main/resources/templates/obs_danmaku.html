@@ -123,6 +123,91 @@
         return '[' + he(name || '表情') + ']';
     }
 
+    // ========== Bilibili emoji mapping (name -> CDN URL) ==========
+    // Populated from /emoji_panel (backend proxies Bilibili API).
+    var emojiMap = {};
+
+    // Fetch full emoji panel via local backend proxy.
+    function loadEmojiFromBilibili() {
+        console.log('[emoji] Fetching panel from /emoji_panel ...');
+        $.ajax({
+            url: '/emoji_panel',
+            dataType: 'text',
+            timeout: 10000,
+            success: function(rawText) {
+                console.log('[emoji] Raw text length:', rawText ? rawText.length : 0);
+                console.log('[emoji] First 300 chars:', rawText ? rawText.substring(0, 300) : 'null');
+                // manually parse
+                var data;
+                try {
+                    data = JSON.parse(rawText);
+                } catch(e) {
+                    console.log('[emoji] JSON parse error:', e.message);
+                    return;
+                }
+                console.log('[emoji] Parsed code:', data ? data.code : 'null');
+                if (data && data.code === 0 && data.data) {
+                    var pkgList = data.data.packages || data.data.all_packages;
+                    if (pkgList && pkgList.length) {
+                        var count = 0;
+                        pkgList.forEach(function(pkg) {
+                            if (pkg.emote) {
+                                pkg.emote.forEach(function(em) {
+                                    var name = (em.text || '').replace(/^\[|\]$/g, '');
+                                    if (name && em.url) {
+                                        emojiMap[name] = em.url.replace(/^http:/, 'https:');
+                                        count++;
+                                    }
+                                });
+                            }
+                        });
+                        console.log('[emoji] API loaded ' + count + ' emojis into map (total: ' + Object.keys(emojiMap).length + ')');
+                        // Add known aliases for emojis with alternate names
+                        addEmojiAliases();
+                    } else {
+                        console.log('[emoji] data has no packages/all_packages, keys:', data.data ? Object.keys(data.data) : 'none');
+                    }
+                } else {
+                    console.log('[emoji] Response invalid — code:', data ? data.code : 'null', 'has data:', !!data && !!data.data);
+                }
+            },
+            error: function(xhr, status, err) {
+                console.log('[emoji] Backend unavailable (' + status + ': ' + err + ')');
+            }
+        });
+    }
+
+    // Add known aliases — map alternate emoji names to existing ones.
+    function addEmojiAliases() {
+        var aliases = {
+            'dog': 'doge'           // old name → current doge
+            // Extend here if more aliases discovered
+        };
+        var added = 0;
+        for (var alias in aliases) {
+            if (aliases.hasOwnProperty(alias) && !emojiMap[alias] && emojiMap[aliases[alias]]) {
+                emojiMap[alias] = emojiMap[aliases[alias]];
+                added++;
+            }
+        }
+        if (added > 0) console.log('[emoji] Added ' + added + ' aliases');
+    }
+
+    // Replace [name] patterns in message text with <img> tags.
+    function replaceEmojiTags(msg) {
+        if (!msg) return '';
+        return String(msg).replace(/\[([^\]]+)\]/g, function(match, name) {
+            var url = emojiMap[name];
+            if (url) {
+                var src = url;
+                if (src.indexOf('//') === 0) src = 'https:' + src;
+                else if (src.indexOf('https:') !== 0) src = 'https:' + src.replace(/^https?:/, '');
+                return '<img class="emoticon-img" src="' + he(src) + '" title="' + he(name) + '" onerror="this.outerHTML=\'[\'+this.title+\']\'">';
+            }
+            return match;
+        });
+    }
+
     function avatarHtml(uid, uname) {
         var bg = bgColor(uid);
         var ch = avatarChar(uname);
@@ -134,7 +219,7 @@
         if (emoticonUrl) {
             content = buildEmoticonHtml(msg, emoticonUrl, emoticonName);
         } else {
-            content = he(msg || '');
+            content = replaceEmojiTags(he(msg || ''));
         }
         var $row = $('<div class="dm-row"></div>');
         $row.append(avatarHtml(uid, uname));
@@ -231,7 +316,7 @@
         }
     }
 
-    $(function() { connectWs(); });
+    $(function() { loadEmojiFromBilibili(); connectWs(); });
 </script>
 </body>
 </html>

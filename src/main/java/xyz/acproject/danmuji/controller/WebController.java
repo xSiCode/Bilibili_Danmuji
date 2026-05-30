@@ -129,6 +129,92 @@ public class WebController {
         return "obs_danmaku";
     }
 
+    // === Emoji panel: proxy Bilibili emoji API with 24h in-memory cache ===
+    private volatile String cachedEmojiJson;
+    private volatile long cachedEmojiTime;
+    private static final long EMOJI_CACHE_TTL = 24 * 60 * 60 * 1000L;
+
+    @ResponseBody
+    @GetMapping(value = "/emoji_panel")
+    public String emojiPanel(HttpServletRequest req) {
+        // Return cached response if still valid (unless ?refresh=true)
+        if (!"true".equals(req.getParameter("refresh"))
+                && cachedEmojiJson != null
+                && System.currentTimeMillis() - cachedEmojiTime < EMOJI_CACHE_TTL) {
+            LOGGER.debug("emojiPanel: cache hit ({} chars, {}s old)",
+                    cachedEmojiJson.length(), (System.currentTimeMillis() - cachedEmojiTime) / 1000);
+            return cachedEmojiJson;
+        }
+
+        String replyBody = fetchEmojiApi("https://api.bilibili.com/x/emote/user/panel/web?business=reply");
+        String pkgBody  = fetchEmojiApi("https://api.bilibili.com/x/emote/user/package/web?business=reply");
+
+        String result;
+        if (isValidEmojiResponse(replyBody) && isValidEmojiResponse(pkgBody)) {
+            result = mergeEmojiResponses(replyBody, pkgBody);
+            LOGGER.info("emojiPanel: merged reply+pkg, {} chars", result.length());
+        } else if (isValidEmojiResponse(replyBody)) {
+            result = replyBody;
+            LOGGER.info("emojiPanel: reply only, {} chars", result.length());
+        } else if (isValidEmojiResponse(pkgBody)) {
+            result = pkgBody;
+            LOGGER.info("emojiPanel: pkg only, {} chars", result.length());
+        } else {
+            LOGGER.warn("emojiPanel: all APIs failed, returning empty");
+            return "{}";
+        }
+
+        cachedEmojiJson = result;
+        cachedEmojiTime = System.currentTimeMillis();
+        return result;
+    }
+
+    private String mergeEmojiResponses(String a, String b) {
+        try {
+            com.alibaba.fastjson.JSONObject ja = com.alibaba.fastjson.JSONObject.parseObject(a);
+            com.alibaba.fastjson.JSONObject jb = com.alibaba.fastjson.JSONObject.parseObject(b);
+            com.alibaba.fastjson.JSONArray pkgs = ja.getJSONObject("data").getJSONArray("packages");
+            com.alibaba.fastjson.JSONArray extra = jb.getJSONObject("data").getJSONArray("packages");
+            if (extra != null) for (int i = 0; i < extra.size(); i++) pkgs.add(extra.getJSONObject(i));
+            return ja.toJSONString();
+        } catch (Exception e) { LOGGER.error("emojiPanel merge error", e); return a; }
+    }
+
+    private String fetchEmojiApi(String url) {
+        java.net.HttpURLConnection conn = null;
+        try {
+            conn = (java.net.HttpURLConnection) new java.net.URL(url).openConnection();
+            conn.setConnectTimeout(10000);
+            conn.setReadTimeout(10000);
+            conn.setRequestProperty("Referer", "https://www.bilibili.com/");
+            conn.setRequestProperty("Origin", "https://www.bilibili.com");
+            conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+            if (StringUtils.isNotBlank(PublicDataConf.USERCOOKIE))
+                conn.setRequestProperty("Cookie", PublicDataConf.USERCOOKIE);
+            int code = conn.getResponseCode();
+            java.io.InputStream is = (code >= 200 && code < 300) ? conn.getInputStream() : conn.getErrorStream();
+            String body = "";
+            if (is != null) { java.util.Scanner s = new java.util.Scanner(is, "UTF-8").useDelimiter("\\A"); body = s.hasNext() ? s.next() : ""; s.close(); }
+            LOGGER.info("emojiPanel: HTTP {} from {} ({} chars)", code, url, body.length());
+            if (code >= 200 && code < 300 && !body.isEmpty()) return body;
+            LOGGER.warn("emojiPanel: failed/empty from {} (HTTP {})", url, code);
+        } catch (Exception e) { LOGGER.error("emojiPanel: exception {} — {}", url, e.getMessage()); }
+        finally { if (conn != null) conn.disconnect(); }
+        return null;
+    }
+
+    private boolean isValidEmojiResponse(String body) {
+        if (body == null || body.isEmpty()) return false;
+        try {
+            com.alibaba.fastjson.JSONObject j = com.alibaba.fastjson.JSONObject.parseObject(body);
+            if (j.getInteger("code") != null && j.getInteger("code") == 0 && j.getJSONObject("data") != null) {
+                com.alibaba.fastjson.JSONObject d = j.getJSONObject("data");
+                if (d.getJSONArray("packages") != null || d.getJSONArray("all_packages") != null) return true;
+            }
+        } catch (Exception ignored) {}
+        return false;
+    }
+
     @RequestMapping(value = "/login")
     public String login(HttpServletRequest req) {
         if (req.getSession().getAttribute("status") == null) {
