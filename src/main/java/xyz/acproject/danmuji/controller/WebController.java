@@ -46,6 +46,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import xyz.acproject.danmuji.tools.RoomInfoLogTools;
 import xyz.acproject.danmuji.utils.OkHttp3Utils;
+import xyz.acproject.danmuji.thread.core.ParseMessageThread;
 
 /**
  * @author BanqiJane
@@ -959,6 +960,8 @@ public class WebController {
             try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"))) {
                 writer.write(com.alibaba.fastjson.JSON.toJSONString(data, true));
             }
+            // 通知缓存刷新，避免与内存状态不一致
+            ParseMessageThread.invalidateAutoBlockCache();
             return Response.success(0, req);
         } catch (Exception e) {
             LOGGER.error("deleteAutoBlockRecord error", e);
@@ -998,6 +1001,8 @@ public class WebController {
                     try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"))) {
                         writer.write(com.alibaba.fastjson.JSON.toJSONString(data, true));
                     }
+                    // 通知缓存刷新
+                    ParseMessageThread.invalidateAutoBlockCache();
                 }
             } catch (Exception e) {
                 LOGGER.error("unblockAutoBlockUser delete record error", e);

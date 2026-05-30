@@ -28,8 +28,15 @@ public class SendBarrageThread extends Thread {
             if (FLAG) {
                 return;
             }
-            if (PublicDataConf.webSocketProxy != null && !PublicDataConf.webSocketProxy.isOpen()) {
-                return;
+            if (PublicDataConf.webSocketProxy == null || !PublicDataConf.webSocketProxy.isOpen()) {
+                // WebSocket 未就绪（未连接或已断开），等待重连后继续，而非直接退出线程
+                try {
+                    Thread.sleep(3000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+                continue;
             }
             barrageStr = PublicDataConf.barrageString.poll();
             if (barrageStr != null && StringUtils.isNotBlank(barrageStr)) {

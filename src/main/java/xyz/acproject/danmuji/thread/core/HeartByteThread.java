@@ -32,17 +32,27 @@ public class HeartByteThread extends Thread {
 			if (HFLAG) {
 				return;
 			}
-			if(PublicDataConf.webSocketProxy.isOpen()) {
+			if (PublicDataConf.webSocketProxy != null && PublicDataConf.webSocketProxy.isOpen()) {
 				try {
 					Thread.sleep(30000);
-					PublicDataConf.webSocketProxy.send(HexUtils.fromHexString(PublicDataConf.heartByte));
+					// 二次确认：sleep 后连接可能已断开（重连期间 webSocketProxy 被置 null）
+					if (PublicDataConf.webSocketProxy != null && PublicDataConf.webSocketProxy.isOpen()) {
+						PublicDataConf.webSocketProxy.send(HexUtils.fromHexString(PublicDataConf.heartByte));
+					}
 				} catch (Exception e) {
 					// TODO: handle exception
-//					LOGGER.info("心跳线程关闭:"+e);
-//					e.printStackTrace();
+	//				LOGGER.info("心跳线程关闭:"+e);
+	//				e.printStackTrace();
+				}
+			} else {
+				// webSocketProxy 未就绪，短暂等待后重试而非空转
+				try {
+					Thread.sleep(1000);
+				} catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
 				}
 			}
-			
+
 		}
 	}
 

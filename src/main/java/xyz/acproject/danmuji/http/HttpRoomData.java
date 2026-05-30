@@ -1091,12 +1091,10 @@ public class HttpRoomData {
 
     private static int getKeyWordsScore(String dataStr, StringBuilder logSb) {
         int blackWhiteScore = 0;
-        boolean hasAny = false;
 
         if (PublicDataConf.centerSetConf.getBlack() != null && PublicDataConf.centerSetConf.getBlack().getNames() != null) {
             for (String s : PublicDataConf.centerSetConf.getBlack().getNames()) {
                 if (StringUtils.isBlank(s)) continue;
-                hasAny = true;
                 if (StringUtils.contains(dataStr, s)) {
                     blackWhiteScore -= 2;
                     logSb.append(" '").append(s).append("-2'");
@@ -1107,7 +1105,6 @@ public class HttpRoomData {
         if (PublicDataConf.centerSetConf.getWhite() != null && PublicDataConf.centerSetConf.getWhite().getNames() != null) {
             for (String s : PublicDataConf.centerSetConf.getWhite().getNames()) {
                 if (StringUtils.isBlank(s)) continue;
-                hasAny = true;
                 if (StringUtils.contains(dataStr, s)) {
                     blackWhiteScore++;
                     logSb.append(" '").append(s).append("+1'");
@@ -1115,9 +1112,6 @@ public class HttpRoomData {
             }
         }
 
-        if (!hasAny) {
-            logSb.append(" [key没获取到]");
-        }
         return blackWhiteScore;
     }
 

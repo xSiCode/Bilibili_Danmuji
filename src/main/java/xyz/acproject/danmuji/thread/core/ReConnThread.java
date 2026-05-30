@@ -9,7 +9,7 @@ import xyz.acproject.danmuji.utils.SpringUtils;
 
 /**
  * @ClassName ReConnThread
- * @Description TODO
+ * @Description 断线重连线程，指数退避策略
  * @author BanqiJane
  * @date 2020年8月10日 下午12:29:52
  *
@@ -18,44 +18,44 @@ import xyz.acproject.danmuji.utils.SpringUtils;
 public class ReConnThread extends Thread {
 	public volatile boolean RFLAG = false;
 	private static final Logger LOGGER = LogManager.getLogger(ReConnThread.class);
-	private volatile Integer num =0;
-	private ClientServiceImpl clientService = SpringUtils.getBean(ClientServiceImpl.class); 
-	private int TIME = 10000;
+	private volatile int num = 0;
+	private static final int MAX_RETRIES = 100;
+	private static final int INITIAL_DELAY_MS = 5000;
+	private static final int MAX_DELAY_MS = 300000;
+	private ClientServiceImpl clientService = SpringUtils.getBean(ClientServiceImpl.class);
+	private int currentDelay = INITIAL_DELAY_MS;
 
 	@Override
-	public synchronized void run() {
-		// TODO 自动生成的方法存根
+	public void run() {
 		super.run();
 		while (!RFLAG) {
 			try {
-				Thread.sleep(TIME);
+				Thread.sleep(currentDelay);
 			} catch (InterruptedException e) {
-				// TODO 自动生成的 catch 块
-				LOGGER.error(e);
-			}
-			if(RFLAG) {
+				LOGGER.error("重连线程被中断", e);
+				Thread.currentThread().interrupt();
 				return;
 			}
-			if(num>20) {
-				this.TIME = 300000;
-//				RFLAG=true;
-//				num=0;
-//				return;
-			}
-			if (!PublicDataConf.webSocketProxy.isOpen()) {
-				try {
-					clientService.reConnService();
-				} catch (Exception e) {
-					// TODO 自动生成的 catch 块
-					LOGGER.error(e);
-				}
-				num++;
-			System.out.println("每"+this.TIME/1000+"秒,进行重连第"+num+"次(來源於綫程重連機制beta1.2)");
-			}else {
-				num=0;
-				RFLAG=true;
+			if (RFLAG) {
 				return;
 			}
+			// 指数退避：5s → 10s → 20s → 40s → 80s → 160s → 300s (上限)
+			if (num < MAX_RETRIES) {
+				currentDelay = Math.min(INITIAL_DELAY_MS * (1 << Math.min(num, 6)), MAX_DELAY_MS);
+			}
+			if (PublicDataConf.webSocketProxy != null && PublicDataConf.webSocketProxy.isOpen()) {
+				num = 0;
+				currentDelay = INITIAL_DELAY_MS;
+				RFLAG = true;
+				return;
+			}
+			try {
+				clientService.reConnService();
+			} catch (Exception e) {
+				LOGGER.error("重连失败", e);
+			}
+			num++;
+			LOGGER.info("每{}秒,进行重连第{}次", currentDelay / 1000, num);
 		}
 	}
 
