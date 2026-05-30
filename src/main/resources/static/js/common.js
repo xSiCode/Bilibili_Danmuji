@@ -5435,8 +5435,17 @@ method.saveSet = function() {
 // ========== 关注直播间列表 ==========
 var watchedRoomsData = [];
 
-// 加载关注直播间列表
+// 加载关注直播间列表（优先从localStorage读取，后台静默更新）
 method.loadWatchedRooms = function() {
+    // 先从本地缓存读取，立即渲染
+    try {
+        var cached = localStorage.getItem('watchedRoomsData');
+        if (cached) {
+            watchedRoomsData = JSON.parse(cached);
+            method.renderWatchedRoomTable();
+        }
+    } catch(e) {}
+    // 再从服务器拉取最新数据更新
     $.ajax({
         url: '../getWatchedRooms',
         async: true,
@@ -5445,15 +5454,24 @@ method.loadWatchedRooms = function() {
         dataType: 'json',
         success: function(data) {
             if (data && data.result) {
-                watchedRoomsData = data.result;
-                method.renderWatchedRoomTable();
+                var fresh = JSON.stringify(data.result);
+                var old = localStorage.getItem('watchedRoomsData');
+                // 数据有变化才更新DOM和缓存
+                if (fresh !== old) {
+                    watchedRoomsData = data.result;
+                    localStorage.setItem('watchedRoomsData', fresh);
+                    method.renderWatchedRoomTable();
+                }
             }
         },
         error: function() {
-            // 静默失败，文件可能还不存在
+            // 静默失败，使用缓存数据
         }
     });
 };
+
+// 关注列表排序状态
+var watchedSort = { field: null, asc: true };
 
 // 渲染关注直播间表格
 method.renderWatchedRoomTable = function() {
@@ -5461,33 +5479,106 @@ method.renderWatchedRoomTable = function() {
     var $tbody = $('#watched-rooms-tbody');
     var $empty = $('#watched-rooms-empty');
     $tbody.empty();
-    if (!watchedRoomsData || watchedRoomsData.length === 0) {
+
+    // 获取当前连接的房间ID
+    var currentRoomId = null;
+    var $section = $('.watched-rooms-section');
+    if ($section.length) {
+        var attrVal = $section.attr('data-current-roomid');
+        if (attrVal && attrVal !== '' && attrVal !== 'null') currentRoomId = parseInt(attrVal);
+    }
+
+    // 合并当前连接房间到列表（如果不在列表中则自动添加）
+    var data = watchedRoomsData.slice();
+    if (currentRoomId && !data.some(function(r) { return r.roomId == currentRoomId; })) {
+        // 当前房间不在关注列表中，从页面元素读取信息
+        var currentRoom = {
+            anchorUid: parseInt($('.ar-name').attr('href') ? ($('.ar-name').attr('href').split('/').pop() || 0) : 0),
+            anchorName: $('.ar-name').text().trim() || '-',
+            roomId: currentRoomId,
+            roomName: $('.status-bar a.window-open-x').first().text().trim() || '-',
+            areaName: '',
+            parentAreaName: '',
+            liveStatus: $('.status-live').text().indexOf('直播中') >= 0 ? 1 : 0,
+            _isCurrent: true
+        };
+        data.unshift(currentRoom);
+    }
+
+    if (!data || data.length === 0) {
         $table.hide();
         $empty.show();
         return;
     }
+    // 排序（当前连接的房间始终在最前面）
+    if (watchedSort.field) {
+        data.sort(function(a, b) {
+            if (a._isCurrent) return -1;
+            if (b._isCurrent) return 1;
+            var va = a[watchedSort.field] || '', vb = b[watchedSort.field] || '';
+            if (typeof va === 'number') return watchedSort.asc ? va - vb : vb - va;
+            return watchedSort.asc ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
+        });
+    }
     $table.show();
     $empty.hide();
-    watchedRoomsData.forEach(function(room) {
+    // 更新表头排序箭头
+    $('#watched-rooms-table th[data-sort]').each(function() {
+        var f = $(this).attr('data-sort');
+        $(this).find('.sort-arrow').html(f === watchedSort.field ? (watchedSort.asc ? ' ▲' : ' ▼') : '');
+    });
+    data.forEach(function(room) {
+        var isCurrent = room._isCurrent || (currentRoomId && room.roomId == currentRoomId);
         var statusHtml = (room.liveStatus == 1)
             ? '<span style="color:#4eff4e;">●直播中</span>'
             : '<span style="color:#ff6b6b;">●未开播</span>';
-        var areaText = room.areaName || '';
-        if (room.parentAreaName && room.parentAreaName !== room.areaName) {
-            areaText = room.parentAreaName + ' · ' + (room.areaName || '');
+        // 分区链接
+        var areaHtml = '-';
+        if (room.areaName) {
+            var areaUrl = 'https://live.bilibili.com/p/eden/area-tags?parent_area_id=' + (room.parentAreaId || 0) + '&area_id=' + (room.areaId || 0);
+            areaHtml = '<a href="' + areaUrl + '" target="_blank" style="text-decoration:none;font-size:11px;" title="查看分区">' + (room.parentAreaName && room.parentAreaName !== room.areaName ? room.parentAreaName + '·' : '') + room.areaName + '</a>';
         }
-        var row = '<tr>' +
-            '<td style="white-space:nowrap;">' + (room.anchorUid || '-') + '</td>' +
-            '<td style="white-space:nowrap;">' + (room.anchorName || '-') + '</td>' +
-            '<td style="white-space:nowrap;">' + (room.roomId || '-') + '</td>' +
-            '<td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (room.roomName || '-') + '</td>' +
-            '<td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;">' + (areaText || '-') + '</td>' +
-            '<td style="white-space:nowrap;">' + statusHtml + '</td>' +
-            '<td><button class="btn btn-sm btn-outline-primary watched-connect-btn" data-roomid="' + room.roomId + '">连接</button></td>' +
-            '<td><button class="btn btn-sm btn-outline-danger watched-delete-btn" data-roomid="' + room.roomId + '">删除</button></td>' +
+        // 主播名链接
+        var anchorHtml = room.anchorUid
+            ? '<a href="https://space.bilibili.com/' + room.anchorUid + '" target="_blank" style="text-decoration:none;" title="查看主播空间">' + (room.anchorName || '-') + '</a>'
+            : (room.anchorName || '-');
+        // 房间名链接
+        var roomNameHtml = room.roomId
+            ? '<a href="https://live.bilibili.com/' + room.roomId + '" target="_blank" style="text-decoration:none;" title="进入直播间">' + (room.roomName || '-') + '</a>'
+            : (room.roomName || '-');
+        // 类型 + 连接/断开按钮
+        var typeHtml, actionHtml;
+        if (isCurrent) {
+            typeHtml = '<span class="badge bg-primary" style="font-size:11px;">当前连接</span>';
+            actionHtml = '<button class="btn btn-sm btn-outline-warning watched-disconnect-btn">断开</button>';
+        } else {
+            typeHtml = '<span class="badge bg-secondary" style="font-size:11px;">关注</span>';
+            actionHtml = '<button class="btn btn-sm btn-outline-primary watched-connect-btn" data-roomid="' + room.roomId + '">连接</button>';
+        }
+        var row = '<tr' + (isCurrent ? ' class="table-active"' : '') + '>' +
+            '<td>' + (room.anchorUid || '-') + '</td>' +
+            '<td>' + anchorHtml + '</td>' +
+            '<td>' + (room.roomId || '-') + '</td>' +
+            '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + roomNameHtml + '</td>' +
+            '<td>' + areaHtml + '</td>' +
+            '<td>' + typeHtml + '</td>' +
+            '<td style="width:80px;text-align:right;">' + statusHtml + '</td>' +
+            '<td style="width:80px;text-align:right;">' + actionHtml + '</td>' +
+            '<td style="width:80px;text-align:right;">' + (!isCurrent ? '<button class="btn btn-sm btn-outline-danger watched-delete-btn" data-roomid="' + room.roomId + '">删除</button>' : '') + '</td>' +
             '</tr>';
         $tbody.append(row);
     });
+};
+
+// 点击表头排序
+method.sortWatchedRooms = function(field) {
+    if (watchedSort.field === field) {
+        watchedSort.asc = !watchedSort.asc;
+    } else {
+        watchedSort.field = field;
+        watchedSort.asc = true;
+    }
+    method.renderWatchedRoomTable();
 };
 
 // 添加关注直播间
@@ -5525,6 +5616,8 @@ method.addWatchedRoom = function() {
                     roomName: info.roomName || ('房间' + roomid),
                     areaName: info.areaName || '',
                     parentAreaName: info.parentAreaName || '',
+                    areaId: info.areaId || 0,
+                    parentAreaId: info.parentAreaId || 0,
                     liveStatus: info.liveStatus || 0
                 });
                 method.saveWatchedRoomsData();
@@ -5545,14 +5638,22 @@ method.addWatchedRoom = function() {
     });
 };
 
-// 保存关注直播间数据到服务器
+// 保存关注直播间数据到服务器 + 同步localStorage
 method.saveWatchedRoomsData = function() {
+    // 去除临时字段 _isCurrent
+    var clean = watchedRoomsData.map(function(r) {
+        var o = {};
+        Object.keys(r).forEach(function(k) { if (k !== '_isCurrent') o[k] = r[k]; });
+        return o;
+    });
+    var json = JSON.stringify(clean);
+    try { localStorage.setItem('watchedRoomsData', json); } catch(e) {}
     $.ajax({
         url: '../saveWatchedRooms',
         async: true,
         cache: false,
         type: 'POST',
-        data: { data: JSON.stringify(watchedRoomsData) },
+        data: { data: json },
         dataType: 'json',
         error: function() {
             showMessage('保存关注列表失败', 'danger', 3);
@@ -5569,7 +5670,6 @@ method.deleteWatchedRoom = function(roomId) {
 
 // 连接到关注直播间（先断开当前，再连接）
 method.connectToWatchedRoom = function(roomId) {
-    if (!confirm('确定要连接到房间 ' + roomId + ' 吗？当前房间连接将被断开。')) return;
     // 先断开当前连接，再连接新房间
     $.ajax({
         url: '../disconnectRoom',
@@ -5622,16 +5722,27 @@ $(function() {
     // 删除按钮
     $(document).on('click', '.watched-delete-btn', function() {
         var roomId = $(this).attr('data-roomid');
-        if (confirm('确定要删除该直播间吗？')) {
-            method.deleteWatchedRoom(roomId);
-        }
+        method.deleteWatchedRoom(roomId);
     });
-
-    // 切换到房间设置标签时加载关注列表
-    var _origSwitchTab = switchTab;
-    if (typeof _origSwitchTab === 'function') {
-        // loadWatchedRooms会在页面初始化时调用
-    }
+    // 表头排序
+    $(document).on('click', '#watched-rooms-table th[data-sort]', function() {
+        var field = $(this).attr('data-sort');
+        method.sortWatchedRooms(field);
+    });
+    // 断开当前连接
+    $(document).on('click', '.watched-disconnect-btn', function() {
+        $.ajax({
+            url: '../disconnectRoom',
+            async: true,
+            cache: false,
+            type: 'GET',
+            dataType: 'json',
+            success: function() {
+                showMessage('已断开连接，页面即将刷新', 'success', 2);
+                setTimeout(function() { window.location.reload(); }, 1000);
+            }
+        });
+    });
 });
 
 // 页面初始化时加载关注直播间列表

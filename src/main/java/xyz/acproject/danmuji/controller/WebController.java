@@ -442,6 +442,8 @@ public class WebController {
                             data.put("roomName", roomInfo.getString("title"));
                             data.put("areaName", roomInfo.getString("area_name"));
                             data.put("parentAreaName", roomInfo.getString("parent_area_name"));
+                            data.put("areaId", roomInfo.getInteger("area_id"));
+                            data.put("parentAreaId", roomInfo.getInteger("parent_area_id"));
                         }
                     }
                 }
