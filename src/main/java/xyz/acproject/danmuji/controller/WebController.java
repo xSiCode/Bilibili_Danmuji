@@ -1,5 +1,6 @@
 package xyz.acproject.danmuji.controller;
 
+import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import org.apache.commons.lang3.StringUtils;
@@ -19,6 +20,8 @@ import xyz.acproject.danmuji.conf.set.*;
 import xyz.acproject.danmuji.entity.base.Response;
 import xyz.acproject.danmuji.entity.login_data.LoginData;
 import xyz.acproject.danmuji.entity.login_data.Qrcode;
+import xyz.acproject.danmuji.entity.room_data.RoomInit;
+import xyz.acproject.danmuji.entity.room_data.Room;
 import xyz.acproject.danmuji.http.HttpRoomData;
 import xyz.acproject.danmuji.http.HttpUserData;
 import xyz.acproject.danmuji.service.ClientService;
@@ -42,6 +45,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.stream.Collectors;
 import xyz.acproject.danmuji.tools.RoomInfoLogTools;
+import xyz.acproject.danmuji.utils.OkHttp3Utils;
 
 /**
  * @author BanqiJane
@@ -391,6 +395,110 @@ public class WebController {
             }
         }
         return Response.success(flag, req);
+    }
+
+    // === 关注直播间列表 ===
+    @ResponseBody
+    @GetMapping(value = "/getRoomInfo")
+    public Response<?> getRoomInfo(@RequestParam("roomid") Long roomid, HttpServletRequest req) {
+        JSONObject data = new JSONObject();
+        try {
+            // 1. 获取房间初始化信息（room_id, uid, live_status）
+            RoomInit roomInit = HttpRoomData.httpGetRoomInit(roomid);
+            long realRoomId = roomid;
+            if (roomInit != null) {
+                realRoomId = roomInit.getRoom_id() != 0 ? roomInit.getRoom_id() : roomid;
+                data.put("roomId", realRoomId);
+                data.put("anchorUid", roomInit.getUid());
+                data.put("liveStatus", roomInit.getLive_status());
+            }
+            // 2. 获取主播名称
+            try {
+                Room roomData = HttpRoomData.httpGetRoomData(realRoomId);
+                if (roomData != null && roomData.getUname() != null) {
+                    data.put("anchorName", roomData.getUname());
+                }
+            } catch (Exception e) {
+                LOGGER.warn("获取房间数据失败 roomid={}: {}", roomid, e.getMessage());
+            }
+            // 3. 直接调用B站API获取房间详细信息（标题、分区）
+            try {
+                Map<String, String> headers = new HashMap<>(3);
+                headers.put("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+                headers.put("referer", "https://live.bilibili.com/" + realRoomId);
+                if (StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
+                    headers.put("cookie", PublicDataConf.USERCOOKIE);
+                }
+                String respBody = OkHttp3Utils.getHttp3Utils()
+                        .httpGet("https://api.live.bilibili.com/xlive/web-room/v1/index/getInfoByRoom?room_id=" + realRoomId, headers, null)
+                        .body().string();
+                if (respBody != null) {
+                    JSONObject respJson = JSONObject.parseObject(respBody);
+                    if (respJson.getShort("code") == 0 && respJson.get("data") != null) {
+                        // B站API中 room_info 是JSON字符串，需要二次解析
+                        String roomInfoStr = ((JSONObject) respJson.get("data")).getString("room_info");
+                        if (StringUtils.isNotBlank(roomInfoStr)) {
+                            JSONObject roomInfo = JSONObject.parseObject(roomInfoStr);
+                            data.put("roomName", roomInfo.getString("title"));
+                            data.put("areaName", roomInfo.getString("area_name"));
+                            data.put("parentAreaName", roomInfo.getString("parent_area_name"));
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                LOGGER.warn("获取房间详情失败 roomid={}: {}", realRoomId, e.getMessage());
+            }
+            // fallback
+            if (!data.containsKey("anchorName")) data.put("anchorName", "未知");
+            if (!data.containsKey("roomName")) data.put("roomName", "房间" + roomid);
+            if (!data.containsKey("areaName")) data.put("areaName", "");
+            if (!data.containsKey("parentAreaName")) data.put("parentAreaName", "");
+        } catch (Exception e) {
+            LOGGER.error("获取房间信息失败 roomid={}: {}", roomid, e.getMessage());
+            data.put("error", e.getMessage());
+        }
+        return Response.success(data, req);
+    }
+
+    @ResponseBody
+    @GetMapping(value = "/getWatchedRooms")
+    public Response<?> getWatchedRooms(HttpServletRequest req) {
+        JSONArray list = new JSONArray();
+        FileTools fileTools = new FileTools();
+        File file = new File(fileTools.getBaseJarPath(), "set/watched_rooms.json");
+        if (file.exists()) {
+            try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = br.readLine()) != null) sb.append(line);
+                list = JSONArray.parseArray(sb.toString());
+                if (list == null) list = new JSONArray();
+            } catch (Exception e) {
+                LOGGER.error("读取关注直播间列表失败: {}", e.getMessage());
+            }
+        }
+        return Response.success(list, req);
+    }
+
+    @ResponseBody
+    @PostMapping(value = "/saveWatchedRooms")
+    public Response<?> saveWatchedRooms(@RequestParam("data") String data, HttpServletRequest req) {
+        try {
+            FileTools fileTools = new FileTools();
+            File dir = new File(fileTools.getBaseJarPath(), "set");
+            if (!dir.exists()) dir.mkdirs();
+            File file = new File(dir, "watched_rooms.json");
+            try (BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"))) {
+                // pretty-print
+                JSONArray arr = JSONArray.parseArray(data);
+                bw.write(JSON.toJSONString(arr, true));
+                bw.flush();
+            }
+            return Response.success(true, req);
+        } catch (Exception e) {
+            LOGGER.error("保存关注直播间列表失败: {}", e.getMessage());
+            return Response.success(false, req);
+        }
     }
 
     @ResponseBody
