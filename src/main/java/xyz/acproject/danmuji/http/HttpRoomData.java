@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -574,15 +575,22 @@ public class HttpRoomData {
         return asyncHttpGetBody("https://api.vc.bilibili.com/dynamic_svr/v1/dynamic_svr/space_history?host_uid=" + mid + "&offset_dynamic_id=0&need_top=1", headers, null)
                 .thenApply(result -> {
                     if (result != null) {
-                        // 检查是否触发限流（B站返回的非正常响应）
-                        String resultStartStr = "{\"code\":0,\"message\":\"OK\"";
-                        if (result.contains(resultStartStr)) {
-                            // 正常响应，缓存结果
-                            apiCache.put(cacheKey, result);
-                        } else {
-                            // 异常响应，标记该Cookie被限流
+                        // 通过 code 字段判断请求结果（JSON解析，替代字符串匹配）
+                        try {
+                            JSONObject respJson = JSONObject.parseObject(result);
+                            Integer code = respJson != null ? respJson.getInteger("code") : null;
+                            if (code != null && code == 0) {
+                                // 正常响应，缓存结果
+                                apiCache.put(cacheKey, result);
+                            } else {
+                                // 异常响应，标记该Cookie被限流
+                                cookiePool.markRateLimited(usedCookie);
+                                LOGGER.warn("动态API异常响应 mid={}，code={}，已标记Cookie冷却", mid, code);
+                            }
+                        } catch (Exception e) {
+                            // JSON 解析失败，视为异常响应
                             cookiePool.markRateLimited(usedCookie);
-                            LOGGER.warn("动态API异常响应 mid={}，已标记Cookie冷却", mid);
+                            LOGGER.warn("动态API JSON解析失败 mid={}，已标记Cookie冷却", mid);
                         }
                     }
                     return result;
@@ -1009,12 +1017,12 @@ public class HttpRoomData {
                         cardLog.append(" 已关注+2");
                     } else if ((fans < 50 && attention > 4500) || attention > 4990) {
                         r.score--;
-                        r.type += "[疑似人机-1]";
-                        cardLog.append(" 疑似人机-1");
+                        r.type += "[人机关注-1]";
+                        cardLog.append(" 人机关注-1");
                     } else if (attention == 0 && fans == 0) {
                         r.score--;
-                        r.type += "[疑似人机-1]";
-                        cardLog.append(" 疑似人机-1");
+                        r.type += "[人机关注-1]";
+                        cardLog.append(" 人机关注-1");
                     }
 
                     // 等级
@@ -1114,8 +1122,10 @@ public class HttpRoomData {
     }
 
     /**
-     * 动态数据分析 — 关键词打分 + 隐藏判断。
+     * 动态数据分析 — JSON解析 + 关键词打分 + 隐藏判断。
      * 仅在 Phase 3（综合分=0时）调用。
+     * 解析 space_history API 返回的 JSON，提取有效文本进行关键词检测，
+     * 避免对原始 JSON 元数据进行粗糙的字符串匹配。
      */
     private static Pair<Integer, String> computeDynamicScore(String dynData, StringBuilder logSb) {
         if (dynData == null) {
@@ -1123,9 +1133,11 @@ public class HttpRoomData {
             return Pair.of(0, "[动态解析异常]");
         }
 
-        String resultStartStr = "{\"code\":0,\"message\":\"OK\"";
-        if (!dynData.contains(resultStartStr)) {
-            // API异常
+        // 解析 JSON，提取有效文本、动态数量和最新时间戳
+        ExtractedDynamicResult extracted = extractDynamicContent(dynData, logSb);
+
+        if (extracted == null) {
+            // JSON 解析失败 或 code != 0 → API异常
             if (cookiePool.getTotalAvailableCount() == 0
                     && schedulerDynamicColdWait.compareAndSet(false, true)) {
                 System.out.println("动态API: 所有账号Cookie均已冷却，触发全局熔断15分钟。");
@@ -1138,19 +1150,197 @@ public class HttpRoomData {
             return Pair.of(0, "");
         }
 
-        if (dynData.length() < 100) {
-            logSb.append("❗[动态:隐藏-1]");
+        if (extracted.cardCount == 0) {
+            logSb.append("❗[动态:无内容/隐藏-1]");
             return Pair.of(-1, "[动态隐藏-1]");
         }
 
-        logSb.append("❗[");
-        int kw = getKeyWordsScore(dynData, logSb);
-        if (kw != 0) {
-            logSb.append(" 关键词:").append(kw).append(" ");
-        }
-        logSb.append("动态黑白分:").append(kw).append("]");
+        int kw = getKeyWordsScore(extracted.text, logSb);
 
-        return Pair.of(kw, "[动态黑白分:" + kw + "]");
+        logSb.append("❗[动态数:").append(extracted.cardCount);
+        if (extracted.latestTimestamp > 0) {
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+            Date date = new Date(extracted.latestTimestamp * 1000);
+            logSb.append(" 最新:").append(sdf.format(date));
+
+            if(extracted.cardCount == 1){
+                boolean isNewUser = StringUtils.contains(extracted.text, "挑战转正答题考试"); //
+                if(isNewUser){
+                    int l = "2025-10-01 08:01".compareTo(date.toString());
+                    int r = "2026-02-01 08:01".compareTo(date.toString());
+                    if(l<0 && r>0){
+                        logSb.append(" 动态人机-1]");
+                        kw -= 1;
+                    }
+                }
+            }
+        }
+
+        if (kw != 0) {
+            logSb.append(" 动态黑白分:").append(kw).append("]");
+            return Pair.of(kw, "[动态黑白分:" + kw + "]");
+        } else {
+
+            logSb.append(" 动态黑白分:0]");
+            return Pair.of(0, "");
+        }
+
+
+
+    }
+
+    /**
+     * 从 space_history API 原始响应中提取动态内容。
+     * 每条动态由 "desc" + "card" 共同构成：
+     * - desc 提供 type（动态类型）、timestamp（发布时间）等元信息
+     * - card 是 JSON 字符串，包含实际内容（文字、标题、描述等）
+     *
+     * @return 提取结果（文本 + 动态数 + 最新时间戳），失败返回 null
+     */
+    private static ExtractedDynamicResult extractDynamicContent(String dynData, StringBuilder logSb) {
+        try {
+            JSONObject response = JSONObject.parseObject(dynData);
+            if (response == null) return null;
+
+            Integer code = response.getInteger("code");
+            if (code == null || code != 0) return null;
+
+            JSONObject data = response.getJSONObject("data");
+            if (data == null) return null;
+
+            JSONArray cards = data.getJSONArray("cards");
+            if (cards == null || cards.isEmpty()) {
+                return new ExtractedDynamicResult("", 0, 0L);
+            }
+
+            StringBuilder textBuilder = new StringBuilder();
+            long latestTimestamp = 0;
+
+            for (int i = 0; i < cards.size(); i++) {
+                JSONObject cardWrapper = cards.getJSONObject(i);
+                if (cardWrapper == null) continue;
+
+                JSONObject desc = cardWrapper.getJSONObject("desc");
+                Integer type = desc != null ? desc.getInteger("type") : null;
+                Long timestamp = desc != null ? desc.getLong("timestamp") : null;
+
+                // 更新最新时间戳
+                if (timestamp != null && timestamp > latestTimestamp) {
+                    latestTimestamp = timestamp;
+                }
+
+                // card 是 JSON 字符串，需要二次解析
+                String cardStr = cardWrapper.getString("card");
+                if (cardStr == null || cardStr.isEmpty()) continue;
+
+                JSONObject card;
+                try {
+                    card = JSONObject.parseObject(cardStr);
+                } catch (Exception e) {
+                    continue;
+                }
+                if (card == null) continue;
+
+                // 基于动态类型提取有效文本
+                String extracted = extractCardText(card, type);
+                if (extracted != null && !extracted.isEmpty()) {
+                    if (textBuilder.length() > 0) textBuilder.append(" ");
+                    textBuilder.append(extracted);
+                }
+            }
+
+            return new ExtractedDynamicResult(textBuilder.toString(), cards.size(), latestTimestamp);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * 根据动态类型从 card JSONObject 中提取有效文本。
+     * 不同 type 的 card 结构不同，按字段名精确提取以支持后续关键词检测。
+     */
+    private static String extractCardText(JSONObject card, Integer type) {
+        if (type == null) return "";
+
+        switch (type) {
+            case 1: { // 转发动态
+                JSONObject item = card.getJSONObject("item");
+                if (item != null) {
+                    String content = item.getString("content");
+                    if (StringUtils.isNotBlank(content)) return content;
+                }
+                // 递归提取被转发的内容
+                String originStr = card.getString("origin");
+                if (StringUtils.isNotBlank(originStr)) {
+                    try {
+                        JSONObject originCard = JSONObject.parseObject(originStr);
+                        if (originCard != null) {
+                            StringBuilder osb = new StringBuilder();
+                            String oTitle = originCard.getString("title");
+                            String oDesc = originCard.getString("desc");
+                            String oDynamic = originCard.getString("dynamic");
+                            if (StringUtils.isNotBlank(oTitle)) osb.append(oTitle).append(" ");
+                            if (StringUtils.isNotBlank(oDesc) && !"-".equals(oDesc)) osb.append(oDesc).append(" ");
+                            if (StringUtils.isNotBlank(oDynamic)) osb.append(oDynamic);
+                            return osb.toString().trim();
+                        }
+                    } catch (Exception ignored) {}
+                }
+                return "";
+            }
+            case 2: { // 纯文字/带图动态
+                JSONObject item = card.getJSONObject("item");
+                if (item != null) {
+                    String desc = item.getString("description");
+                    return desc != null ? desc : "";
+                }
+                return "";
+            }
+            case 8: { // 视频投稿
+                StringBuilder sb = new StringBuilder();
+                String title = card.getString("title");
+                String desc = card.getString("desc");
+                String dynamic = card.getString("dynamic");
+                if (StringUtils.isNotBlank(title)) sb.append(title).append(" ");
+                if (StringUtils.isNotBlank(desc) && !"-".equals(desc)) sb.append(desc).append(" ");
+                if (StringUtils.isNotBlank(dynamic)) sb.append(dynamic);
+                return sb.toString().trim();
+            }
+            case 64: { // 专栏文章
+                StringBuilder sb = new StringBuilder();
+                String title = card.getString("title");
+                String summary = card.getString("summary");
+                if (StringUtils.isNotBlank(title)) sb.append(title).append(" ");
+                if (StringUtils.isNotBlank(summary)) sb.append(summary);
+                return sb.toString().trim();
+            }
+            default: { // 未知类型，尝试通用提取
+                JSONObject item = card.getJSONObject("item");
+                if (item != null) {
+                    String content = item.getString("content");
+                    if (StringUtils.isNotBlank(content)) return content;
+                    String description = item.getString("description");
+                    if (StringUtils.isNotBlank(description)) return description;
+                }
+                String title = card.getString("title");
+                return title != null ? title : "";
+            }
+        }
+    }
+
+    /**
+     * 动态内容提取结果 — 不可变数据结构。
+     */
+    private static class ExtractedDynamicResult {
+        final String text;           // 所有动态拼接后的有效文本
+        final int cardCount;         // 动态条数
+        final long latestTimestamp;  // 最新动态时间戳（秒）
+
+        ExtractedDynamicResult(String text, int cardCount, long latestTimestamp) {
+            this.text = text;
+            this.cardCount = cardCount;
+            this.latestTimestamp = latestTimestamp;
+        }
     }
 
     /**
