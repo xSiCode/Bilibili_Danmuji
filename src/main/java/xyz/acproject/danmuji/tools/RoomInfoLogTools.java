@@ -60,7 +60,7 @@ public class RoomInfoLogTools {
         scheduler.scheduleWithFixedDelay(() -> {
             tick();
             flushToCsv();
-        }, 60, 60, TimeUnit.SECONDS);
+        }, 10, 10, TimeUnit.SECONDS);  // 10秒采样，比原来60秒提升6倍实时性
         Thread hook = new Thread(() -> {
             running = false;
             scheduler.shutdown();
@@ -135,11 +135,25 @@ public class RoomInfoLogTools {
         }
     }
 
+    /** 返回内存中的直播间数据（实时，无 CSV 读取延迟） */
+    public static List<Map.Entry<String, long[]>> getRoomInfoList() {
+        synchronized (roomInfoMap) {
+            return new ArrayList<>(roomInfoMap.entrySet());
+        }
+    }
+
+    /** 立即将内存数据刷入 CSV（供删除操作等需要即时持久化的场景调用） */
+    public static synchronized void flushNow() {
+        flushToCsv();
+    }
+
     public static synchronized void removeByTimeKey(String timeKey) {
         if (timeKey == null || timeKey.isEmpty()) return;
-        // timeKey format: "yyyy-MM-dd HH:mm:ss", map key is "yyyy-MM-dd HH:mm"
-        String mapKey = timeKey.length() >= 16 ? timeKey.substring(0, 16) : timeKey;
-        roomInfoMap.remove(mapKey);
+        // 先尝试精确匹配
+        if (roomInfoMap.remove(timeKey) != null) return;
+        // 秒级 key（19 位）降级为分钟前缀匹配（16 位），兼容新旧格式
+        String prefix = timeKey.length() >= 16 ? timeKey.substring(0, 16) : timeKey;
+        roomInfoMap.entrySet().removeIf(e -> e.getKey().startsWith(prefix));
     }
 
     private static synchronized void flushToCsv() {

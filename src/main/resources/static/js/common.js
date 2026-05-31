@@ -37,7 +37,7 @@ let vstState = {
     sortField: '最近',
     sortOrder: 'desc',
     rankLimit: 15,
-    headers: ['最近', 'id', '观众', '打分', '打分类型', '次数', '判定表', '场次'],
+    headers: ['最近', 'id', '观众', '打分类型', '打分', '次数', '判定表', '场次'],
     columnOrder: [0, 1, 2, 3, 4, 5, 6, 7],
     chartInstances: {}
 };
@@ -4086,22 +4086,44 @@ const method = {
             $.each(vstState.columnOrder, function (j, colIdx) {
                 if (colIdx < cols.length) {
                     var val = row[cols[colIdx]] || '';
-                    if (cols[colIdx] === '观众' && uid) {
-                        tr += '<td><a href="https://space.bilibili.com/' + uid + '" target="_blank" style="color:#0d6efd;">' + val + '</a></td>';
+                    var colName = cols[colIdx];
+                    var tdStyle = '';
+                    if (colName === '最近' || colName === 'id') {
+                        tdStyle = ' style="width:180px;text-align:left;"';
+                    } else if (colName === '观众') {
+                        tdStyle = ' style="width:40%;text-align:left;"';
+                    } else if (colName === '打分类型') {
+                        tdStyle = ' style="width:60%;text-align:left;"';
+                    } else if (colName === '打分' || colName === '次数' || colName === '判定表' || colName === '场次') {
+                        tdStyle = ' style="width:60px;text-align:right;"';
+                    }
+                    if (colName === '观众' && uid) {
+                        tr += '<td' + tdStyle + '><a href="https://space.bilibili.com/' + uid + '" target="_blank" style="color:#0d6efd;">' + val + '</a></td>';
                     } else {
-                        tr += '<td>' + val + '</td>';
+                        tr += '<td' + tdStyle + '>' + val + '</td>';
                     }
                 }
             });
             tr += '</tr>';
             $tbody.append(tr);
         });
-        // update sort indicators on headers (clear any inline width)
+        // update sort indicators on headers
         $('#vst-table-head th[data-sort]').each(function () {
             var f = $(this).data('sort');
-            $(this).text(f).css('width', '');
+            $(this).html(f + '<span class="sort-arrow"></span>');
+            var css = {cursor:'pointer'};
+            if (f === '最近' || f === 'id') {
+                css.width = '180px'; css.textAlign = 'left';
+            } else if (f === '观众') {
+                css.width = '40%'; css.textAlign = 'left';
+            } else if (f === '打分类型') {
+                css.width = '60%'; css.textAlign = 'left';
+            } else if (f === '打分' || f === '次数' || f === '判定表' || f === '场次') {
+                css.width = '60px'; css.textAlign = 'right';
+            }
+            $(this).css(css);
             if (f === vstState.sortField) {
-                $(this).text(f + ' ' + (vstState.sortOrder === 'asc' ? '▲' : '▼'));
+                $(this).find('.sort-arrow').text(vstState.sortOrder === 'asc' ? ' ▲' : ' ▼');
             }
         });
         setTimeout(function () { method.initVstColumnDrag(); }, 100);
@@ -5183,6 +5205,11 @@ function openSocket(ip, sliceh) {
             // console.log($("#danmu").scrollTop()+":"+$("div[class='danmu-child']:last").offset().top +":"+$("#danmu").height()+":"+$("#danmu")[0].scrollHeight);
             // 发现消息进入 开始处理前端触发逻辑
             let data = JSON.parse(msg.data);
+            if (data.cmd === "data_update") {
+                // 管理页面数据更新通知 — 触发对应板块刷新
+                $(document).trigger('danmuji:dataUpdate', [data.result]);
+                return;
+            }
             if (data.cmd === "cmdp") {
                 $("#danmu").append("<div class='danmu-child'>" + data.result + "</div>");
             } else {
@@ -5291,11 +5318,23 @@ function switchTab(tabId, el) {
     else if (tabId === 'follow-mgr') mgrLoadFn = method.loadFlwData;
     else if (tabId === 'gift-mgr') mgrLoadFn = method.loadGftData;
     else if (tabId === 'stranger-board') mgrLoadFn = method.loadSvData;
+    // 保存当前管理页面的刷新函数引用，供 WebSocket 推送触发
+    window._activeMgrLoadFn = mgrLoadFn;
     if (mgrLoadFn) {
         window._mgrRefreshTimer = setInterval(function () {
+            // 页面不可见时跳过自动刷新，降低消耗
+            if (document.hidden) return;
             if (typeof mgrLoadFn === 'function') mgrLoadFn();
         }, 60000);
     }
+    // WebSocket 数据更新 → 触发当前管理页面刷新（节流 3 秒内最多一次）
+    $(document).off('danmuji:refreshMgr').on('danmuji:refreshMgr', function() {
+        if (document.hidden) return;
+        var now = Date.now();
+        if (window._lastMgrRefresh && now - window._lastMgrRefresh < 3000) return;
+        window._lastMgrRefresh = now;
+        if (typeof window._activeMgrLoadFn === 'function') window._activeMgrLoadFn();
+    });
     // 侧边栏滚动到当前激活项
     if (el) {
         var $container = $(el).closest('.settings-sidebar');
@@ -5923,3 +5962,47 @@ $(function() {
         method.loadWatchedRooms();
     }, 300);
 });
+
+// ====== 管理页面实时数据刷新辅助 ======
+// 页面可见性 API：隐藏时暂停轮询，节省资源
+(function() {
+    var pageVisible = true;
+    var visibilityCallbacks = [];
+
+    document.addEventListener('visibilitychange', function() {
+        pageVisible = !document.hidden;
+        if (pageVisible) {
+            // 页面恢复可见时，通知所有注册的回调立即刷新
+            visibilityCallbacks.forEach(function(cb) { try { cb(true); } catch(e) {} });
+        }
+    });
+
+    /** 注册页面可见性回调：cb(isNowVisible) — 页面变为可见时调用 */
+    window.onPageVisible = function(cb) {
+        visibilityCallbacks.push(cb);
+    };
+
+    /** 当前页面是否可见 */
+    window.isPageVisible = function() {
+        return !document.hidden;
+    };
+})();
+
+// 管理页面数据更新辅助：WebSocket 推送 → 自动刷新对应板块
+(function() {
+    // 节流映射：每个板块在 N 毫秒内最多刷新一次
+    var throttles = {};
+
+    $(document).on('danmuji:dataUpdate', function(e, type) {
+        // 页面不可见时跳过刷新
+        if (document.hidden) return;
+        // 节流：每个类型 2 秒内最多触发一次
+        var now = Date.now();
+        if (throttles[type] && now - throttles[type] < 2000) return;
+        throttles[type] = now;
+        // 通知当前活动管理页面刷新
+        $(document).trigger('danmuji:refreshMgr');
+        // 同时触发对应类型的自定义事件，供各管理页面监听
+        $(document).trigger('danmuji:refresh_' + type);
+    });
+})();

@@ -81,7 +81,14 @@ public class GiftLogTools {
             v.latestTime = timestampMillis;
             return v;
         });
+        // 通知 WebSocket 客户端数据已更新（节流：每秒最多一次）
+        long now = System.currentTimeMillis();
+        if (now - lastGiftNotify > 1000) {
+            lastGiftNotify = now;
+            xyz.acproject.danmuji.controller.DanmuWebsocket.notifyDataUpdate("gift");
+        }
     }
+    private static volatile long lastGiftNotify = 0;
 
     private static void loadFromCsv() {
         loadFromCsv(currentCsvPath());
@@ -206,14 +213,23 @@ public class GiftLogTools {
         return s;
     }
 
-    static class GiftRecord {
-        final long uid;
-        volatile String uname;
-        final String giftName;
-        volatile long price;
-        volatile long totalPrice;
-        volatile int count;
-        volatile long latestTime;
+    /** 返回内存中的礼物聚合数据（实时，无 CSV 读取延迟） */
+    public static List<GiftRecord> getGiftList() {
+        return new ArrayList<>(giftMap.values());
+    }
+
+    public static int getGiftCount() {
+        return giftMap.size();
+    }
+
+    public static class GiftRecord {
+        public final long uid;
+        public volatile String uname;
+        public final String giftName;
+        public volatile long price;
+        public volatile long totalPrice;
+        public volatile int count;
+        public volatile long latestTime;
 
         GiftRecord(long uid, String uname, String giftName, long price, long totalPrice, int count, long latestTime) {
             this.uid = uid;

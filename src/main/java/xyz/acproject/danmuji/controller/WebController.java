@@ -44,6 +44,11 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.stream.Collectors;
+import xyz.acproject.danmuji.tools.BarrageLogTools;
+import xyz.acproject.danmuji.tools.FollowingCountTools;
+import xyz.acproject.danmuji.tools.MatchCountTools;
+import xyz.acproject.danmuji.tools.GiftLogTools;
+import xyz.acproject.danmuji.tools.VisitorCountTools;
 import xyz.acproject.danmuji.tools.RoomInfoLogTools;
 import xyz.acproject.danmuji.utils.OkHttp3Utils;
 import xyz.acproject.danmuji.thread.core.ParseMessageThread;
@@ -1397,6 +1402,118 @@ public class WebController {
         }
     }
 
+    // === 内存级实时数据端点（0延迟，绕过CSV文件读写） ===
+
+    @ResponseBody
+    @GetMapping(value = "/readRoomLiveData")
+    public Response<?> readRoomLiveData(HttpServletRequest req) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (Map.Entry<String, long[]> e : RoomInfoLogTools.getRoomInfoList()) {
+            long[] v = e.getValue();
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("时间", e.getKey());
+            row.put("观看数", String.valueOf(v[0]));
+            row.put("在线数", String.valueOf(v[1]));
+            row.put("点赞数", String.valueOf(v[2]));
+            rows.add(row);
+        }
+        result.put("headers", new String[]{"时间", "观看数", "在线数", "点赞数"});
+        result.put("rows", rows);
+        result.put("total", rows.size());
+        result.put("fromMemory", true);
+        return Response.success(result, req);
+    }
+
+    @ResponseBody
+    @GetMapping(value = "/readBarrageLiveData")
+    public Response<?> readBarrageLiveData(@RequestParam(defaultValue = "100") int limit, HttpServletRequest req) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        List<Map<String, String>> rows = new ArrayList<>();
+        for (String line : BarrageLogTools.getRecentBarrages(limit)) {
+            List<String> fields = parseCsvLine(line);
+            if (fields.size() >= 4) {
+                Map<String, String> row = new LinkedHashMap<>();
+                row.put("发送时间", fields.get(0));
+                row.put("id", fields.get(1));
+                row.put("名字", fields.get(2));
+                row.put("弹幕", fields.get(3));
+                rows.add(row);
+            }
+        }
+        result.put("headers", new String[]{"发送时间", "id", "名字", "弹幕"});
+        result.put("rows", rows);
+        result.put("total", rows.size());
+        result.put("fromMemory", true);
+        return Response.success(result, req);
+    }
+
+    @ResponseBody
+    @GetMapping(value = "/readGiftLiveData")
+    public Response<?> readGiftLiveData(HttpServletRequest req) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (GiftLogTools.GiftRecord r : GiftLogTools.getGiftList()) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("最新时间", xyz.acproject.danmuji.utils.JodaTimeUtils.formatDateTime(r.latestTime));
+            row.put("id", String.valueOf(r.uid));
+            row.put("名字", r.uname);
+            row.put("赠送礼物名字", r.giftName);
+            row.put("总金额", String.valueOf(r.totalPrice));
+            row.put("赠礼次数", String.valueOf(r.count));
+            rows.add(row);
+        }
+        result.put("headers", new String[]{"最新时间", "id", "名字", "赠送礼物名字", "总金额", "赠礼次数"});
+        result.put("rows", rows);
+        result.put("total", rows.size());
+        result.put("fromMemory", true);
+        return Response.success(result, req);
+    }
+
+    @ResponseBody
+    @GetMapping(value = "/readVisitorLiveData")
+    public Response<?> readVisitorLiveData(HttpServletRequest req) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (VisitorCountTools.VisitorRecord r : VisitorCountTools.getVisitorList()) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("最近", xyz.acproject.danmuji.utils.JodaTimeUtils.formatDateTime(r.latestEntryTime));
+            row.put("id", String.valueOf(r.uid));
+            row.put("观众", r.uname);
+            row.put("打分", String.valueOf(r.score));
+            row.put("打分类型", r.scoreType);
+            row.put("次数", String.valueOf(r.count));
+            row.put("判定表", r.inPnTable ? "是" : "否");
+            row.put("场次", String.valueOf(r.session));
+            rows.add(row);
+        }
+        result.put("headers", new String[]{"最近", "id", "观众", "打分", "打分类型", "次数", "判定表", "场次"});
+        result.put("rows", rows);
+        result.put("total", rows.size());
+        result.put("fromMemory", true);
+        return Response.success(result, req);
+    }
+
+    @ResponseBody
+    @GetMapping(value = "/readFollowLiveData")
+    public Response<?> readFollowLiveData(HttpServletRequest req) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (FollowingCountTools.FollowingRecord r : FollowingCountTools.getFollowingList()) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("最新时间", xyz.acproject.danmuji.utils.JodaTimeUtils.formatDateTime(r.latestTime));
+            row.put("id", String.valueOf(r.uid));
+            row.put("名字", r.name);
+            row.put("次数", String.valueOf(r.count));
+            rows.add(row);
+        }
+        result.put("headers", new String[]{"最新时间", "id", "名字", "次数"});
+        result.put("rows", rows);
+        result.put("total", rows.size());
+        result.put("fromMemory", true);
+        return Response.success(result, req);
+    }
+
     @ResponseBody
     @GetMapping(value = "/readCsvData")
     public Response<?> readCsvData(@RequestParam("filePath") String filePath,
@@ -1530,6 +1647,10 @@ public class WebController {
                 return Response.success(false, req);
             }
 
+            // 1. 先移除内存中的记录，防止后续定时 flush 恢复被删行
+            RoomInfoLogTools.removeByTimeKey(timeKey);
+
+            // 2. 直接修改 CSV 文件（读写过滤），保证对任意文件路径都生效
             List<String> lines = new ArrayList<>();
             String headerLine = null;
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
@@ -1537,14 +1658,15 @@ public class WebController {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     String[] parts = line.split(",", 4);
-                    if (parts.length >= 4 && parts[0].equals(timeKey)) {
-                        continue; // skip this row
+                    // 精确匹配或分钟前缀匹配（兼容新旧 key 格式）
+                    if (parts.length >= 1 && (parts[0].equals(timeKey)
+                            || (timeKey.length() >= 16 && parts[0].startsWith(timeKey.substring(0, 16))))) {
+                        continue;
                     }
                     lines.add(line);
                 }
             }
 
-            // atomic write
             File tmpFile = new File(filePath + ".tmp");
             try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tmpFile), "UTF-8"))) {
                 if (headerLine != null) {
@@ -1557,8 +1679,6 @@ public class WebController {
                 }
             }
             Files.move(tmpFile.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-            // 同步移除 RoomInfoLogTools 内存中的记录，防止下次 flush 时恢复
-            RoomInfoLogTools.removeByTimeKey(timeKey);
             return Response.success(true, req);
         } catch (Exception e) {
             LOGGER.error("deleteCsvRow error", e);
@@ -2425,29 +2545,27 @@ public class WebController {
                                            HttpServletRequest req) {
         try {
             validateFilePath(filePath);
+            // 先移除内存缓存中的记录
+            try { VisitorCountTools.removeByUid(Long.parseLong(uidKey)); } catch (NumberFormatException ignored) {}
+            // 直接修改 CSV 文件（保留对任意文件路径的支持）
             File file = new File(filePath);
-            if (!file.isAbsolute()) {
-                file = new File(getDanmujiLogDir(), filePath);
-            }
+            if (!file.isAbsolute()) file = new File(getDanmujiLogDir(), filePath);
             if (!file.exists()) return Response.success(false, req);
 
-            List<String> lines = new ArrayList<>();
-            String headerLine = null;
+            List<String> keepLines = new ArrayList<>();
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
-                headerLine = reader.readLine();
                 String line;
+                boolean isFirst = true;
                 while ((line = reader.readLine()) != null) {
+                    if (isFirst) { isFirst = false; keepLines.add(line); continue; }
                     List<String> fields = parseCsvLine(line);
-                    if (fields.size() >= 7 && fields.get(0).equals(timeKey) && fields.get(1).equals(uidKey)) {
-                        continue;
-                    }
-                    lines.add(line);
+                    if (fields.size() >= 7 && fields.get(0).equals(timeKey) && fields.get(1).equals(uidKey)) continue;
+                    keepLines.add(line);
                 }
             }
             File tmpFile = new File(filePath + ".tmp");
             try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tmpFile), "UTF-8"))) {
-                if (headerLine != null) { writer.write(headerLine); writer.newLine(); }
-                for (String l : lines) { writer.write(l); writer.newLine(); }
+                for (String l : keepLines) { writer.write(l); writer.newLine(); }
             }
             Files.move(tmpFile.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
             return Response.success(true, req);
@@ -2886,6 +3004,9 @@ public class WebController {
                                           HttpServletRequest req) {
         try {
             validateFilePath(filePath);
+            // 先移除内存缓存中的记录
+            try { MatchCountTools.removeByUid(Long.parseLong(uidKey)); } catch (NumberFormatException ignored) {}
+            // 直接修改 CSV 文件（保留对任意文件路径的支持）
             File file = new File(filePath);
             if (!file.isAbsolute()) file = new File(getDanmujiLogDir(), filePath);
             if (!file.exists()) return Response.success(0, req);

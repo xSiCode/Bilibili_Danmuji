@@ -72,6 +72,21 @@ public class FollowingCountTools {
             v.latestTime = System.currentTimeMillis();
             return v;
         });
+        // 通知 WebSocket 客户端（节流）
+        long now = System.currentTimeMillis();
+        if (now - lastFollowNotify > 1000) {
+            lastFollowNotify = now;
+            xyz.acproject.danmuji.controller.DanmuWebsocket.notifyDataUpdate("follow");
+        }
+    }
+    private static volatile long lastFollowNotify = 0;
+
+    public static List<FollowingRecord> getFollowingList() {
+        return new ArrayList<>(followingMap.values());
+    }
+
+    public static int getFollowingCount() {
+        return followingMap.size();
     }
 
     private static void loadFromCsv() {
@@ -193,11 +208,11 @@ public class FollowingCountTools {
         return s;
     }
 
-    static class FollowingRecord {
-        final long uid;
-        volatile String name;
-        volatile int count;
-        volatile long latestTime;
+    public static class FollowingRecord {
+        public final long uid;
+        public volatile String name;
+        public volatile int count;
+        public volatile long latestTime;
 
         FollowingRecord(long uid, String name, int count, long latestTime) {
             this.uid = uid;

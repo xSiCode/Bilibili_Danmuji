@@ -73,6 +73,28 @@ public class MatchCountTools {
             v.latestMatchTime = System.currentTimeMillis();
             return v;
         });
+        long now = System.currentTimeMillis();
+        if (now - lastMatchNotify > 1000) {
+            lastMatchNotify = now;
+            xyz.acproject.danmuji.controller.DanmuWebsocket.notifyDataUpdate("match");
+        }
+    }
+    private static volatile long lastMatchNotify = 0;
+
+    public static List<MatchRecord> getMatchList() {
+        return new ArrayList<>(matchMap.values());
+    }
+
+    public static int getMatchCount() {
+        return matchMap.size();
+    }
+
+    public static void removeByUid(long matchedUid) {
+        matchMap.remove(matchedUid);
+    }
+
+    public static void flushNow() {
+        flushToCsv();
     }
 
     private static void loadFromCsv() {

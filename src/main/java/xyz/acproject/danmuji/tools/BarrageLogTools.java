@@ -16,6 +16,9 @@ public class BarrageLogTools {
     private static final Logger LOGGER = LogManager.getLogger(BarrageLogTools.class);
 
     private static final LinkedBlockingQueue<String> batchQueue = new LinkedBlockingQueue<>(20000);
+    // 内存环形缓冲区：保留最近 N 条弹幕供实时查询，避免每次读 CSV 的延迟
+    private static final java.util.concurrent.ConcurrentLinkedDeque<String> recentBarrages = new java.util.concurrent.ConcurrentLinkedDeque<>();
+    private static final int MAX_RECENT_BARRAGES = 5000;
 
     private static volatile String lastRoomId;
     private static volatile String lastAnchorName;
@@ -80,6 +83,34 @@ public class BarrageLogTools {
     public static void logBarrage(long uid, String uname, String msg, long timestamp) {
         String line = JodaTimeUtils.formatDateTime(timestamp) + "," + uid + "," + escapeCsv(uname) + "," + escapeCsv(msg);
         batchQueue.offer(line);
+        // 写入内存环形缓冲区供实时查询（避免 CSV 读取延迟）
+        recentBarrages.offerLast(line);
+        while (recentBarrages.size() > MAX_RECENT_BARRAGES) {
+            recentBarrages.pollFirst();
+        }
+        // 通知 WebSocket 客户端数据已更新（节流：每秒最多一次）
+        long now = System.currentTimeMillis();
+        if (now - lastBarrageNotify > 1000) {
+            lastBarrageNotify = now;
+            xyz.acproject.danmuji.controller.DanmuWebsocket.notifyDataUpdate("barrage");
+        }
+    }
+    private static volatile long lastBarrageNotify = 0;
+
+    /** 返回内存中最近 N 条弹幕（实时，无 CSV 读取延迟） */
+    public static List<String> getRecentBarrages(int limit) {
+        List<String> result = new ArrayList<>(Math.min(limit, recentBarrages.size()));
+        java.util.Iterator<String> it = recentBarrages.descendingIterator();
+        int count = 0;
+        while (it.hasNext() && count < limit) {
+            result.add(it.next());
+            count++;
+        }
+        return result;
+    }
+
+    public static int getRecentBarrageCount() {
+        return recentBarrages.size();
     }
 
     private static synchronized void flushBatch(List<String> lines) {

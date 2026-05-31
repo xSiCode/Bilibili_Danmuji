@@ -73,6 +73,21 @@ public class DanmuWebsocket {
 			}
 		}
 	}
+
+	/** 通知所有管理页面客户端数据已更新（轻量级，供前端按需刷新） */
+	public static void notifyDataUpdate(String type) {
+		if (webSocketServers.isEmpty()) return;
+		String msg = "{\"type\":\"data_update\",\"data\":\"" + type + "\"}";
+		for (DanmuWebsocket ws : webSocketServers) {
+			if (ws.session != null && ws.session.isOpen()) {
+				try {
+					ws.session.getAsyncRemote().sendText(msg);
+				} catch (Exception e) {
+					// 静默丢弃 — 非关键通知
+				}
+			}
+		}
+	}
 	public Session getSession() {
 		return session;
 	}

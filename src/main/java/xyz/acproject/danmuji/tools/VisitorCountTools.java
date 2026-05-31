@@ -86,7 +86,14 @@ public class VisitorCountTools {
             dirtyUids.add(uid);
             return v;
         });
+        // 通知 WebSocket 客户端数据已更新（节流：每秒最多一次）
+        long now = System.currentTimeMillis();
+        if (now - lastVisitorNotify > 1000) {
+            lastVisitorNotify = now;
+            xyz.acproject.danmuji.controller.DanmuWebsocket.notifyDataUpdate("visitor");
+        }
     }
+    private static volatile long lastVisitorNotify = 0;
 
     public static int[] getCountAndSession(long uid) {
         VisitorRecord v = visitorMap.get(uid);
@@ -272,15 +279,35 @@ public class VisitorCountTools {
         return s;
     }
 
-    static class VisitorRecord {
-        final long uid;
-        volatile String uname;
-        volatile int score;
-        volatile String scoreType;
-        volatile int count;
-        volatile long latestEntryTime;
-        volatile boolean inPnTable;
-        volatile int session;
+    /** 返回内存中的观众数据（实时，无 CSV 读取延迟） */
+    public static List<VisitorRecord> getVisitorList() {
+        return new ArrayList<>(visitorMap.values());
+    }
+
+    public static int getVisitorCount() {
+        return visitorMap.size();
+    }
+
+    /** 从内存中移除指定观众记录并立即刷盘（供删除操作使用） */
+    public static void removeByUid(long uid) {
+        visitorMap.remove(uid);
+        dirtyUids.remove(uid);
+    }
+
+    /** 立即将内存全量刷入 CSV（全量覆写，确保删除操作即时持久化） */
+    public static void flushNow() {
+        doFlushFull(currentCsvPath());
+    }
+
+    public static class VisitorRecord {
+        public final long uid;
+        public volatile String uname;
+        public volatile int score;
+        public volatile String scoreType;
+        public volatile int count;
+        public volatile long latestEntryTime;
+        public volatile boolean inPnTable;
+        public volatile int session;
 
         VisitorRecord(long uid, String uname, int score, String scoreType, int count, long latestEntryTime, boolean inPnTable, int session) {
             this.uid = uid;
