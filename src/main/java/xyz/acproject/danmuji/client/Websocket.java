@@ -56,11 +56,11 @@ public class Websocket extends WebSocketClient {
 	public void onClose(int code, String reason, boolean remote) {
 		// TODO 自动生成的方法存根
 		LOGGER.info("websocket connect close(连接已经断开)，纠错码:" + code);
-		PublicDataConf.heartByteThread.HFLAG = true;
-		PublicDataConf.parseMessageThread.FLAG = true;
+		if (PublicDataConf.heartByteThread != null) PublicDataConf.heartByteThread.HFLAG = true;
+		if (PublicDataConf.parseMessageThread != null) PublicDataConf.parseMessageThread.FLAG = true;
 		if (code != 1000) {
 			LOGGER.info("websocket connect close(连接意外断开，正在尝试重连)，错误码:" + code);
-			if (!PublicDataConf.webSocketProxy.isOpen()) {
+			if (PublicDataConf.webSocketProxy != null && !PublicDataConf.webSocketProxy.isOpen()) {
 				if (PublicDataConf.reConnThread != null) {
 					if (PublicDataConf.reConnThread.getState().toString().equals("TERMINATED")) {
 						PublicDataConf.reConnThread = new ReConnThread();
@@ -73,7 +73,7 @@ public class Websocket extends WebSocketClient {
 					PublicDataConf.reConnThread.start();
 				}
 			} else {
-				PublicDataConf.reConnThread.RFLAG = true;
+				if (PublicDataConf.reConnThread != null) PublicDataConf.reConnThread.RFLAG = true;
 			}
 		}
 	}
@@ -83,22 +83,22 @@ public class Websocket extends WebSocketClient {
 		// TODO 自动生成的方法存根
 		LOGGER.error("websocket connect error,message:{}", ex.getMessage());
 		LOGGER.info("尝试重新链接");
-		synchronized (PublicDataConf.webSocketProxy) {
-			PublicDataConf.webSocketProxy.close(1006);
-			if (!PublicDataConf.webSocketProxy.isOpen()) {
-				if (PublicDataConf.reConnThread != null) {
-					if (PublicDataConf.reConnThread.getState().toString().equals("TERMINATED")) {
+		if (PublicDataConf.webSocketProxy != null) {
+			synchronized (PublicDataConf.webSocketProxy) {
+				PublicDataConf.webSocketProxy.close(1006);
+				if (!PublicDataConf.webSocketProxy.isOpen()) {
+					if (PublicDataConf.reConnThread != null) {
+						if (PublicDataConf.reConnThread.getState().toString().equals("TERMINATED")) {
+							PublicDataConf.reConnThread = new ReConnThread();
+							PublicDataConf.reConnThread.start();
+						}
+					} else {
 						PublicDataConf.reConnThread = new ReConnThread();
 						PublicDataConf.reConnThread.start();
-					} else {
-
 					}
 				} else {
-					PublicDataConf.reConnThread = new ReConnThread();
-					PublicDataConf.reConnThread.start();
+					if (PublicDataConf.reConnThread != null) PublicDataConf.reConnThread.RFLAG = true;
 				}
-			} else {
-				PublicDataConf.reConnThread.RFLAG = true;
 			}
 		}
 	}

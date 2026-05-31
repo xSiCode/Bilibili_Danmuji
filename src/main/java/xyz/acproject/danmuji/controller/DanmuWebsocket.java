@@ -66,6 +66,7 @@ public class DanmuWebsocket {
 					danmuWebsocket.session.getAsyncRemote().sendText(message);
 				} catch (IllegalStateException e) {
 					// Async write still in progress, discard this message
+					LOGGER.debug("WS async write in progress, discard: {}", e.getMessage());
 				} catch (Exception e) {
 					LOGGER.error("WebSocket发送消息失败", e);
 				}

@@ -575,8 +575,9 @@ public class ParseMessageThread extends Thread {
 
                         // 醒目留言
                         case "SUPER_CHAT_MESSAGE":
+                            // 只解析一次，display 和 gift thank 共用
+                            superChat = JSONObject.parseObject(jsonObject.getString("data"), SuperChat.class);
                             if (getCenterSetConf().is_gift()) {
-                                superChat = JSONObject.parseObject(jsonObject.getString("data"), SuperChat.class);
                                 stringBuilder.append(JodaTimeUtils.formatDateTime(superChat.getStart_time() * 1000));
                                 stringBuilder.append(":收到留言:");
                                 stringBuilder.append(superChat.getUser_info().getUname());
@@ -606,7 +607,7 @@ public class ParseMessageThread extends Thread {
                             }
                             if (getCenterSetConf().getThank_gift().is_giftThank()) {
                                 if (PublicDataConf.parsethankGiftThread != null && !PublicDataConf.parsethankGiftThread.TFLAG) {
-                                    superChat = JSONObject.parseObject(jsonObject.getString("data"), SuperChat.class);
+                                    // 复用上方已解析的 superChat，避免重复 JSON 解析
                                     gift = new Gift();
                                     stringBuilder.append(ParseIndentityTools.parseTime(superChat.getTime()));
                                     stringBuilder.append("秒");
@@ -1246,15 +1247,9 @@ public class ParseMessageThread extends Thread {
                             LOGGER.info("警告信息推送（例如任务快完成之类的）:::" + message);
                             break;
                         case "POPULARITY_RED_POCKET_NEW":
-                            //{"cmd":"POPULARITY_RED_POCKET_NEW",
-                            // "data":{"lot_id":8677977,"start_time":1674572461,"current_time":1674572461,
-                            // "wait_num":0,"uname":"直播小电视","uid":1407831746,"action":"送出",
-                            // "num":1,"gift_name":"红包","gift_id":13000,"price":5000,"name_color":"",
-                            // "medal_info":{"target_id":0,"special":"","icon_id":0,"anchor_uname":"",
-                            // "anchor_roomid":0,"medal_level":0,"medal_name":"","medal_color":0,"medal_color_start":0,
-                            // "medal_color_end":0,"medal_color_border":0,"is_lighted":0,"guard_level":0}}}
+                            // 只解析一次，display 和 gift thank 共用
+                            redPackage = JSONObject.parseObject(jsonObject.getString("data"), RedPackage.class);
                             if (getCenterSetConf().is_gift()) {
-                                redPackage = JSONObject.parseObject(jsonObject.getString("data"), RedPackage.class);
                                 stringBuilder.append(JodaTimeUtils.formatDateTime(redPackage.getStart_time() * 1000));
                                 stringBuilder.append(":收到红包:");
                                 stringBuilder.append(redPackage.getUname());
@@ -1292,7 +1287,7 @@ public class ParseMessageThread extends Thread {
                             }
                             if (getCenterSetConf().getThank_gift().is_giftThank()) {
                                 if (PublicDataConf.parsethankGiftThread != null && !PublicDataConf.parsethankGiftThread.TFLAG) {
-                                    redPackage = JSONObject.parseObject(jsonObject.getString("data"), RedPackage.class);
+                                    // 复用上方已解析的 redPackage，避免重复 JSON 解析
                                     gift = new Gift();
                                     gift.setGiftName(redPackage.getGift_name());
                                     gift.setNum(redPackage.getNum());
@@ -1687,13 +1682,13 @@ public class ParseMessageThread extends Thread {
                                 DelayGiftTimeSetting();
                             }
                         } else {
-                            gifts = new Vector<Gift>();
+                            gifts = new Vector<>();
                             gifts.add(gift);
                             PublicDataConf.thankGiftConcurrentHashMap.put(gift.getUname(), gifts);
                             DelayGiftTimeSetting();
                         }
                     } else {
-                        gifts = new Vector<Gift>();
+                        gifts = new Vector<>();
                         gifts.add(gift);
                         PublicDataConf.thankGiftConcurrentHashMap.put(gift.getUname(), gifts);
                         DelayGiftTimeSetting();

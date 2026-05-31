@@ -73,13 +73,14 @@ public class SendBarrageThread extends Thread {
                                 break;
                             }
                         } catch (Exception e) {
-                            System.err.println("发送弹幕线程抛出:" + e);
+                            LOGGER.error("发送弹幕失败(分割片段):", e);
                         }
                     }
                 } else {
                     try {
                         HttpUserData.httpPostSendBarrage(barrageStr);
                     } catch (Exception e) {
+                        LOGGER.error("发送弹幕失败:", e);
                     }
                 }
                 lastSendTime = System.currentTimeMillis();
