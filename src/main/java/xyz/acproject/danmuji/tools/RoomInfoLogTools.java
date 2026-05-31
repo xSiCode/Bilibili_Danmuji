@@ -26,6 +26,8 @@ public class RoomInfoLogTools {
     private static volatile String lastAnchorName;
     private static String jarDir;
     private static volatile boolean running;
+    private static volatile ScheduledExecutorService roomInfoScheduler;
+    private static volatile Thread shutdownHook;
 
     private static final ThreadLocal<SimpleDateFormat> MINUTE_FORMAT =
             ThreadLocal.withInitial(() -> new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"));
@@ -41,25 +43,41 @@ public class RoomInfoLogTools {
         if (running) return;
         running = true;
         tick();
+        // 停止可能残留的旧调度器
+        ScheduledExecutorService oldScheduler = roomInfoScheduler;
+        if (oldScheduler != null) {
+            oldScheduler.shutdownNow();
+        }
+        if (shutdownHook != null) {
+            try { Runtime.getRuntime().removeShutdownHook(shutdownHook); } catch (IllegalStateException ignored) {}
+        }
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r, "roominfo-timer");
             t.setDaemon(true);
             return t;
         });
+        roomInfoScheduler = scheduler;
         scheduler.scheduleWithFixedDelay(() -> {
             tick();
             flushToCsv();
         }, 60, 60, TimeUnit.SECONDS);
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+        Thread hook = new Thread(() -> {
             running = false;
             scheduler.shutdown();
             flushToCsv();
-        }, "roominfo-csv-shutdown"));
+        }, "roominfo-csv-shutdown");
+        shutdownHook = hook;
+        Runtime.getRuntime().addShutdownHook(hook);
     }
 
     public static synchronized void stop() {
         running = false;
         flushToCsv();
+        ScheduledExecutorService scheduler = roomInfoScheduler;
+        if (scheduler != null) {
+            scheduler.shutdown();
+            roomInfoScheduler = null;
+        }
     }
 
     private static void initBase() {

@@ -29,23 +29,15 @@ public class LogThread extends Thread{
 			if (FLAG) {
 				return;
 			}
-			if(PublicDataConf.webSocketProxy!=null&&!PublicDataConf.webSocketProxy.isOpen()) {
+			// WebSocket 断开时不退出线程，继续消费队列中残留的日志
+			try {
+				logString = PublicDataConf.logString.poll(500, java.util.concurrent.TimeUnit.MILLISECONDS);
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
 				return;
 			}
-			logString = PublicDataConf.logString.poll();
-			if(logString != null && StringUtils.isNotBlank(logString)) {
+			if (logString != null && StringUtils.isNotBlank(logString)) {
 				LogFileTools.getlogFileTools().logFile(logString);
-			} else {
-				try {
-					Thread.sleep(500);
-				} catch (InterruptedException e) {
-				}
-			}
-			try {
-				Thread.sleep(10);
-			} catch (InterruptedException e) {
-				// TODO 自动生成的 catch 块
-				LOGGER.error(e);
 			}
 		}
 	}

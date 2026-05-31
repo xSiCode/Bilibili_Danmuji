@@ -19,22 +19,15 @@ public class WatcherLogThread extends Thread {
 			if (FLAG) {
 				return;
 			}
-			if (PublicDataConf.webSocketProxy != null && !PublicDataConf.webSocketProxy.isOpen()) {
+			// WebSocket 断开时不退出线程，继续消费队列中残留的日志
+			try {
+				logString = PublicDataConf.watcherLogString.poll(500, java.util.concurrent.TimeUnit.MILLISECONDS);
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
 				return;
 			}
-			logString = PublicDataConf.watcherLogString.poll();
 			if (logString != null && StringUtils.isNotBlank(logString)) {
 				LogFileTools.getlogFileTools().logWatcherFile(logString);
-			} else {
-				try {
-					Thread.sleep(500);
-				} catch (InterruptedException e) {
-				}
-			}
-			try {
-				Thread.sleep(10);
-			} catch (InterruptedException e) {
-				LOGGER.error(e);
 			}
 		}
 	}
