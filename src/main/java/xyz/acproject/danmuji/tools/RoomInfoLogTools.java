@@ -9,6 +9,7 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.text.SimpleDateFormat;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.LinkedHashMap;
@@ -106,6 +107,8 @@ public class RoomInfoLogTools {
         long w = PublicDataConf.ROOM_WATCHER != null ? PublicDataConf.ROOM_WATCHER : 0L;
         long o = PublicDataConf.ROOM_ONLINE__RANK_COUNT != null ? PublicDataConf.ROOM_ONLINE__RANK_COUNT : 0L;
         long l = PublicDataConf.ROOM_LIKE != null ? PublicDataConf.ROOM_LIKE : 0L;
+        // 任意值为 0 则丢弃该次采样，防止数据抖动（刚开播/断线重连时的瞬态零值）
+        if (w == 0L || o == 0L || l == 0L) return;
         roomInfoMap.put(nowKey, new long[]{w, o, l});
     }
 
@@ -133,6 +136,23 @@ public class RoomInfoLogTools {
         } catch (Exception e) {
             LOGGER.error("load room info CSV failed", e);
         }
+    }
+
+    /** 根据现有观看数序列计算每分钟观众退出量（退出 = max(0, 上一分钟观看数 - 当前分钟观看数)） */
+    public static List<Map.Entry<String, Long>> getExitCountList() {
+        List<Map.Entry<String, long[]>> raw;
+        synchronized (roomInfoMap) {
+            raw = new ArrayList<>(roomInfoMap.entrySet());
+        }
+        List<Map.Entry<String, Long>> result = new ArrayList<>();
+        if (raw.size() < 2) return result;
+        for (int i = 1; i < raw.size(); i++) {
+            long prev = raw.get(i - 1).getValue()[0];  // 观看数
+            long curr = raw.get(i).getValue()[0];
+            long exitCount = Math.max(0, prev - curr);
+            result.add(new AbstractMap.SimpleEntry<>(raw.get(i).getKey(), exitCount));
+        }
+        return result;
     }
 
     /** 返回内存中的直播间数据（实时，无 CSV 读取延迟） */

@@ -1515,6 +1515,24 @@ public class WebController {
     }
 
     @ResponseBody
+    @GetMapping(value = "/readRoomExitData")
+    public Response<?> readRoomExitData(HttpServletRequest req) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (Map.Entry<String, Long> e : RoomInfoLogTools.getExitCountList()) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("时间", e.getKey());
+            row.put("退出人数", String.valueOf(e.getValue()));
+            rows.add(row);
+        }
+        result.put("headers", new String[]{"时间", "退出人数"});
+        result.put("rows", rows);
+        result.put("total", rows.size());
+        result.put("fromMemory", true);
+        return Response.success(result, req);
+    }
+
+    @ResponseBody
     @GetMapping(value = "/readCsvData")
     public Response<?> readCsvData(@RequestParam("filePath") String filePath,
                                    @RequestParam(defaultValue = "1") int page,

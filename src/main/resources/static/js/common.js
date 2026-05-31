@@ -3476,6 +3476,7 @@ const method = {
                         },
                         options: chartOptions
                     });
+
                 }
             }
         });
