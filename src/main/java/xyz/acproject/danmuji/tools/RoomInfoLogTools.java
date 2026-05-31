@@ -31,7 +31,7 @@ public class RoomInfoLogTools {
     private static volatile Thread shutdownHook;
 
     private static final ThreadLocal<SimpleDateFormat> MINUTE_FORMAT =
-            ThreadLocal.withInitial(() -> new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"));
+            ThreadLocal.withInitial(() -> new SimpleDateFormat("yyyy-MM-dd HH:mm"));
 
     static {
         initBase();
@@ -128,8 +128,8 @@ public class RoomInfoLogTools {
                     vals[0] = Long.parseLong(parts[1]);
                     vals[1] = Long.parseLong(parts[2]);
                     vals[2] = Long.parseLong(parts[3]);
-                    // 兼容旧格式：分钟精度补全为秒精度
-                    String timeKey = parts[0].length() == 16 ? parts[0] + ":00" : parts[0];
+                    // 统一为分钟精度（旧秒级格式截断前16位）
+                    String timeKey = parts[0].length() >= 16 ? parts[0].substring(0, 16) : parts[0];
                     roomInfoMap.put(timeKey, vals);
                 }
             }
@@ -138,19 +138,28 @@ public class RoomInfoLogTools {
         }
     }
 
-    /** 根据现有观看数序列计算每分钟观众退出量（退出 = max(0, 上一分钟观看数 - 当前分钟观看数)） */
-    public static List<Map.Entry<String, Long>> getExitCountList() {
+    /**
+     * 每分钟进入/退出人数（两项独立计算，始终 >= 0）。
+     * 进入数 = 观看[t] - 观看[t-1]（累计观看增量）
+     * 退出数 = 在线[t-1] - 在线[t]（在线人数下降量）
+     */
+    public static List<Map.Entry<String, long[]>> getEntryExitList() {
         List<Map.Entry<String, long[]>> raw;
         synchronized (roomInfoMap) {
             raw = new ArrayList<>(roomInfoMap.entrySet());
         }
-        List<Map.Entry<String, Long>> result = new ArrayList<>();
+        List<Map.Entry<String, long[]>> result = new ArrayList<>();
         if (raw.size() < 2) return result;
         for (int i = 1; i < raw.size(); i++) {
-            long prev = raw.get(i - 1).getValue()[0];  // 观看数
-            long curr = raw.get(i).getValue()[0];
-            long exitCount = Math.max(0, prev - curr);
-            result.add(new AbstractMap.SimpleEntry<>(raw.get(i).getKey(), exitCount));
+            long prevWatch = raw.get(i - 1).getValue()[0];
+            long currWatch = raw.get(i).getValue()[0];
+            long prevOnline = raw.get(i - 1).getValue()[1];
+            long currOnline = raw.get(i).getValue()[1];
+
+            long entry = Math.max(0, currWatch - prevWatch);
+            long exit  = Math.max(0, prevOnline - currOnline);
+
+            result.add(new AbstractMap.SimpleEntry<>(raw.get(i).getKey(), new long[]{entry, exit}));
         }
         return result;
     }

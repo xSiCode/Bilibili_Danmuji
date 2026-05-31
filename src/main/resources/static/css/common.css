@@ -45,14 +45,13 @@ body {
 
 .app {
     background-color: #f8f9fa;
-    height: 100vh;
+    min-height: 100vh;
     overflow-x: hidden;
     width: 100%;
     padding-right: 15px;
     padding-left: 15px;
     margin-right: auto;
     margin-left: auto;
-    position: absolute !important;
     overflow-anchor: none;
 }
 
@@ -1354,7 +1353,6 @@ div .link-popup-panel .popup-content-ctnr p {
     border-radius: 4px 0 0 4px;
     padding: 0;
     overflow-y: auto;
-    max-height: 80vh;
     position: sticky;
     top: 10px;
     min-width: 200px;

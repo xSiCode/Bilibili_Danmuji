@@ -1515,20 +1515,21 @@ public class WebController {
     }
 
     @ResponseBody
-    @GetMapping(value = "/readRoomExitData")
-    public Response<?> readRoomExitData(HttpServletRequest req) {
+    @GetMapping(value = "/readRoomEntryExitData")
+    public Response<?> readRoomEntryExitData(HttpServletRequest req) {
         Map<String, Object> result = new LinkedHashMap<>();
         List<Map<String, Object>> rows = new ArrayList<>();
-        for (Map.Entry<String, Long> e : RoomInfoLogTools.getExitCountList()) {
+        for (Map.Entry<String, long[]> e : RoomInfoLogTools.getEntryExitList()) {
+            long[] v = e.getValue();
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("时间", e.getKey());
-            row.put("退出人数", String.valueOf(e.getValue()));
+            row.put("进入数", String.valueOf(v[0]));
+            row.put("退出数", String.valueOf(v[1]));
             rows.add(row);
         }
-        result.put("headers", new String[]{"时间", "退出人数"});
+        result.put("headers", new String[]{"时间", "进入数", "退出数"});
         result.put("rows", rows);
         result.put("total", rows.size());
-        result.put("fromMemory", true);
         return Response.success(result, req);
     }
 
