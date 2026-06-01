@@ -716,6 +716,7 @@ public class HttpRoomData {
         logSb.append(TIME_FORMAT.get().format(System.currentTimeMillis()))
                 .append(" https://space.bilibili.com/").append(vmid)
                 .append(" ").append(uname).append(" ");
+        SelfTools.appendAt(logSb,90,"⏩");
 
         // Phase 1: 四路并发（关注列表双页同步请求）
         CompletableFuture<JSONObject> medalF = asyncHttpGetMedalWall(vmid);
@@ -797,7 +798,7 @@ public class HttpRoomData {
      * 收尾：写日志 → 返回 Pair
      */
     private static Pair<Integer, String> finalize(StringBuilder logSb, int score, String type) {
-        logSb.append("✨  🍉🍉[最终得分:").append(score).append("] 类型:").append(type);
+        logSb.append("    🍉🍉[最终得分:").append(score).append("] 类型:").append(type);
         LogFileTools.getlogFileTools().logFollowingsFile(logSb.toString());
         return Pair.of(score, type);
     }
@@ -818,25 +819,25 @@ public class HttpRoomData {
      */
     private static Pair<Integer, String> processMedalWallSync(JSONObject medalData, StringBuilder logSb) {
         if (medalData == null || medalData.getIntValue("code") != 0) {
-            logSb.append("    ✅[勋章:API异常:0]");
+            logSb.append("[勋章:API异常:0]");
             return Pair.of(0, "");
         }
         JSONObject data = medalData.getJSONObject("data");
         if (data == null || data.getIntValue("close_space_medal") == 1) {
-            logSb.append("    ✅[勋章:隐藏-1]");
+            logSb.append("[勋章:隐藏-1]");
             return Pair.of(-1, "[灯牌隐藏-1]");
         }
         int count = data.getIntValue("count");
         JSONArray list = data.getJSONArray("list");
         if (count <= 0 || list == null || list.isEmpty()) {
-            logSb.append("    ✅[无勋章:0]");
+            logSb.append("[无勋章:0]");
             return Pair.of(0, "");
         }
 
         int totalMedalScore = 0;
         int totalLifeMedalScore = 0;
 
-        logSb.append("    ✅[勋章数:").append(count);
+        logSb.append("[勋章数:").append(count);
         for (int i = 0; i < list.size(); i++) {
             JSONObject item = list.getJSONObject(i);
             JSONObject medalInfo = item.getJSONObject("medal_info");
@@ -906,10 +907,10 @@ public class HttpRoomData {
     private static Pair<Integer, String> processHiddenFollowingsSync(long vmid, StringBuilder logSb) {
         Integer pnScore = pnScoreMap.get(vmid);
         if (pnScore != null) {
-            logSb.append("✨[已在名单，关注隐藏:").append(pnScore).append("]");
+            logSb.append("  [已在名单，关注隐藏:").append(pnScore).append("]");
             return Pair.of(pnScore, "[已在名单，关注隐藏:" + pnScore + "]");
         }
-        logSb.append("✨[关注:隐藏-1]");
+        logSb.append("  [关注:隐藏-1]");
         return Pair.of(-1, "[关注隐藏-1]");
     }
 
@@ -953,7 +954,7 @@ public class HttpRoomData {
             blackWhiteScore = pnScore;
             blackWhiteType.append("[已在名单，关注可见:").append(pnScore).append("]");
         }
-        logSb.append("✨[");
+        logSb.append("  [");
         if (followersNameSignScore != 0) {
             logSb.append("关键词:").append(followersNameSignScore).append(" ");
         }
@@ -997,7 +998,7 @@ public class HttpRoomData {
 
                     StringBuilder cardLog = new StringBuilder(60);
                     // cardLog.append("[卡片:code=0");
-                    cardLog.append("✨[卡片 投稿:").append(archiveCount)
+                    cardLog.append("  [卡片 投稿:").append(archiveCount)
                             .append(" 关注:").append(attention)
                             .append(" 粉丝:").append(fans)
                             .append(" 获赞:").append(likeNum);
@@ -1031,12 +1032,12 @@ public class HttpRoomData {
                     cardLog.append(" Lv").append(lv);
                     if (lv == 0) {
                         r.score -= 2;
-                        r.type += "[Lv0 -2]";
-                        cardLog.append("[Lv0-2]");
+                        r.type += "[Lv0:-2]";
+                        cardLog.append("[Lv0:-2]");
                     } else if (lv <= 2 && (r.name != null && (r.name.startsWith("bili_") || "保密".equals(sex)))) {
                         r.score--;
                         r.type += "[Lv" + lv + " -1]";
-                        cardLog.append(" Lv").append(lv).append("-1");
+                        cardLog.append(" Lv").append(lv).append(":-1");
                     } else if (lv >= 5) {
                         r.score++;
                         r.type += "[Lv" + lv + " +1]";
@@ -1063,7 +1064,7 @@ public class HttpRoomData {
                     }
 
                     // 姓名+签名关键词
-                    int kw = getKeyWordsScore((r.name != null ? r.name : "") + (r.sign != null ? r.sign : ""), logSb);
+                    int kw = getKeyWordsScore((r.name != null ? r.name : "") + (r.sign != null ? r.sign : ""), cardLog);
                     r.score += kw;
                     if (kw != 0) cardLog.append(" 签名关键词:").append(kw);
 
@@ -1089,7 +1090,7 @@ public class HttpRoomData {
 
     // ---- 关键词 & 动态辅助 ----
 
-    private static int getKeyWordsScore(String dataStr, StringBuilder logSb) {
+    private static int getKeyWordsScore(String dataStr, StringBuilder sb) {
         int blackWhiteScore = 0;
 
         if (PublicDataConf.centerSetConf.getBlack() != null && PublicDataConf.centerSetConf.getBlack().getNames() != null) {
@@ -1097,7 +1098,7 @@ public class HttpRoomData {
                 if (StringUtils.isBlank(s)) continue;
                 if (StringUtils.contains(dataStr, s)) {
                     blackWhiteScore -= 2;
-                    logSb.append(" '").append(s).append("-2'");
+                    sb.append(" '").append(s).append("-2'");
                 }
             }
         }
@@ -1107,7 +1108,7 @@ public class HttpRoomData {
                 if (StringUtils.isBlank(s)) continue;
                 if (StringUtils.contains(dataStr, s)) {
                     blackWhiteScore++;
-                    logSb.append(" '").append(s).append("+1'");
+                    sb.append(" '").append(s).append("+1'");
                 }
             }
         }
@@ -1123,7 +1124,7 @@ public class HttpRoomData {
      */
     private static Pair<Integer, String> computeDynamicScore(String dynData, StringBuilder logSb) {
         if (dynData == null) {
-            logSb.append("❗[动态解析异常]");
+            logSb.append("  [动态解析异常：0]⚪");
             return Pair.of(0, "[动态解析异常]");
         }
 
@@ -1140,22 +1141,22 @@ public class HttpRoomData {
                     System.out.println("动态API: 15分钟全局熔断已解除，当前时间：" + System.currentTimeMillis());
                 }, 15, TimeUnit.MINUTES);
             }
-            logSb.append("❗[动态:API异常]");
+            logSb.append("  [动态:API异常:0]⚪");
             return Pair.of(0, "");
         }
 
         if (extracted.cardCount == 0) {
-            logSb.append("❗[动态:无内容/隐藏-1]");
+            logSb.append("  [动态:无内容/隐藏-1]⚪");
             return Pair.of(-1, "[动态隐藏-1]");
         }
 
         int kw = getKeyWordsScore(extracted.text, logSb);
 
-        logSb.append("❗[动态数:").append(extracted.cardCount);
+        logSb.append("  [动态数:").append(extracted.cardCount);
         if (extracted.latestTimestamp > 0) {
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm");
             Date date = new Date(extracted.latestTimestamp * 1000);
-            logSb.append(" 最新:").append(sdf.format(date));
+           // logSb.append(" 最新:").append(sdf.format(date));
 
             if(extracted.cardCount == 1){
                 boolean isNewUser = StringUtils.contains(extracted.text, "挑战转正答题考试"); //
@@ -1171,11 +1172,11 @@ public class HttpRoomData {
         }
 
         if (kw != 0) {
-            logSb.append(" 动态黑白分:").append(kw).append("]");
+            logSb.append(" 动态黑白分:").append(kw).append("]⚪");
             return Pair.of(kw, "[动态黑白分:" + kw + "]");
         } else {
 
-            logSb.append(" 动态黑白分:0]");
+            logSb.append(" 动态黑白分:0]⚪");
             return Pair.of(0, "");
         }
 
