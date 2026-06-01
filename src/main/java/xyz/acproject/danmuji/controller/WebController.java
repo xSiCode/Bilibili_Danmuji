@@ -648,6 +648,13 @@ public class WebController {
             if(centerSetConf.getBadList()==null&&PublicDataConf.centerSetConf.getBadList()==null){
                 centerSetConf.setBadList(new BadListSetConf());
             }
+            //关键词检测姬
+            if(centerSetConf.getKey_word()==null&&PublicDataConf.centerSetConf.getKey_word()!=null){
+                centerSetConf.setKey_word(PublicDataConf.centerSetConf.getKey_word());
+            }
+            if(centerSetConf.getKey_word()==null&&PublicDataConf.centerSetConf.getKey_word()==null){
+                centerSetConf.setKey_word(new KeyWordSetConf());
+            }
             checkService.changeSet(centerSetConf,true);
         } catch (Exception e) {
             LOGGER.error(e);

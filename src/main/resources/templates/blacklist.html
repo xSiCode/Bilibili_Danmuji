@@ -48,13 +48,14 @@
                         </div>
                         <!-- 关键词检测姬 -->
                         <div class="tab-pane" th:classappend="${! #arrays.isEmpty(param.tab) && param.tab[0] == 'keyWord-set'} ? 'active' : ''" id="tab-keyWord-set">
+                            <style>.kw-table .kw-col-score{width:60px!important;min-width:60px!important;max-width:60px!important}.kw-table .kw-col-action{width:60px!important;min-width:60px!important;max-width:60px!important}</style>
                             <div class="input-group mb-1"><h5>关键词检测姬</h5></div>
                             <div class="input-group mb-3 keyWord-set" id="keyWord-set">
                                 <div class="header-set"><div class="row align-items-center" style="margin-bottom:5px;--bs-gutter-x:5px">
                                     <div class="col-auto"><button class="btn btn-sm btn-primary kw-add-btn">添加</button></div>
                                 </div></div>
                                 <div class="form-group footer-set">
-                                    <table class="table table-bordered table-sm table-striped kw-table" style="table-layout:fixed;width:100%"><colgroup><col><col style="width:60px"><col style="width:60px"></colgroup><thead><tr><th class="kw-sort-keyword" style="cursor:pointer;user-select:none">关键词<span class="kw-sort-icon" style="font-size:10px"></span></th><th class="kw-sort-score" style="width:60px;cursor:pointer;user-select:none;text-align:right">分值<span class="kw-sort-icon" style="font-size:10px"></span></th><th style="width:60px;text-align:center">操作</th></tr></thead><tbody class="kw-tbody"></tbody></table>
+                                    <table class="table table-bordered table-sm table-striped table-hover kw-table" style="table-layout:fixed;width:100%"><colgroup><col style="width:auto"><col style="width:60px"><col style="width:60px"></colgroup><thead><tr><th class="kw-sort-keyword" style="cursor:pointer;user-select:none">关键词<span class="kw-sort-icon" style="font-size:10px"></span></th><th class="kw-sort-score kw-col-score" style="cursor:pointer;user-select:none;text-align:right">分值<span class="kw-sort-icon" style="font-size:10px"></span></th><th class="kw-col-action" style="text-align:center">操作</th></tr></thead><tbody class="kw-tbody"></tbody></table>
                                     <div class="kw-pagination d-flex justify-content-center align-items-center mt-2" style="display:none;"><button class="btn btn-sm btn-outline-secondary kw-prev">上一页</button><span class="kw-page-info mx-2">第1页</span><button class="btn btn-sm btn-outline-secondary kw-next">下一页</button></div>
                                 </div>
                             </div>
