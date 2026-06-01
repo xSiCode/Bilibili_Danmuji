@@ -110,7 +110,7 @@
                                 <div id="watched-rooms-empty" class="text-muted" style="font-size:12px;">暂无关注直播间，输入房间号添加</div>
                             </div>
                         </div>
-                        <div class="tab-pane" th:classappend="${! #arrays.isEmpty(param.tab) && param.tab[0] == 'common-set'} ? 'active' : ''" id="tab-common-set">
+                        <div class="tab-pane" th:classappend="${#arrays.isEmpty(param.tab) || param.tab[0] == 'common-set' || param.tab[0] == 'cmd-set'} ? 'active' : ''" id="tab-common-set">
                             <div class="input-group mb-1"><h5>通用设置</h5></div>
                             <div class="row input-group mb-3 common-set" id="common-set">
                                 <div class="col-auto"><label class="form-check-label"><input class="form-check-input auto_save_set" type="checkbox"><span class="_description" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="是否自动保存配置，<span class='red-font'>每修改一次触发保存</span>">自动保存</span></label></div>
@@ -119,16 +119,6 @@
                                 <div class="col-auto"><label class="form-check-label"><input class="form-check-input is_log live-save" type="checkbox"><span class="_description" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="弹幕是否保存本地<br/>本地弹幕文件夹位置：<br/>本项目根目录下Danmuji_log文件夹">弹幕记录</span></label></div>
                                 <div class="col-auto"><label class="form-check-label"><input class="form-check-input is_watcher_log live-save" type="checkbox"><span class="_description" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="进入直播间的观众信息是否保存本地<br/>文件位置：本项目根目录下Danmuji_log文件夹<br/>文件命名：日期(房间号)viewers.txt<br/>记录格式：时间戳, 用户名, uid, 空间链接, 附加信息">观众记录</span></label></div>
                             </div>
-                            <div class="input-group mb-3 set-control">
-                                <div class="col-auto">
-                                    <input class="import-file-input" style="display: none;" type="file" value="上传文件"/>
-                                    <button class="btn btn-warning export-set" title="导出设置到本地，弹幕姬配置文件夹set底下" type="button">导出设置</button>
-                                    <button class="btn btn-success export-set-web" title="网页实时下载配置" type="button">下载设置</button>
-                                    <button class="btn btn-info import-set" title="导入配置文件" type="button">导入设置</button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="tab-pane" th:classappend="${! #arrays.isEmpty(param.tab) && param.tab[0] == 'cmd-set'} ? 'active' : ''" id="tab-cmd-set">
                             <div class="input-group mb-1"><h5>显示设置</h5></div>
                             <div class="row input-group mb-3 cmd-set" id="cmd-set">
                                 <div class="input-group mb-1"><h6>主要显示</h6></div>
@@ -154,6 +144,14 @@
                                     <div class="col-auto"><label class="form-check-label"><input class="form-check-input is_welcome live-save" type="checkbox"><span class="_description" data-bs-placement="top" data-bs-toggle="tooltip" title="是否显示欢迎老爷舰长进入直播间消息">欢迎</span></label></div>
                                     <div class="col-auto"><label class="form-check-label"><input class="form-check-input is_welcome_all live-save" type="checkbox"><span class="_description" data-bs-placement="top" data-bs-toggle="tooltip" title="是否显示用户进入直播间消息">进入</span></label></div>
                                     <div class="col-auto"><label class="form-check-label"><input class="form-check-input is_follow live-save" type="checkbox"><span class="_description" data-bs-placement="top" data-bs-toggle="tooltip" title="是否显示关注消息">关注</span></label></div>
+                                </div>
+                            </div>
+                            <div class="input-group mb-3 set-control">
+                                <div class="col-auto">
+                                    <input class="import-file-input" style="display: none;" type="file" value="上传文件"/>
+                                    <button class="btn btn-warning export-set" title="导出设置到本地，弹幕姬配置文件夹set底下" type="button">导出设置</button>
+                                    <button class="btn btn-success export-set-web" title="网页实时下载配置" type="button">下载设置</button>
+                                    <button class="btn btn-info import-set" title="导入配置文件" type="button">导入设置</button>
                                 </div>
                             </div>
                         </div>

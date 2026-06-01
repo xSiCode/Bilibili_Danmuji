@@ -46,7 +46,7 @@
                             </div>
                             <div class="input-group mb-3 set-control" data-file="ab"><div class="col-auto"><input class="import-file-input" style="display: none;" type="file" value="上传文件"/><button class="btn btn-warning export-set" title="导出设置到本地，弹幕姬配置文件夹set底下" type="button">导出</button><button class="btn btn-success export-set-web" title="网页实时下载配置" type="button">下载</button><button class="btn btn-info import-set" title="导入配置文件" type="button">导入"负黑自动拉黑记录.json"</button></div></div>
                         </div>
-                        <!-- 黑白过滤姬 -->
+                        <!-- 黑白名单姬 -->
                         <div class="tab-pane" th:classappend="${! #arrays.isEmpty(param.tab) && param.tab[0] == 'black-set'} ? 'active' : ''" id="tab-black-set">
                             <div class="input-group mb-1"><h5>黑白名单姬</h5></div>
                             <div class="row">

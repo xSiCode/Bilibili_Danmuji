@@ -34,45 +34,6 @@
                                 </div>
                             </div>
                         </div>
-                        <!-- 自动回复姬 -->
-                        <div class="tab-pane" th:classappend="${! #arrays.isEmpty(param.tab) && param.tab[0] == 'autoReply-set'} ? 'active' : ''" id="tab-autoReply-set">
-                            <div class="input-group mb-1"><h5>自动回复姬</h5></div>
-                            <div class="input-group mb-3 autoReply-set" id="autoReply-set">
-                                <div class="header-set">
-                                    <div class="row align-items-center">
-                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input replys_is_open live-save" type="checkbox"><span class="_description" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="是否打开">开关</span></label></div>
-                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input replys_is_live_open live-save" type="checkbox"><span class="_description" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="仅在直播（开播）中有效">直播</span></label></div>
-                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input replys_is_open_self live-save" type="checkbox"><span class="_description" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="是否识别来着自己的弹幕（默认不识别来着自己的弹幕）">自己</span></label></div>
-                                        <div class="col-auto small-input-wrap"><input class="small-input replys_time live-save" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" min="1" onKeypress="return (/[\d]/.test(String.fromCharCode(event.keyCode)))" placeholder="间隔" style="ime-mode: Disabled" title="<span class='red-font'>间隔多少秒才识别弹幕并自动回复</span><br/>默认为3秒" type="number" value="3"></div>
-                                        <div class="col-auto"><select class="custom-select-sm replys_list_people_shield_status live-save" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="用户类型过滤：<br/>①:不屏蔽；<br/>②:仅佩戴本房间勋章；<br/>③:仅本房间舰长；"><option selected value="1">不屏蔽</option><option value="2">仅勋章</option><option value="3">仅舰长</option></select></div>
-                                    </div>
-                                </div>
-                                <div class="replys-wrap">
-                                    <div class="t"><span>自定义弹幕姬自动回复规则</span><a class="replys_add" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" href="javascript:;" id="replys_add" title="新增回复规则">⊕</a></div>
-                                    <div class="con"><ul class="replys-ul" data-role="listview" id="replys-ul"></ul></div>
-                                </div>
-                            </div>
-                            <!-- 自动回复姬-编辑窗体 -->
-                            <div class="modal" id="reply-model-edit">
-                                <div class="modal-dialog modal-fullscreen">
-                                    <div class="modal-content radd-body" style="overflow: auto;resize: both;">
-                                        <div class="modal-header"><h4 class="modal-title">修改当前规则(关闭既为设置完成,别忘了最后保存配置)</h4><button class="btn-close btn-closeri" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="关闭既为设置完成<br/>别忘了保存配置" type="button"></button></div>
-                                        <div class="modal-body">
-                                            <div class="con">
-                                                <ul>
-                                                    <li><input class="reply_open_i reply-sync live-save" data-bs-placement="top" data-bs-toggle="tooltip" title="是否开启" type="checkbox"></li>
-                                                    <li><input class="reply_oc_i reply-sync live-save" data-bs-placement="top" data-bs-toggle="tooltip" title="是否精确匹配，仅在只有一个关键字且没有屏蔽词的情况下使用(也可以在 含有 || 号条件下使用)" type="checkbox"></li>
-                                                    <li><textarea class="reply_keywords_i reply-sync" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" placeholder="关键字" title="关键字既为当弹幕包含所有关键字时才回复；多个关键字时请以中文逗号隔开，<span class='orange-font'>想实现满足条件A或条件B 发送内容C的功能请在关键字中用 || 号分割或者不同关键字(即使在多关键字情况下依旧生效)</span><br/><span class='red-font'>注意不能为空</span>"></textarea></li>
-                                                    <li><textarea class="reply_shields_i reply-sync" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" placeholder="屏蔽词" title="屏蔽词既为当弹幕包含有一项或者多项屏蔽词时则不回复；多个屏蔽词时请以中文逗号隔开,为空既为不开启屏蔽词"></textarea></li>
-                                                    <li><textarea class="reply_rs_i reply-sync" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" placeholder="回复语句" title="回复语句（支持随机词回复）<br/>随机回复：设置多个请换行即可<br/>1：参数%NAME%以替换提问的人的名字<br/>2：参数%BLOCK%表示该功能为禁言，将被替换为空,参数{{time}}定义被禁言时间,单位为整数小时，在有%BLOCK%参数下才生效，将被替换为空，例如要禁言一小时：<span class='red-font'>%BLOCK%{{1}}</span> ；<span class='red-font'>当只有这两个参数，不会发送回复弹幕，只会执行禁言，这两个参数 最终都会在回复语句中消除</span>，time最大720,最小1<br/>3：参数%FANS%以替换现在连接房间的最新关注数目<br/>4：参数%TIME%以替换当前时间<br/>5：参数%LIVETIME%以替换当前房间直播时间<br/>6：参数%HOT%以替换当前房间人气值<br/>更多参数请看github主页"></textarea></li>
-                                                    <li><button class="btn btn-danger btn-sm reply_delete_i" type="button">删除</button></li>
-                                                </ul>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div></div>
             </div>

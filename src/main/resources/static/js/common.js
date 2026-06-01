@@ -5671,7 +5671,7 @@ method.renderWatchedRoomTable = function() {
         // 分区链接
         var areaHtml = '-';
         if (room.areaName) {
-            var areaUrl = 'https://live.bilibili.com/p/eden/area-tags?parent_area_id=' + (room.parentAreaId || 0) + '&area_id=' + (room.areaId || 0);
+            var areaUrl = 'https://live.bilibili.com/p/eden/area-tags?parentAreaId=' + (room.parentAreaId || 0) + '&area_id=' + (room.areaId || 0);
             areaHtml = '<a href="' + areaUrl + '" target="_blank" style="text-decoration:none;" title="查看分区">' + (room.parentAreaName && room.parentAreaName !== room.areaName ? room.parentAreaName + '·' : '') + room.areaName + '</a>';
         }
         // 主播名链接

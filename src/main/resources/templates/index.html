@@ -125,38 +125,22 @@
                                        onclick="switchTab('room-set', this);return false;">房间设置</a>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="common-set"
                                        onclick="switchTab('common-set', this);return false;">通用设置</a>
-                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="cmd-set"
-                                       onclick="switchTab('cmd-set', this);return false;">显示设置</a>
                                 </div>
                                 <div class="sidebar-section">
                                     <span class="sidebar-section-header"
-                                          onclick="toggleSidebarSection(this);return false;">直播间</span>
+                                          onclick="toggleSidebarSection(this);return false;">自动发送设置</span>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="liveStatus-set"
-                                       onclick="switchTab('liveStatus-set', this);return false;">状态姬</a>
-                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="timer-set"
-                                       onclick="switchTab('timer-set', this);return false;">定时姬</a>
-                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="advert-set"
-                                       onclick="switchTab('advert-set', this);return false;">广告姬</a>
-                                </div>
-                                <div class="sidebar-section">
-                                    <span class="sidebar-section-header"
-                                          onclick="toggleSidebarSection(this);return false;">观众</span>
+                                       onclick="switchTab('liveStatus-set', this);return false;">直播姬</a>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="gazeWelcome-set"
                                        onclick="switchTab('gazeWelcome-set', this);return false;">欢迎凝视姬</a>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="welcome-set"
-                                       onclick="switchTab('welcome-set', this);return false;">欢迎姬</a>
-                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="thankFollow-set"
-                                       onclick="switchTab('thankFollow-set', this);return false;">关注姬</a>
-                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="thankGift-set"
-                                       onclick="switchTab('thankGift-set', this);return false;">礼物姬</a>
+                                       onclick="switchTab('welcome-set', this);return false;">互动姬</a>
                                 </div>
                                 <div class="sidebar-section">
                                     <span class="sidebar-section-header"
                                           onclick="toggleSidebarSection(this);return false;">弹幕</span>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="danmakuStore-set"
                                        onclick="switchTab('danmakuStore-set', this);return false;">话术姬</a>
-                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="autoReply-set"
-                                       onclick="switchTab('autoReply-set', this);return false;">自动回复姬</a>
                                 </div>
                                 <div class="sidebar-section">
                                     <span class="sidebar-section-header"
@@ -164,7 +148,7 @@
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="positiveWhite-set"
                                        onclick="switchTab('positiveWhite-set', this);return false;">负黑正白姬</a>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="black-set"
-                                       onclick="switchTab('black-set', this);return false;">黑白过滤姬</a>
+                                       onclick="switchTab('black-set', this);return false;">黑白名单姬</a>
                                     <a href="javascript:void(0)" class="sidebar-link" th:classappend="${USER != null and ROOMID != null} ? 'active'" data-tab="autoBlock-set"
                                        onclick="switchTab('autoBlock-set', this);return false;">负黑自动拉黑姬</a>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="badlist-set"
@@ -365,28 +349,7 @@
                                         </div>
                                     </div>
                                     <!-- 通用设置结束 -->
-                                    <!-- 底部按钮开始 -->
-                                    <div class="input-group mb-3 set-control">
-                                        <div class="col-auto">
-                                            <input class="import-file-input" style="display: none;" type="file"
-                                                   value="上传文件"/>
-                                            <button class="btn btn-warning export-set"
-                                                    title="导出设置到本地，弹幕姬配置文件夹set底下"
-                                                    type="button">导出设置
-                                            </button>
-                                            <button class="btn btn-success export-set-web" title="网页实时下载配置"
-                                                    type="button">
-                                                下载设置
-                                            </button>
-                                            <button class="btn btn-info import-set" title="导入配置文件" type="button">
-                                                导入设置
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <!-- 底部按钮结束 -->
-                                </div>
-                                <div class="tab-pane" id="tab-cmd-set">
-                                    <!-- 弹幕设置开始 -->
+                                    <!-- 显示设置开始 -->
                                     <div class="input-group mb-1"><h5>显示设置</h5></div>
                                     <div class="row input-group mb-3 cmd-set" id="cmd-set">
                                         <div class="input-group mb-1">
@@ -549,7 +512,26 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <!-- 弹幕设置结束 -->
+                                    <!-- 显示设置结束 -->
+                                    <!-- 底部按钮开始 -->
+                                    <div class="input-group mb-3 set-control">
+                                        <div class="col-auto">
+                                            <input class="import-file-input" style="display: none;" type="file"
+                                                   value="上传文件"/>
+                                            <button class="btn btn-warning export-set"
+                                                    title="导出设置到本地，弹幕姬配置文件夹set底下"
+                                                    type="button">导出设置
+                                            </button>
+                                            <button class="btn btn-success export-set-web" title="网页实时下载配置"
+                                                    type="button">
+                                                下载设置
+                                            </button>
+                                            <button class="btn btn-info import-set" title="导入配置文件" type="button">
+                                                导入设置
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <!-- 底部按钮结束 -->
                                 </div>
                                 <div class="tab-pane" id="tab-liveStatus-set">
                                     <!-- 直播状态姬设置开始 -->
@@ -666,10 +648,6 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <!-- 直播状态姬设置结束 -->
-                                </div>
-                                <div class="tab-pane" id="tab-timer-set">
-                                    <!-- 定时姬设置开始 -->
                                     <div class="input-group mb-1"><h5>定时姬</h5></div>
                                     <div class="input-group mb-3 timer-set" id="timer-set">
                                         <div class="header-set">
@@ -694,7 +672,68 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <!-- 定时姬设置结束 -->
+                                <div class="input-group mb-1"><h5>广告姬</h5></div>
+                                    <div class="input-group mb-3 advert-set" id="advert-set">
+                                        <div class="header-set">
+                                            <div class="row align-items-center">
+                                                <div class="col-auto">
+                                                    <label class="form-check-label"> <input
+                                                            class="form-check-input advert_is_open live-save"
+                                                            type="checkbox">
+                                                        <span class="_description" data-bs-placement="top"
+                                                              data-bs-toggle="tooltip" title="是否打开">开关</span>
+                                                    </label>
+                                                </div>
+                                                <div class="col-auto">
+                                                    <label class="form-check-label col-form-label"> <input
+                                                            class="form-check-input advert_is_live_open live-save"
+                                                            type="checkbox">
+                                                        <span class="_description" data-bs-placement="top"
+                                                              data-bs-toggle="tooltip"
+                                                              title="仅在直播（开播）中有效">直播</span>
+                                                    </label>
+                                                </div>
+                                                <div class="col-auto">
+                                                    <select class="form-select form-select-sm advert_status live-save"
+                                                            data-bs-html="true" data-bs-placement="top"
+                                                            data-bs-toggle="tooltip"
+                                                            title="选择发送条件<br/>①:顺序是按你输入的顺序自上到下循环发送<br/>②:随机就是随机发送其中一条">
+                                                        <option selected="selected" value="1">顺序</option>
+                                                        <option value="2">随机</option>
+                                                    </select>
+                                                </div>
+                                                <div
+                                                        class="col-auto small-input-wrap">
+                                                    <input class="small-input advert_time live-save"
+                                                           data-bs-placement="top"
+                                                           data-bs-toggle="tooltip"
+                                                           min="1"
+                                                           onKeypress="return (/[\d]/.test(String.fromCharCode(event.keyCode)))"
+                                                           placeholder="time(s)"
+                                                           style="ime-mode: Disabled" title="多少秒发送一次（开始时间）"
+                                                           type="number" value="1">
+                                                </div>
+                                                <div
+                                                        class="col-auto small-input-wrap">
+                                                    <input class="small-input advert_time2 live-save"
+                                                           data-bs-placement="top"
+                                                           data-bs-toggle="tooltip"
+                                                           min="0"
+                                                           onKeypress="return (/[\d]/.test(String.fromCharCode(event.keyCode)))"
+                                                           placeholder="time(s)"
+                                                           style="ime-mode: Disabled"
+                                                           title="多少秒发送一次（结束时间；0是关闭随机且固定开始时间）"
+                                                           type="number" value="1">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="form-group footer-set">
+                                            <textarea class="form-control advert_adverts live-save"
+                                                      data-bs-html="true" data-bs-placement="top"
+                                                      data-bs-toggle="tooltip" placeholder="多条语句下请以回车为分割每条语句"
+                                                      title="多条语句时候注意以回车为分割每条语句<br/>注意每条语句不要超出自己能发送的弹幕长度<br/>超出长度弹幕姬会自动分段发送"></textarea>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div class="tab-pane" id="tab-danmakuStore-set">
                                     <!-- 弹幕话术姬设置开始 -->
@@ -740,76 +779,8 @@
                                     <!-- 底部按钮结束 -->
                                     <!-- 弹幕话术姬设置结束 -->
                                 </div>
-                                <div class="tab-pane" id="tab-advert-set">
-                                    <!-- 广告姬设置开始 -->
-                                    <div class="input-group mb-1"><h5>广告姬</h5></div>
-                                    <div class="input-group mb-3 advert-set" id="advert-set">
-                                        <div class="header-set">
-                                            <div class="row align-items-center">
-                                                <div class="col-auto">
-                                                    <label class="form-check-label"> <input
-                                                            class="form-check-input advert_is_open live-save"
-                                                            type="checkbox">
-                                                        <span class="_description" data-bs-placement="top"
-                                                              data-bs-toggle="tooltip" title="是否打开">开关</span>
-                                                    </label>
-                                                </div>
-                                                <div class="col-auto">
-                                                    <label class="form-check-label col-form-label"> <input
-                                                            class="form-check-input advert_is_live_open live-save"
-                                                            type="checkbox">
-                                                        <span class="_description" data-bs-placement="top"
-                                                              data-bs-toggle="tooltip"
-                                                              title="仅在直播（开播）中有效">直播</span>
-                                                    </label>
-                                                </div>
-                                                <div class="col-auto">
-                                                    <select class="form-select form-select-sm advert_status live-save"
-                                                            data-bs-html="true" data-bs-placement="top"
-                                                            data-bs-toggle="tooltip"
-                                                            title="选择发送条件<br/>①:顺序是按你输入的顺序自上到下循环发送<br/>②:随机就是随机发送其中一条">
-                                                        <option selected="selected" value="1">顺序</option>
-                                                        <option value="2">随机</option>
-                                                    </select>
-                                                </div>
-                                                <div
-                                                        class="col-auto small-input-wrap">
-                                                    <input class="small-input advert_time live-save"
-                                                           data-bs-placement="top"
-                                                           data-bs-toggle="tooltip"
-                                                           min="1"
-                                                           onKeypress="return (/[\d]/.test(String.fromCharCode(event.keyCode)))"
-                                                           placeholder="time(s)"
-                                                           style="ime-mode: Disabled" title="多少秒发送一次（开始时间）"
-                                                           type="number" value="1"
-                                                           οninput="if(value.length>5)value=value.slice(0,5)">
-                                                </div>
-                                                <div
-                                                        class="col-auto small-input-wrap">
-                                                    <input class="small-input advert_time2 live-save"
-                                                           data-bs-placement="top"
-                                                           data-bs-toggle="tooltip"
-                                                           min="0"
-                                                           onKeypress="return (/[\d]/.test(String.fromCharCode(event.keyCode)))"
-                                                           placeholder="time(s)"
-                                                           style="ime-mode: Disabled"
-                                                           title="多少秒发送一次（结束时间；0是关闭随机且固定开始时间）"
-                                                           type="number" value="1"
-                                                           οninput="if(value.length>5)value=value.slice(0,5)">
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="form-group footer-set">
-									<textarea class="form-control advert_adverts live-save"
-                                              data-bs-html="true" data-bs-placement="top"
-                                              data-bs-toggle="tooltip" placeholder="多条语句下请以回车为分割每条语句"
-                                              title="多条语句时候注意以回车为分割每条语句<br/>注意每条语句不要超出自己能发送的弹幕长度<br/>超出长度弹幕姬会自动分段发送"></textarea>
-                                        </div>
-                                    </div>
-                                    <!-- 广告姬设置结束 -->
-                                </div>
-                                <div class="tab-pane" id="tab-thankGift-set">
-                                    <!-- 送礼姬设置开始 -->
+                                <div class="tab-pane" id="tab-welcome-set">
+                                    <!-- 互动姬设置开始 -->
                                     <div class="input-group mb-1"><h5>礼物姬</h5></div>
                                     <div class="input-group mb-3 thankGift-set" id="thankGift-set">
                                         <div class="header-set">
@@ -1019,9 +990,6 @@
                                                     title="礼品码区域，多个礼品码以回车为分割礼品码，礼品码发送会自动删除，请做好备份<br/>以舰长-开头表示赠送给舰长，提督-开头，总督-开头；例如： 舰长-code<br/>没有特殊开头表示全部舰队等级都会赠送"></textarea>
                                         </div>
                                     </div>
-                                    <!-- 送礼姬设置结束 -->
-                                </div>
-                                <div class="tab-pane" id="tab-thankFollow-set">
                                     <!-- 关注姬设置开始 -->
                                     <div class="input-group mb-1"><h5>关注姬</h5></div>
                                     <div class="input-group mb-3 thankFollow-set" id="thankFollow-set">
@@ -1098,9 +1066,6 @@
                                                       title="多条语句时候注意以回车为分割每条语句,多条语句会随机发送其中一条<br/>感谢语，可选参数<br/> <span class='red-font'>%uNames%</span>关注人名称集合"></textarea>
                                         </div>
                                     </div>
-                                    <!--关注姬设置结束 -->
-                                </div>
-                                <div class="tab-pane" id="tab-welcome-set">
                                     <!-- 欢迎姬设置开始 -->
                                     <div class="input-group mb-1"><h5>欢迎姬</h5></div>
                                     <div class="input-group mb-3 thankFollow-set" id="welcome-set">
@@ -1197,39 +1162,6 @@
                                                       title="多条语句时候注意以回车为分割每条语句,多条语句会随机发送其中一条<br/>感谢语，可选参数<br/> <span class='red-font'>%uNames%</span>欢迎人名称集合"></textarea>
                                         </div>
                                     </div>
-                                    <!-- 欢迎姬设置结束 -->
-                                </div>
-                                <div class="tab-pane" id="tab-gazeWelcome-set">
-                                    <!-- 欢迎凝视姬设置开始 -->
-                                    <div class="input-group mb-1"><h5>欢迎凝视姬</h5></div>
-                                    <div class="input-group mb-3 gazeWelcome-set" id="gazeWelcome-set">
-                                        <div class="header-set">
-                                            <div class="row align-items-center"
-                                                 style="margin-bottom:5px;--bs-gutter-x:5px">
-                                                <div class="col-auto">
-                                                    <label class="form-check-label"> <input
-                                                            class="form-check-input gazeWelcome_is_open live-save"
-                                                            type="checkbox">
-                                                        <span class="_description" data-bs-placement="top"
-                                                              data-bs-toggle="tooltip"
-                                                              title="是否启用欢迎凝视姬">启用</span>
-                                                    </label>
-                                                </div>
-                                                <div class="col-auto">
-                                                    <button class="btn btn-sm btn-success gazeWelcome-add-btn">添加
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            <div class="gazeWelcome-list">
-                                                <ul class="gazeWelcome-ul list-unstyled mb-0" id="gazeWelcome-ul">
-                                                </ul>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <!-- 欢迎凝视姬设置结束 -->
-                                </div>
-                                <div class="tab-pane" id="tab-autoReply-set">
-                                    <!-- 自动回复姬设置开始 -->
                                     <div class="input-group mb-1"><h5>自动回复姬</h5></div>
                                     <div class="input-group mb-3 autoReply-set" id="autoReply-set">
                                         <div class="header-set">
@@ -1303,7 +1235,36 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <!-- 自动回复姬设置结束 -->
+                                    <!-- 互动姬设置结束 -->
+                                </div>
+                                <div class="tab-pane" id="tab-gazeWelcome-set">
+                                    <!-- 欢迎凝视姬设置开始 -->
+                                    <div class="input-group mb-1"><h5>欢迎凝视姬</h5></div>
+                                    <div class="input-group mb-3 gazeWelcome-set" id="gazeWelcome-set">
+                                        <div class="header-set">
+                                            <div class="row align-items-center"
+                                                 style="margin-bottom:5px;--bs-gutter-x:5px">
+                                                <div class="col-auto">
+                                                    <label class="form-check-label"> <input
+                                                            class="form-check-input gazeWelcome_is_open live-save"
+                                                            type="checkbox">
+                                                        <span class="_description" data-bs-placement="top"
+                                                              data-bs-toggle="tooltip"
+                                                              title="是否启用欢迎凝视姬">启用</span>
+                                                    </label>
+                                                </div>
+                                                <div class="col-auto">
+                                                    <button class="btn btn-sm btn-success gazeWelcome-add-btn">添加
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div class="gazeWelcome-list">
+                                                <ul class="gazeWelcome-ul list-unstyled mb-0" id="gazeWelcome-ul">
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- 欢迎凝视姬设置结束 -->
                                 </div>
                                 <!-- 自动回复姬-自定义自动回复编辑窗体 -->
                                 <div class="modal" id="reply-model-edit">

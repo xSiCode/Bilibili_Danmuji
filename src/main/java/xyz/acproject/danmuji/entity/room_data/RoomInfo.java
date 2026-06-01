@@ -31,7 +31,7 @@ public class RoomInfo implements Serializable{
 	private Short lock_status;
 	private Long lock_time;
 	private Integer area_id;
-	private Integer parent_area_id;
+	private Integer parentAreaId;
 	private String parent_area_name;
 	private String area_name;
 	private String cover;
