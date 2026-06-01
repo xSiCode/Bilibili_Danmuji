@@ -5255,8 +5255,14 @@ function switchTab(tabId, el) {
         $(el).addClass('active');
     }
     // 切换内容面板
-    $('.settings-content .tab-pane').removeClass('active').hide();
     var targetPane = $('#tab-' + tabId);
+    // 如果目标标签页不存在（如旧版tab已合并），回退到第一个可见标签页
+    if (!targetPane.length) {
+        targetPane = $('.settings-content .tab-pane').first();
+        if (!targetPane.length) return;
+        tabId = targetPane.attr('id').replace('tab-', '');
+    }
+    $('.settings-content .tab-pane').removeClass('active').hide();
     targetPane.addClass('active').show();
     // 记住当前tab，页面刷新后恢复
     try { localStorage.setItem('activeTab', tabId); } catch(e) {}
@@ -5608,12 +5614,16 @@ method.loadWatchedRooms = function() {
 
 // 关注列表排序状态
 var watchedSort = { field: null, asc: true };
+var watchedPage = 0;
+var watchedPageSize = 10;
 
 // 渲染关注直播间表格
 method.renderWatchedRoomTable = function() {
     var $table = $('#watched-rooms-table');
     var $tbody = $('#watched-rooms-tbody');
     var $empty = $('#watched-rooms-empty');
+    var $pagination = $('#watched-rooms-pagination');
+    var $pageInfo = $('#watched-page-info');
     $tbody.empty();
 
     // 获取当前连接的房间ID
@@ -5643,6 +5653,7 @@ method.renderWatchedRoomTable = function() {
 
     if (!data || data.length === 0) {
         $table.hide();
+        $pagination.hide();
         $empty.show();
         return;
     }
@@ -5656,6 +5667,14 @@ method.renderWatchedRoomTable = function() {
             return watchedSort.asc ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
         });
     }
+
+    // 分页
+    var totalPages = Math.max(1, Math.ceil(data.length / watchedPageSize));
+    if (watchedPage >= totalPages) watchedPage = totalPages - 1;
+    if (watchedPage < 0) watchedPage = 0;
+    var start = watchedPage * watchedPageSize;
+    var pageData = data.slice(start, start + watchedPageSize);
+
     $table.show();
     $empty.hide();
     // 更新表头排序箭头
@@ -5663,7 +5682,7 @@ method.renderWatchedRoomTable = function() {
         var f = $(this).attr('data-sort');
         $(this).find('.sort-arrow').html(f === watchedSort.field ? (watchedSort.asc ? ' ▲' : ' ▼') : '');
     });
-    data.forEach(function(room) {
+    pageData.forEach(function(room) {
         var isCurrent = room._isCurrent || (currentRoomId && room.roomId == currentRoomId);
         var statusHtml = (room.liveStatus == 1)
             ? '<span style="color:#4eff4e;">●直播中</span>'
@@ -5682,13 +5701,11 @@ method.renderWatchedRoomTable = function() {
         var roomNameHtml = room.roomId
             ? '<a href="https://live.bilibili.com/' + room.roomId + '" target="_blank" style="text-decoration:none;" title="进入直播间">' + (room.roomName || '-') + '</a>'
             : (room.roomName || '-');
-        // 类型 + 连接/断开按钮
-        var typeHtml, actionHtml;
+        // 连接/断开按钮
+        var actionHtml;
         if (isCurrent) {
-            typeHtml = '<span class="badge bg-primary">当前连接</span>';
             actionHtml = '<button class="btn btn-sm btn-outline-warning watched-disconnect-btn">断开</button>';
         } else {
-            typeHtml = '<span class="badge bg-secondary">静默等待</span>';
             actionHtml = '<button class="btn btn-sm btn-outline-primary watched-connect-btn" data-roomid="' + room.roomId + '">连接</button>';
         }
         var onlineHtml = (room.online > 0) ? room.online : '<span style="color:#ccc;">-</span>';
@@ -5696,7 +5713,6 @@ method.renderWatchedRoomTable = function() {
             '<td>' + anchorHtml + '</td>' +
             '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + roomNameHtml + '</td>' +
             '<td>' + areaHtml + '</td>' +
-            '<td style="width:80px;">' + typeHtml + '</td>' +
             '<td style="width:80px;text-align:right;">' + onlineHtml + '</td>' +
             '<td style="width:80px;text-align:right;">' + statusHtml + '</td>' +
             '<td style="width:80px;text-align:right;">' + actionHtml + '</td>' +
@@ -5704,6 +5720,16 @@ method.renderWatchedRoomTable = function() {
             '</tr>';
         $tbody.append(row);
     });
+
+    // 渲染分页控件
+    if (totalPages > 1) {
+        $pagination.show();
+        $pageInfo.text('第 ' + (watchedPage + 1) + ' / ' + totalPages + ' 页（共 ' + data.length + ' 个）');
+        $('#watched-prev-btn').prop('disabled', watchedPage <= 0);
+        $('#watched-next-btn').prop('disabled', watchedPage >= totalPages - 1);
+    } else {
+        $pagination.hide();
+    }
 };
 
 // 刷新关注直播间（顺序获取未连接房间的状态和在线人数）
@@ -5785,6 +5811,7 @@ method.sortWatchedRooms = function(field) {
         watchedSort.field = field;
         watchedSort.asc = true;
     }
+    watchedPage = 0;
     method.renderWatchedRoomTable();
 };
 
@@ -5829,6 +5856,7 @@ method.addWatchedRoom = function() {
                     online: 0
                 });
                 method.saveWatchedRoomsData();
+                watchedPage = 0;
                 method.renderWatchedRoomTable();
                 $('#watched-room-input').val('');
                 $msg.html('<span style="color:green;">添加成功</span>');
@@ -5873,6 +5901,7 @@ method.saveWatchedRoomsData = function() {
 method.deleteWatchedRoom = function(roomId) {
     watchedRoomsData = watchedRoomsData.filter(function(r) { return r.roomId != roomId; });
     method.saveWatchedRoomsData();
+    watchedPage = 0;
     method.renderWatchedRoomTable();
 };
 
@@ -5954,6 +5983,21 @@ $(function() {
                 setTimeout(function() { window.location.reload(); }, 1000);
             }
         });
+    });
+    // 分页-上一页
+    $(document).on('click', '#watched-prev-btn', function() {
+        if (watchedPage > 0) {
+            watchedPage--;
+            method.renderWatchedRoomTable();
+        }
+    });
+    // 分页-下一页
+    $(document).on('click', '#watched-next-btn', function() {
+        var totalPages = Math.max(1, Math.ceil(watchedRoomsData.length / watchedPageSize));
+        if (watchedPage < totalPages - 1) {
+            watchedPage++;
+            method.renderWatchedRoomTable();
+        }
     });
 });
 

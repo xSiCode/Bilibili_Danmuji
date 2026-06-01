@@ -65,9 +65,8 @@
             <div class="settings-sidebar" style="width:220px;flex-shrink:0;">
                 <div class="sidebar-section">
                     <span class="sidebar-section-header" onclick="toggleSidebarSection(this);return false;">基本设置</span>
-                    <a th:href="@{/settings(tab=account-set)}" class="sidebar-link" th:classappend="${activePage == 'settings' && (#arrays.isEmpty(param.tab) || param.tab[0] == 'account-set')} ? 'active' : ''">账号设置</a>
+                    <a th:href="@{/settings(tab=common-set)}" class="sidebar-link" th:classappend="${activePage == 'settings' && (#arrays.isEmpty(param.tab) || param.tab[0] == 'common-set' || param.tab[0] == 'cmd-set' || param.tab[0] == 'account-set')} ? 'active' : ''">账号&设置</a>
                     <a th:href="@{/settings(tab=room-set)}" class="sidebar-link" th:classappend="${activePage == 'settings' && !#arrays.isEmpty(param.tab) && param.tab[0] == 'room-set'} ? 'active' : ''">房间设置</a>
-                    <a th:href="@{/settings(tab=common-set)}" class="sidebar-link" th:classappend="${activePage == 'settings' && (#arrays.isEmpty(param.tab) || param.tab[0] == 'common-set' || param.tab[0] == 'cmd-set')} ? 'active' : ''">通用设置</a>
                 </div>
                 <div class="sidebar-section">
                     <span class="sidebar-section-header" onclick="toggleSidebarSection(this);return false;">自动发送设置</span>

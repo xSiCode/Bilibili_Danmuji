@@ -5227,8 +5227,14 @@ function switchTab(tabId, el) {
         $(el).addClass('active');
     }
     // 切换内容面板
-    $('.settings-content .tab-pane').removeClass('active').hide();
     var targetPane = $('#tab-' + tabId);
+    // 如果目标标签页不存在（如旧版tab已合并），回退到第一个可见标签页
+    if (!targetPane.length) {
+        targetPane = $('.settings-content .tab-pane').first();
+        if (!targetPane.length) return;
+        tabId = targetPane.attr('id').replace('tab-', '');
+    }
+    $('.settings-content .tab-pane').removeClass('active').hide();
     targetPane.addClass('active').show();
     // 记住当前tab，页面刷新后恢复
     try { localStorage.setItem('activeTab', tabId); } catch(e) {}
