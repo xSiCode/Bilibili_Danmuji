@@ -1767,6 +1767,7 @@ const method = {
         }
         set.gaze_welcome = {};
         set.gaze_welcome.is_open = $(".gazeWelcome_is_open").is(':checked');
+        set.gaze_welcome.cooldown_time = parseInt($(".gazeWelcome-cooldown-time").val()) || 3;
         set.gaze_welcome.gazeWelcomeSets = [];
         if ($("#gazeWelcome-ul li").length > 0) {
             var gazeSet = {};
@@ -2353,6 +2354,7 @@ const method = {
             }
             if (set.gaze_welcome) {
                 $(".gazeWelcome_is_open").prop('checked', set.gaze_welcome.is_open);
+                $(".gazeWelcome-cooldown-time").val(set.gaze_welcome.cooldown_time != null ? set.gaze_welcome.cooldown_time : 3);
                 if (set.gaze_welcome.gazeWelcomeSets) {
                     method.renderGazeWelcomeRows(set.gaze_welcome.gazeWelcomeSets);
                 }

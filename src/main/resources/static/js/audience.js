@@ -5,6 +5,7 @@ registerPageSave('audience', function(set) {
     // 欢迎凝视姬
     if (!set.gaze_welcome) set.gaze_welcome = {};
     set.gaze_welcome.is_open = $(".gazeWelcome_is_open").is(':checked');
+    set.gaze_welcome.cooldown_time = parseInt($(".gazeWelcome-cooldown-time").val()) || 3;
     set.gaze_welcome.gazeWelcomeSets = [];
     if ($("#gazeWelcome-ul li").length > 0) {
         var gazeSet = {};

@@ -22,6 +22,9 @@ public class GazeWelcomeSetConf extends OpenSetConf implements Serializable {
 
     private static final long serialVersionUID = 1780764960331573486L;
 
+    @JSONField(name = "cooldown_time")
+    private Integer cooldown_time = 3;
+
     @JSONField(name = "gazeWelcomeSets")
     private LinkedHashSet<GazeWelcomeSet> gazeWelcomeSets = new LinkedHashSet<>();
 }

@@ -20,6 +20,7 @@
                                 <div class="header-set">
                                     <div class="row align-items-center" style="margin-bottom:5px;--bs-gutter-x:5px">
                                         <div class="col-auto"><label class="form-check-label"><input class="form-check-input gazeWelcome_is_open live-save" type="checkbox"><span class="_description" data-bs-placement="top" data-bs-toggle="tooltip" title="是否启用欢迎凝视姬">启用</span></label></div>
+                                        <div class="col-auto small-input-wrap"><input class="small-input gazeWelcome-cooldown-time live-save" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" min="0" onKeypress="return (/[\d]/.test(String.fromCharCode(event.keyCode)))" placeholder="冷却(小时)" style="ime-mode:Disabled" title="同一用户触发欢迎凝视后的冷却时间，0表示无限制" type="number" value="3"></div>
                                         <div class="col-auto"><button class="btn btn-sm btn-success gazeWelcome-add-btn">添加</button></div>
                                     </div>
                                     <div class="gazeWelcome-list"><ul class="gazeWelcome-ul list-unstyled mb-0" id="gazeWelcome-ul"></ul></div>

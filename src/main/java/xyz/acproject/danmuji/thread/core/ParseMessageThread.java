@@ -90,6 +90,9 @@ public class ParseMessageThread extends Thread {
 
     // === 负黑自动拉黑姬：内存缓存，避免热路径上每次访客进入都读写 JSON 文件 ===
     private static final ConcurrentHashMap<Long, Long> autoBlockTimeCache = new ConcurrentHashMap<>();
+
+    // === 欢迎凝视姬：冷却时间缓存，避免短时间内重复欢迎同一用户 ===
+    private static final ConcurrentHashMap<Long, Long> gazeWelcomeCooldownCache = new ConcurrentHashMap<>();
     private static final ConcurrentLinkedQueue<JSONObject> pendingAutoBlockRecords = new ConcurrentLinkedQueue<>();
     private static volatile boolean autoBlockCacheLoaded = false;
     private static final Object autoBlockCacheLock = new Object();
@@ -1862,6 +1865,20 @@ public class ParseMessageThread extends Thread {
         if (gazeConf.getGazeWelcomeSets() == null || gazeConf.getGazeWelcomeSets().isEmpty()) return;
         String uname = interact.getUname();
         if (StringUtils.isBlank(uname)) return;
+
+        // 冷却时间检查：0表示无限制，跳过冷却检查
+        Integer cooldownTime = gazeConf.getCooldown_time();
+        if (cooldownTime != null && cooldownTime > 0) {
+            Long lastTriggerTime = gazeWelcomeCooldownCache.get(interact.getUid());
+            if (lastTriggerTime != null) {
+                long now = System.currentTimeMillis();
+                if (now - lastTriggerTime < cooldownTime * 3600L * 1000L) {
+                    return;
+                }
+            }
+        }
+
+        boolean triggered = false;
         for (GazeWelcomeSet item : gazeConf.getGazeWelcomeSets()) {
             if (item.is_open() && matchesUsername(uname, item.getUsername())) {
                 String text = item.getText();
@@ -1872,8 +1889,13 @@ public class ParseMessageThread extends Thread {
                     if (PublicDataConf.sendBarrageThread != null && !PublicDataConf.sendBarrageThread.FLAG) {
                         PublicDataConf.barrageString.offer(text);
                     }
+                    triggered = true;
                 }
             }
+        }
+
+        if (triggered && cooldownTime != null && cooldownTime > 0) {
+            gazeWelcomeCooldownCache.put(interact.getUid(), System.currentTimeMillis());
         }
     }
 
