@@ -73,9 +73,6 @@
                     <a th:href="@{/live-room(tab=liveStatus-set)}" class="sidebar-link" th:classappend="${activePage == 'live-room'} ? 'active' : ''">直播姬</a>
                     <a th:href="@{/audience(tab=gazeWelcome-set)}" class="sidebar-link" th:classappend="${activePage == 'audience' && (#arrays.isEmpty(param.tab) || param.tab[0] == 'gazeWelcome-set')} ? 'active' : ''">欢迎凝视姬</a>
                     <a th:href="@{/audience(tab=welcome-set)}" class="sidebar-link" th:classappend="${activePage == 'audience' && (#arrays.isEmpty(param.tab) || param.tab[0] == 'welcome-set' || param.tab[0] == 'thankFollow-set' || param.tab[0] == 'thankGift-set')} ? 'active' : ''">互动姬</a>
-                </div>
-                <div class="sidebar-section">
-                    <span class="sidebar-section-header" onclick="toggleSidebarSection(this);return false;">弹幕</span>
                     <a th:href="@{/danmaku(tab=danmakuStore-set)}" class="sidebar-link" th:classappend="${activePage == 'danmaku' && (#arrays.isEmpty(param.tab) || param.tab[0] == 'danmakuStore-set')} ? 'active' : ''">话术姬</a>
                 </div>
                 <div class="sidebar-section">

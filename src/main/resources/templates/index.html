@@ -126,19 +126,15 @@
                                 </div>
                                 <div class="sidebar-section">
                                     <span class="sidebar-section-header"
-                                          onclick="toggleSidebarSection(this);return false;">自动发送设置</span>
+                                          onclick="toggleSidebarSection(this);return false;">弹幕设置</span>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="liveStatus-set"
-                                       onclick="switchTab('liveStatus-set', this);return false;">直播姬</a>
-                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="gazeWelcome-set"
-                                       onclick="switchTab('gazeWelcome-set', this);return false;">欢迎凝视姬</a>
+                                       onclick="switchTab('liveStatus-set', this);return false;">状态姬</a>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="welcome-set"
-                                       onclick="switchTab('welcome-set', this);return false;">互动姬</a>
-                                </div>
-                                <div class="sidebar-section">
-                                    <span class="sidebar-section-header"
-                                          onclick="toggleSidebarSection(this);return false;">弹幕</span>
+                                       onclick="switchTab('welcome-set', this);return false;">自动姬</a>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="gazeWelcome-set"
+                                       onclick="switchTab('gazeWelcome-set', this);return false;">热情姬</a>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="danmakuStore-set"
-                                       onclick="switchTab('danmakuStore-set', this);return false;">话术姬</a>
+                                       onclick="switchTab('danmakuStore-set', this);return false;">暂存姬</a>
                                 </div>
                                 <div class="sidebar-section">
                                     <span class="sidebar-section-header"
@@ -1541,8 +1537,8 @@
 									<textarea class="form-control input-margin-b black_names live-save"
                                               data-bs-html="true"
                                               data-bs-placement="top" data-bs-toggle="tooltip"
-                                              placeholder="自定义屏蔽用户名字或拉黑关键词，一行一个，包含匹配（用户名包含关键字即屏蔽）"
-                                              title="自定义屏蔽用户名字或拉黑关键词，一行一个，包含匹配（用户名包含关键字即屏蔽）"
+                                              placeholder="自定义屏蔽用户名字或拉黑关键词，一行一个，包含匹配（用户名包含关键字即屏蔽）`regex`为正则表达"
+                                              title="自定义屏蔽用户名字或拉黑关键词，一行一个，包含匹配（用户名包含关键字即屏蔽）`regex`为正则表达"
                                     ></textarea>
                                                     <textarea class="form-control input-margin-b black_uids live-save"
                                                               data-bs-html="true"
@@ -1619,8 +1615,8 @@
                                         <textarea class="form-control input-margin-b white_names live-save"
                                                   data-bs-html="true"
                                                   data-bs-placement="top" data-bs-toggle="tooltip"
-                                                  placeholder="自定义白名单用户名字，一行一个，包含匹配（与黑名单冲突时以黑名单为准）"
-                                                  title="自定义白名单用户名字，一行一个，包含匹配（与黑名单冲突时以黑名单为准）"
+                                                  placeholder="自定义白名单用户名字，一行一个，默认匹配，`regex`为正则表达"
+                                                  title="自定义白名单用户名字，一行一个，默认匹配，`regex`为正则表达"
                                         ></textarea>
                                                     <textarea class="form-control input-margin-b white_uids live-save"
                                                               data-bs-html="true"

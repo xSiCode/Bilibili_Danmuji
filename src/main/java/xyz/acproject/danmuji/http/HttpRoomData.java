@@ -31,6 +31,8 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
@@ -1096,7 +1098,7 @@ public class HttpRoomData {
         if (PublicDataConf.centerSetConf.getBlack() != null && PublicDataConf.centerSetConf.getBlack().getNames() != null) {
             for (String s : PublicDataConf.centerSetConf.getBlack().getNames()) {
                 if (StringUtils.isBlank(s)) continue;
-                if (StringUtils.contains(dataStr, s)) {
+                if (matchKeyword(dataStr, s)) {
                     blackWhiteScore -= 2;
                     sb.append(" '").append(s).append("-2'");
                 }
@@ -1106,7 +1108,7 @@ public class HttpRoomData {
         if (PublicDataConf.centerSetConf.getWhite() != null && PublicDataConf.centerSetConf.getWhite().getNames() != null) {
             for (String s : PublicDataConf.centerSetConf.getWhite().getNames()) {
                 if (StringUtils.isBlank(s)) continue;
-                if (StringUtils.contains(dataStr, s)) {
+                if (matchKeyword(dataStr, s)) {
                     blackWhiteScore++;
                     sb.append(" '").append(s).append("+1'");
                 }
@@ -1114,6 +1116,29 @@ public class HttpRoomData {
         }
 
         return blackWhiteScore;
+    }
+
+    /**
+     * 关键词匹配：若关键词以反引号 ` 包裹，则作为正则表达式处理；否则进行模糊（包含）匹配。
+     *
+     * @param dataStr 待匹配的文本
+     * @param keyword 关键词，若形如 `regex` 则按正则处理
+     * @return 是否匹配
+     */
+    private static boolean matchKeyword(String dataStr, String keyword) {
+        if (keyword.startsWith("`") && keyword.endsWith("`") && keyword.length() > 2) {
+            // 正则模式：去掉首尾反引号，编译后匹配
+            String regex = keyword.substring(1, keyword.length() - 1);
+            try {
+                return Pattern.compile(regex).matcher(dataStr).find();
+            } catch (PatternSyntaxException e) {
+                LOGGER.warn("关键词正则语法错误: {}", keyword, e);
+                return false;
+            }
+        } else {
+            // 普通模糊匹配（包含）
+            return StringUtils.contains(dataStr, keyword);
+        }
     }
 
     /**
