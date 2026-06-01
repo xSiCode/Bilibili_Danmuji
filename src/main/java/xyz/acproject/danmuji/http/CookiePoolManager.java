@@ -74,53 +74,78 @@ public class CookiePoolManager {
 
     /**
      * 获取下一个可用的 Cookie。
-     * 优先返回未冷却的子账号 Cookie；如果全部冷却，返回冷却剩余时间最短的；
-     * 如果没有可用子账号或池未启用，返回主账号 Cookie（PublicDataConf.USERCOOKIE）。
+     * 将主账号纳入Round-Robin轮换池中（若已登录且启用轮询且未冷却），
+     * 与子账号公平轮换。全部冷却时使用最早恢复的；全部禁用时回退到主账号兜底。
      *
      * @return Cookie 字符串，可能为 null
      */
     public String getNextCookie() {
-        // 如果池未启用或没有子账号，直接用主账号
-        if (poolConf == null || !poolConf.isEnabled() || poolConf.getAccounts().isEmpty()) {
+        long now = System.currentTimeMillis();
+
+        // 如果池未启用，直接用主账号
+        if (poolConf == null || !poolConf.isEnabled()) {
             mainUseCount.incrementAndGet();
             return PublicDataConf.USERCOOKIE;
         }
 
         List<SubAccount> accounts = poolConf.getAccounts();
-        List<SubAccount> available = poolConf.getAvailableAccounts();
+        List<SubAccount> availableSubs = poolConf.getAvailableAccounts();
+        boolean mainAvailable = isMainAccountAvailable() && poolConf.isMainPollingEnabled() && !isMainCoolingDown();
 
-        if (!available.isEmpty()) {
-            // Round-Robin 从可用账号中选择
-            int index = Math.abs(roundRobinIndex.getAndIncrement() % available.size());
-            SubAccount selected = available.get(index);
-            selected.setLastUsedTime(System.currentTimeMillis());
-            selected.setUseCount(selected.getUseCount() + 1);
-            LOGGER.debug("CookiePool: 使用子账号 [{}] uid={}", selected.getName(), selected.getUid());
-            return selected.getCookie();
+        int totalAvailable = availableSubs.size() + (mainAvailable ? 1 : 0);
+
+        if (totalAvailable > 0) {
+            // Round-Robin：主账号与子账号公平轮换
+            int index = Math.abs(roundRobinIndex.getAndIncrement() % totalAvailable);
+            if (index < availableSubs.size()) {
+                // 命中子账号
+                SubAccount selected = availableSubs.get(index);
+                selected.setLastUsedTime(now);
+                selected.setUseCount(selected.getUseCount() + 1);
+                LOGGER.debug("CookiePool: 使用子账号 [{}] uid={}", selected.getName(), selected.getUid());
+                return selected.getCookie();
+            } else {
+                // 命中主账号
+                mainUseCount.incrementAndGet();
+                LOGGER.debug("CookiePool: 使用主账号（轮询命中）");
+                return PublicDataConf.USERCOOKIE;
+            }
         }
 
-        // 所有子账号都在冷却中，找冷却剩余最短的
-        SubAccount earliestCooldown = null;
+        // 全部账号均在冷却中 — 找冷却剩余最短的（含主账号）
         long minRemaining = Long.MAX_VALUE;
-        long now = System.currentTimeMillis();
+        SubAccount earliestSub = null;
         for (SubAccount acc : accounts) {
             if (!acc.isEnabled()) continue;
             long remaining = acc.getCooldownUntil() - now;
             if (remaining > 0 && remaining < minRemaining) {
                 minRemaining = remaining;
-                earliestCooldown = acc;
+                earliestSub = acc;
             }
         }
-        if (earliestCooldown != null) {
-            LOGGER.warn("CookiePool: 所有子账号均在冷却中，使用最早恢复的账号 [{}] (剩余{}秒)",
-                    earliestCooldown.getName(), minRemaining / 1000);
-            earliestCooldown.setLastUsedTime(now);
-            earliestCooldown.setUseCount(earliestCooldown.getUseCount() + 1);
-            return earliestCooldown.getCookie();
+        // 也检查主账号冷却
+        boolean mainInCooldown = isMainAccountAvailable() && isMainCoolingDown();
+        long mainRemaining = mainInCooldown ? (poolConf.getMainCooldownUntil() - now) : -1;
+        boolean useMain = false;
+        if (mainInCooldown && mainRemaining > 0 && mainRemaining < minRemaining) {
+            minRemaining = mainRemaining;
+            useMain = true;
         }
 
-        // 所有账号都禁用了，回退到主账号
-        LOGGER.warn("CookiePool: 无可用子账号，回退到主账号");
+        if (useMain) {
+            LOGGER.warn("CookiePool: 所有账号均在冷却中，使用最早恢复的主账号（剩余{}秒）", minRemaining / 1000);
+            mainUseCount.incrementAndGet();
+            return PublicDataConf.USERCOOKIE;
+        } else if (earliestSub != null) {
+            LOGGER.warn("CookiePool: 所有子账号均在冷却中，使用最早恢复的账号 [{}] (剩余{}秒)",
+                    earliestSub.getName(), minRemaining / 1000);
+            earliestSub.setLastUsedTime(now);
+            earliestSub.setUseCount(earliestSub.getUseCount() + 1);
+            return earliestSub.getCookie();
+        }
+
+        // 全部禁用 — 回退到主账号兜底
+        LOGGER.warn("CookiePool: 无可用账号，回退到主账号");
         mainUseCount.incrementAndGet();
         return PublicDataConf.USERCOOKIE;
     }
@@ -147,9 +172,17 @@ public class CookiePoolManager {
             }
         }
 
-        // 如果是主账号被限流
+        // 如果是主账号被限流，设置主账号冷却
         if (cookie.equals(PublicDataConf.USERCOOKIE)) {
             mainRateLimitedCount.incrementAndGet();
+            if (poolConf != null && poolConf.isMainPollingEnabled()) {
+                long cooldownMs = poolConf.getCooldownSeconds() * 1000L;
+                poolConf.setMainCooldownUntil(System.currentTimeMillis() + cooldownMs);
+                LOGGER.warn("CookiePool: 主账号触发限流！冷却{}秒 (累计{}次)",
+                        poolConf.getCooldownSeconds(), mainRateLimitedCount.get());
+                saveToFile();
+                return;
+            }
             LOGGER.warn("CookiePool: 主账号触发限流！(累计{}次) 建议添加子账号来分摊请求。", mainRateLimitedCount.get());
         }
     }
@@ -320,12 +353,12 @@ public class CookiePoolManager {
     }
 
     /**
-     * 获取可用的 Cookie 数量（包含主账号）
+     * 获取可用的 Cookie 数量（包含主账号，仅当其启用轮询且未冷却时）
      */
     public int getTotalAvailableCount() {
         int count = poolConf != null ? poolConf.getAvailableCount() : 0;
-        if (StringUtils.isNotBlank(PublicDataConf.USERCOOKIE) && PublicDataConf.USER != null) {
-            count++; // 主账号也算可用
+        if (isMainAccountAvailable() && poolConf != null && poolConf.isMainPollingEnabled() && !isMainCoolingDown()) {
+            count++;
         }
         return count;
     }
@@ -339,6 +372,92 @@ public class CookiePoolManager {
     /** 主账号是否可用（已登录且未被限流冷却） */
     public boolean isMainAccountAvailable() {
         return StringUtils.isNotBlank(PublicDataConf.USERCOOKIE) && PublicDataConf.USER != null;
+    }
+
+    /** 主账号是否正在冷却中 */
+    public boolean isMainCoolingDown() {
+        if (poolConf == null) return false;
+        long cooldown = poolConf.getMainCooldownUntil();
+        return cooldown > 0 && System.currentTimeMillis() < cooldown;
+    }
+
+    /** 获取主账号剩余冷却时间（秒），未冷却返回0 */
+    public long getMainCooldownRemainingSeconds() {
+        if (poolConf == null) return 0;
+        long cooldown = poolConf.getMainCooldownUntil();
+        if (cooldown <= 0) return 0;
+        long remaining = (cooldown - System.currentTimeMillis()) / 1000;
+        return Math.max(remaining, 0);
+    }
+
+    /** 停用/启用主账号参与API轮询 */
+    public void setMainPollingEnabled(boolean enabled) {
+        if (poolConf != null) {
+            poolConf.setMainPollingEnabled(enabled);
+            if (!enabled) {
+                poolConf.setMainCooldownUntil(0); // 停用时清除冷却
+            }
+            saveToFile();
+            LOGGER.info("CookiePool: 主账号轮询{}", enabled ? "已启用" : "已停用");
+        }
+    }
+
+    /** 手动清除主账号冷却状态 */
+    public void clearMainCooldown() {
+        if (poolConf != null) {
+            poolConf.setMainCooldownUntil(0);
+            saveToFile();
+            LOGGER.info("CookiePool: 主账号冷却已手动解除");
+        }
+    }
+
+    /**
+     * 更新主账号Cookie（编辑操作）。
+     * 验证新Cookie后更新 PublicDataConf 并持久化。
+     * @param newCookie 新的Cookie字符串
+     * @return 验证结果数组 [valid, uid, uname, face, level]
+     */
+    public String[] updateMainAccountCookie(String newCookie) {
+        if (StringUtils.isBlank(newCookie)) {
+            return new String[]{"false", "", "", "", ""};
+        }
+        String[] validation = validateCookie(newCookie);
+        if (!"true".equals(validation[0])) {
+            LOGGER.warn("CookiePool: 更新主账号失败 — Cookie无效");
+            return validation;
+        }
+        PublicDataConf.USERCOOKIE = newCookie;
+        try {
+            xyz.acproject.danmuji.tools.CurrencyTools.parseCookie(newCookie);
+            xyz.acproject.danmuji.http.HttpUserData.httpGetUserInfo();
+            if (PublicDataConf.USER != null && PublicDataConf.COOKIE != null) {
+                PublicDataConf.COOKIE = xyz.acproject.danmuji.http.HttpUserData.httpBuvid34(PublicDataConf.COOKIE);
+                if (PublicDataConf.COOKIE != null) {
+                    PublicDataConf.USERCOOKIE = PublicDataConf.COOKIE.getCookie();
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.error("CookiePool: 更新主账号Cookie解析异常", e);
+        }
+        saveToFile();
+        LOGGER.info("CookiePool: 主账号Cookie已更新 uid={} name={}", validation[1], validation[2]);
+        return validation;
+    }
+
+    /**
+     * 删除主账号（清空登录状态）。
+     * 清除全局Cookie/User/COOKIE，持久化。
+     */
+    public void removeMainAccount() {
+        PublicDataConf.USERCOOKIE = null;
+        PublicDataConf.USER = null;
+        PublicDataConf.COOKIE = null;
+        if (poolConf != null) {
+            poolConf.setMainPollingEnabled(true);
+            poolConf.setMainCooldownUntil(0);
+        }
+        saveToFile();
+        LOGGER.info("CookiePool: 主账号已删除（清空登录状态）");
     }
 
     /**
@@ -406,6 +525,11 @@ public class CookiePoolManager {
 
         // 从池中移除目标（它将成为新主账号）
         removeAccount(targetUid);
+        // 重置新主账号的轮询状态
+        if (poolConf != null) {
+            poolConf.setMainPollingEnabled(true);
+            poolConf.setMainCooldownUntil(0);
+        }
         LOGGER.info("CookiePool: 准备切换主账号 {} -> {} ({})",
                 PublicDataConf.USER != null ? PublicDataConf.USER.getUname() : "null", newName, newUid);
         return new String[]{newCookie, newUid, newName, newFace, newLevel};

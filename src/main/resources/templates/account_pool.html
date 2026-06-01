@@ -57,7 +57,7 @@
                     <div class="ms-auto text-end" id="mainStats">
                         <small class="text-muted">API轮询: <span id="mainUse">0</span> 次</small><br>
                         <small class="text-danger">被限流: <span id="mainRateLimited">0</span> 次</small><br>
-                        <small class="text-muted" style="font-size:0.7rem;" title="主账号仅在子账号全部不可用时才参与API轮换">(兜底保护)</small>
+                        <small class="text-muted" style="font-size:0.7rem;" id="mainPollingHint">(轮询中)</small>
                     </div>
                 </div>
             </div>
@@ -297,6 +297,17 @@
                     } else {
                         $('#mainLevel').hide();
                     }
+                    // 更新轮询状态提示
+                    var mainAcc = currentAccounts.length > 0 ? currentAccounts[0] : null;
+                    if (mainAcc && mainAcc.isMain) {
+                        if (mainAcc.coolingDown) {
+                            $('#mainPollingHint').text('(冷却中)').css('color', '#dc3545');
+                        } else if (!mainAcc.enabled) {
+                            $('#mainPollingHint').text('(已停用)').css('color', '#6c757d');
+                        } else {
+                            $('#mainPollingHint').text('(轮询中)').css('color', '#6c757d');
+                        }
+                    }
                     $('#mainAccountCard').show();
                 } else {
                     $('#mainName').text('未登录');
@@ -327,7 +338,16 @@
                 $('#enabledCount').text('子启用:' + enabled);
                 $('#cooldownCount').text('冷却:' + cooldown);
                 $('#disabledCount').text('禁用:' + disabled);
-                $('#availableCookies').text(hasMain ? enabled + 1 : enabled);
+                // 使用服务端返回的精确可用数
+                var availCount = result.availableCount || 0;
+                // 主账号也参与的话+1（需检查主账号是否启用且未冷却）
+                if (hasMain) {
+                    var mainAcc = currentAccounts[0];
+                    if (mainAcc && mainAcc.isMain && mainAcc.enabled && !mainAcc.coolingDown) {
+                        availCount = availCount + 1;
+                    }
+                }
+                $('#availableCookies').text(availCount);
 
                 // --- 渲染表格 ---
                 var tbody = $('#accountTableBody');
@@ -344,7 +364,17 @@
 
                         var actions = '';
                         if (isMain) {
-                            actions = '<small class="text-muted">—</small>';
+                            // 主账号操作按钮
+                            if (acc.enabled) {
+                                actions += '<button class="btn btn-sm btn-outline-warning main-disable-btn" title="停止轮询">停</button>';
+                            } else {
+                                actions += '<button class="btn btn-sm btn-outline-success main-enable-btn" title="启用轮询">启</button>';
+                            }
+                            if (acc.coolingDown) {
+                                actions += '<button class="btn btn-sm btn-outline-info main-clear-btn" title="解除冷却">解</button>';
+                            }
+                            actions += '<button class="btn btn-sm btn-outline-primary main-edit-btn" title="编辑">编</button>';
+                            actions += '<button class="btn btn-sm btn-outline-danger main-delete-btn" title="删除">删</button>';
                         } else {
                             actions += '<button class="btn btn-sm btn-outline-primary switch-main-btn" data-uid="' + acc.uid + '" data-name="' + escHtml(acc.name || acc.uid) + '" title="设为主账号">主</button>';
                             if (acc.enabled) {
@@ -725,6 +755,88 @@
         $('html, body').animate({ scrollTop: $('#accountCookie').offset().top - 100 }, 300);
     });
     $('#cancelEditBtn').click(function() { resetForm(); });
+
+    // ====== 主账号操作事件 ======
+    $('#accountTableBody').on('click', '.main-disable-btn', function() {
+        mainTogglePolling(false);
+    });
+    $('#accountTableBody').on('click', '.main-enable-btn', function() {
+        mainTogglePolling(true);
+    });
+    $('#accountTableBody').on('click', '.main-clear-btn', function() {
+        if (!confirm('确定要解除主账号的冷却状态吗？')) return;
+        $.ajax({
+            url: '../api/accountPool/mainClearCooldown',
+            async: true, cache: false, type: 'POST',
+            dataType: 'json',
+            success: function(data) {
+                if (data && data.result) { loadAccountList(); loadStats(); }
+                else showToast('操作失败', 'danger');
+            }
+        });
+    });
+    $('#accountTableBody').on('click', '.main-edit-btn', function() {
+        var mainAcc = currentAccounts.find(function(a) { return a.isMain; });
+        if (!mainAcc) return;
+        // 弹出一个简易的编辑提示框
+        var newCookie = prompt('请输入主账号的新Cookie字符串：\n（将覆盖当前主账号）');
+        if (!newCookie || newCookie.trim().length === 0) return;
+        $.ajax({
+            url: '../api/accountPool/mainUpdate',
+            async: true, cache: false, type: 'POST',
+            data: { cookie: newCookie.trim() },
+            dataType: 'json',
+            success: function(data) {
+                if (data && data.result) {
+                    var r = data.result;
+                    if (r.success) {
+                        showToast('✓ ' + r.message, 'success');
+                        loadAccountList();
+                        loadStats();
+                    } else {
+                        showToast('✗ ' + (r.message || '更新失败'), 'danger');
+                    }
+                } else {
+                    showToast('更新请求失败', 'danger');
+                }
+            }
+        });
+    });
+    $('#accountTableBody').on('click', '.main-delete-btn', function() {
+        if (!confirm('确定要删除主账号吗？\n\n这将清空所有登录状态，需要重新登录才能使用。')) return;
+        $.ajax({
+            url: '../api/accountPool/mainRemove',
+            async: true, cache: false, type: 'POST',
+            dataType: 'json',
+            success: function(data) {
+                if (data && data.result) {
+                    var r = data.result;
+                    if (r.success) {
+                        showToast('✓ ' + r.message, 'success');
+                        loadAccountList();
+                        loadStats();
+                    } else {
+                        showToast('✗ ' + (r.message || '删除失败'), 'danger');
+                    }
+                } else {
+                    showToast('删除请求失败', 'danger');
+                }
+            }
+        });
+    });
+
+    function mainTogglePolling(enabled) {
+        $.ajax({
+            url: '../api/accountPool/mainToggle',
+            async: true, cache: false, type: 'POST',
+            data: { enabled: enabled },
+            dataType: 'json',
+            success: function(data) {
+                if (data && data.result) { loadAccountList(); loadStats(); }
+                else showToast('操作失败', 'danger');
+            }
+        });
+    }
 
     function toggleAccount(uid, enabled) {
         $.ajax({

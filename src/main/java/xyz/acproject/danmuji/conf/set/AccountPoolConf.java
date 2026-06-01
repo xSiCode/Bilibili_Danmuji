@@ -49,6 +49,14 @@ public class AccountPoolConf implements Serializable {
     @JSONField(name = "cache_ttl_seconds")
     private int cacheTtlSeconds = 300;
 
+    /** 主账号是否参与API轮询，默认 true */
+    @JSONField(name = "main_polling_enabled")
+    private boolean mainPollingEnabled = true;
+
+    /** 主账号冷却结束时间戳（毫秒），0 表示未在冷却中 */
+    @JSONField(name = "main_cooldown_until")
+    private long mainCooldownUntil = 0L;
+
     public AccountPoolConf() {
         this.accounts = new CopyOnWriteArrayList<>();
     }
@@ -109,6 +117,22 @@ public class AccountPoolConf implements Serializable {
 
     public void setCacheTtlSeconds(int cacheTtlSeconds) {
         this.cacheTtlSeconds = cacheTtlSeconds;
+    }
+
+    public boolean isMainPollingEnabled() {
+        return mainPollingEnabled;
+    }
+
+    public void setMainPollingEnabled(boolean mainPollingEnabled) {
+        this.mainPollingEnabled = mainPollingEnabled;
+    }
+
+    public long getMainCooldownUntil() {
+        return mainCooldownUntil;
+    }
+
+    public void setMainCooldownUntil(long mainCooldownUntil) {
+        this.mainCooldownUntil = mainCooldownUntil;
     }
 
     /**
@@ -220,11 +244,29 @@ public class AccountPoolConf implements Serializable {
             mainRow.put("face", xyz.acproject.danmuji.conf.PublicDataConf.USER.getFace() != null
                     ? xyz.acproject.danmuji.conf.PublicDataConf.USER.getFace() : "");
             mainRow.put("cookiePreview", "***主账号***");
-            mainRow.put("enabled", true);
-            mainRow.put("status", "主账号");
-            mainRow.put("statusColor", "primary");
-            mainRow.put("coolingDown", false);
-            mainRow.put("cooldownRemaining", 0);
+            mainRow.put("enabled", mainPollingEnabled);
+            // 主账号状态反映轮询参与情况
+            boolean mainCooling = mainCooldownUntil > 0 && System.currentTimeMillis() < mainCooldownUntil;
+            long mainCooldownRemaining = 0;
+            if (mainCooling) {
+                mainCooldownRemaining = Math.max((mainCooldownUntil - System.currentTimeMillis()) / 1000, 0);
+            }
+            if (!mainPollingEnabled) {
+                mainRow.put("status", "已停用");
+                mainRow.put("statusColor", "secondary");
+            } else if (mainCooling) {
+                if (mainCooldownRemaining > 60) {
+                    mainRow.put("status", "冷却中(" + (mainCooldownRemaining / 60) + "分)");
+                } else {
+                    mainRow.put("status", "冷却中(" + mainCooldownRemaining + "秒)");
+                }
+                mainRow.put("statusColor", "warning");
+            } else {
+                mainRow.put("status", "轮询中");
+                mainRow.put("statusColor", "success");
+            }
+            mainRow.put("coolingDown", mainCooling);
+            mainRow.put("cooldownRemaining", mainCooldownRemaining);
             mainRow.put("isMain", true);
             // 主账号的LV
             int mainLv = mainJson.getIntValue("level");

@@ -4279,6 +4279,109 @@ public class WebController {
         }
     }
 
+    // ==================== 主账号操作 API ====================
+
+    /**
+     * 停用/启用主账号参与API轮询
+     */
+    @ResponseBody
+    @PostMapping(value = "/api/accountPool/mainToggle")
+    public Response<?> accountPoolMainToggle(@RequestParam("enabled") boolean enabled,
+                                             HttpServletRequest req) {
+        try {
+            xyz.acproject.danmuji.http.CookiePoolManager pool = xyz.acproject.danmuji.http.CookiePoolManager.getInstance();
+            pool.setMainPollingEnabled(enabled);
+            xyz.acproject.danmuji.http.HttpRoomData.syncRateLimiterConfig(pool.getPoolConf());
+            return Response.success(true, req);
+        } catch (Exception e) {
+            LOGGER.error("accountPoolMainToggle error", e);
+            return Response.success(false, req);
+        }
+    }
+
+    /**
+     * 手动清除主账号冷却状态
+     */
+    @ResponseBody
+    @PostMapping(value = "/api/accountPool/mainClearCooldown")
+    public Response<?> accountPoolMainClearCooldown(HttpServletRequest req) {
+        try {
+            xyz.acproject.danmuji.http.CookiePoolManager pool = xyz.acproject.danmuji.http.CookiePoolManager.getInstance();
+            pool.clearMainCooldown();
+            xyz.acproject.danmuji.http.HttpRoomData.syncRateLimiterConfig(pool.getPoolConf());
+            return Response.success(true, req);
+        } catch (Exception e) {
+            LOGGER.error("accountPoolMainClearCooldown error", e);
+            return Response.success(false, req);
+        }
+    }
+
+    /**
+     * 编辑主账号Cookie
+     */
+    @ResponseBody
+    @PostMapping(value = "/api/accountPool/mainUpdate")
+    public Response<?> accountPoolMainUpdate(@RequestParam("cookie") String cookie,
+                                             HttpServletRequest req) {
+        try {
+            if (StringUtils.isBlank(cookie)) {
+                return Response.success(false, req);
+            }
+            xyz.acproject.danmuji.http.CookiePoolManager pool = xyz.acproject.danmuji.http.CookiePoolManager.getInstance();
+            String[] result = pool.updateMainAccountCookie(cookie);
+            com.alibaba.fastjson.JSONObject resp = new com.alibaba.fastjson.JSONObject();
+            resp.put("valid", "true".equals(result[0]));
+            resp.put("uid", result[1]);
+            resp.put("uname", result[2]);
+            resp.put("face", result.length > 3 ? result[3] : "");
+            resp.put("level", result.length > 4 ? result[4] : "0");
+            if ("true".equals(result[0])) {
+                // 持久化主配置
+                checkService.changeSet(PublicDataConf.centerSetConf, false);
+                xyz.acproject.danmuji.http.HttpRoomData.syncRateLimiterConfig(pool.getPoolConf());
+                resp.put("success", true);
+                resp.put("message", "主账号已更新为: " + (result[2] != null ? result[2] : result[1]));
+            } else {
+                resp.put("success", false);
+                resp.put("message", "Cookie无效或已过期");
+            }
+            return Response.success(resp, req);
+        } catch (Exception e) {
+            LOGGER.error("accountPoolMainUpdate error", e);
+            com.alibaba.fastjson.JSONObject err = new com.alibaba.fastjson.JSONObject();
+            err.put("success", false);
+            err.put("message", "更新异常: " + e.getMessage());
+            return Response.success(err, req);
+        }
+    }
+
+    /**
+     * 删除主账号（清空登录状态）
+     */
+    @ResponseBody
+    @PostMapping(value = "/api/accountPool/mainRemove")
+    public Response<?> accountPoolMainRemove(HttpServletRequest req) {
+        try {
+            xyz.acproject.danmuji.http.CookiePoolManager pool = xyz.acproject.danmuji.http.CookiePoolManager.getInstance();
+            pool.removeMainAccount();
+            // 持久化主配置（清空cookie）
+            checkService.changeSet(PublicDataConf.centerSetConf, false);
+            xyz.acproject.danmuji.http.HttpRoomData.syncRateLimiterConfig(pool.getPoolConf());
+            // 清除session登录状态
+            req.getSession().removeAttribute("status");
+            com.alibaba.fastjson.JSONObject resp = new com.alibaba.fastjson.JSONObject();
+            resp.put("success", true);
+            resp.put("message", "主账号已删除，请重新登录");
+            return Response.success(resp, req);
+        } catch (Exception e) {
+            LOGGER.error("accountPoolMainRemove error", e);
+            com.alibaba.fastjson.JSONObject err = new com.alibaba.fastjson.JSONObject();
+            err.put("success", false);
+            err.put("message", "删除异常: " + e.getMessage());
+            return Response.success(err, req);
+        }
+    }
+
     // ==================== 子账号扫码登录 API ====================
 
     /**
