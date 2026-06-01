@@ -655,6 +655,20 @@ public class WebController {
             if(centerSetConf.getKey_word()==null&&PublicDataConf.centerSetConf.getKey_word()==null){
                 centerSetConf.setKey_word(new KeyWordSetConf());
             }
+            //欢迎凝视姬
+            if(centerSetConf.getGaze_welcome()==null&&PublicDataConf.centerSetConf.getGaze_welcome()!=null){
+                centerSetConf.setGaze_welcome(PublicDataConf.centerSetConf.getGaze_welcome());
+            }
+            if(centerSetConf.getGaze_welcome()==null&&PublicDataConf.centerSetConf.getGaze_welcome()==null){
+                centerSetConf.setGaze_welcome(new GazeWelcomeSetConf());
+            }
+            //负黑自动拉黑姬
+            if(centerSetConf.getAuto_block()==null&&PublicDataConf.centerSetConf.getAuto_block()!=null){
+                centerSetConf.setAuto_block(PublicDataConf.centerSetConf.getAuto_block());
+            }
+            if(centerSetConf.getAuto_block()==null&&PublicDataConf.centerSetConf.getAuto_block()==null){
+                centerSetConf.setAuto_block(new AutoBlockSetConf());
+            }
             checkService.changeSet(centerSetConf,true);
         } catch (Exception e) {
             LOGGER.error(e);

@@ -765,11 +765,20 @@ public class HttpRoomData {
             }
 
             // Phase 2d: 合并
-            int totalScore = medalResult.getLeft() + follResult.getLeft() + cardResult.score;
             StringBuilder combinedType = new StringBuilder(60);
             appendType(combinedType, medalResult.getRight());
             appendType(combinedType, cardResult.type);
             appendType(combinedType, follResult.getRight());
+
+            //黑白名单处理，pnScoreMap 直接命中
+            int totalScore = 0;
+            Integer pnScore = pnScoreMap.get(vmid);
+            if (pnScore != null) {
+                totalScore =  pnScore;
+                combinedType.append("[已在名单:").append(pnScore).append("]");
+            } else {
+                totalScore = medalResult.getLeft() + follResult.getLeft() + cardResult.score;
+            }
 
             // Phase 2e: 陌生观众看板（仅卡片数据有效时，face才有值）
             if (cardResult.name != null) {
@@ -780,9 +789,10 @@ public class HttpRoomData {
             // Phase 3: 仅当综合分==0时才触发动态API
             if (totalScore == 0 && !schedulerDynamicColdWait.get()) {
                 // logSb.append("[动态|请求中]");
+                int finalTotalScore = totalScore;
                 return asyncHttpGetUserDynamic(vmid).thenApply(dynData -> {
                     Pair<Integer, String> dynResult = computeDynamicScore(dynData, logSb);
-                    int finalScore = totalScore + dynResult.getLeft();
+                    int finalScore = finalTotalScore + dynResult.getLeft();
                     appendType(combinedType, dynResult.getRight());
                     return finalize(logSb, finalScore, combinedType.toString());
                 });
@@ -907,11 +917,6 @@ public class HttpRoomData {
      * 不再包含动态API调用（由主编排器在 Phase 3 按需触发）。
      */
     private static Pair<Integer, String> processHiddenFollowingsSync(long vmid, StringBuilder logSb) {
-        Integer pnScore = pnScoreMap.get(vmid);
-        if (pnScore != null) {
-            logSb.append("  [已在名单，关注隐藏:").append(pnScore).append("]");
-            return Pair.of(pnScore, "[已在名单，关注隐藏:" + pnScore + "]");
-        }
         logSb.append("  [关注:隐藏-1]");
         return Pair.of(-1, "[关注隐藏-1]");
     }
@@ -951,12 +956,6 @@ public class HttpRoomData {
         }
         blackWhiteScore += followersNameSignScore;
 
-        // pnScoreMap 直接命中
-        Integer pnScore = pnScoreMap.get(vmid);
-        if (pnScore != null) {
-            blackWhiteScore = pnScore;
-            blackWhiteType.append("[已在名单，关注可见:").append(pnScore).append("]");
-        }
         if (!matchedList.isEmpty()) {
             logSb.append("匹配:").append(matchedList.size())
                     .append(" 分裂度:").append(blackCount * whiteCount)

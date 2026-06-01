@@ -119,6 +119,7 @@ public class SetServiceImpl implements SetService {
                 PublicDataConf.centerSetConf = JSONObject.parseObject(
                         new String(base64Encoder.decode(ProFileTools.read("DanmujiProfile").get("set"))),
                         CenterSetConf.class);
+                PublicDataConf.centerSetConf = ParseSetStatusTools.initCenterChildConfig(PublicDataConf.centerSetConf);
                 holdSet(centerSetConf);
                 LOGGER.info("保存配置文件成功");
             } catch (Exception e) {
