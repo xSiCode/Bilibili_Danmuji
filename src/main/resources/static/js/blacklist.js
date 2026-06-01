@@ -2,28 +2,6 @@
 window.currentPageId = 'blacklist';
 
 registerPageSave('blacklist', function(set) {
-    // 黑名单
-    if (!set.black) set.black = { names: [], uids: [] };
-    set.black.all = $(".is_black_all").is(':checked');
-    set.black.thank_gift = $(".is_black_gift").is(':checked');
-    set.black.thank_welcome = $(".is_black_welcome").is(':checked');
-    set.black.thank_follow = $(".is_black_follow").is(':checked');
-    set.black.auto_reply = $(".is_black_reply").is(':checked');
-    set.black.is_dynamic = $(".is_black_dynamic").is(':checked');
-    set.black.names = ($(".black_names").val() || '').split('\n').map(function(s) { return s.trim(); }).filter(function(s) { return s !== ''; });
-    set.black.uids = ($(".black_uids").val() || '').split('\n').map(function(s) { return s.trim(); }).filter(function(s) { return s !== ''; });
-
-    // 白名单
-    if (!set.white) set.white = {};
-    set.white.all = $(".is_white_all").is(':checked');
-    set.white.thank_gift = $(".is_white_gift").is(':checked');
-    set.white.thank_welcome = $(".is_white_welcome").is(':checked');
-    set.white.thank_follow = $(".is_white_follow").is(':checked');
-    set.white.auto_reply = $(".is_white_reply").is(':checked');
-    set.white.is_dynamic = $(".is_white_dynamic").is(':checked');
-    set.white.names = ($(".white_names").val() || '').split('\n').map(function(s) { return s.trim(); }).filter(function(s) { return s !== ''; });
-    set.white.uids = ($(".white_uids").val() || '').split('\n').map(function(s) { return s.trim(); }).filter(function(s) { return s !== ''; });
-
     // 自动拉黑
     if (!set.auto_block) set.auto_block = {};
     set.auto_block.is_auto_block = $(".is_auto_block").is(':checked');
@@ -35,8 +13,143 @@ registerPageSave('blacklist', function(set) {
     if (typeof badListData !== 'undefined') {
         set.bad_list.bad_users = badListData;
     }
+
+    // 关键词检测姬 — 同步最新数据到保存对象
+    kwMethod.syncFromDOM();
+    if (!set.key_word) set.key_word = { keywords: [] };
+    set.key_word.keywords = kwData.list.filter(function(e) { return e.keyword !== ''; });
 });
+
+// ---- 关键词检测姬 数据管理 ----
+var kwData = { list: [], page: 1, pageSize: 10, sortCol: null, sortAsc: true };
+
+var kwMethod = {
+    _sortList: function() {
+        if (!kwData.sortCol) return;
+        var col = kwData.sortCol;
+        var asc = kwData.sortAsc;
+        kwData.list.sort(function(a, b) {
+            var va = (a[col] != null ? a[col] : '');
+            var vb = (b[col] != null ? b[col] : '');
+            if (col === 'score') {
+                va = parseInt(va) || 0;
+                vb = parseInt(vb) || 0;
+                return asc ? va - vb : vb - va;
+            }
+            va = String(va).toLowerCase();
+            vb = String(vb).toLowerCase();
+            if (va < vb) return asc ? -1 : 1;
+            if (va > vb) return asc ? 1 : -1;
+            return 0;
+        });
+    },
+    renderTable: function() {
+        kwMethod._sortList();
+        var tbody = $(".kw-tbody");
+        tbody.empty();
+        var total = kwData.list.length;
+        var totalPages = Math.max(1, Math.ceil(total / kwData.pageSize));
+        if (kwData.page > totalPages) kwData.page = totalPages;
+        var start = (kwData.page - 1) * kwData.pageSize;
+        var end = Math.min(start + kwData.pageSize, total);
+        // sort icons
+        $(".kw-sort-icon").text('');
+        if (kwData.sortCol) {
+            $(".kw-sort-" + kwData.sortCol + " .kw-sort-icon").text(kwData.sortAsc ? '▲' : '▼');
+        }
+        for (var i = start; i < end; i++) {
+            var item = kwData.list[i];
+            var tr = $('<tr>');
+            tr.append($('<td>').append($('<input class="form-control form-control-sm kw-keyword" type="text" style="width:100%">').val(item.keyword || '')));
+            tr.append($('<td style="text-align:right">').append($('<input class="form-control form-control-sm kw-score" type="number" style="width:60px;text-align:right">').val(item.score || 0)));
+            tr.append($('<td style="text-align:center">').append($('<button class="btn btn-sm btn-danger kw-delete-btn" style="width:60px">删除</button>')));
+            tbody.append(tr);
+        }
+        $(".kw-page-info").text("第" + kwData.page + "页/共" + totalPages + "页 (共" + total + "条)");
+        $(".kw-pagination").toggle(total > kwData.pageSize);
+        $(".kw-prev").prop('disabled', kwData.page <= 1);
+        $(".kw-next").prop('disabled', kwData.page >= totalPages);
+    },
+    syncFromDOM: function() {
+        $(".kw-tbody tr").each(function(i) {
+            var idx = (kwData.page - 1) * kwData.pageSize + i;
+            if (idx >= kwData.list.length) return;
+            kwData.list[idx].keyword = ($(this).find(".kw-keyword").val() || '').trim();
+            kwData.list[idx].score = parseInt($(this).find(".kw-score").val()) || 0;
+        });
+    },
+    loadFromPublicData: function() {
+        if (publicData.set && publicData.set.key_word && publicData.set.key_word.keywords) {
+            kwData.list = publicData.set.key_word.keywords.map(function(e) {
+                return { keyword: e.keyword || '', score: e.score || 0 };
+            });
+        } else {
+            kwData.list = [];
+        }
+        kwData.page = 1;
+        kwData.sortCol = null;
+        kwData.sortAsc = true;
+        kwMethod.renderTable();
+    },
+    autoSave: function() {
+        kwMethod.syncFromDOM();
+        if (!publicData.set.key_word) publicData.set.key_word = {};
+        publicData.set.key_word.keywords = kwData.list.filter(function(e) { return e.keyword !== ''; });
+        publicData.set.edition = $("#app-version").attr("data-version") || '';
+        return method.sendSet(publicData.set);
+    }
+};
 
 $(function() {
     initPageTabs();
+    kwMethod.loadFromPublicData();
+
+    $(document).on('click', '.kw-add-btn', function() {
+        kwData.list.push({ keyword: '', score: 0 });
+        kwData.page = Math.max(1, Math.ceil(kwData.list.length / kwData.pageSize));
+        kwMethod.renderTable();
+        kwMethod.autoSave();
+    });
+    $(document).on('click', '.kw-delete-btn', function() {
+        var rowIdx = $(this).closest('tr').index();
+        kwMethod.syncFromDOM();
+        var listIdx = (kwData.page - 1) * kwData.pageSize + rowIdx;
+        if (listIdx < kwData.list.length) kwData.list.splice(listIdx, 1);
+        kwMethod.renderTable();
+        kwMethod.autoSave();
+    });
+    $(document).on('input change', '.kw-keyword, .kw-score', function() {
+        kwMethod.autoSave();
+    });
+    $(document).on('click', '.kw-prev', function() {
+        kwMethod.syncFromDOM();
+        if (kwData.page > 1) { kwData.page--; kwMethod.renderTable(); }
+    });
+    $(document).on('click', '.kw-next', function() {
+        kwMethod.syncFromDOM();
+        var totalPages = Math.max(1, Math.ceil(kwData.list.length / kwData.pageSize));
+        if (kwData.page < totalPages) { kwData.page++; kwMethod.renderTable(); }
+    });
+    $(document).on('click', '.kw-sort-keyword', function() {
+        kwMethod.syncFromDOM();
+        if (kwData.sortCol === 'keyword') {
+            kwData.sortAsc = !kwData.sortAsc;
+        } else {
+            kwData.sortCol = 'keyword';
+            kwData.sortAsc = true;
+        }
+        kwData.page = 1;
+        kwMethod.renderTable();
+    });
+    $(document).on('click', '.kw-sort-score', function() {
+        kwMethod.syncFromDOM();
+        if (kwData.sortCol === 'score') {
+            kwData.sortAsc = !kwData.sortAsc;
+        } else {
+            kwData.sortCol = 'score';
+            kwData.sortAsc = true;
+        }
+        kwData.page = 1;
+        kwMethod.renderTable();
+    });
 });

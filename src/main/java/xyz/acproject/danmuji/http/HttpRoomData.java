@@ -718,7 +718,7 @@ public class HttpRoomData {
         logSb.append(TIME_FORMAT.get().format(System.currentTimeMillis()))
                 .append(" https://space.bilibili.com/").append(vmid)
                 .append(" ").append(uname).append(" ");
-        SelfTools.appendAt(logSb,90,"⏩");
+        SelfTools.appendAt(logSb, 90, "⏩");
 
         // Phase 1: 四路并发（关注列表双页同步请求）
         CompletableFuture<JSONObject> medalF = asyncHttpGetMedalWall(vmid);
@@ -867,7 +867,7 @@ public class HttpRoomData {
                         .append("->").append(currentMedalLevelScore);
 
                 int guardLevel = medal.getGuardLevel() != null ? medal.getGuardLevel() : 0;
-                if (guardLevel != 0){
+                if (guardLevel != 0) {
                     currentMedalScore += guardLevel;
                     logSb.append(" 舰长+").append(guardLevel);
                 }
@@ -875,7 +875,7 @@ public class HttpRoomData {
                     currentMedalScore += 1;
                     logSb.append(" 认证+1 ");
                 }
-                if (medal.getWearingStatus() != null && medal.getWearingStatus() == 1){
+                if (medal.getWearingStatus() != null && medal.getWearingStatus() == 1) {
                     currentMedalScore += 1;
                     logSb.append(" 佩戴+1");
                 }
@@ -896,7 +896,7 @@ public class HttpRoomData {
         if (totalMedalScore != 0) {
             logSb.append(" 勋章黑白分:").append(totalMedalScore).append("]");
             return Pair.of(totalMedalScore, "[勋章黑白分:" + totalMedalScore + "]");
-        } else{
+        } else {
             logSb.append(" 勋章生活分").append(totalLifeMedalScore).append(" +1]");//需求如此
             return Pair.of(1, "[勋章生活+1]");
         }
@@ -929,6 +929,7 @@ public class HttpRoomData {
         JSONArray followingsList = new JSONArray();
         JSONArray matchedList = new JSONArray();
 
+        logSb.append("  [");
         for (Object obj : list) {
             JSONObject user = (JSONObject) obj;
             long mid = user.getLong("mid");
@@ -955,10 +956,6 @@ public class HttpRoomData {
         if (pnScore != null) {
             blackWhiteScore = pnScore;
             blackWhiteType.append("[已在名单，关注可见:").append(pnScore).append("]");
-        }
-        logSb.append("  [");
-        if (followersNameSignScore != 0) {
-            logSb.append("关键词:").append(followersNameSignScore).append(" ");
         }
         if (!matchedList.isEmpty()) {
             logSb.append("匹配:").append(matchedList.size())
@@ -1068,7 +1065,7 @@ public class HttpRoomData {
                     // 姓名+签名关键词
                     int kw = getKeyWordsScore((r.name != null ? r.name : "") + (r.sign != null ? r.sign : ""), cardLog);
                     r.score += kw;
-                    if (kw != 0) cardLog.append(" 签名关键词:").append(kw);
+                    //  if (kw != 0) cardLog.append(" 签名关键词:").append(kw);
 
                     cardLog.append(" 卡片黑白分:").append(r.score).append("]");
                     logSb.append(cardLog);
@@ -1093,29 +1090,21 @@ public class HttpRoomData {
     // ---- 关键词 & 动态辅助 ----
 
     private static int getKeyWordsScore(String dataStr, StringBuilder sb) {
-        int blackWhiteScore = 0;
+        int totalScore = 0;
 
-        if (PublicDataConf.centerSetConf.getBlack() != null && PublicDataConf.centerSetConf.getBlack().getNames() != null) {
-            for (String s : PublicDataConf.centerSetConf.getBlack().getNames()) {
-                if (StringUtils.isBlank(s)) continue;
-                if (matchKeyword(dataStr, s)) {
-                    blackWhiteScore -= 2;
-                    sb.append(" '").append(s).append("-2'");
+        xyz.acproject.danmuji.conf.set.KeyWordSetConf kwConf = PublicDataConf.centerSetConf.getKey_word();
+        if (kwConf != null && kwConf.getKeywords() != null) {
+            for (xyz.acproject.danmuji.conf.set.KeyWordEntry entry : kwConf.getKeywords()) {
+                if (StringUtils.isBlank(entry.getKeyword())) continue;
+                if (matchKeyword(dataStr, entry.getKeyword())) {
+                    int score = entry.getScore() != null ? entry.getScore() : 0;
+                    totalScore += score;
+                    sb.append(" ").append(entry.getKeyword()).append(":").append(score > 0 ? "+" : "").append(score).append(" ");
                 }
             }
         }
 
-        if (PublicDataConf.centerSetConf.getWhite() != null && PublicDataConf.centerSetConf.getWhite().getNames() != null) {
-            for (String s : PublicDataConf.centerSetConf.getWhite().getNames()) {
-                if (StringUtils.isBlank(s)) continue;
-                if (matchKeyword(dataStr, s)) {
-                    blackWhiteScore++;
-                    sb.append(" '").append(s).append("+1'");
-                }
-            }
-        }
-
-        return blackWhiteScore;
+        return totalScore;
     }
 
     /**
@@ -1126,7 +1115,9 @@ public class HttpRoomData {
      * @return 是否匹配
      */
     private static boolean matchKeyword(String dataStr, String keyword) {
-        if (keyword.startsWith("`") && keyword.endsWith("`") && keyword.length() > 2) {
+        if ((keyword.startsWith("【") && keyword.endsWith("】")
+                || keyword.startsWith("[") && keyword.endsWith("]"))
+                && keyword.length() > 2) {
             // 正则模式：去掉首尾反引号，编译后匹配
             String regex = keyword.substring(1, keyword.length() - 1);
             try {
@@ -1181,14 +1172,14 @@ public class HttpRoomData {
         if (extracted.latestTimestamp > 0) {
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm");
             Date date = new Date(extracted.latestTimestamp * 1000);
-           // logSb.append(" 最新:").append(sdf.format(date));
+            // logSb.append(" 最新:").append(sdf.format(date));
 
-            if(extracted.cardCount == 1){
+            if (extracted.cardCount == 1) {
                 boolean isNewUser = StringUtils.contains(extracted.text, "挑战转正答题考试"); //
-                if(isNewUser){
+                if (isNewUser) {
                     int l = "2025-10-01 08:01".compareTo(date.toString());
                     int r = "2026-02-01 08:01".compareTo(date.toString());
-                    if(l<0 && r>0){
+                    if (l < 0 && r > 0) {
                         logSb.append(" 动态人机-1]");
                         kw -= 1;
                     }
@@ -1204,7 +1195,6 @@ public class HttpRoomData {
             logSb.append(" 动态黑白分:0]⚪");
             return Pair.of(0, "");
         }
-
 
 
     }
@@ -1304,7 +1294,8 @@ public class HttpRoomData {
                             if (StringUtils.isNotBlank(oDynamic)) osb.append(oDynamic);
                             return osb.toString().trim();
                         }
-                    } catch (Exception ignored) {}
+                    } catch (Exception ignored) {
+                    }
                 }
                 return "";
             }

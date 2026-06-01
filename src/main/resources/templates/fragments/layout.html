@@ -78,8 +78,8 @@
                 <div class="sidebar-section">
                     <span class="sidebar-section-header" onclick="toggleSidebarSection(this);return false;">小黑屋</span>
                     <a th:href="@{/blacklist(tab=positiveWhite-set)}" class="sidebar-link" th:classappend="${activePage == 'blacklist' && (#arrays.isEmpty(param.tab) || param.tab[0] == 'positiveWhite-set')} ? 'active' : ''">负黑正白姬</a>
-                    <a th:href="@{/blacklist(tab=black-set)}" class="sidebar-link" th:classappend="${activePage == 'blacklist' && !#arrays.isEmpty(param.tab) && param.tab[0] == 'black-set'} ? 'active' : ''">黑白名单姬</a>
                     <a th:href="@{/blacklist(tab=autoBlock-set)}" class="sidebar-link" th:classappend="${activePage == 'blacklist' && !#arrays.isEmpty(param.tab) && param.tab[0] == 'autoBlock-set'} ? 'active' : ''">负黑自动拉黑姬</a>
+                    <a th:href="@{/blacklist(tab=keyWord-set)}" class="sidebar-link" th:classappend="${activePage == 'blacklist' && !#arrays.isEmpty(param.tab) && param.tab[0] == 'keyWord-set'} ? 'active' : ''">关键词检测姬</a>
                     <a th:href="@{/blacklist(tab=badlist-set)}" class="sidebar-link" th:classappend="${activePage == 'blacklist' && !#arrays.isEmpty(param.tab) && param.tab[0] == 'badlist-set'} ? 'active' : ''">本地小黑屋</a>
                     <a th:href="@{/blacklist(tab=bili-badlist-set)}" class="sidebar-link" th:classappend="${activePage == 'blacklist' && !#arrays.isEmpty(param.tab) && param.tab[0] == 'bili-badlist-set'} ? 'active' : ''">Bili小黑屋</a>
                 </div>

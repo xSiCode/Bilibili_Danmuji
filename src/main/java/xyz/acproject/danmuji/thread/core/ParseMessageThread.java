@@ -9,7 +9,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.util.CollectionUtils;
 import xyz.acproject.danmuji.component.ThreadComponent;
-import xyz.acproject.danmuji.component.black.BlackParseComponent;
+
 import xyz.acproject.danmuji.conf.CacheConf;
 import xyz.acproject.danmuji.conf.CenterSetConf;
 import xyz.acproject.danmuji.conf.PublicDataConf;
@@ -214,7 +214,7 @@ public class ParseMessageThread extends Thread {
     private DanmuWebsocket danmuWebsocket = SpringUtils.getBean(DanmuWebsocket.class);
     private SetService setService = SpringUtils.getBean(SetService.class);
 
-    private BlackParseComponent blackParseComponent = SpringUtils.getBean(BlackParseComponent.class);
+
     private ThreadComponent threadComponent = SpringUtils.getBean(ThreadComponent.class);
     private HashSet<ThankGiftRuleSet> thankGiftRuleSets;
     private CenterSetConf centerSetConf;
@@ -1612,8 +1612,7 @@ public class ParseMessageThread extends Thread {
             default:
                 break;
         }
-        //黑名单
-        return blackParseComponent.autoReplay_parse(AutoReply.getAutoReply(barrage.getUid(), barrage.getUname(), barrage.getMsg()));
+        return true;
     }
 
 
@@ -1638,7 +1637,7 @@ public class ParseMessageThread extends Thread {
             }
         }
         //礼物屏蔽过滤
-        if (blackParseComponent.gift_parse(gift)) {
+        if (true) {
             if (ParseSetStatusTools.getGiftShieldStatus(
                     getCenterSetConf().getThank_gift().getShield_status()) != ShieldGift.CUSTOM_RULE) {
                 gift = ShieldGiftTools.shieldGift(gift,
@@ -1707,10 +1706,6 @@ public class ParseMessageThread extends Thread {
     }
 
     public synchronized void parseFollowSetting(Interact interact) throws Exception {
-        //黑名单处理
-        if (!blackParseComponent.interact_parse(interact)) {
-            interact = null;
-        }
         // 冷却期内直接丢弃
         if (PublicDataConf.parsethankFollowThread != null && PublicDataConf.parsethankFollowThread.COOLDOWN) {
             return;
@@ -1734,9 +1729,6 @@ public class ParseMessageThread extends Thread {
     }
 
     public synchronized void parseWelcomeSetting(Interact interact) throws Exception {
-        if (!blackParseComponent.interact_parse(interact)) {
-            interact = null;
-        }
         //屏蔽自己
         if (!getCenterSetConf().getWelcome().is_open_self()) {
             if (PublicDataConf.USER.getUid().equals(interact.getUid())) {
@@ -1887,7 +1879,9 @@ public class ParseMessageThread extends Thread {
 
     private boolean matchesUsername(String uname, String pattern) {
         if (StringUtils.isBlank(pattern)) return false;
-        if (pattern.length() >= 2 && pattern.startsWith("`") && pattern.endsWith("`")) {
+        if (((pattern.startsWith("【") && pattern.endsWith("】")
+                || pattern.startsWith("[") && pattern.endsWith("]"))
+                && pattern.length() > 2)) {
             String regex = pattern.substring(1, pattern.length() - 1);
             Pattern compiled = regexCache.computeIfAbsent(regex, k -> {
                 try {

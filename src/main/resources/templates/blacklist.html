@@ -46,32 +46,17 @@
                             </div>
                             <div class="input-group mb-3 set-control" data-file="ab"><div class="col-auto"><input class="import-file-input" style="display: none;" type="file" value="上传文件"/><button class="btn btn-warning export-set" title="导出设置到本地，弹幕姬配置文件夹set底下" type="button">导出</button><button class="btn btn-success export-set-web" title="网页实时下载配置" type="button">下载</button><button class="btn btn-info import-set" title="导入配置文件" type="button">导入"负黑自动拉黑记录.json"</button></div></div>
                         </div>
-                        <!-- 黑白名单姬 -->
-                        <div class="tab-pane" th:classappend="${! #arrays.isEmpty(param.tab) && param.tab[0] == 'black-set'} ? 'active' : ''" id="tab-black-set">
-                            <div class="input-group mb-1"><h5>黑白名单姬</h5></div>
-                            <div class="row">
-                                <div class="col-6"><div class="input-group mb-3 black-set" id="black-set"><h6 class="w-100">黑名单</h6>
-                                    <div class="header-set"><div class="row align-items-center">
-                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input black_flag_parent is_black_all live-save" type="checkbox"><span class="_description" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="是否全局生效黑名单模式">全局</span></label></div>
-                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input black_flag_child is_black_gift live-save" type="checkbox"><span class="_description" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="是否仅礼物感谢姬生效">礼物</span></label></div>
-                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input black_flag_child is_black_welcome live-save" type="checkbox"><span class="_description" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="是否仅欢迎姬生效">欢迎</span></label></div>
-                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input black_flag_child is_black_follow live-save" type="checkbox"><span class="_description" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="是否仅关注姬生效">关注</span></label></div>
-                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input black_flag_child is_black_reply live-save" type="checkbox"><span class="_description" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="是否仅自动回复姬生效">回复</span></label></div>
-                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input black_flag_child is_black_dynamic live-save" type="checkbox"><span class="_description" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="是否启用动态内容审查（审查黑名单关键词在用户动态中出现）">动态</span></label></div>
-                                    </div></div>
-                                    <div class="form-group footer-set"><textarea class="form-control input-margin-b black_names live-save" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" placeholder="自定义屏蔽用户名字或拉黑关键词，一行一个，包含匹配（用户名包含关键字即屏蔽）`regex`为正则表达" title="自定义屏蔽用户名字或拉黑关键词，一行一个，包含匹配（用户名包含关键字即屏蔽）`regex`为正则表达"></textarea><textarea class="form-control input-margin-b black_uids live-save" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" placeholder="自定义屏蔽用户uid，一行一个" title="自定义屏蔽用户uid，一行一个"></textarea></div>
+                        <!-- 关键词检测姬 -->
+                        <div class="tab-pane" th:classappend="${! #arrays.isEmpty(param.tab) && param.tab[0] == 'keyWord-set'} ? 'active' : ''" id="tab-keyWord-set">
+                            <div class="input-group mb-1"><h5>关键词检测姬</h5></div>
+                            <div class="input-group mb-3 keyWord-set" id="keyWord-set">
+                                <div class="header-set"><div class="row align-items-center" style="margin-bottom:5px;--bs-gutter-x:5px">
+                                    <div class="col-auto"><button class="btn btn-sm btn-primary kw-add-btn">添加</button></div>
                                 </div></div>
-                                <div class="col-6"><div class="input-group mb-3 white-set" id="white-set"><h6 class="w-100">白名单</h6>
-                                    <div class="header-set"><div class="row align-items-center">
-                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input white_flag_parent is_white_all live-save" type="checkbox"><span class="_description" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="是否全局生效白名单模式">全局</span></label></div>
-                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input white_flag_child is_white_gift live-save" type="checkbox"><span class="_description" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="是否仅礼物感谢姬生效">礼物</span></label></div>
-                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input white_flag_child is_white_welcome live-save" type="checkbox"><span class="_description" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="是否仅欢迎姬生效">欢迎</span></label></div>
-                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input white_flag_child is_white_follow live-save" type="checkbox"><span class="_description" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="是否仅关注姬生效">关注</span></label></div>
-                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input white_flag_child is_white_reply live-save" type="checkbox"><span class="_description" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="是否仅自动回复姬生效">回复</span></label></div>
-                                        <div class="col-auto"><label class="form-check-label"><input class="form-check-input white_flag_child is_white_dynamic live-save" type="checkbox"><span class="_description" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="是否启用动态内容审查（白名单用户动态豁免）">动态</span></label></div>
-                                    </div></div>
-                                    <div class="form-group footer-set"><textarea class="form-control input-margin-b white_names live-save" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" placeholder="自定义白名单用户名字，一行一个，默认匹配，`regex`为正则表达" title="自定义白名单用户名字，一行一个，默认匹配，`regex`为正则表达"></textarea><textarea class="form-control input-margin-b white_uids live-save" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" placeholder="自定义白名单用户uid，一行一个（与黑名单冲突时以黑名单为准）" title="自定义白名单用户uid，一行一个（与黑名单冲突时以黑名单为准）"></textarea></div>
-                                </div></div>
+                                <div class="form-group footer-set">
+                                    <table class="table table-bordered table-sm table-striped kw-table" style="table-layout:fixed;width:100%"><colgroup><col><col style="width:60px"><col style="width:60px"></colgroup><thead><tr><th class="kw-sort-keyword" style="cursor:pointer;user-select:none">关键词<span class="kw-sort-icon" style="font-size:10px"></span></th><th class="kw-sort-score" style="width:60px;cursor:pointer;user-select:none;text-align:right">分值<span class="kw-sort-icon" style="font-size:10px"></span></th><th style="width:60px;text-align:center">操作</th></tr></thead><tbody class="kw-tbody"></tbody></table>
+                                    <div class="kw-pagination d-flex justify-content-center align-items-center mt-2" style="display:none;"><button class="btn btn-sm btn-outline-secondary kw-prev">上一页</button><span class="kw-page-info mx-2">第1页</span><button class="btn btn-sm btn-outline-secondary kw-next">下一页</button></div>
+                                </div>
                             </div>
                         </div>
                         <!-- 本地小黑屋 -->

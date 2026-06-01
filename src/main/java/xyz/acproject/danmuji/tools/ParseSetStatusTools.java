@@ -294,6 +294,9 @@ public class ParseSetStatusTools {
 			if(centerSetConf.getAuto_block()==null){
 				centerSetConf.setAuto_block(new AutoBlockSetConf());
 			}
+			if(centerSetConf.getKey_word()==null){
+				centerSetConf.setKey_word(new KeyWordSetConf());
+			}
 		}
 		return centerSetConf;
 	}

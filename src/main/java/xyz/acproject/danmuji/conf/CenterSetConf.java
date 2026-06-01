@@ -131,6 +131,9 @@ public class CenterSetConf implements Serializable {
     //负黑自动拉黑姬
     @JSONField(name="auto_block")
     private AutoBlockSetConf auto_block;
+    //关键词检测姬
+    @JSONField(name="key_word")
+    private KeyWordSetConf key_word;
 
 
     @JSONField(name = "edition",serialize = false)
@@ -154,12 +157,13 @@ public class CenterSetConf implements Serializable {
         centerSetConf.setBadList(new BadListSetConf());
         centerSetConf.setGaze_welcome(new GazeWelcomeSetConf());
         centerSetConf.setAuto_block(new AutoBlockSetConf());
+        centerSetConf.setKey_word(new KeyWordSetConf());
         return centerSetConf;
     }
 
 
     public CenterSetConf(ThankGiftSetConf thank_gift, AdvertSetConf advert,
-                         ThankFollowSetConf follow, AutoReplySetConf reply, ThankWelcomeSetConf welcome, BlackListSetConf black,WhiteListSetConf white,LiveStatusSetConf live_status,TimerSetConf timer,DanmakuStoreSetConf danmaku_store,BadListSetConf badList,GazeWelcomeSetConf gaze_welcome, AutoBlockSetConf auto_block) {
+                         ThankFollowSetConf follow, AutoReplySetConf reply, ThankWelcomeSetConf welcome, BlackListSetConf black,WhiteListSetConf white,LiveStatusSetConf live_status,TimerSetConf timer,DanmakuStoreSetConf danmaku_store,BadListSetConf badList,GazeWelcomeSetConf gaze_welcome, AutoBlockSetConf auto_block, KeyWordSetConf key_word) {
         super();
         this.thank_gift = thank_gift;
         this.advert = advert;
@@ -176,6 +180,7 @@ public class CenterSetConf implements Serializable {
         this.badList = badList;
         this.gaze_welcome = gaze_welcome;
         this.auto_block = auto_block;
+        this.key_word = key_word;
     }
 
     public String toJson() {

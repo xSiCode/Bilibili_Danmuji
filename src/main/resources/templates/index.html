@@ -141,10 +141,10 @@
                                           onclick="toggleSidebarSection(this);return false;">小黑屋</span>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="positiveWhite-set"
                                        onclick="switchTab('positiveWhite-set', this);return false;">负黑正白姬</a>
-                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="black-set"
-                                       onclick="switchTab('black-set', this);return false;">黑白名单姬</a>
                                     <a href="javascript:void(0)" class="sidebar-link" th:classappend="${USER != null and ROOMID != null} ? 'active'" data-tab="autoBlock-set"
                                        onclick="switchTab('autoBlock-set', this);return false;">负黑自动拉黑姬</a>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="keyWord-set"
+                                       onclick="switchTab('keyWord-set', this);return false;">关键词检测姬</a>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="badlist-set"
                                        onclick="switchTab('badlist-set', this);return false;">本地小黑屋</a>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="bili-badlist-set"
@@ -1465,167 +1465,16 @@
                                     </div>
                                     <!-- 底部按钮结束 -->
                                 </div>
-                                <div class="tab-pane" id="tab-black-set">
-                                    <!-- 黑白名单模式设置开始 -->
-                                    <div class="input-group mb-1"><h5>黑白名单姬</h5></div>
-                                    <div class="row">
-                                        <!-- 黑名单（左） -->
-                                        <div class="col-6">
-                                            <div class="input-group mb-3 black-set" id="black-set">
-                                                <h6 class="w-100">黑名单</h6>
-                                                <div class="header-set">
-                                                    <div class="row align-items-center">
-                                                        <!-- 全局 -->
-                                                        <div class="col-auto">
-                                                            <label class="form-check-label"> <input
-                                                                    class="form-check-input black_flag_parent is_black_all live-save"
-                                                                    type="checkbox">
-                                                                <span class="_description" data-bs-html="true"
-                                                                      data-bs-placement="top" data-bs-toggle="tooltip"
-                                                                      title="是否全局生效黑名单模式">全局</span>
-                                                            </label>
-                                                        </div>
-                                                        <!-- 子选项 -->
-                                                        <div class="col-auto">
-                                                            <label class="form-check-label"> <input
-                                                                    class="form-check-input black_flag_child is_black_gift live-save"
-                                                                    type="checkbox">
-                                                                <span class="_description" data-bs-html="true"
-                                                                      data-bs-placement="top" data-bs-toggle="tooltip"
-                                                                      title="是否仅礼物感谢姬生效">礼物</span>
-                                                            </label>
-                                                        </div>
-                                                        <div class="col-auto">
-                                                            <label class="form-check-label"> <input
-                                                                    class="form-check-input black_flag_child is_black_welcome live-save"
-                                                                    type="checkbox">
-                                                                <span class="_description" data-bs-html="true"
-                                                                      data-bs-placement="top" data-bs-toggle="tooltip"
-                                                                      title="是否仅欢迎姬生效">欢迎</span>
-                                                            </label>
-                                                        </div>
-                                                        <div class="col-auto">
-                                                            <label class="form-check-label"> <input
-                                                                    class="form-check-input black_flag_child is_black_follow live-save"
-                                                                    type="checkbox">
-                                                                <span class="_description" data-bs-html="true"
-                                                                      data-bs-placement="top" data-bs-toggle="tooltip"
-                                                                      title="是否仅关注姬生效">关注</span>
-                                                            </label>
-                                                        </div>
-                                                        <div class="col-auto">
-                                                            <label class="form-check-label"> <input
-                                                                    class="form-check-input black_flag_child is_black_reply live-save"
-                                                                    type="checkbox">
-                                                                <span class="_description" data-bs-html="true"
-                                                                      data-bs-placement="top" data-bs-toggle="tooltip"
-                                                                      title="是否仅自动回复姬生效">回复</span>
-                                                            </label>
-                                                        </div>
-                                                        <div class="col-auto">
-                                                            <label class="form-check-label"> <input
-                                                                    class="form-check-input black_flag_child is_black_dynamic live-save"
-                                                                    type="checkbox">
-                                                                <span class="_description" data-bs-html="true"
-                                                                      data-bs-placement="top" data-bs-toggle="tooltip"
-                                                                      title="是否启用动态内容审查（审查黑名单关键词在用户动态中出现）">动态</span>
-                                                            </label>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div class="form-group footer-set">
-									<textarea class="form-control input-margin-b black_names live-save"
-                                              data-bs-html="true"
-                                              data-bs-placement="top" data-bs-toggle="tooltip"
-                                              placeholder="自定义屏蔽用户名字或拉黑关键词，一行一个，包含匹配（用户名包含关键字即屏蔽）`regex`为正则表达"
-                                              title="自定义屏蔽用户名字或拉黑关键词，一行一个，包含匹配（用户名包含关键字即屏蔽）`regex`为正则表达"
-                                    ></textarea>
-                                                    <textarea class="form-control input-margin-b black_uids live-save"
-                                                              data-bs-html="true"
-                                                              data-bs-placement="top" data-bs-toggle="tooltip"
-                                                              placeholder="自定义屏蔽用户uid，一行一个"
-                                                              title="自定义屏蔽用户uid，一行一个"
-                                                    ></textarea>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <!-- 白名单（右） -->
-                                        <div class="col-6">
-                                            <div class="input-group mb-3 white-set" id="white-set">
-                                                <h6 class="w-100">白名单</h6>
-                                                <div class="header-set">
-                                                    <div class="row align-items-center">
-                                                        <div class="col-auto">
-                                                            <label class="form-check-label"> <input
-                                                                    class="form-check-input white_flag_parent is_white_all live-save"
-                                                                    type="checkbox">
-                                                                <span class="_description" data-bs-html="true"
-                                                                      data-bs-placement="top" data-bs-toggle="tooltip"
-                                                                      title="是否全局生效白名单模式">全局</span>
-                                                            </label>
-                                                        </div>
-                                                        <div class="col-auto">
-                                                            <label class="form-check-label"> <input
-                                                                    class="form-check-input white_flag_child is_white_gift live-save"
-                                                                    type="checkbox">
-                                                                <span class="_description" data-bs-html="true"
-                                                                      data-bs-placement="top" data-bs-toggle="tooltip"
-                                                                      title="是否仅礼物感谢姬生效">礼物</span>
-                                                            </label>
-                                                        </div>
-                                                        <div class="col-auto">
-                                                            <label class="form-check-label"> <input
-                                                                    class="form-check-input white_flag_child is_white_welcome live-save"
-                                                                    type="checkbox">
-                                                                <span class="_description" data-bs-html="true"
-                                                                      data-bs-placement="top" data-bs-toggle="tooltip"
-                                                                      title="是否仅欢迎姬生效">欢迎</span>
-                                                            </label>
-                                                        </div>
-                                                        <div class="col-auto">
-                                                            <label class="form-check-label"> <input
-                                                                    class="form-check-input white_flag_child is_white_follow live-save"
-                                                                    type="checkbox">
-                                                                <span class="_description" data-bs-html="true"
-                                                                      data-bs-placement="top" data-bs-toggle="tooltip"
-                                                                      title="是否仅关注姬生效">关注</span>
-                                                            </label>
-                                                        </div>
-                                                        <div class="col-auto">
-                                                            <label class="form-check-label"> <input
-                                                                    class="form-check-input white_flag_child is_white_reply live-save"
-                                                                    type="checkbox">
-                                                                <span class="_description" data-bs-html="true"
-                                                                      data-bs-placement="top" data-bs-toggle="tooltip"
-                                                                      title="是否仅自动回复姬生效">回复</span>
-                                                            </label>
-                                                        </div>
-                                                        <div class="col-auto">
-                                                            <label class="form-check-label"> <input
-                                                                    class="form-check-input white_flag_child is_white_dynamic live-save"
-                                                                    type="checkbox">
-                                                                <span class="_description" data-bs-html="true"
-                                                                      data-bs-placement="top" data-bs-toggle="tooltip"
-                                                                      title="是否启用动态内容审查（白名单用户动态豁免）">动态</span>
-                                                            </label>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div class="form-group footer-set">
-                                        <textarea class="form-control input-margin-b white_names live-save"
-                                                  data-bs-html="true"
-                                                  data-bs-placement="top" data-bs-toggle="tooltip"
-                                                  placeholder="自定义白名单用户名字，一行一个，默认匹配，`regex`为正则表达"
-                                                  title="自定义白名单用户名字，一行一个，默认匹配，`regex`为正则表达"
-                                        ></textarea>
-                                                    <textarea class="form-control input-margin-b white_uids live-save"
-                                                              data-bs-html="true"
-                                                              data-bs-placement="top" data-bs-toggle="tooltip"
-                                                              placeholder="自定义白名单用户uid，一行一个（与黑名单冲突时以黑名单为准）"
-                                                              title="自定义白名单用户uid，一行一个（与黑名单冲突时以黑名单为准）"
-                                                    ></textarea>
-                                                </div>
-                                            </div>
+                                <div class="tab-pane" id="tab-keyWord-set">
+                                    <!-- 关键词检测姬设置开始 -->
+                                    <div class="input-group mb-1"><h5>关键词检测姬</h5></div>
+                                    <div class="input-group mb-3 keyWord-set" id="keyWord-set">
+                                        <div class="header-set"><div class="row align-items-center" style="margin-bottom:5px;--bs-gutter-x:5px">
+                                            <div class="col-auto"><button class="btn btn-sm btn-primary kw-add-btn">添加</button></div>
+                                        </div></div>
+                                        <div class="form-group footer-set">
+                                            <table class="table table-bordered table-sm table-striped kw-table" style="table-layout:fixed;width:100%"><colgroup><col><col style="width:60px"><col style="width:60px"></colgroup><thead><tr><th class="kw-sort-keyword" style="cursor:pointer;user-select:none">关键词<span class="kw-sort-icon" style="font-size:10px"></span></th><th class="kw-sort-score" style="width:60px;cursor:pointer;user-select:none;text-align:right">分值<span class="kw-sort-icon" style="font-size:10px"></span></th><th style="width:60px;text-align:center">操作</th></tr></thead><tbody class="kw-tbody"></tbody></table>
+                                            <div class="kw-pagination d-flex justify-content-center align-items-center mt-2" style="display:none;"><button class="btn btn-sm btn-outline-secondary kw-prev">上一页</button><span class="kw-page-info mx-2">第1页</span><button class="btn btn-sm btn-outline-secondary kw-next">下一页</button></div>
                                         </div>
                                     </div>
                                 </div>
@@ -2713,6 +2562,136 @@
         const cookie_data = $("#cookie_data").val();
         cookie_set(cookie_data);
     });
+</script>
+<!-- 关键词检测姬 -->
+<script>
+var kwData = { list: [], page: 1, pageSize: 10, sortCol: null, sortAsc: true };
+var kwMethod = {
+    _sortList: function() {
+        if (!kwData.sortCol) return;
+        var col = kwData.sortCol;
+        var asc = kwData.sortAsc;
+        kwData.list.sort(function(a, b) {
+            var va = (a[col] != null ? a[col] : '');
+            var vb = (b[col] != null ? b[col] : '');
+            if (col === 'score') {
+                va = parseInt(va) || 0;
+                vb = parseInt(vb) || 0;
+                return asc ? va - vb : vb - va;
+            }
+            va = String(va).toLowerCase();
+            vb = String(vb).toLowerCase();
+            if (va < vb) return asc ? -1 : 1;
+            if (va > vb) return asc ? 1 : -1;
+            return 0;
+        });
+    },
+    renderTable: function() {
+        kwMethod._sortList();
+        var tbody = $(".kw-tbody");
+        tbody.empty();
+        var total = kwData.list.length;
+        var totalPages = Math.max(1, Math.ceil(total / kwData.pageSize));
+        if (kwData.page > totalPages) kwData.page = totalPages;
+        var start = (kwData.page - 1) * kwData.pageSize;
+        var end = Math.min(start + kwData.pageSize, total);
+        $(".kw-sort-icon").text('');
+        if (kwData.sortCol) {
+            $(".kw-sort-" + kwData.sortCol + " .kw-sort-icon").text(kwData.sortAsc ? '▲' : '▼');
+        }
+        for (var i = start; i < end; i++) {
+            var item = kwData.list[i];
+            var tr = $('<tr>');
+            tr.append($('<td>').append($('<input class="form-control form-control-sm kw-keyword" type="text" style="width:100%">').val(item.keyword || '')));
+            tr.append($('<td style="text-align:right">').append($('<input class="form-control form-control-sm kw-score" type="number" style="width:60px;text-align:right">').val(item.score || 0)));
+            tr.append($('<td style="text-align:center">').append($('<button class="btn btn-sm btn-danger kw-delete-btn" style="width:60px">删除</button>')));
+            tbody.append(tr);
+        }
+        $(".kw-page-info").text("第" + kwData.page + "页/共" + totalPages + "页 (共" + total + "条)");
+        $(".kw-pagination").toggle(total > kwData.pageSize);
+        $(".kw-prev").prop('disabled', kwData.page <= 1);
+        $(".kw-next").prop('disabled', kwData.page >= totalPages);
+    },
+    syncFromDOM: function() {
+        $(".kw-tbody tr").each(function(i) {
+            var idx = (kwData.page - 1) * kwData.pageSize + i;
+            if (idx >= kwData.list.length) return;
+            kwData.list[idx].keyword = ($(this).find(".kw-keyword").val() || '').trim();
+            kwData.list[idx].score = parseInt($(this).find(".kw-score").val()) || 0;
+        });
+    },
+    loadFromPublicData: function() {
+        if (publicData.set && publicData.set.key_word && publicData.set.key_word.keywords) {
+            kwData.list = publicData.set.key_word.keywords.map(function(e) {
+                return { keyword: e.keyword || '', score: e.score || 0 };
+            });
+        } else {
+            kwData.list = [];
+        }
+        kwData.page = 1;
+        kwData.sortCol = null;
+        kwData.sortAsc = true;
+        kwMethod.renderTable();
+    },
+    autoSave: function() {
+        kwMethod.syncFromDOM();
+        if (!publicData.set.key_word) publicData.set.key_word = {};
+        publicData.set.key_word.keywords = kwData.list.filter(function(e) { return e.keyword !== ''; });
+        publicData.set.edition = $("#app-version").attr("data-version") || '';
+        return method.sendSet(publicData.set);
+    }
+};
+$(function() {
+    kwMethod.loadFromPublicData();
+    $(document).on('click', '.kw-add-btn', function() {
+        kwData.list.push({ keyword: '', score: 0 });
+        kwData.page = Math.max(1, Math.ceil(kwData.list.length / kwData.pageSize));
+        kwMethod.renderTable();
+        kwMethod.autoSave();
+    });
+    $(document).on('click', '.kw-delete-btn', function() {
+        kwMethod.syncFromDOM();
+        var rowIdx = $(this).closest('tr').index();
+        var listIdx = (kwData.page - 1) * kwData.pageSize + rowIdx;
+        if (listIdx < kwData.list.length) kwData.list.splice(listIdx, 1);
+        kwMethod.renderTable();
+        kwMethod.autoSave();
+    });
+    $(document).on('input change', '.kw-keyword, .kw-score', function() {
+        kwMethod.autoSave();
+    });
+    $(document).on('click', '.kw-prev', function() {
+        kwMethod.syncFromDOM();
+        if (kwData.page > 1) { kwData.page--; kwMethod.renderTable(); }
+    });
+    $(document).on('click', '.kw-next', function() {
+        kwMethod.syncFromDOM();
+        var totalPages = Math.max(1, Math.ceil(kwData.list.length / kwData.pageSize));
+        if (kwData.page < totalPages) { kwData.page++; kwMethod.renderTable(); }
+    });
+    $(document).on('click', '.kw-sort-keyword', function() {
+        kwMethod.syncFromDOM();
+        if (kwData.sortCol === 'keyword') {
+            kwData.sortAsc = !kwData.sortAsc;
+        } else {
+            kwData.sortCol = 'keyword';
+            kwData.sortAsc = true;
+        }
+        kwData.page = 1;
+        kwMethod.renderTable();
+    });
+    $(document).on('click', '.kw-sort-score', function() {
+        kwMethod.syncFromDOM();
+        if (kwData.sortCol === 'score') {
+            kwData.sortAsc = !kwData.sortAsc;
+        } else {
+            kwData.sortCol = 'score';
+            kwData.sortAsc = true;
+        }
+        kwData.page = 1;
+        kwMethod.renderTable();
+    });
+});
 </script>
 </body>
 </html>

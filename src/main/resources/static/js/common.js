@@ -2023,7 +2023,7 @@ const method = {
             '</label>' +
             '</div>' +
             '<div class="col-auto">' +
-            '<input class="form-control form-control-sm gazeWelcome-username live-save" type="text" placeholder="用户名(模糊匹配, `包裹`为正则)" value="' + method._escapeHtml(uname) + '" style="width:200px">' +
+            '<input class="form-control form-control-sm gazeWelcome-username live-save" type="text" placeholder="用户名(模糊匹配, #包裹#为正则)" value="' + method._escapeHtml(uname) + '" style="width:200px">' +
             '</div>' +
             '<div class="col">' +
             '<input class="form-control form-control-sm gazeWelcome-text live-save" placeholder="欢迎弹幕内容，支持%uNames%等变量" value="' + method._escapeHtml(txt) + '">' +
