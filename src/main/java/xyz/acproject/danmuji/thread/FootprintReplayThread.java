@@ -9,6 +9,8 @@ import xyz.acproject.danmuji.tools.file.FootprintFileTools.SessionMeta;
 import xyz.acproject.danmuji.thread.core.ParseMessageThread;
 
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 足迹还原重放线程
@@ -31,11 +33,10 @@ public class FootprintReplayThread extends Thread {
     private final ParseMessageThread parseThread;
     private final SessionMeta sessionMeta;
 
-    // 保存重放前的原始直播间上下文，用于重放结束后恢复
-    private Long savedRoomId;
-    private String savedAnchorName;
-    private Long savedAuid;
-    private boolean contextSwapped = false;
+    // 重放前的原始直播间上下文，用于重放结束后恢复（由 WebController 在设置新上下文前保存并传入）
+    private final Long savedRoomId;
+    private final String savedAnchorName;
+    private final Long savedAuid;
 
     private volatile SpeedMode speedMode = SpeedMode.TIME_MULTIPLIER;
     private volatile double speedValue = 1.0;   // 倍数模式下为倍率(0.1x-10x)，定速模式下为人/秒(0.1-100)
@@ -47,10 +48,23 @@ public class FootprintReplayThread extends Thread {
     private volatile String currentUname = "";
     private volatile long currentUid = 0;
 
-    public FootprintReplayThread(List<FootprintRecord> records, ParseMessageThread parseThread, SessionMeta sessionMeta) {
+    /**
+     * @param records      足迹记录列表
+     * @param parseThread  ParseMessageThread 实例（可为 null）
+     * @param sessionMeta  会话元数据（用于日志记录）
+     * @param savedRoomId  重放前的 ROOMID（用于恢复）
+     * @param savedAnchorName 重放前的 ANCHOR_NAME（用于恢复）
+     * @param savedAuid    重放前的 AUID（用于恢复）
+     */
+    public FootprintReplayThread(List<FootprintRecord> records, ParseMessageThread parseThread,
+                                  SessionMeta sessionMeta,
+                                  Long savedRoomId, String savedAnchorName, Long savedAuid) {
         this.records = records;
         this.parseThread = parseThread;
         this.sessionMeta = sessionMeta;
+        this.savedRoomId = savedRoomId;
+        this.savedAnchorName = savedAnchorName;
+        this.savedAuid = savedAuid;
         setName("FootprintReplayThread");
         setDaemon(false);
     }
@@ -59,8 +73,8 @@ public class FootprintReplayThread extends Thread {
     public void run() {
         if (records.isEmpty()) return;
 
-        // 保存并替换直播间上下文
-        swapInContext();
+        // 注意：PublicDataConf 的直播间上下文已在 WebController.startFootprintReplay 中设置，
+        // 此处不再重复设置，直接开始重放
 
         try {
             startTimeMs = System.currentTimeMillis();
@@ -105,6 +119,9 @@ public class FootprintReplayThread extends Thread {
                 executeReplay(rec);
             }
         } finally {
+            // 等待 WATCHER_EXECUTOR 中所有已提交的异步观众处理任务完成，
+            // 确保 VisitorCountTools / LogFileTools 在正确的直播间上下文中执行
+            awaitWatcherTasks();
             // 恢复原始直播间上下文
             swapOutContext();
         }
@@ -112,36 +129,28 @@ public class FootprintReplayThread extends Thread {
     }
 
     /**
-     * 临时替换 PublicDataConf 中的直播间上下文为录制的上下文
+     * 等待 WATCHER_EXECUTOR 中所有已提交的异步任务执行完毕。
+     * 通过提交一个哨兵任务并等待其完成来实现，因为 ThreadPoolExecutor 按 FIFO 顺序执行。
      */
-    private void swapInContext() {
-        if (sessionMeta == null || !sessionMeta.hasData()) return;
-
-        savedRoomId = PublicDataConf.ROOMID;
-        savedAnchorName = PublicDataConf.ANCHOR_NAME;
-        savedAuid = PublicDataConf.AUID;
-
-        PublicDataConf.ROOMID = sessionMeta.roomId != 0 ? sessionMeta.roomId : savedRoomId;
-        PublicDataConf.ANCHOR_NAME = sessionMeta.anchorName != null && !sessionMeta.anchorName.isEmpty()
-                ? sessionMeta.anchorName : savedAnchorName;
-        PublicDataConf.AUID = sessionMeta.auid != 0 ? sessionMeta.auid : savedAuid;
-
-        contextSwapped = true;
-        LOGGER.info("FootprintReplay: swapped in context roomId={} anchorName={} auid={}",
-                PublicDataConf.ROOMID, PublicDataConf.ANCHOR_NAME, PublicDataConf.AUID);
+    private void awaitWatcherTasks() {
+        try {
+            ExecutorService executor = ParseMessageThread.getWatcherExecutor();
+            if (executor != null && !executor.isShutdown()) {
+                executor.submit(() -> {}).get(30, TimeUnit.SECONDS);
+            }
+        } catch (Exception e) {
+            LOGGER.warn("FootprintReplay: awaitWatcherTasks timeout or interrupted", e);
+        }
     }
 
     /**
      * 恢复 PublicDataConf 中的原始直播间上下文
      */
     private void swapOutContext() {
-        if (!contextSwapped) return;
-
         PublicDataConf.ROOMID = savedRoomId;
         PublicDataConf.ANCHOR_NAME = savedAnchorName;
         PublicDataConf.AUID = savedAuid;
 
-        contextSwapped = false;
         LOGGER.info("FootprintReplay: restored context roomId={} anchorName={} auid={}",
                 PublicDataConf.ROOMID, PublicDataConf.ANCHOR_NAME, PublicDataConf.AUID);
     }

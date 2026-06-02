@@ -4634,16 +4634,47 @@ public class WebController {
                 activeReplayThread.stopReplay();
             }
 
-            // 使用 readFileWithMeta 读取文件（含直播间上下文头部）
+            // 使用 readFileWithMeta 读取文件（含直播间上下文头部作为补充）
             ParseResult parseResult = FootprintFileTools.getInstance().readFileWithMeta(file.getAbsolutePath());
             List<FootprintRecord> records = parseResult.records;
-            SessionMeta meta = parseResult.meta;
+            SessionMeta headerMeta = parseResult.meta;
             if (records.isEmpty()) {
                 return Response.success(2, req);  // 文件为空
             }
 
+            // 从文件名解析 roomId 和主播名（主要来源，最可靠）
+            // 文件名格式: {roomId}_{anchorName}_footprint.csv
+            SessionMeta fileNameMeta = FootprintFileTools.parseFileNameForContext(file.getName());
+
+            // 合并元数据：文件名解析为主，CSV 头部补充（如 auid）
+            SessionMeta meta = new SessionMeta();
+            meta.roomId = fileNameMeta.roomId != 0 ? fileNameMeta.roomId : headerMeta.roomId;
+            meta.anchorName = !fileNameMeta.anchorName.isEmpty() ? fileNameMeta.anchorName : headerMeta.anchorName;
+            meta.auid = headerMeta.auid;  // auid 只能从 CSV 头部获取
+
+            // 在启动重放线程之前设置直播间上下文，
+            // 确保所有异步任务（LogThread、WATCHER_EXECUTOR）读取到正确的值
+            Long savedRoomId = PublicDataConf.ROOMID;
+            String savedAnchorName = PublicDataConf.ANCHOR_NAME;
+            Long savedAuid = PublicDataConf.AUID;
+
+            if (meta.roomId != 0) {
+                PublicDataConf.ROOMID = meta.roomId;
+            }
+            if (meta.anchorName != null && !meta.anchorName.isEmpty()) {
+                PublicDataConf.ANCHOR_NAME = meta.anchorName;
+            }
+            if (meta.auid != 0) {
+                PublicDataConf.AUID = meta.auid;
+            }
+
+            LOGGER.info("FootprintReplay: set context from filename={} roomId={} anchorName={} auid={}",
+                    file.getName(), PublicDataConf.ROOMID, PublicDataConf.ANCHOR_NAME, PublicDataConf.AUID);
+
             ParseMessageThread pmt = PublicDataConf.parseMessageThread;
-            activeReplayThread = new FootprintReplayThread(records, pmt, meta);
+            // 传入保存的原始上下文供重放完成后恢复
+            activeReplayThread = new FootprintReplayThread(records, pmt, meta,
+                    savedRoomId, savedAnchorName, savedAuid);
 
             // 设置速度模式
             FootprintReplayThread.SpeedMode mode = "fixed".equals(speedMode)

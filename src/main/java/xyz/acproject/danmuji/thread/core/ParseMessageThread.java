@@ -1643,6 +1643,13 @@ public class ParseMessageThread extends Thread {
         audienceProcessing(stringBuilder, uid, uname, conf);
     }
 
+    /**
+     * 暴露 WATCHER_EXECUTOR 供 FootprintReplayThread 等待异步任务完成
+     */
+    public static ExecutorService getWatcherExecutor() {
+        return WATCHER_EXECUTOR;
+    }
+
     //获取发送礼物code
     public String sendCode(short guardLevel) {
         String code = CurrencyTools.sendGiftCode(guardLevel);

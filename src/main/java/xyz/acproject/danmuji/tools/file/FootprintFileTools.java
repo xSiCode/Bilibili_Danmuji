@@ -351,7 +351,41 @@ public class FootprintFileTools {
         return false;
     }
 
-    // ===== 数据类 =====
+    /**
+     * 从足迹文件名解析直播间上下文
+     * 文件名格式: {roomId}_{anchorName}_footprint.csv
+     * roomId 为纯数字，anchorName 可能包含下划线
+     * 例如: "27887575_是Winter喵_footprint.csv" → roomId=27887575, anchorName="是Winter喵"
+     *
+     * @param fileName 文件名（不含路径）
+     * @return SessionMeta，解析失败时 hasData() 返回 false
+     */
+    public static SessionMeta parseFileNameForContext(String fileName) {
+        SessionMeta meta = new SessionMeta();
+        if (fileName == null || fileName.isEmpty()) return meta;
+
+        // 去掉 _footprint.csv 后缀
+        String suffix = "_footprint.csv";
+        if (!fileName.endsWith(suffix)) return meta;
+        String core = fileName.substring(0, fileName.length() - suffix.length());
+        if (core.isEmpty()) return meta;
+
+        // 找到第一个下划线，之前是 roomId（纯数字），之后是 anchorName
+        int firstUnderscore = core.indexOf('_');
+        if (firstUnderscore <= 0) return meta;
+
+        String roomIdStr = core.substring(0, firstUnderscore);
+        String anchorName = core.substring(firstUnderscore + 1);
+
+        try {
+            meta.roomId = Long.parseLong(roomIdStr);
+        } catch (NumberFormatException e) {
+            return meta; // roomId 解析失败
+        }
+        meta.anchorName = anchorName;
+        // auid 不强制从文件名解析（文件名中不含 auid），由 CSV 头部补充
+        return meta;
+    }
 
     /**
      * 足迹记录数据类
