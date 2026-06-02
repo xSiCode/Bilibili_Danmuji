@@ -2,9 +2,7 @@ package xyz.acproject.danmuji.thread.core;
 
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
-import com.google.protobuf.util.JsonFormat;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.util.CollectionUtils;
@@ -44,7 +42,6 @@ import xyz.acproject.danmuji.tools.file.FileTools;
 import xyz.acproject.danmuji.tools.file.GuardFileTools;
 import xyz.acproject.danmuji.tools.file.LogFileTools;
 import xyz.acproject.danmuji.utils.JodaTimeUtils;
-import xyz.acproject.danmuji.utils.SelfTools;
 import xyz.acproject.danmuji.utils.SpringUtils;
 
 import java.text.SimpleDateFormat;
@@ -445,16 +442,6 @@ public class ParseMessageThread extends Thread {
 //                            LOGGER.info("让我看看是谁送礼物:::"+jsonObject);
                             break;
 
-                        // 部分金瓜子礼物连击
-                        case "COMBO_SEND":
-                            LOGGER.info("部分金瓜子礼物连击:::" + message);
-                            break;
-
-                        // 部分金瓜子礼物连击
-                        case "COMBO_END":
-                            LOGGER.info("部分金瓜子礼物连击:::" + message);
-                            break;
-
                         // 上舰
                         case "GUARD_BUY":
                             guard = JSONObject.parseObject(jsonObject.getString("data"), Guard.class);
@@ -566,16 +553,6 @@ public class ParseMessageThread extends Thread {
 //                            LOGGER.info("有人上舰长啦:::" + message);
                             break;
 
-                        // 上舰消息推送
-                        case "GUARD_LOTTERY_START":
-                            LOGGER.info("上舰消息推送:::" + message);
-                            break;
-
-                        // 上舰抽奖消息推送
-                        case "USER_TOAST_MSG":
-                            LOGGER.info("上舰抽奖消息推送:::" + message);
-                            break;
-
                         // 醒目留言
                         case "SUPER_CHAT_MESSAGE":
                             // 只解析一次，display 和 gift thank 共用
@@ -638,16 +615,6 @@ public class ParseMessageThread extends Thread {
                                 stringBuilder.delete(0, stringBuilder.length());
                             }
                             LOGGER.info("收到醒目留言:::" + message);
-                            break;
-
-                        // 醒目留言日文翻译
-                        case "SUPER_CHAT_MESSAGE_JPN":
-                            LOGGER.info("醒目留言日文翻译消息推送:::" + message);
-                            break;
-
-                        // 删除醒目留言
-                        case "SUPER_CHAT_MESSAGE_DELETE":
-                            LOGGER.info("该条醒目留言已被删除:::" + message);
                             break;
 
                         // 欢迎老爷进来本直播间
@@ -722,15 +689,6 @@ public class ParseMessageThread extends Thread {
                             LOGGER.info("舰长大大进来直播间了:::" + message);
                             break;
 
-                        // 舰长进入直播间消息
-                        case "ENTRY_EFFECT":
-                            // LOGGER.info("舰长大大进入直播间消息推送:::" + message);
-                            break;
-
-                        // 节奏风暴推送 action 为start和end
-                        case "SPECIAL_GIFT":
-                            LOGGER.info("节奏风暴推送:::" + message);
-                            break;
 
                         // 禁言消息
                         case "ROOM_BLOCK_MSG":
@@ -763,39 +721,7 @@ public class ParseMessageThread extends Thread {
                             }
                             LOGGER.info("谁这么惨被禁言了:::" + message);
                             break;
-
-                        // 本主播在本分区小时榜排名更新推送 不会更新页面的排行显示信息
-                        case "ACTIVITY_BANNER_UPDATE_V2":
-                            LOGGER.info("小时榜消息更新推送:::" + message);
-                            break;
-
-                        // 本房间分区修改
-                        case "ROOM_CHANGE":
-                            LOGGER.info("房间分区已更新:::" + message);
-                            break;
-
-                        // 本房间分区排行榜更新 更新页面的排行显示信息
-                        case "ROOM_RANK":
-                            //					rannk = JSONObject.parseObject(jsonObject.getString("data"), Rannk.class);
-                            //					stringBuilder.append(JodaTimeUtils.format(rannk.getTimestamp() * 1000)).append(":榜单更新:")
-                            //							.append(rannk.getRank_desc());
-                            //
-                            //					System.out.println(stringBuilder.toString());
-                            //					stringBuilder.delete(0, stringBuilder.length());
-                            LOGGER.info("小时榜信息更新推送:::" + message);
-                            break;
-
-                        // 推测为获取本小时榜榜单第一名主播的信息 推测激活条件为本直播间获得第一
-                        case "new_anchor_reward":
-                            LOGGER.info("获取本小时榜榜单第一名主播的信息:::" + message);
-                            break;
-
-                        // 小时榜榜单信息推送 推测激活条件为本直播间获得第一
-                        case "HOUR_RANK_AWARDS":
-                            LOGGER.info("恭喜xxxx直播间获得:::" + message);
-                            break;
-
-                        // 直播间粉丝数更新 经常
+                       // 直播间粉丝数更新 经常
                         case "ROOM_REAL_TIME_MESSAGE_UPDATE":
                             //					fans = JSONObject.parseObject(jsonObject.getString("data"), Fans.class);
                             //					stringBuilder.append(JodaTimeUtils.getCurrentTimeString()).append(":消息推送:").append("房间号")
@@ -806,26 +732,6 @@ public class ParseMessageThread extends Thread {
                             LOGGER.info("直播间粉丝数更新消息推送:::" + message);
                             break;
 
-                        // 直播间许愿瓶消息推送更新
-                        case "WISH_BOTTLE":
-                            LOGGER.info("直播间许愿瓶消息推送更新:::" + message);
-                            break;
-
-                        // 广播小电视类抽奖信息推送,包括本房间的舰长礼物包括,本直播间所在小时榜榜单主播信息的推送 需要unicode转义 免费辣条再见！！！！
-                        case "NOTICE_MSG":
-                            //					message = ByteUtils.unicodeToString(message);
-                            //					LOGGER.info("小电视类抽奖信息推送:::" + message);
-                            break;
-
-                        // 本房间开启活动抽奖(33图,小电视图,任意门等) 也指本房间内赠送的小电视 摩天大楼类抽奖
-                        case "RAFFLE_START":
-                            LOGGER.info("本房间开启了活动抽奖:::" + message);
-                            break;
-
-                        // 本房间活动中奖用户信息推送 也指抽奖结束
-                        case "RAFFLE_END":
-                            LOGGER.info("看看谁是幸运儿:::" + message);
-                            break;
 
                         // 本房间主播开启了天选时刻
                         case "ANCHOR_LOT_START":
@@ -848,206 +754,6 @@ public class ParseMessageThread extends Thread {
                                 }
                             }
                             LOGGER.info("本房间主播开启了天选时刻:::" + message);
-                            break;
-
-                        // 本房间天选时刻结束
-                        case "ANCHOR_LOT_END":
-                            LOGGER.info("本房间天选时刻结束:::" + message);
-                            break;
-
-                        // 本房间天选时刻获奖信息推送
-                        case "ANCHOR_LOT_AWARD":
-                            LOGGER.info("本房间天选时刻中奖用户是:::" + message);
-                            break;
-
-                        // 获得推荐位推荐消息
-                        case "ANCHOR_NORMAL_NOTIFY":
-                            LOGGER.info("本房间获得推荐位:::" + message);
-                            break;
-                        // 周星消息推送
-                        case "WEEK_STAR_CLOCK":
-                            LOGGER.info("周星消息推送:::" + message);
-                            break;
-
-                        // 推测本主播周星信息更新
-                        case "ROOM_BOX_MASTER":
-                            LOGGER.info("周星信息更新:::" + message);
-                            break;
-
-                        // 周星消息推送关闭
-                        case "ROOM_SKIN_MSG":
-                            LOGGER.info("周星消息推送关闭:::" + message);
-                            break;
-
-                        // 中型礼物多数量赠送消息推送 例如b克拉 亿元
-                        case "SYS_GIFT":
-                            LOGGER.info("中型礼物多数量赠送消息推送:::" + message);
-                            break;
-
-                        // lol活动礼物？？？
-                        case "ACTIVITY_MATCH_GIFT":
-                            LOGGER.info("lol专属房间礼物赠送消息推送:::" + message);
-                            break;
-
-                        //----------------------------------------pk信息多为要uicode解码-------------------------------------------------
-                        // 推测为房间pk信息推送
-                        case "PK_BATTLE_ENTRANCE":
-                            LOGGER.info("房间pk活动信息推送:::" + message);
-                            break;
-
-                        // 活动pk准备
-                        case "PK_BATTLE_PRE":
-                            LOGGER.info("房间活动pk准备:::" + message);
-                            break;
-
-                        // 活动pk开始
-                        case "PK_BATTLE_START":
-                            LOGGER.info("房间活动pk开始:::" + message);
-                            break;
-
-                        // 活动pk中
-                        case "PK_BATTLE_PROCESS":
-                            LOGGER.info("房间活动pk中:::" + message);
-                            break;
-
-                        // 活动pk详细信息
-                        case "PK_BATTLE_CRIT":
-                            LOGGER.info("房间活动pk详细信息推送:::" + message);
-                            break;
-
-                        // 活动pk类型推送
-                        case "PK_BATTLE_PRO_TYPE":
-                            LOGGER.info("房间活动pk类型推送:::" + message);
-                            break;
-
-                        // 房间活动pk结束
-                        case "PK_BATTLE_END":
-                            LOGGER.info("房间pk活动结束::" + message);
-                            break;
-
-                        // 活动pk结果用户 推送
-                        case "PK_BATTLE_SETTLE_USER":
-                            LOGGER.info("活动pk结果用户 推送::" + message);
-                            break;
-
-                        // 活动pk礼物开始 1辣条
-                        case "PK_LOTTERY_START":
-                            LOGGER.info("活动pk礼物开始 推送::" + message);
-                            break;
-
-                        // 活动pk结果房间
-                        case "PK_BATTLE_SETTLE":
-                            LOGGER.info("活动pk结果房间推送::" + message);
-                            break;
-
-                        // pk开始
-                        case "PK_START":
-                            LOGGER.info("房间pk开始:::" + message);
-                            break;
-
-                        // pk准备中
-                        case "PK_PRE":
-                            LOGGER.info("房间pk准备中:::" + message);
-                            break;
-
-                        // pk载入中
-                        case "PK_MATCH":
-                            LOGGER.info("房间pk载入中:::" + message);
-                            break;
-
-                        // pk再来一次触发
-                        case "PK_CLICK_AGAIN":
-                            LOGGER.info("房间pk再来一次:::" + message);
-                            break;
-                        // pk结束
-                        case "PK_MIC_END":
-                            LOGGER.info("房间pk结束:::" + message);
-                            break;
-
-                        // pk礼物信息推送 激活条件推测为pk胜利 可获得一个辣条
-                        case "PK_PROCESS":
-                            LOGGER.info("房间pk礼物推送:::" + message);
-                            break;
-
-                        // pk结果信息推送
-                        case "PK_SETTLE":
-                            LOGGER.info("房间pk结果信息推送:::" + message);
-                            break;
-
-                        // pk结束信息推送
-                        case "PK_END":
-                            LOGGER.info("房间pk结束信息推送:::" + message);
-                            break;
-
-                        // 系统信息推送
-                        case "SYS_MSG":
-                            LOGGER.info("系统信息推送:::" + message);
-                            break;
-
-                        // 总督登场消息
-                        case "GUARD_MSG":
-                            LOGGER.info("总督帅气登场:::" + message);
-                            break;
-
-                        // 热门房间？？？？广告房间？？ 不知道这是什么 推测本直播间激活 目前常见于打广告的官方直播间 例如手游 碧蓝航线 啥的。。
-                        case "HOT_ROOM_NOTIFY":
-                            LOGGER.info("热门房间推送消息:::" + message);
-                            break;
-
-                        // 小时榜面板消息推送
-                        case "PANEL":
-                            LOGGER.info("热小时榜面板消息推送:::" + message);
-                            break;
-
-                        // 星之耀宝箱使用 n
-                        case "ROOM_BOX_USER":
-                            LOGGER.info("星之耀宝箱使用:::" + message);
-                            break;
-
-                        // 语音加入？？？？ 暂不知道
-                        case "VOICE_JOIN_ROOM_COUNT_INFO":
-                            LOGGER.info("语音加入:::" + message);
-                            break;
-
-                        // 语音加入list？？？？ 暂不知道
-                        case "VOICE_JOIN_LIST":
-                            LOGGER.info("语音加入list:::" + message);
-                            break;
-
-                        // lol活动
-                        case "LOL_ACTIVITY":
-                            LOGGER.info("lol活动:::" + message);
-                            break;
-
-                        // 队伍礼物排名 目前只在6号lol房间抓取过
-                        case "MATCH_TEAM_GIFT_RANK":
-                            LOGGER.info("队伍礼物排名:::" + message);
-                            break;
-
-                        // 6.13端午节活动粽子新增活动更新命令 激活条件有人赠送活动礼物
-                        case "ROOM_BANNER":
-                            LOGGER.info("收到活动礼物赠送，更新信息:::" + message);
-                            break;
-
-
-                        // 房间护盾 推测推送消息为破站官方屏蔽的关键字 触发条件未知
-                        case "ROOM_SHIELD":
-                            LOGGER.info("房间护盾触发消息:::" + message);
-                            break;
-
-                        // 主播开启房间全局禁言
-                        case "ROOM_SILENT_ON":
-                            LOGGER.info("主播开启房间全局禁言:::" + message);
-                            break;
-
-                        // 主播关闭房间全局禁言
-                        case "ROOM_SILENT_OFF":
-                            LOGGER.info("主播关闭房间全局禁言:::" + message);
-                            break;
-
-                        // 主播状态检测 直译 不知道什么情况 statue 1 ，2 ，3 ，4
-                        case "ANCHOR_LOT_CHECKSTATUS":
-                            LOGGER.info("主播房间状态检测:::" + message);
                             break;
 
                         // 房间警告消息 目前已知触发条件为 房间分区不正确
@@ -1086,12 +792,6 @@ public class ParseMessageThread extends Thread {
 
                             holdLiveStatusMsg("preparing");
                             break;
-
-                        // 勋章亲密度达到上每日上限通知
-                        case "LITTLE_TIPS":
-                            LOGGER.info("勋章亲密度达到上每日上限:::" + message);
-                            break;
-
 
                         case "INTERACT_WORD_V2":
                             final CenterSetConf conf = getCenterSetConf();
@@ -1132,43 +832,11 @@ public class ParseMessageThread extends Thread {
                                 // 关注
                                 //控制台打印处理
                                 if (conf.is_follow_dm()) {
-                                    if (msg_type == 2) {
-                                        stringBuilder.append(TIME_FORMAT.get().format(System.currentTimeMillis()))
-                                                .append(" [直接关注] ")
-                                                .append(_follow_uname);
-                                        //控制台打印
-                                        if (conf.is_cmd()) {
-                                            LOGGER.info(stringBuilder.toString());
-                                        }
-                                        //日志
-                                        if (PublicDataConf.logThread != null && !PublicDataConf.logThread.FLAG) {
-                                            PublicDataConf.logString.offer(stringBuilder.toString());
-                                        }
-                                        //前端弹幕发送
-                                        try {
-                                            danmuWebsocket.sendMessage(WsPackage.toJson("follow", (short) 0, interact));
-                                        } catch (Exception e) {
-                                            // TODO 自动生成的 catch 块
-                                            LOGGER.error(e);
-                                        }
-                                        stringBuilder.delete(0, stringBuilder.length());
-                                    }
+                                    audienceFollowingMe(msg_type, stringBuilder, _follow_uname, conf, interact);
                                 }
                                 //关注感谢
                                 if (conf.getFollow().is_followThank()) {
-                                    //天选屏蔽&&红包屏蔽
-                                    if (!conf.getFollow()
-                                            .boolTxAndRdShield(
-                                                    CacheConf.existTx(PublicDataConf.ROOMID), CacheConf.existRedPackageCache(PublicDataConf.ROOMID))) {
-                                        if (msg_type == 2) {
-                                            try {
-                                                parseFollowSetting(interact);
-                                            } catch (Exception e) {
-                                                // TODO 自动生成的 catch 块
-                                                LOGGER.error(e);
-                                            }
-                                        }
-                                    }
+                                    audienceFollowingsThank(conf, msg_type, interact);
                                 }
                                 //欢迎进入直播间 + 观众记录
                                 if (msg_type == 1) {
@@ -1181,74 +849,24 @@ public class ParseMessageThread extends Thread {
                                 }
                                 //欢迎感谢
                                 if (conf.getWelcome().is_welcomeThank()) {
-                                    //天选屏蔽&&红包屏蔽
-                                    if (!conf.getWelcome()
-                                            .boolTxAndRdShield(
-                                                    CacheConf.existTx(PublicDataConf.ROOMID), CacheConf.existRedPackageCache(PublicDataConf.ROOMID))) {
-                                        if (msg_type == 1) {
-                                            try {
-                                                parseWelcomeSetting(interact);
-                                            } catch (Exception e) {
-                                                // TODO 自动生成的 catch 块
-                                                LOGGER.error(e);
-                                            }
-                                        }
-                                    }
+                                    audienceWelcomeThank(conf, msg_type, interact);
                                 }
                             } catch (Exception e) {
                                 LOGGER.error(e);
                             }
                             break;
-                        // 礼物bag bot
-                        case "GIFT_BAG_DOT":
-                            LOGGER.info("礼物bag" + message);
-                            break;
-                        case "ONLINERANK":
-                            LOGGER.info("新在线排名更新信息推送:::" + message);
-                            break;
+
                         case "ONLINE_RANK_COUNT":
                             // 在线排名人数更新信息推送:::{"cmd":"ONLINE_RANK_COUNT","data":{"count":729,"count_text":"729","online_count":729,"online_count_text":"729"}}
                             PublicDataConf.ROOM_ONLINE__RANK_COUNT = JSONObject.parseObject(jsonObject.getString("data")).getLong("count");
                             LOGGER.info("在线排名人数更新信息推送:::" + message);
-                            break;
-                        case "ONLINE_RANK_V2":
-                            LOGGER.info("在线排名v2版本信息推送(即高能榜:::" + message);
-                            break;
-                        case "ONLINE_RANK_TOP3":
-                            LOGGER.info("在线排名前三信息推送(即高能榜:::" + message);
-                            break;
-                        case "HOT_RANK_CHANGED":
-                            LOGGER.info("热门榜推送:::" + message);
-                            break;
-                        case "HOT_RANK_CHANGED_V2":
-                            LOGGER.info("热门榜v2版本changed推送:::" + message);
-                            break;
-                        case "HOT_RANK_SETTLEMENT_V2":
-                            LOGGER.info("热门榜v2版本set推送:::" + message);
-                            break;
-                        case "WIDGET_BANNER":
-                            LOGGER.info("直播横幅广告推送:::" + message);
-                            break;
-                        case "MESSAGEBOX_USER_MEDAL_CHANGE":
-                            LOGGER.info("本人勋章升级推送:::" + message);
-                            break;
-                        case "LIVE_INTERACTIVE_GAME":
-                            LOGGER.info("互动游戏？？？推送:::" + message);
                             break;
                         case "WATCHED_CHANGE":
                             //{"cmd":"WATCHED_CHANGE","data":{"num":184547,"text_small":"18.4万","text_large":"18.4万人看过"}}
                             PublicDataConf.ROOM_WATCHER = JSONObject.parseObject(jsonObject.getString("data")).getLong("num");
                             LOGGER.info("多少人观看过:::" + message);
                             break;
-                        case "STOP_LIVE_ROOM_LIST":
-                            //					LOGGER.info("直播间关闭集合推送:::" + message);
-                            break;
-                        case "DANMU_AGGREGATION":
-                            LOGGER.info("天选时刻条件是表情推送:::" + message);
-                            break;
-                        case "COMMON_NOTICE_DANMAKU":
-                            LOGGER.info("警告信息推送（例如任务快完成之类的）:::" + message);
-                            break;
+
                         case "POPULARITY_RED_POCKET_NEW":
                             // 只解析一次，display 和 gift thank 共用
                             redPackage = JSONObject.parseObject(jsonObject.getString("data"), RedPackage.class);
@@ -1314,25 +932,10 @@ public class ParseMessageThread extends Thread {
                             }
                             LOGGER.info("红包赠送:::" + message);
                             break;
-                        case "POPULARITY_RED_POCKET_WINNER_LIST":
-                            LOGGER.info("红包抽奖结果推送:::" + message);
-                            break;
                         case "LIKE_INFO_V3_UPDATE":
                             LOGGER.info("点赞信息v3推送:UPDATE::" + message);
                             //{"cmd":"LIKE_INFO_V3_UPDATE","data":{"click_count":371578}}
                             PublicDataConf.ROOM_LIKE = JSONObject.parseObject(jsonObject.getString("data")).getLong("click_count");
-                            break;
-                        case "LIKE_INFO_V3_CLICK":
-                            LOGGER.info("点赞信息v3推送:CLICK::" + message);
-                            break;
-                        case "CORE_USER_ATTENTION":
-                            LOGGER.info("中心用户推送:::" + message);
-                            break;
-                        case "HOT_RANK_SETTLEMENT":
-                            LOGGER.info("热榜排名推送:::" + message);
-                            break;
-                        case "MESSAGEBOX_USER_GAIN_MEDAL":
-                            LOGGER.info("粉丝勋章消息盒子推送:::" + message);
                             break;
                         case "POPULARITY_RED_POCKET_START":
 //                        {"cmd":"POPULARITY_RED_POCKET_START", "data":{"lot_id":15279655,
@@ -1353,92 +956,9 @@ public class ParseMessageThread extends Thread {
                                 CurrencyTools.handleLotteryInfoWebByRedPackage(PublicDataConf.ROOMID, lotteryInfoWeb);
                             }
                             break;
-                        case "LITTLE_MESSAGE_BOX":
-                            LOGGER.info("小消息box推送:::" + message);
-                            break;
-                        case "ANCHOR_HELPER_DANMU":
-                            LOGGER.info("直播小助手信息推送:::" + message);
-                            break;
-                        case "ENTRY_EFFECT_MUST_RECEIVE":
-                            LOGGER.info("直播小助手信息推送:::" + message);
-                            break;
-                        case "GIFT_STAR_PROCESS":
-                            LOGGER.info("礼物开始进度条信息推送:::" + message);
-                            break;
-                        case "GUARD_HONOR_THOUSAND":
-                            LOGGER.info("千舰推送:::" + message);
-                            break;
-                        case "FULL_SCREEN_SPECIAL_EFFECT":
-                            LOGGER.info("FULL_SCREEN_SPECIAL_EFFECT:::" + message);
-                            break;
-                        case "CARD_MSG":
-                            LOGGER.info("CARD_MSG:::" + message);
-                            break;
-                        case "USER_PANEL_RED_ALARM":
-                            LOGGER.info("USER_PANEL_RED_ALARM:::" + message);
-                            break;
-                        case "TRADING_SCORE":
-                            LOGGER.info("TRADING_SCORE:::" + message);
-                            break;
-                        case "USER_TASK_PROGRESS":
-                            LOGGER.info("USER_TASK_PROGRESS:::" + message);
-                            break;
-                        case "POPULAR_RANK_CHANGED":
-                            LOGGER.info("POPULAR_RANK_CHANGED:::" + message);
-                            break;
-                        case "AREA_RANK_CHANGED":
-                            LOGGER.info("AREA_RANK_CHANGED:::" + message);
-                            break;
-                        case "PLAY_TAG":
-                            LOGGER.info("PLAY_TAG:::" + message);
-                            break;
-                        case "PK_BATTLE_PROCESS_NEW":
-                            LOGGER.info("PK_BATTLE_PROCESS_NEW:::" + message);
-                            break;
-                        case "PK_BATTLE_SETTLE_NEW":
-                            LOGGER.info("PK_BATTLE_SETTLE_NEW:::" + message);
-                            break;
-                        case "PK_BATTLE_PUNISH_END":
-                            LOGGER.info("PK_BATTLE_PUNISH_END:::" + message);
-                            break;
-                        case "PK_BATTLE_PRE_NEW":
-                            LOGGER.info("PK_BATTLE_PRE_NEW:::" + message);
-                            break;
-                        case "PK_BATTLE_START_NEW":
-                            LOGGER.info("PK_BATTLE_START_NEW:::" + message);
-                            break;
-                        case "INTERACTIVE_USER":
-                            LOGGER.info("INTERACTIVE_USER:::" + message);
-                            break;
-                        case "WIDGET_GIFT_STAR_PROCESS":
-                            LOGGER.info("WIDGET_GIFT_STAR_PROCESS:::" + message);
-                            break;
-                        case "LIVE_MULTI_VIEW_NEW_INFO":
-                            LOGGER.info("LIVE_MULTI_VIEW_NEW_INFO:::" + message);
-                            break;
-                        case "PANEL_INTERACTIVE_NOTIFY_CHANGE":
-                            LOGGER.info("PANEL_INTERACTIVE_NOTIFY_CHANGE:::" + message);
-                            break;
-                        case "MULTI_VOICE_OPERATIN":
-                            LOGGER.info("MULTI_VOICE_OPERATIN:::" + message);
-                            break;
-                        case "DM_INTERACTION":
-                            LOGGER.info("DM_INTERACTION:::" + message);
-                            break;
-                        case "MULTI_VOICE_PK_HAT_STATUS":
-                            LOGGER.info("MULTI_VOICE_PK_HAT_STATUS:::" + message);
-                            break;
-                        case "ONLINE_RANK_V3":
-                            //					LOGGER.info("ONLINE_RANK_V3:::" + message);
-                            break;
-                        case "RANK_CHANGED":
-                            LOGGER.info("RANK_CHANGED:::" + message);
-                            break;
-                        case "LIKE_INFO_V3_NOTICE":
-                            LOGGER.info("LIKE_INFO_V3_NOTICE:::" + message);
-                            break;
                         default:
-//                            LOGGER.info("其他未处理消息:" + message);
+                            LOGGER.info("其他未处理cmd: " + cmd);
+                         //   notHandle(cmd, message);
                             break;
                     }
                 }
@@ -1446,6 +966,522 @@ public class ParseMessageThread extends Thread {
                 LOGGER.error(e);
                 LOGGER.error(e.getMessage());
             }
+        }
+    }
+
+    private static void notHandle(String cmd, String message ) {
+        LOGGER.info("其他未处理消息:" + message);
+
+        switch (cmd){
+
+            // 部分金瓜子礼物连击
+            case "COMBO_SEND":
+                LOGGER.info("部分金瓜子礼物连击:::" + message);
+                break;
+
+            // 部分金瓜子礼物连击
+            case "COMBO_END":
+                LOGGER.info("部分金瓜子礼物连击:::" + message);
+                break;
+
+            // 上舰消息推送
+            case "GUARD_LOTTERY_START":
+                LOGGER.info("上舰消息推送:::" + message);
+                break;
+
+            // 上舰抽奖消息推送
+            case "USER_TOAST_MSG":
+                LOGGER.info("上舰抽奖消息推送:::" + message);
+                break;
+
+            // 醒目留言日文翻译
+            case "SUPER_CHAT_MESSAGE_JPN":
+                LOGGER.info("醒目留言日文翻译消息推送:::" + message);
+                break;
+
+            // 删除醒目留言
+            case "SUPER_CHAT_MESSAGE_DELETE":
+                LOGGER.info("该条醒目留言已被删除:::" + message);
+                break;
+
+            // 舰长进入直播间消息
+            case "ENTRY_EFFECT":
+                // LOGGER.info("舰长大大进入直播间消息推送:::" + message);
+                break;
+
+            // 节奏风暴推送 action 为start和end
+            case "SPECIAL_GIFT":
+                LOGGER.info("节奏风暴推送:::" + message);
+                break;
+
+            // 本主播在本分区小时榜排名更新推送 不会更新页面的排行显示信息
+            case "ACTIVITY_BANNER_UPDATE_V2":
+                LOGGER.info("小时榜消息更新推送:::" + message);
+                break;
+
+            // 本房间分区修改
+            case "ROOM_CHANGE":
+                LOGGER.info("房间分区已更新:::" + message);
+                break;
+
+            // 本房间分区排行榜更新 更新页面的排行显示信息
+            case "ROOM_RANK":
+                //					rannk = JSONObject.parseObject(jsonObject.getString("data"), Rannk.class);
+                //					stringBuilder.append(JodaTimeUtils.format(rannk.getTimestamp() * 1000)).append(":榜单更新:")
+                //							.append(rannk.getRank_desc());
+                //
+                //					System.out.println(stringBuilder.toString());
+                //					stringBuilder.delete(0, stringBuilder.length());
+                LOGGER.info("小时榜信息更新推送:::" + message);
+                break;
+
+            // 推测为获取本小时榜榜单第一名主播的信息 推测激活条件为本直播间获得第一
+            case "new_anchor_reward":
+                LOGGER.info("获取本小时榜榜单第一名主播的信息:::" + message);
+                break;
+
+            // 小时榜榜单信息推送 推测激活条件为本直播间获得第一
+            case "HOUR_RANK_AWARDS":
+                LOGGER.info("恭喜xxxx直播间获得:::" + message);
+                break;
+
+
+            // 直播间许愿瓶消息推送更新
+            case "WISH_BOTTLE":
+                LOGGER.info("直播间许愿瓶消息推送更新:::" + message);
+                break;
+
+            // 广播小电视类抽奖信息推送,包括本房间的舰长礼物包括,本直播间所在小时榜榜单主播信息的推送 需要unicode转义 免费辣条再见！！！！
+            case "NOTICE_MSG":
+                //					message = ByteUtils.unicodeToString(message);
+                //					LOGGER.info("小电视类抽奖信息推送:::" + message);
+                break;
+
+            // 本房间开启活动抽奖(33图,小电视图,任意门等) 也指本房间内赠送的小电视 摩天大楼类抽奖
+            case "RAFFLE_START":
+                LOGGER.info("本房间开启了活动抽奖:::" + message);
+                break;
+
+            // 本房间活动中奖用户信息推送 也指抽奖结束
+            case "RAFFLE_END":
+                LOGGER.info("看看谁是幸运儿:::" + message);
+                break;
+
+
+            // 本房间天选时刻结束
+            case "ANCHOR_LOT_END":
+                LOGGER.info("本房间天选时刻结束:::" + message);
+                break;
+
+            // 本房间天选时刻获奖信息推送
+            case "ANCHOR_LOT_AWARD":
+                LOGGER.info("本房间天选时刻中奖用户是:::" + message);
+                break;
+
+            // 获得推荐位推荐消息
+            case "ANCHOR_NORMAL_NOTIFY":
+                LOGGER.info("本房间获得推荐位:::" + message);
+                break;
+            // 周星消息推送
+            case "WEEK_STAR_CLOCK":
+                LOGGER.info("周星消息推送:::" + message);
+                break;
+
+            // 推测本主播周星信息更新
+            case "ROOM_BOX_MASTER":
+                LOGGER.info("周星信息更新:::" + message);
+                break;
+
+            // 周星消息推送关闭
+            case "ROOM_SKIN_MSG":
+                LOGGER.info("周星消息推送关闭:::" + message);
+                break;
+
+            // 中型礼物多数量赠送消息推送 例如b克拉 亿元
+            case "SYS_GIFT":
+                LOGGER.info("中型礼物多数量赠送消息推送:::" + message);
+                break;
+
+            // lol活动礼物？？？
+            case "ACTIVITY_MATCH_GIFT":
+                LOGGER.info("lol专属房间礼物赠送消息推送:::" + message);
+                break;
+
+            //----------------------------------------pk信息多为要uicode解码-------------------------------------------------
+            // 推测为房间pk信息推送
+            case "PK_BATTLE_ENTRANCE":
+                LOGGER.info("房间pk活动信息推送:::" + message);
+                break;
+
+            // 活动pk准备
+            case "PK_BATTLE_PRE":
+                LOGGER.info("房间活动pk准备:::" + message);
+                break;
+
+            // 活动pk开始
+            case "PK_BATTLE_START":
+                LOGGER.info("房间活动pk开始:::" + message);
+                break;
+
+            // 活动pk中
+            case "PK_BATTLE_PROCESS":
+                LOGGER.info("房间活动pk中:::" + message);
+                break;
+
+            // 活动pk详细信息
+            case "PK_BATTLE_CRIT":
+                LOGGER.info("房间活动pk详细信息推送:::" + message);
+                break;
+
+            // 活动pk类型推送
+            case "PK_BATTLE_PRO_TYPE":
+                LOGGER.info("房间活动pk类型推送:::" + message);
+                break;
+
+            // 房间活动pk结束
+            case "PK_BATTLE_END":
+                LOGGER.info("房间pk活动结束::" + message);
+                break;
+
+            // 活动pk结果用户 推送
+            case "PK_BATTLE_SETTLE_USER":
+                LOGGER.info("活动pk结果用户 推送::" + message);
+                break;
+
+            // 活动pk礼物开始 1辣条
+            case "PK_LOTTERY_START":
+                LOGGER.info("活动pk礼物开始 推送::" + message);
+                break;
+
+            // 活动pk结果房间
+            case "PK_BATTLE_SETTLE":
+                LOGGER.info("活动pk结果房间推送::" + message);
+                break;
+
+            // pk开始
+            case "PK_START":
+                LOGGER.info("房间pk开始:::" + message);
+                break;
+
+            // pk准备中
+            case "PK_PRE":
+                LOGGER.info("房间pk准备中:::" + message);
+                break;
+
+            // pk载入中
+            case "PK_MATCH":
+                LOGGER.info("房间pk载入中:::" + message);
+                break;
+
+            // pk再来一次触发
+            case "PK_CLICK_AGAIN":
+                LOGGER.info("房间pk再来一次:::" + message);
+                break;
+            // pk结束
+            case "PK_MIC_END":
+                LOGGER.info("房间pk结束:::" + message);
+                break;
+
+            // pk礼物信息推送 激活条件推测为pk胜利 可获得一个辣条
+            case "PK_PROCESS":
+                LOGGER.info("房间pk礼物推送:::" + message);
+                break;
+
+            // pk结果信息推送
+            case "PK_SETTLE":
+                LOGGER.info("房间pk结果信息推送:::" + message);
+                break;
+
+            // pk结束信息推送
+            case "PK_END":
+                LOGGER.info("房间pk结束信息推送:::" + message);
+                break;
+
+            // 系统信息推送
+            case "SYS_MSG":
+                LOGGER.info("系统信息推送:::" + message);
+                break;
+
+            // 总督登场消息
+            case "GUARD_MSG":
+                LOGGER.info("总督帅气登场:::" + message);
+                break;
+
+            // 热门房间？？？？广告房间？？ 不知道这是什么 推测本直播间激活 目前常见于打广告的官方直播间 例如手游 碧蓝航线 啥的。。
+            case "HOT_ROOM_NOTIFY":
+                LOGGER.info("热门房间推送消息:::" + message);
+                break;
+
+            // 小时榜面板消息推送
+            case "PANEL":
+                LOGGER.info("热小时榜面板消息推送:::" + message);
+                break;
+
+            // 星之耀宝箱使用 n
+            case "ROOM_BOX_USER":
+                LOGGER.info("星之耀宝箱使用:::" + message);
+                break;
+
+            // 语音加入？？？？ 暂不知道
+            case "VOICE_JOIN_ROOM_COUNT_INFO":
+                LOGGER.info("语音加入:::" + message);
+                break;
+
+            // 语音加入list？？？？ 暂不知道
+            case "VOICE_JOIN_LIST":
+                LOGGER.info("语音加入list:::" + message);
+                break;
+
+            // lol活动
+            case "LOL_ACTIVITY":
+                LOGGER.info("lol活动:::" + message);
+                break;
+
+            // 队伍礼物排名 目前只在6号lol房间抓取过
+            case "MATCH_TEAM_GIFT_RANK":
+                LOGGER.info("队伍礼物排名:::" + message);
+                break;
+
+            // 6.13端午节活动粽子新增活动更新命令 激活条件有人赠送活动礼物
+            case "ROOM_BANNER":
+                LOGGER.info("收到活动礼物赠送，更新信息:::" + message);
+                break;
+
+
+            // 房间护盾 推测推送消息为破站官方屏蔽的关键字 触发条件未知
+            case "ROOM_SHIELD":
+                LOGGER.info("房间护盾触发消息:::" + message);
+                break;
+
+            // 主播开启房间全局禁言
+            case "ROOM_SILENT_ON":
+                LOGGER.info("主播开启房间全局禁言:::" + message);
+                break;
+
+            // 主播关闭房间全局禁言
+            case "ROOM_SILENT_OFF":
+                LOGGER.info("主播关闭房间全局禁言:::" + message);
+                break;
+
+            // 主播状态检测 直译 不知道什么情况 statue 1 ，2 ，3 ，4
+            case "ANCHOR_LOT_CHECKSTATUS":
+                LOGGER.info("主播房间状态检测:::" + message);
+                break;
+
+
+            // 勋章亲密度达到上每日上限通知
+            case "LITTLE_TIPS":
+                LOGGER.info("勋章亲密度达到上每日上限:::" + message);
+                break;
+
+
+            // 礼物bag bot
+            case "GIFT_BAG_DOT":
+                LOGGER.info("礼物bag" + message);
+                break;
+            case "ONLINERANK":
+                LOGGER.info("新在线排名更新信息推送:::" + message);
+                break;
+
+
+            case "ONLINE_RANK_V2":
+                LOGGER.info("在线排名v2版本信息推送(即高能榜:::" + message);
+                break;
+            case "ONLINE_RANK_TOP3":
+                LOGGER.info("在线排名前三信息推送(即高能榜:::" + message);
+                break;
+            case "HOT_RANK_CHANGED":
+                LOGGER.info("热门榜推送:::" + message);
+                break;
+            case "HOT_RANK_CHANGED_V2":
+                LOGGER.info("热门榜v2版本changed推送:::" + message);
+                break;
+            case "HOT_RANK_SETTLEMENT_V2":
+                LOGGER.info("热门榜v2版本set推送:::" + message);
+                break;
+            case "WIDGET_BANNER":
+                LOGGER.info("直播横幅广告推送:::" + message);
+                break;
+            case "MESSAGEBOX_USER_MEDAL_CHANGE":
+                LOGGER.info("本人勋章升级推送:::" + message);
+                break;
+            case "LIVE_INTERACTIVE_GAME":
+                LOGGER.info("互动游戏？？？推送:::" + message);
+                break;
+
+            case "STOP_LIVE_ROOM_LIST":
+                //					LOGGER.info("直播间关闭集合推送:::" + message);
+                break;
+            case "DANMU_AGGREGATION":
+                LOGGER.info("天选时刻条件是表情推送:::" + message);
+                break;
+            case "COMMON_NOTICE_DANMAKU":
+                LOGGER.info("警告信息推送（例如任务快完成之类的）:::" + message);
+                break;
+
+            case "POPULARITY_RED_POCKET_WINNER_LIST":
+                LOGGER.info("红包抽奖结果推送:::" + message);
+                break;
+
+
+            case "LIKE_INFO_V3_CLICK":
+                LOGGER.info("点赞信息v3推送:CLICK::" + message);
+                break;
+            case "CORE_USER_ATTENTION":
+                LOGGER.info("中心用户推送:::" + message);
+                break;
+            case "HOT_RANK_SETTLEMENT":
+                LOGGER.info("热榜排名推送:::" + message);
+                break;
+            case "MESSAGEBOX_USER_GAIN_MEDAL":
+                LOGGER.info("粉丝勋章消息盒子推送:::" + message);
+                break;
+
+
+            case "LITTLE_MESSAGE_BOX":
+                LOGGER.info("小消息box推送:::" + message);
+                break;
+            case "ANCHOR_HELPER_DANMU":
+                LOGGER.info("直播小助手信息推送:::" + message);
+                break;
+            case "ENTRY_EFFECT_MUST_RECEIVE":
+                LOGGER.info("直播小助手信息推送:::" + message);
+                break;
+            case "GIFT_STAR_PROCESS":
+                LOGGER.info("礼物开始进度条信息推送:::" + message);
+                break;
+            case "GUARD_HONOR_THOUSAND":
+                LOGGER.info("千舰推送:::" + message);
+                break;
+            case "FULL_SCREEN_SPECIAL_EFFECT":
+                LOGGER.info("FULL_SCREEN_SPECIAL_EFFECT:::" + message);
+                break;
+            case "CARD_MSG":
+                LOGGER.info("CARD_MSG:::" + message);
+                break;
+            case "USER_PANEL_RED_ALARM":
+                LOGGER.info("USER_PANEL_RED_ALARM:::" + message);
+                break;
+            case "TRADING_SCORE":
+                LOGGER.info("TRADING_SCORE:::" + message);
+                break;
+            case "USER_TASK_PROGRESS":
+                LOGGER.info("USER_TASK_PROGRESS:::" + message);
+                break;
+            case "POPULAR_RANK_CHANGED":
+                LOGGER.info("POPULAR_RANK_CHANGED:::" + message);
+                break;
+            case "AREA_RANK_CHANGED":
+                LOGGER.info("AREA_RANK_CHANGED:::" + message);
+                break;
+            case "PLAY_TAG":
+                LOGGER.info("PLAY_TAG:::" + message);
+                break;
+            case "PK_BATTLE_PROCESS_NEW":
+                LOGGER.info("PK_BATTLE_PROCESS_NEW:::" + message);
+                break;
+            case "PK_BATTLE_SETTLE_NEW":
+                LOGGER.info("PK_BATTLE_SETTLE_NEW:::" + message);
+                break;
+            case "PK_BATTLE_PUNISH_END":
+                LOGGER.info("PK_BATTLE_PUNISH_END:::" + message);
+                break;
+            case "PK_BATTLE_PRE_NEW":
+                LOGGER.info("PK_BATTLE_PRE_NEW:::" + message);
+                break;
+            case "PK_BATTLE_START_NEW":
+                LOGGER.info("PK_BATTLE_START_NEW:::" + message);
+                break;
+            case "INTERACTIVE_USER":
+                LOGGER.info("INTERACTIVE_USER:::" + message);
+                break;
+            case "WIDGET_GIFT_STAR_PROCESS":
+                LOGGER.info("WIDGET_GIFT_STAR_PROCESS:::" + message);
+                break;
+            case "LIVE_MULTI_VIEW_NEW_INFO":
+                LOGGER.info("LIVE_MULTI_VIEW_NEW_INFO:::" + message);
+                break;
+            case "PANEL_INTERACTIVE_NOTIFY_CHANGE":
+                LOGGER.info("PANEL_INTERACTIVE_NOTIFY_CHANGE:::" + message);
+                break;
+            case "MULTI_VOICE_OPERATIN":
+                LOGGER.info("MULTI_VOICE_OPERATIN:::" + message);
+                break;
+            case "DM_INTERACTION":
+                LOGGER.info("DM_INTERACTION:::" + message);
+                break;
+            case "MULTI_VOICE_PK_HAT_STATUS":
+                LOGGER.info("MULTI_VOICE_PK_HAT_STATUS:::" + message);
+                break;
+            case "ONLINE_RANK_V3":
+                //					LOGGER.info("ONLINE_RANK_V3:::" + message);
+                break;
+            case "RANK_CHANGED":
+                LOGGER.info("RANK_CHANGED:::" + message);
+                break;
+            case "LIKE_INFO_V3_NOTICE":
+                LOGGER.info("LIKE_INFO_V3_NOTICE:::" + message);
+                break;
+            default:
+
+                LOGGER.info("not compare success cmd is:::" + cmd);
+                break;
+        }
+    }
+
+    private void audienceWelcomeThank(CenterSetConf conf, short msg_type, Interact interact) {
+        //天选屏蔽&&红包屏蔽
+        if (!conf.getWelcome()
+                .boolTxAndRdShield(
+                        CacheConf.existTx(PublicDataConf.ROOMID), CacheConf.existRedPackageCache(PublicDataConf.ROOMID))) {
+            if (msg_type == 1) {
+                try {
+                    parseWelcomeSetting(interact);
+                } catch (Exception e) {
+                    // TODO 自动生成的 catch 块
+                    LOGGER.error(e);
+                }
+            }
+        }
+    }
+
+    private void audienceFollowingsThank(CenterSetConf conf, short msg_type, Interact interact) {
+        //天选屏蔽&&红包屏蔽
+        if (!conf.getFollow()
+                .boolTxAndRdShield(
+                        CacheConf.existTx(PublicDataConf.ROOMID), CacheConf.existRedPackageCache(PublicDataConf.ROOMID))) {
+            if (msg_type == 2) {
+                try {
+                    parseFollowSetting(interact);
+                } catch (Exception e) {
+                    // TODO 自动生成的 catch 块
+                    LOGGER.error(e);
+                }
+            }
+        }
+    }
+
+    private void audienceFollowingMe(short msg_type, StringBuilder stringBuilder, String _follow_uname, CenterSetConf conf, Interact interact) {
+        if (msg_type == 2) {
+            stringBuilder.append(TIME_FORMAT.get().format(System.currentTimeMillis()))
+                    .append(" [直接关注] ")
+                    .append(_follow_uname);
+            //控制台打印
+            if (conf.is_cmd()) {
+                LOGGER.info(stringBuilder.toString());
+            }
+            //日志
+            if (PublicDataConf.logThread != null && !PublicDataConf.logThread.FLAG) {
+                PublicDataConf.logString.offer(stringBuilder.toString());
+            }
+            //前端弹幕发送
+            try {
+                danmuWebsocket.sendMessage(WsPackage.toJson("follow", (short) 0, interact));
+            } catch (Exception e) {
+                // TODO 自动生成的 catch 块
+                LOGGER.error(e);
+            }
+            stringBuilder.delete(0, stringBuilder.length());
         }
     }
 
