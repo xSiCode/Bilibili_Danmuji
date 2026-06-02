@@ -5580,6 +5580,7 @@ method.saveSet = function(silent) {
 
 // ========== 关注直播间列表 ==========
 var watchedRoomsData = [];
+var WATCHED_REFRESH_COOLDOWN = 3 * 60 * 1000; // 3分钟冷却时间
 
 // 加载关注直播间列表（优先从localStorage读取，后台静默更新）
 method.loadWatchedRooms = function() {
@@ -5608,6 +5609,8 @@ method.loadWatchedRooms = function() {
                     localStorage.setItem('watchedRoomsData', fresh);
                     method.renderWatchedRoomTable();
                 }
+                // 自动刷新房间状态（3分钟冷却），应用启动和进入设置页面时触发
+                method.refreshWatchedRooms();
             }
         },
         error: function() {
@@ -5737,9 +5740,22 @@ method.renderWatchedRoomTable = function() {
 };
 
 // 刷新关注直播间（顺序获取未连接房间的状态和在线人数）
-method.refreshWatchedRooms = function() {
+// force: 强制刷新，跳过3分钟冷却（手动点击刷新按钮时使用）
+method.refreshWatchedRooms = function(force) {
     var $btn = $('#watched-refresh-btn');
     if (!$btn.length || $btn.hasClass('disabled')) return;
+
+    // 3分钟冷却检查（手动强制刷新可跳过）
+    var now = Date.now();
+    var lastRefresh = 0;
+    try {
+        lastRefresh = parseInt(localStorage.getItem('watchedRoomsLastRefresh') || '0');
+    } catch(e) {}
+    if (!force && (now - lastRefresh) < WATCHED_REFRESH_COOLDOWN) {
+        return;
+    }
+    localStorage.setItem('watchedRoomsLastRefresh', String(now));
+
     $btn.addClass('disabled').text('刷新中...');
 
     // 当前连接房间：直接从状态栏读取在线人数
@@ -5776,7 +5792,8 @@ method.refreshWatchedRooms = function() {
             return;
         }
         var room = toRefresh[idx];
-        var attempts = 0, maxAttempts = 6;
+        var attempts = 0, maxAttempts = 4;
+        var firstLiveStatus = null; // 保留第一次获取的liveStatus，避免重试时被限流返回的0覆盖
         function tryFetch() {
             $.ajax({
                 url: '../getRoomStatus',
@@ -5785,20 +5802,36 @@ method.refreshWatchedRooms = function() {
                 dataType: 'json',
                 success: function(resp) {
                     if (resp && resp.code == '200' && resp.result) {
-                        room.liveStatus = resp.result.liveStatus || 0;
+                        var liveStatus = resp.result.liveStatus || 0;
                         var online = resp.result.online || 0;
+                        // 记录第一次获取的liveStatus（room_init API的live_status更可靠）
+                        if (attempts === 0) {
+                            firstLiveStatus = liveStatus;
+                        }
+                        // online>0 说明API正常返回；达到最大重试次数则接受当前结果
                         if (online > 0 || attempts >= maxAttempts - 1) {
+                            // 优先使用第一次获取的liveStatus（避免重试时被限流返回的0覆盖）
+                            room.liveStatus = (firstLiveStatus !== null) ? firstLiveStatus : liveStatus;
                             room.online = online;
-                            idx++; setTimeout(fetchNext, 100);
+                            idx++; setTimeout(fetchNext, 200);
                         } else {
-                            attempts++; setTimeout(tryFetch, 500);
+                            attempts++; setTimeout(tryFetch, 600);
                         }
                     } else {
-                        idx++; setTimeout(fetchNext, 100);
+                        // 非200响应：保留第一次的liveStatus，online置0
+                        if (firstLiveStatus !== null) {
+                            room.liveStatus = firstLiveStatus;
+                        }
+                        room.online = 0;
+                        idx++; setTimeout(fetchNext, 200);
                     }
                 },
                 error: function() {
-                    idx++; setTimeout(fetchNext, 100);
+                    // 网络错误：保留第一次的liveStatus
+                    if (firstLiveStatus !== null) {
+                        room.liveStatus = firstLiveStatus;
+                    }
+                    idx++; setTimeout(fetchNext, 200);
                 }
             });
         }
@@ -5951,9 +5984,9 @@ $(function() {
     $(document).on('click', '#watched-room-add-btn', function() {
         method.addWatchedRoom();
     });
-    // 刷新按钮
+    // 刷新按钮（手动点击强制刷新，跳过冷却）
     $(document).on('click', '#watched-refresh-btn', function() {
-        method.refreshWatchedRooms();
+        method.refreshWatchedRooms(true);
     });
     // 输入框回车添加
     $(document).on('keypress', '#watched-room-input', function(e) {

@@ -50,6 +50,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.stream.Collectors;
 import xyz.acproject.danmuji.tools.BarrageLogTools;
+import xyz.acproject.danmuji.tools.file.LogFileTools;
 import xyz.acproject.danmuji.tools.FollowingCountTools;
 import xyz.acproject.danmuji.tools.MatchCountTools;
 import xyz.acproject.danmuji.tools.GiftLogTools;
@@ -416,6 +417,8 @@ public class WebController {
     @ResponseBody
     @GetMapping(value = "/getRoomStatus")
     public Response<?> getRoomStatus(@RequestParam("roomid") Long roomid, HttpServletRequest req) {
+        long startTime = System.currentTimeMillis();
+        LogFileTools.getlogFileTools().logTestFile("[getRoomStatus] 请求开始 roomid=" + roomid);
         JSONObject data = new JSONObject();
         try {
             RoomInit roomInit = HttpRoomData.httpGetRoomInit(roomid);
@@ -423,34 +426,50 @@ public class WebController {
             if (roomInit != null) {
                 realRoomId = roomInit.getRoom_id() != 0 ? roomInit.getRoom_id() : roomid;
                 data.put("liveStatus", roomInit.getLive_status());
+                LogFileTools.getlogFileTools().logTestFile("[getRoomStatus] room_init 成功 roomid=" + roomid + " realRoomId=" + realRoomId + " live_status=" + roomInit.getLive_status() + " uid=" + roomInit.getUid());
+            } else {
+                LogFileTools.getlogFileTools().logTestFile("[getRoomStatus] room_init 返回null roomid=" + roomid);
             }
             // 获取在线人数（使用 public API，不需要 cookie）
             try {
                 Map<String, String> headers = new HashMap<>(3);
                 headers.put("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
                 headers.put("referer", "https://live.bilibili.com/");
+                long apiStart = System.currentTimeMillis();
                 String respBody = OkHttp3Utils.getHttp3Utils()
                         .httpGet("https://api.live.bilibili.com/room/v1/Room/get_info?room_id=" + realRoomId, headers, null)
                         .body().string();
+                long apiCost = System.currentTimeMillis() - apiStart;
                 if (respBody != null) {
                     JSONObject respJson = JSONObject.parseObject(respBody);
-                    if (respJson.getShort("code") == 0 && respJson.get("data") != null) {
+                    short code = respJson.getShort("code");
+                    LogFileTools.getlogFileTools().logTestFile("[getRoomStatus] get_info 响应 roomid=" + roomid + " code=" + code + " 耗时=" + apiCost + "ms bodyLen=" + respBody.length());
+                    if (code == 0 && respJson.get("data") != null) {
                         JSONObject roomData = (JSONObject) respJson.get("data");
                         data.put("online", roomData.getInteger("online"));
                         // 也可以用这个API的状态覆盖
                         if (roomData.get("live_status") != null) {
                             data.put("liveStatus", roomData.getShort("live_status"));
                         }
+                        LogFileTools.getlogFileTools().logTestFile("[getRoomStatus] get_info 解析成功 roomid=" + roomid + " online=" + roomData.getInteger("online") + " live_status=" + roomData.getShort("live_status"));
+                    } else {
+                        LogFileTools.getlogFileTools().logTestFile("[getRoomStatus] get_info code非0或无data roomid=" + roomid + " code=" + code + " body=" + (respBody.length() > 200 ? respBody.substring(0, 200) : respBody));
                     }
+                } else {
+                    LogFileTools.getlogFileTools().logTestFile("[getRoomStatus] get_info 返回null roomid=" + roomid + " 耗时=" + apiCost + "ms");
                 }
             } catch (Exception e) {
+                LogFileTools.getlogFileTools().logTestFile("[getRoomStatus] get_info 异常 roomid=" + roomid + " error=" + e.getMessage());
                 LOGGER.debug("获取在线人数失败 roomid={}: {}", realRoomId, e.getMessage());
             }
         } catch (Exception e) {
+            LogFileTools.getlogFileTools().logTestFile("[getRoomStatus] room_init 异常 roomid=" + roomid + " error=" + e.getMessage());
             LOGGER.error("获取房间状态失败 roomid={}: {}", roomid, e.getMessage());
         }
         if (!data.containsKey("liveStatus")) data.put("liveStatus", 0);
         if (!data.containsKey("online")) data.put("online", 0);
+        long totalCost = System.currentTimeMillis() - startTime;
+        LogFileTools.getlogFileTools().logTestFile("[getRoomStatus] 返回结果 roomid=" + roomid + " liveStatus=" + data.getShort("liveStatus") + " online=" + data.getInteger("online") + " 总耗时=" + totalCost + "ms");
         return Response.success(data, req);
     }
 
