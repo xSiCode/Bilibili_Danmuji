@@ -11,6 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -20,6 +21,8 @@ public class FollowingCountTools {
     private static final Logger LOGGER = LogManager.getLogger(FollowingCountTools.class);
 
     private static final ConcurrentHashMap<Long, FollowingRecord> followingMap = new ConcurrentHashMap<>();
+    // 脏 UID 集合：仅当有变更时才在定时刷盘中写出
+    private static final Set<Long> dirtyUids = ConcurrentHashMap.newKeySet();
     private static final ScheduledExecutorService flushScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread t = new Thread(r, "following-csv-flush");
         t.setDaemon(true);
@@ -72,6 +75,7 @@ public class FollowingCountTools {
             v.latestTime = System.currentTimeMillis();
             return v;
         });
+        dirtyUids.add(followedUid);
         // 通知 WebSocket 客户端（节流）
         long now = System.currentTimeMillis();
         if (now - lastFollowNotify > 1000) {
@@ -172,6 +176,8 @@ public class FollowingCountTools {
     }
 
     private static void doFlush(String path) {
+        // 无变更时跳过，避免无意义的全量重写
+        if (dirtyUids.isEmpty()) return;
         List<FollowingRecord> records = new ArrayList<>(followingMap.values());
         File file = new File(path);
         if (!file.getParentFile().exists()) {
@@ -195,6 +201,7 @@ public class FollowingCountTools {
         }
         try {
             Files.move(tmpFile.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            dirtyUids.clear();
         } catch (IOException e) {
             LOGGER.error("move following CSV failed", e);
         }
