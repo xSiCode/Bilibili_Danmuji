@@ -4643,7 +4643,7 @@ public class WebController {
             }
 
             // 从文件名解析 roomId 和主播名（主要来源，最可靠）
-            // 文件名格式: {roomId}_{anchorName}_footprint.csv
+            // 文件名格式: {roomId}_{anchorName}_10_足迹留印.csv
             SessionMeta fileNameMeta = FootprintFileTools.parseFileNameForContext(file.getName());
 
             // 合并元数据：文件名解析为主，CSV 头部补充（如 auid）

@@ -39,8 +39,6 @@ public class LogFileTools {
 	// 各日志方法的路径缓存
 	private volatile String filePathCache;
 	private volatile String filePathKey;
-	private volatile String watcherPathCache;
-	private volatile String watcherPathKey;
 	private volatile String followingsPathCache;
 	private volatile String followingsPathKey;
 	private volatile String testPathCache;
@@ -124,18 +122,6 @@ public class LogFileTools {
 			fp = getBaseDirPath() + key + ".txt";
 			filePathCache = fp;
 			filePathKey = key;
-		}
-		batchQueue.offer(new LogEntry(fp, msg));
-	}
-
-	public void logWatcherFile(String msg) {
-		String dateStr = JodaTimeUtils.getCurrentDateString();
-		String key = PublicDataConf.ROOMID + "_" + safeFileName(PublicDataConf.ANCHOR_NAME) + "_0_" + dateStr + "_viewers";
-		String fp = watcherPathCache;
-		if (fp == null || !key.equals(watcherPathKey)) {
-			fp = getBaseDirPath() + key + ".txt";
-			watcherPathCache = fp;
-			watcherPathKey = key;
 		}
 		batchQueue.offer(new LogEntry(fp, msg));
 	}

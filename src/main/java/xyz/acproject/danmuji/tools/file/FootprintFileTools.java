@@ -113,7 +113,7 @@ public class FootprintFileTools {
         String anchor = safeFileName(PublicDataConf.ANCHOR_NAME);
         String key = PublicDataConf.ROOMID + "_" + anchor;
         if (filePathCache == null || !key.equals(filePathKey)) {
-            filePathCache = getBaseDir() + key + "_footprint.csv";
+            filePathCache = getBaseDir() + key + "_10_足迹留印.csv";
             filePathKey = key;
         }
         return filePathCache;
@@ -324,7 +324,7 @@ public class FootprintFileTools {
         List<String> result = new ArrayList<>();
         File dir = new File(getBaseDir());
         if (dir.exists() && dir.isDirectory()) {
-            File[] files = dir.listFiles((d, name) -> name.endsWith("_footprint.csv"));
+            File[] files = dir.listFiles((d, name) -> name.endsWith("_10_足迹留印.csv"));
             if (files != null) {
                 for (File f : files) {
                     result.add(f.getAbsolutePath());
@@ -353,9 +353,9 @@ public class FootprintFileTools {
 
     /**
      * 从足迹文件名解析直播间上下文
-     * 文件名格式: {roomId}_{anchorName}_footprint.csv
+     * 文件名格式: {roomId}_{anchorName}_10_足迹留印.csv
      * roomId 为纯数字，anchorName 可能包含下划线
-     * 例如: "27887575_是Winter喵_footprint.csv" → roomId=27887575, anchorName="是Winter喵"
+     * 例如: "27887575_是Winter喵_10_足迹留印.csv" → roomId=27887575, anchorName="是Winter喵"
      *
      * @param fileName 文件名（不含路径）
      * @return SessionMeta，解析失败时 hasData() 返回 false
@@ -364,8 +364,8 @@ public class FootprintFileTools {
         SessionMeta meta = new SessionMeta();
         if (fileName == null || fileName.isEmpty()) return meta;
 
-        // 去掉 _footprint.csv 后缀
-        String suffix = "_footprint.csv";
+        // 去掉 _10_足迹留印.csv 后缀
+        String suffix = "_10_足迹留印.csv";
         if (!fileName.endsWith(suffix)) return meta;
         String core = fileName.substring(0, fileName.length() - suffix.length());
         if (core.isEmpty()) return meta;

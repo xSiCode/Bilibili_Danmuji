@@ -195,12 +195,6 @@ public class SetServiceImpl implements SetService {
             } else {
                 threadComponent.closeLogThread();
             }
-            // watcher logthread
-            if (centerSetConf.is_watcher_log()) {
-                threadComponent.startWatcherLogThread();
-            } else {
-                threadComponent.closeWatcherLogThread();
-            }
             // need login
             if (StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
                 // advertthread

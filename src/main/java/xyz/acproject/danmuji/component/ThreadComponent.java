@@ -65,13 +65,11 @@ public interface ThreadComponent {
 	void closeHeartByteThread();
 	
 	// 开启观众日志线程
-	boolean startWatcherLogThread();
 
 	// 关闭日志线程
 	void closeLogThread();
 
 	// 关闭观众日志线程
-	void closeWatcherLogThread();
 
 	void closeAdvertThread();
 
