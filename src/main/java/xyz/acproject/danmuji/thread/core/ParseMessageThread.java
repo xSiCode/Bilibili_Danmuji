@@ -94,21 +94,27 @@ public class ParseMessageThread extends Thread {
     private static volatile boolean autoBlockCacheLoaded = false;
     private static final Object autoBlockCacheLock = new Object();
     private static final String BASE_JAR_PATH;
+
     static {
         BASE_JAR_PATH = new FileTools().getBaseJarPath().getAbsolutePath();
     }
+
     private static final ScheduledExecutorService autoBlockFlushScheduler =
             Executors.newSingleThreadScheduledExecutor(r -> {
                 Thread t = new Thread(r, "auto-block-flush");
                 t.setDaemon(true);
                 return t;
             });
+
     static {
         autoBlockFlushScheduler.scheduleWithFixedDelay(
                 ParseMessageThread::flushAutoBlockCache, 30, 30, TimeUnit.SECONDS);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             autoBlockFlushScheduler.shutdown();
-            try { autoBlockFlushScheduler.awaitTermination(5, TimeUnit.SECONDS); } catch (InterruptedException ignored) {}
+            try {
+                autoBlockFlushScheduler.awaitTermination(5, TimeUnit.SECONDS);
+            } catch (InterruptedException ignored) {
+            }
             flushAutoBlockCache();
         }, "auto-block-shutdown"));
     }
@@ -135,8 +141,10 @@ public class ParseMessageThread extends Thread {
                             Long uid = r.getLong("uid");
                             String timeStr = r.getString("time");
                             if (uid != null && timeStr != null) {
-                                try { autoBlockTimeCache.put(uid, sdf.parse(timeStr).getTime()); }
-                                catch (Exception ignored) {}
+                                try {
+                                    autoBlockTimeCache.put(uid, sdf.parse(timeStr).getTime());
+                                } catch (Exception ignored) {
+                                }
                             }
                         }
                     }
@@ -178,18 +186,28 @@ public class ParseMessageThread extends Thread {
                 try {
                     data = JSONObject.parseObject(fsb.toString());
                     records = data.getJSONArray("records");
-                    if (records == null) { records = new com.alibaba.fastjson.JSONArray(); data.put("records", records); }
+                    if (records == null) {
+                        records = new com.alibaba.fastjson.JSONArray();
+                        data.put("records", records);
+                    }
                 } catch (Exception pe) {
                     LOGGER.error("负黑自动拉黑记录.json 文件损坏，将重建", pe);
-                    data = new JSONObject(); data.put("type", "负黑自动拉黑记录");
-                    records = new com.alibaba.fastjson.JSONArray(); data.put("records", records);
+                    data = new JSONObject();
+                    data.put("type", "负黑自动拉黑记录");
+                    records = new com.alibaba.fastjson.JSONArray();
+                    data.put("records", records);
                 }
             } else {
-                data = new JSONObject(); data.put("type", "负黑自动拉黑记录");
-                records = new com.alibaba.fastjson.JSONArray(); data.put("records", records);
+                data = new JSONObject();
+                data.put("type", "负黑自动拉黑记录");
+                records = new com.alibaba.fastjson.JSONArray();
+                data.put("records", records);
             }
             Set<Long> batchUids = new HashSet<>();
-            for (JSONObject r : batch) { Long uid = r.getLong("uid"); if (uid != null) batchUids.add(uid); }
+            for (JSONObject r : batch) {
+                Long uid = r.getLong("uid");
+                if (uid != null) batchUids.add(uid);
+            }
             for (int i = records.size() - 1; i >= 0; i--) {
                 JSONObject existing = records.getJSONObject(i);
                 if (existing.getLong("uid") != null && batchUids.contains(existing.getLong("uid"))) records.remove(i);
@@ -721,7 +739,7 @@ public class ParseMessageThread extends Thread {
                             }
                             LOGGER.info("谁这么惨被禁言了:::" + message);
                             break;
-                       // 直播间粉丝数更新 经常
+                        // 直播间粉丝数更新 经常
                         case "ROOM_REAL_TIME_MESSAGE_UPDATE":
                             //					fans = JSONObject.parseObject(jsonObject.getString("data"), Fans.class);
                             //					stringBuilder.append(JodaTimeUtils.getCurrentTimeString()).append(":消息推送:").append("房间号")
@@ -814,6 +832,15 @@ public class ParseMessageThread extends Thread {
                                 final long _follow_uid = interact.getUid();
                                 final String _follow_uname = interact.getUname();
 
+                                // todo 足迹留印
+
+                                // todo 足迹还原
+
+                                //观众记录
+                                if (msg_type == 1) {
+                                    audienceProcessing(stringBuilder, _follow_uid, _follow_uname, conf);
+                                }
+
                                 if (interactWordV2.hasFansMedal()) {
                                     // LOGGER.info("INTERACT_WORD_V2_PARSE_FANS:" + JsonFormat.printer().print(interactWordV2));
                                     MedalInfo medalInfo = new MedalInfo();
@@ -829,21 +856,9 @@ public class ParseMessageThread extends Thread {
                                     medalInfo.setGuard_level((short) interactWordV2.getFansMedal().getGuardLevel());
                                     interact.setFans_medal(medalInfo);
                                 }
-                                // 关注
-                                //控制台打印处理
-                                if (conf.is_follow_dm()) {
-                                    audienceFollowingMe(msg_type, stringBuilder, _follow_uname, conf, interact);
-                                }
-                                //关注感谢
-                                if (conf.getFollow().is_followThank()) {
-                                    audienceFollowingsThank(conf, msg_type, interact);
-                                }
-                                //欢迎进入直播间 + 观众记录
-                                if (msg_type == 1) {
-                                    audienceProcessing(stringBuilder, _follow_uid, _follow_uname, conf);
-                                }
                                 //欢迎凝视姬 & 自动欢迎
                                 if (msg_type == 1) {
+                                    // 欢迎进入直播间
                                     if (conf.is_welcome_all()) {
                                         try {
                                             danmuWebsocket.sendMessage(WsPackage.toJson("welcome", (short) 0, interact));
@@ -856,6 +871,15 @@ public class ParseMessageThread extends Thread {
                                 //欢迎感谢
                                 if (conf.getWelcome().is_welcomeThank()) {
                                     audienceWelcomeThank(conf, msg_type, interact);
+                                }
+                                // 关注
+                                //控制台打印处理
+                                if (conf.is_follow_dm()) {
+                                    audienceFollowingMe(msg_type, stringBuilder, _follow_uname, conf, interact);
+                                }
+                                //关注感谢
+                                if (conf.getFollow().is_followThank()) {
+                                    audienceFollowingsThank(conf, msg_type, interact);
                                 }
                             } catch (Exception e) {
                                 LOGGER.error(e);
@@ -964,7 +988,7 @@ public class ParseMessageThread extends Thread {
                             break;
                         default:
                             LOGGER.info("其他未处理cmd: " + cmd);
-                         //   notHandle(cmd, message);
+                            //   notHandle(cmd, message);
                             break;
                     }
                 }
@@ -975,10 +999,10 @@ public class ParseMessageThread extends Thread {
         }
     }
 
-    private static void notHandle(String cmd, String message ) {
+    private static void notHandle(String cmd, String message) {
         LOGGER.info("其他未处理消息:" + message);
 
-        switch (cmd){
+        switch (cmd) {
 
             // 部分金瓜子礼物连击
             case "COMBO_SEND":
@@ -1536,7 +1560,7 @@ public class ParseMessageThread extends Thread {
                                     }
                                     if (!withinInterval) {
                                         short code = HttpUserData.httpPostAddBadList(_follow_uid);
-                                        if (code == 0 || code ==22120) {
+                                        if (code == 0 || code == 22120) {
                                             // Sync to badlist config so UI reflects the blocked user
                                             try {
                                                 if (PublicDataConf.centerSetConf.getBadList() != null) {
@@ -1571,8 +1595,8 @@ public class ParseMessageThread extends Thread {
                                                 record.put("uid", _follow_uid);
                                                 record.put("uname", _follow_uname);
                                                 String s = blackWhiteType + " [" + blackWhiteScore + "]";
-                                                if(code ==22120){
-                                                    s = s+" [已在黑名单在，再次拉黑]";
+                                                if (code == 22120) {
+                                                    s = s + " [已在黑名单在，再次拉黑]";
                                                 }
                                                 record.put("score", s);
                                                 autoBlockTimeCache.put(_follow_uid, nowMs);
@@ -1595,7 +1619,7 @@ public class ParseMessageThread extends Thread {
                                                     .append(_follow_uid)
                                                     .append("  name:").append(_follow_uname)
                                                     .append("  拉黑api error, code:").append(code);
-                                            LogFileTools.getlogFileTools().logTestFile( sb.toString() );
+                                            LogFileTools.getlogFileTools().logTestFile(sb.toString());
                                         }
                                     }
                                 }
