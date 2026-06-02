@@ -840,11 +840,17 @@ public class ParseMessageThread extends Thread {
                                 }
                                 //欢迎进入直播间 + 观众记录
                                 if (msg_type == 1) {
-                                    audienceProcessing(stringBuilder, _follow_uid, _follow_uname, conf, interact);
-
+                                    audienceProcessing(stringBuilder, _follow_uid, _follow_uname, conf);
                                 }
-                                //欢迎凝视姬
+                                //欢迎凝视姬 & 自动欢迎
                                 if (msg_type == 1) {
+                                    if (conf.is_welcome_all()) {
+                                        try {
+                                            danmuWebsocket.sendMessage(WsPackage.toJson("welcome", (short) 0, interact));
+                                        } catch (Exception e) {
+                                            LOGGER.error(e);
+                                        }
+                                    }
                                     handleGazeWelcome(interact);
                                 }
                                 //欢迎感谢
@@ -1485,7 +1491,7 @@ public class ParseMessageThread extends Thread {
         }
     }
 
-    private void audienceProcessing(StringBuilder stringBuilder, long _follow_uid, String _follow_uname, CenterSetConf conf, Interact interact) {
+    private void audienceProcessing(StringBuilder stringBuilder, long _follow_uid, String _follow_uname, CenterSetConf conf) {
         stringBuilder.append(TIME_FORMAT.get().format(System.currentTimeMillis()))
                 .append(" [新的访客] ")
                 .append("https://space.bilibili.com/")
@@ -1495,14 +1501,6 @@ public class ParseMessageThread extends Thread {
 
         if (PublicDataConf.logThread != null && !PublicDataConf.logThread.FLAG) {
             PublicDataConf.logString.offer(stringBuilder.toString());
-        }
-
-        if (conf.is_welcome_all()) {
-            try {
-                danmuWebsocket.sendMessage(WsPackage.toJson("welcome", (short) 0, interact));
-            } catch (Exception e) {
-                LOGGER.error(e);
-            }
         }
 
         stringBuilder.delete(0, stringBuilder.length());
