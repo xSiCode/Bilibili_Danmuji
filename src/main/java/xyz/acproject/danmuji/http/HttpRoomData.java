@@ -927,7 +927,7 @@ public class HttpRoomData {
     private static Pair<Integer, String> processVisibleFollowingsSync(long vmid, StringBuilder logSb, JSONObject follData) {
         JSONArray list = follData.getJSONArray("list");
 
-        int blackWhiteScore = 0;
+        int blackWhiteScore = 1; // 需求如此，关注可见则默认+1.
         StringBuilder blackWhiteType = new StringBuilder(60);
         int blackCount = 0, whiteCount = 0;
         int followersNameSignScore = 0;
@@ -1165,7 +1165,8 @@ public class HttpRoomData {
             return Pair.of(-1, "[动态隐藏-1]");
         }
 
-        int kw = getKeyWordsScore(extracted.text, logSb);
+        int score =1 ; // 有动态默认1分
+        score  += getKeyWordsScore(extracted.text, logSb);
 
         logSb.append("  [动态数:").append(extracted.cardCount);
         if (extracted.latestTimestamp > 0) {
@@ -1180,22 +1181,14 @@ public class HttpRoomData {
                     int r = "2026-02-01 08:01".compareTo(date.toString());
                     if (l < 0 && r > 0) {
                         logSb.append(" 动态人机-1]");
-                        kw -= 1;
+                        score -= 1;
                     }
                 }
             }
         }
 
-        if (kw != 0) {
-            logSb.append(" 动态黑白分:").append(kw).append("]⚪");
-            return Pair.of(kw, "[动态黑白分:" + kw + "]");
-        } else {
-
-            logSb.append(" 动态黑白分:0]⚪");
-            return Pair.of(0, "");
-        }
-
-
+        logSb.append(" 动态黑白分:").append(score).append("]⚪");
+        return Pair.of(score, "[动态黑白分:" + score + "]");
     }
 
     /**
