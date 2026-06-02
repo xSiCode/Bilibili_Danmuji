@@ -427,4 +427,19 @@ public class FootprintFileTools {
             this.records = records;
         }
     }
+
+    /**
+     * 文件批次：一个足迹文件及其解析结果
+     */
+    public static class FileBatch {
+        public final String fileName;
+        public final SessionMeta meta;
+        public final List<FootprintRecord> records;
+
+        public FileBatch(String fileName, SessionMeta meta, List<FootprintRecord> records) {
+            this.fileName = fileName;
+            this.meta = meta;
+            this.records = records;
+        }
+    }
 }

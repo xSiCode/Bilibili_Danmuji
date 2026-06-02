@@ -1,10 +1,16 @@
 // dashboard.js - 看板页面（陌生观众看板 + 足迹留印 + 足迹还原）
 window.currentPageId = 'dashboard';
 
+var REPLAY_QUEUE_KEY = 'footprint_replay_queue';
+
 $(function() {
     initDashboardTabs();
     initFootprintFileManagement();
     initFootprintReplayControls();
+
+    // 页面刷新后恢复队列 + 检测活跃重放
+    loadQueueFromStorage();
+    checkAndResumeReplayPolling();
 
     // 注册保存回调，支持足迹留印开关的持久化
     registerPageSave('dashboard', function(set) {
@@ -98,56 +104,74 @@ function refreshFootprintFiles() {
     });
 }
 
-// ===== 足迹还原：导入与控制 =====
+// ===== 足迹还原：多文件队列 + 批次回放 =====
 var replayPollInterval = null;
-var currentReplayFile = null;
+var replayQueue = [];  // [{filePath, fileName}]
+
+// ----- 队列持久化（localStorage，页面刷新不丢失）-----
+function saveQueueToStorage() {
+    try { localStorage.setItem(REPLAY_QUEUE_KEY, JSON.stringify(replayQueue)); } catch(e) {}
+}
+function loadQueueFromStorage() {
+    try {
+        var saved = localStorage.getItem(REPLAY_QUEUE_KEY);
+        if (saved) { replayQueue = JSON.parse(saved); renderQueue(); }
+    } catch(e) {}
+}
+
+// 页面加载时检测是否有活跃重放，有则恢复轮询
+function checkAndResumeReplayPolling() {
+    $.ajax({
+        url: '../getFootprintReplayStatus',
+        type: 'GET',
+        dataType: 'json',
+        success: function(data) {
+            if (data.code == '200' && data.result.running) {
+                startReplayPolling();
+            } else {
+                // 重放已完成，清除残留队列
+                replayQueue = [];
+                saveQueueToStorage();
+                renderQueue();
+            }
+        }
+    });
+}
 
 function initFootprintReplayControls() {
-    // 上传按钮
+    // 上传按钮（支持多文件）
     $('#fpr-upload-btn').on('click', function() {
         $('#fpr-upload-input').click();
     });
     $('#fpr-upload-input').on('change', function() {
-        var file = this.files[0];
-        if (!file) return;
-        var formData = new FormData();
-        formData.append('file', file);
-        $.ajax({
-            url: '../uploadFootprintFile',
-            type: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
-            dataType: 'json',
-            success: function(data) {
-                if (data.code == '200') {
-                    showMessage('文件上传成功', 'success');
-                    refreshFootprintFileSelect();
-                    $('#fpr-file-select').val(data.result.filePath);
-                } else {
-                    showMessage('上传失败', 'danger');
-                }
+        var files = this.files;
+        if (!files || files.length === 0) return;
+        uploadFilesSequentially(files, 0);
+        this.value = '';
+    });
+
+    // 加入队列
+    $('#fpr-enqueue-btn').on('click', function() {
+        var selected = $('#fpr-file-select').val();
+        if (!selected || selected.length === 0) return;
+        var added = 0;
+        selected.forEach(function(fp) {
+            if (!fp) return;
+            var name = $('#fpr-file-select option[value="' + fp + '"]').text();
+            if (!name || name === '-- 选择已有文件 --') name = fp.split('/').pop().split('\\').pop();
+            var exists = replayQueue.some(function(item) { return item.filePath === fp; });
+            if (!exists) {
+                replayQueue.push({filePath: fp, fileName: name});
+                added++;
             }
         });
+        if (added > 0) showMessage('已添加 ' + added + ' 个文件到队列', 'success');
+        renderQueue();
+        $('#fpr-file-select').val([]);
     });
 
-    // 加载文件
-    $('#fpr-load-btn').on('click', function() {
-        var filePath = $('#fpr-file-select').val();
-        if (!filePath) {
-            showMessage('请先选择文件', 'warning');
-            return;
-        }
-        currentReplayFile = filePath;
-        $('#fpr-controls').show();
-        $('#fpr-status-text').text('文件已加载，等待开始');
-        $('#fpr-count-text').text('');
-        $('#fpr-current-text').text('');
-        $('#fpr-progress-bar').css('width', '0%').text('0%');
-    });
-
-    // 重放控制按钮
-    $('#fpr-start-btn').on('click', startReplay);
+    // 开始批次回放
+    $('#fpr-start-btn').on('click', startBatchReplay);
     $('#fpr-pause-btn').on('click', pauseReplay);
     $('#fpr-resume-btn').on('click', resumeReplay);
     $('#fpr-stop-btn').on('click', stopReplay);
@@ -178,6 +202,34 @@ function initFootprintReplayControls() {
     });
 }
 
+function uploadFilesSequentially(files, index) {
+    if (index >= files.length) {
+        refreshFootprintFileSelect();
+        return;
+    }
+    var file = files[index];
+    var formData = new FormData();
+    formData.append('file', file);
+    $.ajax({
+        url: '../uploadFootprintFile',
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        dataType: 'json',
+        success: function(data) {
+            if (data.code == '200') {
+                showMessage('上传成功 (' + (index + 1) + '/' + files.length + '): ' + file.name, 'success');
+            } else {
+                showMessage('上传失败: ' + file.name, 'danger');
+            }
+        },
+        complete: function() {
+            uploadFilesSequentially(files, index + 1);
+        }
+    });
+}
+
 function refreshFootprintFileSelect() {
     $.ajax({
         url: '../listFootprintFiles',
@@ -186,12 +238,37 @@ function refreshFootprintFileSelect() {
         success: function(data) {
             if (data.code == '200') {
                 var select = $('#fpr-file-select').empty();
-                select.append('<option value="">-- 选择已有文件 --</option>');
                 (data.result || []).forEach(function(f) {
                     select.append('<option value="' + f.filePath + '">' + f.fileName + '</option>');
                 });
             }
         }
+    });
+}
+
+function renderQueue() {
+    saveQueueToStorage();
+    var list = $('#fpr-queue-list');
+    if (replayQueue.length === 0) {
+        list.html('<div class="text-muted text-center py-2" id="fpr-queue-empty">队列为空，请先添加文件</div>');
+        $('#fpr-queue-count').text('');
+        return;
+    }
+    var html = '';
+    replayQueue.forEach(function(item, i) {
+        html += '<div class="d-flex align-items-center py-1 border-bottom">' +
+            '<span class="text-muted me-2" style="font-size:12px;">' + (i + 1) + '.</span>' +
+            '<span class="flex-grow-1" style="font-size:13px;">' + item.fileName + '</span>' +
+            '<button class="btn btn-sm btn-outline-danger fpr-queue-remove" data-index="' + i + '" style="font-size:11px;padding:1px 6px;">移除</button>' +
+            '</div>';
+    });
+    list.html(html);
+    $('#fpr-queue-count').text('(共 ' + replayQueue.length + ' 个文件)');
+
+    $('.fpr-queue-remove').off('click').on('click', function() {
+        var idx = parseInt($(this).data('index'));
+        replayQueue.splice(idx, 1);
+        renderQueue();
     });
 }
 
@@ -211,9 +288,9 @@ function updateReplaySpeed() {
     });
 }
 
-function startReplay() {
-    if (!currentReplayFile) {
-        showMessage('请先加载文件', 'warning');
+function startBatchReplay() {
+    if (replayQueue.length === 0) {
+        showMessage('队列为空，请先添加文件', 'warning');
         return;
     }
     var mode = $('input[name="fpr-speed-mode"]:checked').val() || 'time';
@@ -223,22 +300,25 @@ function startReplay() {
     } else {
         value = parseFloat($('#fpr-speed-slider').val()) || 1.0;
     }
+    var filePaths = replayQueue.map(function(item) { return item.filePath; });
     $.ajax({
-        url: '../startFootprintReplay',
+        url: '../startBatchFootprintReplay',
         type: 'POST',
-        data: { filePath: currentReplayFile, speedMode: mode, speedValue: value },
+        data: { 'filePaths[]': filePaths, speedMode: mode, speedValue: value },
+        traditional: true,
         dataType: 'json',
         success: function(data) {
             if (data.code == '200') {
-                $('#fpr-status-text').text('回放中...');
-                $('#fpr-count-text').text('共 ' + data.result.total + ' 条记录');
+                $('#fpr-status-text').text('批次回放中...');
+                $('#fpr-count-text').text('共 ' + data.result.total + ' 条记录 / ' + data.result.totalBatches + ' 个文件');
+                $('#fpr-batch-text').text('');
                 startReplayPolling();
             } else if (data.code == '1') {
-                showMessage('文件不存在', 'danger');
+                showMessage('没有有效文件', 'danger');
             } else if (data.code == '2') {
-                showMessage('文件为空', 'warning');
+                showMessage('所有文件为空', 'warning');
             } else {
-                showMessage('启动回放失败', 'danger');
+                showMessage('启动失败', 'danger');
             }
         }
     });
@@ -258,7 +338,7 @@ function resumeReplay() {
         url: '../resumeFootprintReplay',
         type: 'POST',
         dataType: 'json',
-        success: function() { $('#fpr-status-text').text('回放中...'); }
+        success: function() { $('#fpr-status-text').text('批次回放中...'); }
     });
 }
 
@@ -269,9 +349,13 @@ function stopReplay() {
         dataType: 'json',
         success: function() {
             stopReplayPolling();
+            replayQueue = [];
+            saveQueueToStorage();
+            renderQueue();
             $('#fpr-status-text').text('已停止');
             $('#fpr-progress-bar').css('width', '0%').text('0%');
             $('#fpr-current-text').text('');
+            $('#fpr-batch-text').text('');
         }
     });
 }
@@ -288,19 +372,32 @@ function startReplayPolling() {
                     var s = data.result;
                     if (!s.running || s.stopped) {
                         stopReplayPolling();
+                        replayQueue = [];
+                        saveQueueToStorage();
+                        renderQueue();
                         var pct = s.totalCount > 0 ? 100 : 0;
                         $('#fpr-progress-bar').css('width', pct + '%').text(pct + '%');
                         $('#fpr-status-text').text('回放完成');
+                        $('#fpr-batch-text').text('');
                         return;
                     }
+
+                    // 文件级进度
+                    if (s.totalBatchCount > 1) {
+                        var batchPct = Math.round((s.currentBatchIndex + 1) / s.totalBatchCount * 100);
+                        $('#fpr-batch-text').text('文件 ' + (s.currentBatchIndex + 1) + '/' + s.totalBatchCount + ' — ' + s.currentFileName);
+                    }
+
+                    // 记录级进度
                     var pct = s.totalCount > 0 ? Math.round((s.currentIndex + 1) / s.totalCount * 100) : 0;
                     $('#fpr-progress-bar').css('width', pct + '%').text(pct + '%');
                     $('#fpr-current-text').text('当前: [' + (s.currentIndex + 1) + '/' + s.totalCount + '] ' + s.currentUname);
+
                     if (s.paused) {
                         $('#fpr-status-text').text('已暂停');
                     } else {
                         var modeLabel = s.speedMode === 'fixed' ? s.speedValue.toFixed(1) + ' 人/秒' : s.speedValue.toFixed(1) + 'x';
-                        $('#fpr-status-text').text('回放中... (' + modeLabel + ')');
+                        $('#fpr-status-text').text('批次回放中... (' + modeLabel + ')');
                     }
                 }
             }

@@ -31,6 +31,7 @@ import xyz.acproject.danmuji.tools.CurrencyTools;
 import xyz.acproject.danmuji.tools.ParseSetStatusTools;
 import xyz.acproject.danmuji.tools.file.FileTools;
 import xyz.acproject.danmuji.tools.file.FootprintFileTools;
+import xyz.acproject.danmuji.tools.file.FootprintFileTools.FileBatch;
 import xyz.acproject.danmuji.tools.file.FootprintFileTools.FootprintRecord;
 import xyz.acproject.danmuji.tools.file.FootprintFileTools.ParseResult;
 import xyz.acproject.danmuji.tools.file.FootprintFileTools.SessionMeta;
@@ -4611,7 +4612,7 @@ public class WebController {
     }
 
     /**
-     * 开始足迹重放
+     * 开始足迹重放（单文件，兼容旧接口）
      */
     @ResponseBody
     @PostMapping(value = "/startFootprintReplay")
@@ -4619,14 +4620,30 @@ public class WebController {
                                              @RequestParam(defaultValue = "time") String speedMode,
                                              @RequestParam(defaultValue = "1.0") double speedValue,
                                              HttpServletRequest req) {
+        // 转为单文件批次
+        return startBatchReplayInternal(new String[]{filePath}, speedMode, speedValue, req);
+    }
+
+    /**
+     * 开始足迹批次重放（多文件）
+     */
+    @ResponseBody
+    @PostMapping(value = "/startBatchFootprintReplay")
+    public Response<?> startBatchFootprintReplay(@RequestParam("filePaths[]") String[] filePaths,
+                                                  @RequestParam(defaultValue = "time") String speedMode,
+                                                  @RequestParam(defaultValue = "1.0") double speedValue,
+                                                  HttpServletRequest req) {
+        return startBatchReplayInternal(filePaths, speedMode, speedValue, req);
+    }
+
+    /**
+     * 批次重放内部实现
+     */
+    private Response<?> startBatchReplayInternal(String[] filePaths, String speedMode,
+                                                   double speedValue, HttpServletRequest req) {
         try {
-            validateFilePath(filePath);
-            File file = new File(filePath);
-            if (!file.isAbsolute()) {
-                file = new File(getDanmujiLogDir(), filePath);
-            }
-            if (!file.exists()) {
-                return Response.success(1, req);  // 文件不存在
+            if (filePaths == null || filePaths.length == 0) {
+                return Response.success(1, req);
             }
 
             // 停止已有重放
@@ -4634,44 +4651,54 @@ public class WebController {
                 activeReplayThread.stopReplay();
             }
 
-            // 使用 readFileWithMeta 读取文件（含直播间上下文头部作为补充）
-            ParseResult parseResult = FootprintFileTools.getInstance().readFileWithMeta(file.getAbsolutePath());
-            List<FootprintRecord> records = parseResult.records;
-            SessionMeta headerMeta = parseResult.meta;
-            if (records.isEmpty()) {
-                return Response.success(2, req);  // 文件为空
+            List<FileBatch> batches = new ArrayList<>();
+            int totalRecords = 0;
+            String firstFileName = null;
+
+            for (String fp : filePaths) {
+                validateFilePath(fp);
+                File file = new File(fp);
+                if (!file.isAbsolute()) file = new File(getDanmujiLogDir(), fp);
+                if (!file.exists()) {
+                    LOGGER.warn("FootprintBatchReplay: file not found {}", fp);
+                    continue;
+                }
+
+                ParseResult parseResult = FootprintFileTools.getInstance().readFileWithMeta(file.getAbsolutePath());
+                if (parseResult.records.isEmpty()) {
+                    LOGGER.warn("FootprintBatchReplay: empty file {}", fp);
+                    continue;
+                }
+
+                // 合并元数据：文件名解析为主，CSV 头部补充
+                SessionMeta fileNameMeta = FootprintFileTools.parseFileNameForContext(file.getName());
+                SessionMeta meta = new SessionMeta();
+                meta.roomId = fileNameMeta.roomId != 0 ? fileNameMeta.roomId : parseResult.meta.roomId;
+                meta.anchorName = !fileNameMeta.anchorName.isEmpty() ? fileNameMeta.anchorName : parseResult.meta.anchorName;
+                meta.auid = parseResult.meta.auid;
+
+                batches.add(new FileBatch(file.getName(), meta, parseResult.records));
+                totalRecords += parseResult.records.size();
+                if (firstFileName == null) firstFileName = file.getName();
             }
 
-            // 从文件名解析 roomId 和主播名（主要来源，最可靠）
-            // 文件名格式: {roomId}_{anchorName}_10_足迹留印.csv
-            SessionMeta fileNameMeta = FootprintFileTools.parseFileNameForContext(file.getName());
-
-            // 合并元数据：文件名解析为主，CSV 头部补充（如 auid）
-            SessionMeta meta = new SessionMeta();
-            meta.roomId = fileNameMeta.roomId != 0 ? fileNameMeta.roomId : headerMeta.roomId;
-            meta.anchorName = !fileNameMeta.anchorName.isEmpty() ? fileNameMeta.anchorName : headerMeta.anchorName;
-            meta.auid = headerMeta.auid;  // auid 只能从 CSV 头部获取
-
-            // 在启动重放线程之前设置直播间上下文。
-            // 上下文设置后不恢复：audienceProcessing 内部的 CompletableFuture 异步链
-            // 可能在重放线程退出后仍在执行，恢复为原始值会导致文件名写入为 null_unknown_...
-            if (meta.roomId != 0) {
-                PublicDataConf.ROOMID = meta.roomId;
-            }
-            if (meta.anchorName != null && !meta.anchorName.isEmpty()) {
-                PublicDataConf.ANCHOR_NAME = meta.anchorName;
-            }
-            if (meta.auid != 0) {
-                PublicDataConf.AUID = meta.auid;
+            if (batches.isEmpty()) {
+                return Response.success(2, req);  // 没有有效文件
             }
 
-            LOGGER.info("FootprintReplay: set context from filename={} roomId={} anchorName={} auid={}",
-                    file.getName(), PublicDataConf.ROOMID, PublicDataConf.ANCHOR_NAME, PublicDataConf.AUID);
+            // 设置第一个文件的直播间上下文
+            SessionMeta firstMeta = batches.get(0).meta;
+            if (firstMeta.roomId != 0) PublicDataConf.ROOMID = firstMeta.roomId;
+            if (firstMeta.anchorName != null && !firstMeta.anchorName.isEmpty())
+                PublicDataConf.ANCHOR_NAME = firstMeta.anchorName;
+            if (firstMeta.auid != 0) PublicDataConf.AUID = firstMeta.auid;
+
+            LOGGER.info("FootprintBatchReplay: {} files, {} records total, first={}",
+                    batches.size(), totalRecords, firstFileName);
 
             ParseMessageThread pmt = PublicDataConf.parseMessageThread;
-            activeReplayThread = new FootprintReplayThread(records, pmt, meta);
+            activeReplayThread = new FootprintReplayThread(batches, pmt);
 
-            // 设置速度模式
             FootprintReplayThread.SpeedMode mode = "fixed".equals(speedMode)
                     ? FootprintReplayThread.SpeedMode.FIXED_RATE
                     : FootprintReplayThread.SpeedMode.TIME_MULTIPLIER;
@@ -4679,21 +4706,14 @@ public class WebController {
             activeReplayThread.start();
 
             JSONObject result = new JSONObject();
-            result.put("total", records.size());
-            result.put("fileName", file.getName());
+            result.put("total", totalRecords);
+            result.put("totalBatches", batches.size());
+            result.put("fileName", firstFileName);
             result.put("speedMode", "fixed".equals(speedMode) ? "fixed" : "time");
             result.put("speedValue", speedValue);
-            // 返回会话元数据供前端显示
-            if (meta.hasData()) {
-                JSONObject metaJson = new JSONObject();
-                metaJson.put("roomId", meta.roomId);
-                metaJson.put("anchorName", meta.anchorName);
-                metaJson.put("auid", meta.auid);
-                result.put("sessionMeta", metaJson);
-            }
             return Response.success(result, req);
         } catch (Exception e) {
-            LOGGER.error("startFootprintReplay error", e);
+            LOGGER.error("startBatchFootprintReplay error", e);
             return Response.success(4, req);
         }
     }
@@ -4772,6 +4792,9 @@ public class WebController {
             status.put("speedValue", activeReplayThread.getSpeedValue());
             status.put("currentUname", activeReplayThread.getCurrentUname());
             status.put("currentUid", activeReplayThread.getCurrentUid());
+            status.put("currentBatchIndex", activeReplayThread.getCurrentBatchIndex());
+            status.put("totalBatchCount", activeReplayThread.getTotalBatchCount());
+            status.put("currentFileName", activeReplayThread.getCurrentFileName());
         } else {
             status.put("running", false);
             status.put("paused", false);
@@ -4782,6 +4805,9 @@ public class WebController {
             status.put("speedValue", 1.0);
             status.put("currentUname", "");
             status.put("currentUid", 0);
+            status.put("currentBatchIndex", 0);
+            status.put("totalBatchCount", 0);
+            status.put("currentFileName", "");
         }
         return Response.success(status, req);
     }

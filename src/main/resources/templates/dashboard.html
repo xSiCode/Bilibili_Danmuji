@@ -90,27 +90,30 @@
 
                             <!-- 足迹还原 -->
                             <div class="tab-pane fade" id="tab-footprint-replay" role="tabpanel">
-                                <div class="input-group mb-3"><h5>足迹还原 - 导入文件</h5></div>
-                                <div class="row g-2 mb-3">
+                                <div class="input-group mb-3"><h5>足迹还原 - 选择文件加入队列</h5></div>
+                                <div class="row g-2 mb-2">
                                     <div class="col-auto">
                                         <button id="fpr-upload-btn" class="btn btn-sm btn-primary">上传足迹文件(.csv)</button>
-                                        <input type="file" id="fpr-upload-input" accept=".csv,.txt" style="display:none;">
+                                        <input type="file" id="fpr-upload-input" accept=".csv,.txt" multiple style="display:none;">
                                     </div>
                                     <div class="col-auto">
-                                        <select id="fpr-file-select" class="form-select form-select-sm" style="width:300px;">
-                                            <option value="">-- 选择已有文件 --</option>
+                                        <select id="fpr-file-select" class="form-select form-select-sm" style="width:300px;" multiple size="4">
                                         </select>
                                     </div>
-                                    <div class="col-auto">
-                                        <button id="fpr-load-btn" class="btn btn-sm btn-secondary">加载</button>
+                                    <div class="col-auto align-self-end">
+                                        <button id="fpr-enqueue-btn" class="btn btn-sm btn-secondary">加入队列</button>
                                     </div>
+                                </div>
+                                <div class="input-group mb-3"><h5>回放队列 <span class="text-muted" style="font-size:12px;" id="fpr-queue-count"></span></h5></div>
+                                <div id="fpr-queue-list" class="mb-2" style="max-height:200px;overflow-y:auto;">
+                                    <div class="text-muted text-center py-2" id="fpr-queue-empty">队列为空，请先添加文件</div>
                                 </div>
 
                                 <div class="input-group mb-3"><h5>回放控制</h5></div>
-                                <div id="fpr-controls" style="display:none;">
+                                <div id="fpr-controls">
                                     <div class="row g-2 mb-2">
                                         <div class="col-auto">
-                                            <button id="fpr-start-btn" class="btn btn-sm btn-success">▶ 开始</button>
+                                            <button id="fpr-start-btn" class="btn btn-sm btn-success">▶ 开始批次回放</button>
                                         </div>
                                         <div class="col-auto">
                                             <button id="fpr-pause-btn" class="btn btn-sm btn-warning">⏸ 暂停</button>
@@ -156,6 +159,9 @@
                                                      style="width:0%;">0%</div>
                                             </div>
                                         </div>
+                                    </div>
+                                    <div class="row g-2 mb-2">
+                                        <div class="col-auto"><span class="text-muted" style="font-size:12px;" id="fpr-batch-text"></span></div>
                                     </div>
                                     <div class="row g-2 mb-2">
                                         <div class="col-auto"><span class="text-muted" style="font-size:12px;" id="fpr-status-text">就绪</span></div>
