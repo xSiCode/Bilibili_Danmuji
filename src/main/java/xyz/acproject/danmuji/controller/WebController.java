@@ -4652,12 +4652,9 @@ public class WebController {
             meta.anchorName = !fileNameMeta.anchorName.isEmpty() ? fileNameMeta.anchorName : headerMeta.anchorName;
             meta.auid = headerMeta.auid;  // auid 只能从 CSV 头部获取
 
-            // 在启动重放线程之前设置直播间上下文，
-            // 确保所有异步任务（LogThread、WATCHER_EXECUTOR）读取到正确的值
-            Long savedRoomId = PublicDataConf.ROOMID;
-            String savedAnchorName = PublicDataConf.ANCHOR_NAME;
-            Long savedAuid = PublicDataConf.AUID;
-
+            // 在启动重放线程之前设置直播间上下文。
+            // 上下文设置后不恢复：audienceProcessing 内部的 CompletableFuture 异步链
+            // 可能在重放线程退出后仍在执行，恢复为原始值会导致文件名写入为 null_unknown_...
             if (meta.roomId != 0) {
                 PublicDataConf.ROOMID = meta.roomId;
             }
@@ -4672,9 +4669,7 @@ public class WebController {
                     file.getName(), PublicDataConf.ROOMID, PublicDataConf.ANCHOR_NAME, PublicDataConf.AUID);
 
             ParseMessageThread pmt = PublicDataConf.parseMessageThread;
-            // 传入保存的原始上下文供重放完成后恢复
-            activeReplayThread = new FootprintReplayThread(records, pmt, meta,
-                    savedRoomId, savedAnchorName, savedAuid);
+            activeReplayThread = new FootprintReplayThread(records, pmt, meta);
 
             // 设置速度模式
             FootprintReplayThread.SpeedMode mode = "fixed".equals(speedMode)
