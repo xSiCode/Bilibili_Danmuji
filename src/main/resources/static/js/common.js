@@ -1630,6 +1630,7 @@ const method = {
         set.is_follow_dm = $(".is_follow").is(':checked');
         set.log = $(".is_log").is(':checked');
         set.is_watcher_log = $(".is_watcher_log").is(':checked');
+        set.is_footprint_record = $(".is_footprint_record").is(':checked');
         set.connect_docket = $(".connect-docket").val();
         set.thank_gift.is_open = $(".thankgift_is_open").is(':checked');
         set.thank_gift.is_live_open = $(".thankgift_is_live_open").is(
@@ -2238,6 +2239,7 @@ const method = {
             $(".is_follow").prop('checked', set.is_follow_dm);
             $(".is_log").prop('checked', set.log);
             $(".is_watcher_log").prop('checked', set.is_watcher_log);
+            $(".is_footprint_record").prop('checked', set.is_footprint_record);
             $(".connect-docket").val(set.connect_docket);
             $(".thankgift_is_open").prop('checked', set.thank_gift.is_open);
             $(".thankgift_is_live_open").prop('checked',

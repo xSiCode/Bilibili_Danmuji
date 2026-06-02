@@ -13,29 +13,156 @@
                     <th:block th:replace="~{fragments/layout :: status-bar}"></th:block>
                     <th:block th:replace="~{fragments/layout :: sidebar(activePage='dashboard')}"></th:block>
                     <div class="settings-content flex-grow-1">
-                        <div class="tab-pane active" id="tab-stranger-board">
-                            <div class="input-group mb-1"><h5>实时陌生观众看板</h5></div>
-                            <div class="row g-2 mb-2 align-items-end">
-                                <div class="col-auto"><input type="text" id="sv-search-input" class="form-control form-control-sm" style="width:200px;" placeholder="搜索观众名/UID/类型..."></div>
-                                <div class="col-auto"><button id="sv-btn-search" class="btn btn-sm btn-primary">搜索</button><button id="sv-btn-reset" class="btn btn-sm btn-outline-secondary ms-1">重置</button></div>
-                                <div class="col-auto ms-auto"><span class="text-muted" style="font-size:12px;" id="sv-total-info"></span></div>
-                            </div>
-                            <div class="sv-table-wrap">
-                                <table id="sv-data-table" class="table table-sm table-striped" style="display:none;width:100%;">
-                                    <thead><tr><th data-sort="time" class="sv-sort">时间</th><th>头像</th><th data-sort="name" class="sv-sort">观众名</th><th data-sort="scoreTypes" class="sv-sort">签名</th><th data-sort="score" class="sv-sort">打分</th><th data-sort="count" class="sv-sort">次数</th><th data-sort="session" class="sv-sort">场次</th><th>拉黑</th></tr></thead>
-                                    <tbody id="sv-table-body"></tbody>
-                                </table>
-                                <div id="sv-pagination" class="d-flex justify-content-center align-items-center mt-2" style="display:none;">
-                                    <button id="sv-first-btn" class="btn btn-sm btn-outline-secondary">首页</button>
-                                    <button id="sv-prev-btn" class="btn btn-sm btn-outline-secondary ms-1">上一页</button>
-                                    <span id="sv-page-info" class="mx-2">第1页 / 共1页</span>
-                                    <button id="sv-next-btn" class="btn btn-sm btn-outline-secondary">下一页</button>
-                                    <button id="sv-last-btn" class="btn btn-sm btn-outline-secondary ms-1">尾页</button>
-                                    <span class="ms-3">跳至</span>
-                                    <input type="number" id="sv-page-jump" class="form-control form-control-sm" style="width:60px;" min="1"><span>页</span>
-                                    <button id="sv-btn-go" class="btn btn-sm btn-outline-primary ms-1">GO</button>
+                        <!-- Tab Navigation -->
+                        <ul class="nav nav-tabs mb-3" id="dashboard-tabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="tab-btn-stranger-board" data-bs-toggle="tab"
+                                        data-bs-target="#tab-stranger-board" type="button" role="tab">陌生观众看板</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="tab-btn-footprint-record" data-bs-toggle="tab"
+                                        data-bs-target="#tab-footprint-record" type="button" role="tab">足迹留印</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="tab-btn-footprint-replay" data-bs-toggle="tab"
+                                        data-bs-target="#tab-footprint-replay" type="button" role="tab">足迹还原</button>
+                            </li>
+                        </ul>
+
+                        <!-- Tab Content -->
+                        <div class="tab-content">
+                            <!-- 陌生观众看板（现有内容） -->
+                            <div class="tab-pane fade show active" id="tab-stranger-board" role="tabpanel">
+                                <div class="input-group mb-1"><h5>实时陌生观众看板</h5></div>
+                                <div class="row g-2 mb-2 align-items-end">
+                                    <div class="col-auto"><input type="text" id="sv-search-input" class="form-control form-control-sm" style="width:200px;" placeholder="搜索观众名/UID/类型..."></div>
+                                    <div class="col-auto"><button id="sv-btn-search" class="btn btn-sm btn-primary">搜索</button><button id="sv-btn-reset" class="btn btn-sm btn-outline-secondary ms-1">重置</button></div>
+                                    <div class="col-auto ms-auto"><span class="text-muted" style="font-size:12px;" id="sv-total-info"></span></div>
                                 </div>
-                                <div id="sv-empty-msg" class="text-muted text-center py-3" style="display:none;">暂无数据</div>
+                                <div class="sv-table-wrap">
+                                    <table id="sv-data-table" class="table table-sm table-striped" style="display:none;width:100%;">
+                                        <thead><tr><th data-sort="time" class="sv-sort">时间</th><th>头像</th><th data-sort="name" class="sv-sort">观众名</th><th data-sort="scoreTypes" class="sv-sort">签名</th><th data-sort="score" class="sv-sort">打分</th><th data-sort="count" class="sv-sort">次数</th><th data-sort="session" class="sv-sort">场次</th><th>拉黑</th></tr></thead>
+                                        <tbody id="sv-table-body"></tbody>
+                                    </table>
+                                    <div id="sv-pagination" class="d-flex justify-content-center align-items-center mt-2" style="display:none;">
+                                        <button id="sv-first-btn" class="btn btn-sm btn-outline-secondary">首页</button>
+                                        <button id="sv-prev-btn" class="btn btn-sm btn-outline-secondary ms-1">上一页</button>
+                                        <span id="sv-page-info" class="mx-2">第1页 / 共1页</span>
+                                        <button id="sv-next-btn" class="btn btn-sm btn-outline-secondary">下一页</button>
+                                        <button id="sv-last-btn" class="btn btn-sm btn-outline-secondary ms-1">尾页</button>
+                                        <span class="ms-3">跳至</span>
+                                        <input type="number" id="sv-page-jump" class="form-control form-control-sm" style="width:60px;" min="1"><span>页</span>
+                                        <button id="sv-btn-go" class="btn btn-sm btn-outline-primary ms-1">GO</button>
+                                    </div>
+                                    <div id="sv-empty-msg" class="text-muted text-center py-3" style="display:none;">暂无数据</div>
+                                </div>
+                            </div>
+
+                            <!-- 足迹留印 -->
+                            <div class="tab-pane fade" id="tab-footprint-record" role="tabpanel">
+                                <div class="input-group mb-3"><h5>足迹留印设置</h5></div>
+                                <div class="row input-group mb-3">
+                                    <div class="col-auto">
+                                        <label class="form-check-label">
+                                            <input class="form-check-input is_footprint_record live-save" type="checkbox">
+                                            <span class="_description" data-bs-html="true" data-bs-placement="top"
+                                                  data-bs-toggle="tooltip"
+                                                  title="开启后将只记录观众UID和用户名到本地CSV文件，<span class='red-font'>跳过所有INTERACT_WORD_V2处理（进入+关注）</span>，<br/>不进行任何API调用，适合高人气直播间使用。<br/>文件位置：Danmuji_log/{房间号}_{主播}_footprint.csv">
+                                                开启足迹留印（轻量记录模式）
+                                            </span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="input-group mb-3"><h5>录制文件管理</h5></div>
+                                <div class="row g-2 mb-2">
+                                    <div class="col-auto">
+                                        <button id="fp-refresh-files" class="btn btn-sm btn-secondary">刷新文件列表</button>
+                                    </div>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-striped" id="fp-file-table" style="display:none;">
+                                        <thead><tr><th>文件名</th><th>大小</th><th>操作</th></tr></thead>
+                                        <tbody id="fp-file-tbody"></tbody>
+                                    </table>
+                                </div>
+                                <div id="fp-no-files" class="text-muted text-center py-3" style="display:none;">暂无录制的足迹文件</div>
+                            </div>
+
+                            <!-- 足迹还原 -->
+                            <div class="tab-pane fade" id="tab-footprint-replay" role="tabpanel">
+                                <div class="input-group mb-3"><h5>足迹还原 - 导入文件</h5></div>
+                                <div class="row g-2 mb-3">
+                                    <div class="col-auto">
+                                        <button id="fpr-upload-btn" class="btn btn-sm btn-primary">上传足迹文件(.csv)</button>
+                                        <input type="file" id="fpr-upload-input" accept=".csv,.txt" style="display:none;">
+                                    </div>
+                                    <div class="col-auto">
+                                        <select id="fpr-file-select" class="form-select form-select-sm" style="width:300px;">
+                                            <option value="">-- 选择已有文件 --</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-auto">
+                                        <button id="fpr-load-btn" class="btn btn-sm btn-secondary">加载</button>
+                                    </div>
+                                </div>
+
+                                <div class="input-group mb-3"><h5>回放控制</h5></div>
+                                <div id="fpr-controls" style="display:none;">
+                                    <div class="row g-2 mb-2">
+                                        <div class="col-auto">
+                                            <button id="fpr-start-btn" class="btn btn-sm btn-success">▶ 开始</button>
+                                        </div>
+                                        <div class="col-auto">
+                                            <button id="fpr-pause-btn" class="btn btn-sm btn-warning">⏸ 暂停</button>
+                                        </div>
+                                        <div class="col-auto">
+                                            <button id="fpr-resume-btn" class="btn btn-sm btn-primary">▶ 继续</button>
+                                        </div>
+                                        <div class="col-auto">
+                                            <button id="fpr-stop-btn" class="btn btn-sm btn-danger">⏹ 停止</button>
+                                        </div>
+                                    </div>
+                                    <div class="row g-2 mb-2 align-items-center">
+                                        <div class="col-auto"><span class="form-label mb-0">播放模式:</span></div>
+                                        <div class="col-auto">
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="radio" name="fpr-speed-mode" id="fpr-mode-time" value="time" checked>
+                                                <label class="form-check-label" for="fpr-mode-time">倍数播放</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="radio" name="fpr-speed-mode" id="fpr-mode-fixed" value="fixed">
+                                                <label class="form-check-label" for="fpr-mode-fixed">定速播放</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row g-2 mb-2 align-items-center" id="fpr-speed-time-panel">
+                                        <div class="col-auto"><label class="form-label mb-0">播放速度:</label></div>
+                                        <div class="col-auto">
+                                            <input type="range" id="fpr-speed-slider" min="0.1" max="10" step="0.1" value="1" style="width:200px;">
+                                        </div>
+                                        <div class="col-auto"><span id="fpr-speed-label">1.0x</span></div>
+                                    </div>
+                                    <div class="row g-2 mb-2 align-items-center" id="fpr-speed-fixed-panel" style="display:none;">
+                                        <div class="col-auto"><label class="form-label mb-0">定速:</label></div>
+                                        <div class="col-auto">
+                                            <input type="number" id="fpr-fixed-rate" class="form-control form-control-sm" min="0.1" max="100" step="0.1" value="1" style="width:80px;">
+                                        </div>
+                                        <div class="col-auto"><span>人/秒</span></div>
+                                    </div>
+                                    <div class="row g-2 mb-2">
+                                        <div class="col-12">
+                                            <div class="progress" style="height:20px;">
+                                                <div id="fpr-progress-bar" class="progress-bar" role="progressbar"
+                                                     style="width:0%;">0%</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row g-2 mb-2">
+                                        <div class="col-auto"><span class="text-muted" style="font-size:12px;" id="fpr-status-text">就绪</span></div>
+                                        <div class="col-auto"><span class="text-muted" style="font-size:12px;" id="fpr-count-text"></span></div>
+                                        <div class="col-auto"><span class="text-muted" style="font-size:12px;" id="fpr-current-text"></span></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

@@ -30,6 +30,10 @@ import xyz.acproject.danmuji.service.SetService;
 import xyz.acproject.danmuji.tools.CurrencyTools;
 import xyz.acproject.danmuji.tools.ParseSetStatusTools;
 import xyz.acproject.danmuji.tools.file.FileTools;
+import xyz.acproject.danmuji.tools.file.FootprintFileTools;
+import xyz.acproject.danmuji.tools.file.FootprintFileTools.FootprintRecord;
+import xyz.acproject.danmuji.tools.file.FootprintFileTools.ParseResult;
+import xyz.acproject.danmuji.tools.file.FootprintFileTools.SessionMeta;
 import xyz.acproject.danmuji.tools.file.JsonFileTools;
 import xyz.acproject.danmuji.utils.FastJsonUtils;
 import xyz.acproject.danmuji.utils.QrcodeUtils;
@@ -51,6 +55,7 @@ import xyz.acproject.danmuji.tools.GiftLogTools;
 import xyz.acproject.danmuji.tools.VisitorCountTools;
 import xyz.acproject.danmuji.tools.RoomInfoLogTools;
 import xyz.acproject.danmuji.utils.OkHttp3Utils;
+import xyz.acproject.danmuji.thread.FootprintReplayThread;
 import xyz.acproject.danmuji.thread.core.ParseMessageThread;
 
 /**
@@ -70,6 +75,9 @@ public class WebController {
     private ServerAddressComponent serverAddressComponent;
     private TaskRegisterComponent taskRegisterComponent;
     private static final Logger LOGGER = LogManager.getLogger(WebController.class);
+
+    // 足迹还原：当前活跃的重放线程
+    private volatile FootprintReplayThread activeReplayThread;
 
     // === 页面拆分：/ 和 /index 保留兼容，新增7个功能页面路由 ===
     @RequestMapping(value = {"/", "index"})
@@ -4498,5 +4506,257 @@ public class WebController {
             LOGGER.error("accountPoolQrcodePoll error", e);
             return Response.success(null, req);
         }
+    }
+
+    // ===== 足迹留印 / 足迹还原 相关端点 =====
+
+    /**
+     * 列出所有足迹 CSV 文件
+     */
+    @ResponseBody
+    @GetMapping(value = "/listFootprintFiles")
+    public Response<?> listFootprintFiles(HttpServletRequest req) {
+        try {
+            List<String> files = FootprintFileTools.getInstance().listFiles();
+            JSONArray result = new JSONArray();
+            for (String fp : files) {
+                File f = new File(fp);
+                JSONObject item = new JSONObject();
+                item.put("fileName", f.getName());
+                item.put("filePath", fp);
+                item.put("size", f.length());
+                result.add(item);
+            }
+            return Response.success(result, req);
+        } catch (Exception e) {
+            LOGGER.error("listFootprintFiles error", e);
+            return Response.success(new JSONArray(), req);
+        }
+    }
+
+    /**
+     * 下载足迹文件
+     */
+    @ResponseBody
+    @GetMapping(value = "/downloadFootprintFile")
+    public void downloadFootprintFile(@RequestParam("filePath") String filePath,
+                                       HttpServletResponse response) throws Exception {
+        validateFilePath(filePath);
+        File file = new File(filePath);
+        if (!file.isAbsolute()) {
+            file = new File(getDanmujiLogDir(), filePath);
+        }
+        FileInputStream fis = new FileInputStream(file);
+        BufferedInputStream bis = new BufferedInputStream(fis);
+        byte[] buffer = new byte[bis.available()];
+        bis.read(buffer);
+        bis.close();
+        response.reset();
+        response.setCharacterEncoding("UTF-8");
+        response.addHeader("Content-Disposition",
+                "attachment;filename=" + URLEncoder.encode(file.getName(), "UTF-8"));
+        response.addHeader("Content-Length", "" + file.length());
+        response.setContentType("application/octet-stream");
+        OutputStream os = new BufferedOutputStream(response.getOutputStream());
+        os.write(buffer);
+        os.flush();
+    }
+
+    /**
+     * 删除足迹文件
+     */
+    @ResponseBody
+    @PostMapping(value = "/deleteFootprintFile")
+    public Response<?> deleteFootprintFile(@RequestParam("filePath") String filePath,
+                                            HttpServletRequest req) {
+        try {
+            validateFilePath(filePath);
+            File file = new File(filePath);
+            if (!file.isAbsolute()) {
+                file = new File(getDanmujiLogDir(), filePath);
+            }
+            boolean deleted = FootprintFileTools.getInstance().deleteFile(file.getAbsolutePath());
+            return Response.success(deleted ? 0 : 1, req);
+        } catch (Exception e) {
+            LOGGER.error("deleteFootprintFile error", e);
+            return Response.success(2, req);
+        }
+    }
+
+    /**
+     * 上传足迹文件
+     */
+    @ResponseBody
+    @PostMapping(value = "/uploadFootprintFile")
+    public Response<?> uploadFootprintFile(@RequestParam("file") MultipartFile file,
+                                            HttpServletRequest req) {
+        try {
+            String originalFilename = file.getOriginalFilename();
+            if (originalFilename == null ||
+                    (!originalFilename.endsWith(".csv") && !originalFilename.endsWith(".txt"))) {
+                return Response.success(2, req);  // 格式不对
+            }
+            File danmujiLogDir = getDanmujiLogDir();
+            if (!danmujiLogDir.exists()) danmujiLogDir.mkdirs();
+            File destFile = new File(danmujiLogDir, originalFilename);
+            file.transferTo(destFile);
+            JSONObject result = new JSONObject();
+            result.put("fileName", destFile.getName());
+            result.put("filePath", destFile.getAbsolutePath());
+            return Response.success(result, req);
+        } catch (Exception e) {
+            LOGGER.error("uploadFootprintFile error", e);
+            return Response.success(1, req);
+        }
+    }
+
+    /**
+     * 开始足迹重放
+     */
+    @ResponseBody
+    @PostMapping(value = "/startFootprintReplay")
+    public Response<?> startFootprintReplay(@RequestParam("filePath") String filePath,
+                                             @RequestParam(defaultValue = "time") String speedMode,
+                                             @RequestParam(defaultValue = "1.0") double speedValue,
+                                             HttpServletRequest req) {
+        try {
+            validateFilePath(filePath);
+            File file = new File(filePath);
+            if (!file.isAbsolute()) {
+                file = new File(getDanmujiLogDir(), filePath);
+            }
+            if (!file.exists()) {
+                return Response.success(1, req);  // 文件不存在
+            }
+
+            // 停止已有重放
+            if (activeReplayThread != null && activeReplayThread.isRunning()) {
+                activeReplayThread.stopReplay();
+            }
+
+            // 使用 readFileWithMeta 读取文件（含直播间上下文头部）
+            ParseResult parseResult = FootprintFileTools.getInstance().readFileWithMeta(file.getAbsolutePath());
+            List<FootprintRecord> records = parseResult.records;
+            SessionMeta meta = parseResult.meta;
+            if (records.isEmpty()) {
+                return Response.success(2, req);  // 文件为空
+            }
+
+            ParseMessageThread pmt = PublicDataConf.parseMessageThread;
+            activeReplayThread = new FootprintReplayThread(records, pmt, meta);
+
+            // 设置速度模式
+            FootprintReplayThread.SpeedMode mode = "fixed".equals(speedMode)
+                    ? FootprintReplayThread.SpeedMode.FIXED_RATE
+                    : FootprintReplayThread.SpeedMode.TIME_MULTIPLIER;
+            activeReplayThread.setSpeed(mode, speedValue);
+            activeReplayThread.start();
+
+            JSONObject result = new JSONObject();
+            result.put("total", records.size());
+            result.put("fileName", file.getName());
+            result.put("speedMode", "fixed".equals(speedMode) ? "fixed" : "time");
+            result.put("speedValue", speedValue);
+            // 返回会话元数据供前端显示
+            if (meta.hasData()) {
+                JSONObject metaJson = new JSONObject();
+                metaJson.put("roomId", meta.roomId);
+                metaJson.put("anchorName", meta.anchorName);
+                metaJson.put("auid", meta.auid);
+                result.put("sessionMeta", metaJson);
+            }
+            return Response.success(result, req);
+        } catch (Exception e) {
+            LOGGER.error("startFootprintReplay error", e);
+            return Response.success(4, req);
+        }
+    }
+
+    /**
+     * 暂停足迹重放
+     */
+    @ResponseBody
+    @PostMapping(value = "/pauseFootprintReplay")
+    public Response<?> pauseFootprintReplay(HttpServletRequest req) {
+        if (activeReplayThread != null) {
+            activeReplayThread.pauseReplay();
+            return Response.success(true, req);
+        }
+        return Response.success(false, req);
+    }
+
+    /**
+     * 恢复足迹重放
+     */
+    @ResponseBody
+    @PostMapping(value = "/resumeFootprintReplay")
+    public Response<?> resumeFootprintReplay(HttpServletRequest req) {
+        if (activeReplayThread != null) {
+            activeReplayThread.resumeReplay();
+            return Response.success(true, req);
+        }
+        return Response.success(false, req);
+    }
+
+    /**
+     * 停止足迹重放
+     */
+    @ResponseBody
+    @PostMapping(value = "/stopFootprintReplay")
+    public Response<?> stopFootprintReplay(HttpServletRequest req) {
+        if (activeReplayThread != null) {
+            activeReplayThread.stopReplay();
+            return Response.success(true, req);
+        }
+        return Response.success(false, req);
+    }
+
+    /**
+     * 设置足迹重放速度
+     */
+    @ResponseBody
+    @PostMapping(value = "/setFootprintReplaySpeed")
+    public Response<?> setFootprintReplaySpeed(@RequestParam("speedMode") String speedMode,
+                                                @RequestParam("speedValue") double speedValue,
+                                                HttpServletRequest req) {
+        if (activeReplayThread != null && activeReplayThread.isRunning()) {
+            FootprintReplayThread.SpeedMode mode = "fixed".equals(speedMode)
+                    ? FootprintReplayThread.SpeedMode.FIXED_RATE
+                    : FootprintReplayThread.SpeedMode.TIME_MULTIPLIER;
+            activeReplayThread.setSpeed(mode, speedValue);
+            return Response.success(true, req);
+        }
+        return Response.success(false, req);
+    }
+
+    /**
+     * 获取足迹重放状态（UI 轮询）
+     */
+    @ResponseBody
+    @GetMapping(value = "/getFootprintReplayStatus")
+    public Response<?> getFootprintReplayStatus(HttpServletRequest req) {
+        JSONObject status = new JSONObject();
+        if (activeReplayThread != null) {
+            status.put("running", activeReplayThread.isRunning());
+            status.put("paused", activeReplayThread.isPaused());
+            status.put("stopped", activeReplayThread.isStopped());
+            status.put("currentIndex", activeReplayThread.getCurrentIndex());
+            status.put("totalCount", activeReplayThread.getTotalCount());
+            status.put("speedMode", activeReplayThread.getSpeedMode() == FootprintReplayThread.SpeedMode.FIXED_RATE ? "fixed" : "time");
+            status.put("speedValue", activeReplayThread.getSpeedValue());
+            status.put("currentUname", activeReplayThread.getCurrentUname());
+            status.put("currentUid", activeReplayThread.getCurrentUid());
+        } else {
+            status.put("running", false);
+            status.put("paused", false);
+            status.put("stopped", true);
+            status.put("currentIndex", 0);
+            status.put("totalCount", 0);
+            status.put("speedMode", "time");
+            status.put("speedValue", 1.0);
+            status.put("currentUname", "");
+            status.put("currentUid", 0);
+        }
+        return Response.success(status, req);
     }
 }

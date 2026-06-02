@@ -39,6 +39,7 @@ import xyz.acproject.danmuji.tools.ParseSetStatusTools;
 import xyz.acproject.danmuji.tools.ShieldGiftTools;
 import xyz.acproject.danmuji.tools.VisitorCountTools;
 import xyz.acproject.danmuji.tools.file.FileTools;
+import xyz.acproject.danmuji.tools.file.FootprintFileTools;
 import xyz.acproject.danmuji.tools.file.GuardFileTools;
 import xyz.acproject.danmuji.tools.file.LogFileTools;
 import xyz.acproject.danmuji.utils.JodaTimeUtils;
@@ -832,9 +833,12 @@ public class ParseMessageThread extends Thread {
                                 final long _follow_uid = interact.getUid();
                                 final String _follow_uname = interact.getUname();
 
-                                // todo 足迹留印
-
-                                // todo 足迹还原
+                                // 足迹留印：记录所有 INTERACT_WORD_V2 事件（进入+关注），跳过所有后续处理和 API 调用
+                                if (conf.is_footprint_record()) {
+                                    FootprintFileTools.getInstance().record(
+                                        interact.getTimestamp(), _follow_uid, _follow_uname);
+                                    break;  // 跳过当前 INTERACT_WORD_V2 的整个 switch case
+                                }
 
                                 //观众记录
                                 if (msg_type == 1) {
@@ -1607,7 +1611,9 @@ public class ParseMessageThread extends Thread {
                                             // push to frontend for real-time refresh (always, even if file save fails)
                                             if (record != null) {
                                                 try {
-                                                    danmuWebsocket.sendMessage(WsPackage.toJson("auto_block", (short) 0, record));
+                                                    if (danmuWebsocket != null) {
+                                                        danmuWebsocket.sendMessage(WsPackage.toJson("auto_block", (short) 0, record));
+                                                    }
                                                 } catch (Exception e) {
                                                     LOGGER.error("auto_block ws push error", e);
                                                 }
@@ -1628,6 +1634,13 @@ public class ParseMessageThread extends Thread {
                         });
             });
         }
+    }
+
+    /**
+     * 供 FootprintReplayThread 调用的公共包装方法
+     */
+    public void audienceProcessingPublic(StringBuilder stringBuilder, long uid, String uname, CenterSetConf conf) {
+        audienceProcessing(stringBuilder, uid, uname, conf);
     }
 
     //获取发送礼物code
