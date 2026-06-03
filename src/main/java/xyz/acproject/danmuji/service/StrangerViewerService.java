@@ -16,8 +16,6 @@ import java.io.*;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -28,7 +26,7 @@ public class StrangerViewerService {
     private static final Set<Long> blockedUids = ConcurrentHashMap.newKeySet();
     private static final Set<Long> dirtyUids = ConcurrentHashMap.newKeySet();
     private static final ScheduledExecutorService mdScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
-        Thread t = new Thread(r, "stranger-md-flush");
+        Thread t = new Thread(r, "stranger-csv-flush");
         t.setDaemon(true);
         return t;
     });
@@ -39,19 +37,24 @@ public class StrangerViewerService {
     });
 
     private static String jarDir;
-    private static volatile boolean mdScheduled = false;
     private static volatile String lastRoomId;
     private static volatile String lastAnchorName;
 
     static {
         initBase();
+        lastRoomId = roomKey();
+        lastAnchorName = safeFileName(PublicDataConf.ANCHOR_NAME);
+        loadFromCsv();
+        mdScheduler.scheduleWithFixedDelay(StrangerViewerService::flushToCsv, 60, 60, TimeUnit.SECONDS);
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            mdScheduler.shutdown();
+            flushToCsv();
+        }, "stranger-csv-shutdown"));
     }
 
     private static void initBase() {
         ApplicationHome home = new ApplicationHome(StrangerViewerService.class);
         jarDir = home.getSource().getParentFile().getAbsolutePath();
-        lastRoomId = roomKey();
-        lastAnchorName = safeFileName(PublicDataConf.ANCHOR_NAME);
     }
 
     private static String roomKey() {
@@ -64,28 +67,27 @@ public class StrangerViewerService {
         return s.replaceAll("[\\\\/:*?\"<>|]", "_");
     }
 
-    private static String mdFilePath() {
+    private static String currentCsvPath() {
         String name = safeFileName(PublicDataConf.ANCHOR_NAME);
-        return jarDir + File.separator + "Danmuji_log" + File.separator + roomKey() + "_" + name + "_7_陌生观众.md";
+        return jarDir + File.separator + "Danmuji_log" + File.separator + roomKey() + "_" + name + "_7_陌生观众.csv";
     }
 
+    /** Unified avatar directory — shared across all rooms to avoid duplicate downloads. */
     private static String avatarDir() {
-        String name = safeFileName(PublicDataConf.ANCHOR_NAME);
-        return jarDir + File.separator + "Danmuji_log" + File.separator + roomKey() + "_" + name + "_陌生观众头像";
+        return jarDir + File.separator + "Danmuji_log" + File.separator + "bibliLiveFace";
     }
 
-    public static void addRecord(long uid, String name, String face, int score, String scoreTypes ) {
+    public static void addRecord(long uid, String name, String face, int score, String scoreTypes) {
         if (uid <= 0) return;
 
-        // 检测房间切换
+        // Detect room switch — save old room data BEFORE clearing the map
         String rk = roomKey();
         if (!rk.equals(lastRoomId)) {
             synchronized (StrangerViewerService.class) {
                 if (!rk.equals(lastRoomId)) {
-                    recordMap.clear();
-                    dirtyUids.clear();
-                    lastRoomId = rk;
-                    lastAnchorName = safeFileName(PublicDataConf.ANCHOR_NAME);
+                    // flushToCsv() detects the switch internally and saves old room data,
+                    // clears the map, loads new room CSV, and updates lastRoomId/lastAnchorName.
+                    flushToCsv();
                 }
             }
         }
@@ -99,25 +101,15 @@ public class StrangerViewerService {
             blockedUids.add(uid);
         }
 
-        StrangerRecord record = new StrangerRecord(uid, name, face, score, scoreTypes, count, session );
+        StrangerRecord record = new StrangerRecord(uid, name, face, score, scoreTypes, count, session);
         recordMap.put(uid, record);
         dirtyUids.add(uid);
 
-        // Download avatar
+        // Download avatar to unified bibliLiveFace directory
         downloadAvatar(uid, face);
 
         // Push to frontend via WebSocket
         pushToFrontend(record);
-
-        // Start MD flush scheduler if not already started
-        if (!mdScheduled) {
-            synchronized (StrangerViewerService.class) {
-                if (!mdScheduled) {
-                    mdScheduler.scheduleWithFixedDelay(StrangerViewerService::flushToMd, 60, 60, TimeUnit.SECONDS);
-                    mdScheduled = true;
-                }
-            }
-        }
     }
 
     private static void downloadAvatar(long uid, String faceUrl) {
@@ -161,74 +153,213 @@ public class StrangerViewerService {
         }
     }
 
-    private static synchronized void flushToMd() {
+    // ==================== CSV persistence ====================
+
+    private static synchronized void flushToCsv() {
         String rk = roomKey();
         if (!rk.equals(lastRoomId)) {
-            // 房间切换：写出旧房间最终 MD
+            // Room switch: full-write old room data, then load new room
             String oldAnchor = lastAnchorName;
             if (oldAnchor != null) {
                 String oldPath = jarDir + File.separator + "Danmuji_log" + File.separator
-                        + lastRoomId + "_" + oldAnchor + "_7_陌生观众.md";
-                List<StrangerRecord> oldRecords = new ArrayList<>(recordMap.values());
-                oldRecords.sort(Comparator.comparingLong(a -> a.time));
-                writeMarkdown(oldPath, oldRecords);
+                        + lastRoomId + "_" + oldAnchor + "_7_陌生观众.csv";
+                doFlushFull(oldPath);
             }
             recordMap.clear();
             dirtyUids.clear();
             lastRoomId = rk;
             lastAnchorName = safeFileName(PublicDataConf.ANCHOR_NAME);
+            loadFromCsv(currentCsvPath());
             return;
         }
+        // Normal cycle: append dirty records
+        doFlushAppend(currentCsvPath());
+    }
+
+    /** Full overwrite — used on room switch. */
+    private static void doFlushFull(String path) {
+        List<StrangerRecord> records = new ArrayList<>(recordMap.values());
+        records.sort(Comparator.comparingLong(a -> a.time));
+        writeCsvFile(path, records, false);
+    }
+
+    /** Incremental append — only writes dirty records, deduplicating against existing file. */
+    private static void doFlushAppend(String path) {
         if (dirtyUids.isEmpty()) return;
         Set<Long> snapshot = new HashSet<>(dirtyUids);
         dirtyUids.clear();
-        List<StrangerRecord> allRecords = new ArrayList<>(recordMap.values());
-        allRecords.sort(Comparator.comparingLong(a -> a.time));
-        writeMarkdown(mdFilePath(), allRecords);
+        List<StrangerRecord> records = new ArrayList<>();
+        for (Long uid : snapshot) {
+            StrangerRecord r = recordMap.get(uid);
+            if (r != null) records.add(r);
+        }
+        if (records.isEmpty()) return;
+        records.sort(Comparator.comparingLong(a -> a.time));
+        writeCsvFile(path, records, true);
     }
 
-    private static void writeMarkdown(String path, List<StrangerRecord> records) {
-        String avatarSubDir = new File(avatarDir()).getName();
-        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(path), "UTF-8"))) {
-            writer.write("# 实时陌生观众看板");
-            writer.newLine();
-            writer.newLine();
-            writer.write("更新时间：" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-            writer.newLine();
-            writer.newLine();
-            writer.write("| 时间 | 头像 | id | 观众名 | 打分 | 次数 | 场次 |");
-            writer.newLine();
-            writer.write("|------|------|----|--------|------|------|------|");
-            writer.newLine();
+    private static void writeCsvFile(String path, List<StrangerRecord> records, boolean append) {
+        File file = new File(path);
+        if (!file.getParentFile().exists()) {
+            file.getParentFile().mkdirs();
+        }
+        File tmpFile = new File(path + ".tmp");
+        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tmpFile), "UTF-8"))) {
+            if (append && file.exists()) {
+                // Copy old file content to temp, skipping rows for UIDs being updated
+                Set<Long> appendUids = new HashSet<>();
+                for (StrangerRecord r : records) appendUids.add(r.uid);
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
+                    String line;
+                    boolean isHeader = true;
+                    while ((line = reader.readLine()) != null) {
+                        if (isHeader) {
+                            isHeader = false;
+                            writer.write(line);
+                            writer.newLine();
+                            continue;
+                        }
+                        List<String> fields = parseCsvLine(line);
+                        if (fields.size() >= 9) {
+                            try {
+                                long rowUid = Long.parseLong(fields.get(1));
+                                if (appendUids.contains(rowUid)) continue; // skip old row
+                            } catch (NumberFormatException ignored) {}
+                        }
+                        writer.write(line);
+                        writer.newLine();
+                    }
+                }
+            } else {
+                // Write BOM + header
+                writer.write('﻿');
+                writer.write("时间,id,观众名,头像URL,打分,签名,次数,场次,是否拉黑");
+                writer.newLine();
+            }
             for (StrangerRecord r : records) {
-                StringBuilder sb = new StringBuilder();
-                sb.append("| ");
-                sb.append(JodaTimeUtils.formatDateTime(r.time));
-                sb.append(" | ");
-                sb.append("![avatar](").append(avatarSubDir).append("/").append(r.uid).append(".jpg)");
-                sb.append(" | ");
-                sb.append(r.uid);
-                sb.append(" | ");
-                sb.append(escapeMd(r.name));
-                sb.append(" | ");
-                sb.append(r.score);
-                sb.append(" | ");
-                sb.append(r.count);
-                sb.append(" | ");
-                sb.append(r.session);
-                sb.append(" |");
-                writer.write(sb.toString());
+                writer.write(JodaTimeUtils.formatDateTime(r.time));
+                writer.write(',');
+                writer.write(String.valueOf(r.uid));
+                writer.write(',');
+                writer.write(escapeCsv(r.name));
+                writer.write(',');
+                writer.write(escapeCsv(r.face));
+                writer.write(',');
+                writer.write(String.valueOf(r.score));
+                writer.write(',');
+                writer.write(escapeCsv(r.scoreTypes));
+                writer.write(',');
+                writer.write(String.valueOf(r.count));
+                writer.write(',');
+                writer.write(String.valueOf(r.session));
+                writer.write(',');
+                writer.write(blockedUids.contains(r.uid) ? "是" : "否");
                 writer.newLine();
             }
         } catch (Exception e) {
-            LOGGER.error("writeMarkdown error", e);
+            LOGGER.error("write stranger CSV failed", e);
+            return;
+        }
+        try {
+            Files.move(tmpFile.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        } catch (IOException e) {
+            LOGGER.error("move stranger CSV failed", e);
         }
     }
 
-    private static String escapeMd(String s) {
-        if (s == null) return "";
-        return s.replace("|", "\\|").replace("\n", " ").replace("\r", "");
+    // ==================== CSV parsing (startup loading) ====================
+
+    private static void loadFromCsv() {
+        loadFromCsv(currentCsvPath());
     }
+
+    private static void loadFromCsv(String path) {
+        File file = new File(path);
+        if (!file.exists()) return;
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
+            String line = reader.readLine(); // skip header (may have BOM)
+            while ((line = reader.readLine()) != null) {
+                StrangerRecord record = parseRecord(line);
+                if (record != null) {
+                    if (record.session == 0) record.session = 1;
+                    recordMap.put(record.uid, record);
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.error("load stranger CSV failed", e);
+        }
+    }
+
+    private static StrangerRecord parseRecord(String line) {
+        if (line == null || line.isEmpty()) return null;
+        try {
+            List<String> fields = parseCsvLine(line);
+            if (fields.size() < 9) return null;
+            // 时间,id,观众名,头像URL,打分,签名,次数,场次,是否拉黑
+            String timeStr = fields.get(0);
+            long uid = Long.parseLong(fields.get(1));
+            String name = fields.get(2);
+            String face = fields.get(3);
+            int score = Integer.parseInt(fields.get(4));
+            String scoreTypes = fields.get(5);
+            int count = Integer.parseInt(fields.get(6));
+            int session = 0;
+            try { session = Integer.parseInt(fields.get(7)); } catch (NumberFormatException ignored) {}
+            boolean blocked = "是".equals(fields.get(8));
+
+            long time = JodaTimeUtils.parse(timeStr, "yyyy-MM-dd HH:mm:ss").getTime();
+            StrangerRecord record = new StrangerRecord(uid, name, face, score, scoreTypes, count, session);
+            record.time = time;
+            if (blocked) {
+                blockedUids.add(uid);
+            }
+            return record;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static List<String> parseCsvLine(String line) {
+        List<String> fields = new ArrayList<>();
+        StringBuilder sb = new StringBuilder();
+        boolean inQuotes = false;
+        for (int i = 0; i < line.length(); i++) {
+            char c = line.charAt(i);
+            if (inQuotes) {
+                if (c == '"') {
+                    if (i + 1 < line.length() && line.charAt(i + 1) == '"') {
+                        sb.append('"');
+                        i++;
+                    } else {
+                        inQuotes = false;
+                    }
+                } else {
+                    sb.append(c);
+                }
+            } else {
+                if (c == '"') {
+                    inQuotes = true;
+                } else if (c == ',') {
+                    fields.add(sb.toString());
+                    sb.setLength(0);
+                } else {
+                    sb.append(c);
+                }
+            }
+        }
+        fields.add(sb.toString());
+        return fields;
+    }
+
+    private static String escapeCsv(String s) {
+        if (s == null) return "";
+        if (s.contains(",") || s.contains("\"") || s.contains("\n")) {
+            return "\"" + s.replace("\"", "\"\"") + "\"";
+        }
+        return s;
+    }
+
+    // ==================== Public API ====================
 
     public static Map<String, Object> getPageData(int page, int pageSize, String search, String sortField, String sortOrder) {
         List<StrangerRecord> all = new ArrayList<>(recordMap.values());
@@ -349,7 +480,7 @@ public class StrangerViewerService {
         volatile int session;
         volatile long time;
 
-        StrangerRecord(long uid, String name, String face, int score, String scoreTypes, int count, int session ) {
+        StrangerRecord(long uid, String name, String face, int score, String scoreTypes, int count, int session) {
             this.uid = uid;
             this.name = name;
             this.face = face;

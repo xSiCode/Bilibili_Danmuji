@@ -82,7 +82,7 @@ public class ParseMessageThread extends Thread {
     );
 
     private static final ThreadLocal<SimpleDateFormat> TIME_FORMAT =
-            ThreadLocal.withInitial(() -> new SimpleDateFormat("HH:mm:ss"));
+            ThreadLocal.withInitial(() -> new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"));
     private static final ThreadLocal<SimpleDateFormat> DATE_TIME_FORMAT =
             ThreadLocal.withInitial(() -> new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"));
 

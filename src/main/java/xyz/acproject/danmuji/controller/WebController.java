@@ -3981,6 +3981,19 @@ public class WebController {
         }
     }
 
+    /** Serve local avatar files from the unified bibliLiveFace directory. */
+    @GetMapping(value = "/avatar/{uid}.jpg")
+    public void serveAvatar(@PathVariable long uid, HttpServletResponse response) throws IOException {
+        File avatarFile = new File(getDanmujiLogDir(), "bibliLiveFace/" + uid + ".jpg");
+        if (!avatarFile.exists()) {
+            response.sendError(HttpServletResponse.SC_NOT_FOUND);
+            return;
+        }
+        response.setContentType("image/jpeg");
+        response.setHeader("Cache-Control", "public, max-age=86400");
+        Files.copy(avatarFile.toPath(), response.getOutputStream());
+    }
+
     @Autowired
     public void setCheckService(SetService checkService) {
         this.checkService = checkService;

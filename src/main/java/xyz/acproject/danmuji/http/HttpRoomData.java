@@ -927,7 +927,7 @@ public class HttpRoomData {
     private static Pair<Integer, String> processVisibleFollowingsSync(long vmid, StringBuilder logSb, JSONObject follData) {
         JSONArray list = follData.getJSONArray("list");
 
-        int blackWhiteScore = 1; // 需求如此，关注可见则默认+1.
+        int blackWhiteScore = 0; 
         StringBuilder blackWhiteType = new StringBuilder(60);
         int blackCount = 0, whiteCount = 0;
         int followersNameSignScore = 0;
@@ -964,6 +964,9 @@ public class HttpRoomData {
 
         if (blackWhiteScore != 0) {
             blackWhiteType.append("[关注黑白分:").append(blackWhiteScore).append("]");
+        } else {
+            blackWhiteScore = 1;
+            blackWhiteType.append("[关注生活分:").append(blackWhiteScore).append("]");
         }
         logSb.append("关注黑白分:").append(blackWhiteScore).append("]");
 

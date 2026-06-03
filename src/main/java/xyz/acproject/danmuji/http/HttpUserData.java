@@ -32,7 +32,7 @@ import java.util.*;
 public class HttpUserData {
     private static Logger LOGGER = LogManager.getLogger(HttpUserData.class);
     private static final ThreadLocal<SimpleDateFormat> TIME_FORMAT =
-            ThreadLocal.withInitial(() -> new SimpleDateFormat("HH:mm:ss"));
+            ThreadLocal.withInitial(() -> new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"));
 
     /**
      * 初始化 获取用户信息+判断是否登陆状态

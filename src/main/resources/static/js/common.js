@@ -5085,7 +5085,14 @@ const method = {
                 $tr.append($('<td class="sv-td"></td>').text(r.time || ''));
                 // 头像 - hover 显示原图，点击跳转主页
                 var $avatarTd = $('<td class="sv-td"></td>');
-                var $avatar = $('<img src="' + (r.face || '') + '" style="width:32px;height:32px;border-radius:50%;cursor:pointer;" data-full-src="' + (r.face || '') + '">');
+                // 优先加载本地头像，失败时回退 Bilibili CDN
+                var $avatar = $('<img src="/avatar/' + r.uid + '.jpg" style="width:32px;height:32px;border-radius:50%;cursor:pointer;" data-full-src="' + (r.face || '') + '">');
+                $avatar.on('error', function () {
+                    if (this.src.indexOf('/avatar/') !== -1) {
+                        this.onerror = null;
+                        this.src = r.face || '';
+                    }
+                });
                 $avatar.on('mouseenter', function () {
                     var fullSrc = $(this).attr('data-full-src');
                     if (!fullSrc) return;
