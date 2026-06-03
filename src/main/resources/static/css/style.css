@@ -1626,6 +1626,7 @@ div .link-popup-panel .popup-content-ctnr p {
 #gft-charts-row canvas { max-height: 200px; }
 
 /* 陌生观众看板 */
+.sv-table-wrap { min-height: 520px; }
 #sv-data-table { table-layout: fixed; }
 #sv-data-table tr { height: 42px; }
 #sv-data-table .sv-td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1633,8 +1634,8 @@ div .link-popup-panel .popup-content-ctnr p {
 /* 列：1时间180 / 2头像42 / 3观众名180 / 4签名auto / 5打分50 / 6次数42 / 7场次42 / 8拉黑90 */
 #sv-data-table th:nth-child(1), #sv-data-table td:nth-child(1) { width: 180px; }
 #sv-data-table th:nth-child(2), #sv-data-table td:nth-child(2) { width: 42px; }
-#sv-data-table th:nth-child(3), #sv-data-table td:nth-child(3) { width: 180px; }
-#sv-data-table th:nth-child(4), #sv-data-table td:nth-child(4) {  }
+#sv-data-table th:nth-child(3), #sv-data-table td:nth-child(3) { width: 180px; text-align: left; }
+#sv-data-table th:nth-child(4), #sv-data-table td:nth-child(4) { text-align: left; }
 #sv-data-table th:nth-child(5), #sv-data-table td:nth-child(5) { width: 50px; }
 #sv-data-table th:nth-child(6), #sv-data-table td:nth-child(6) { width: 42px; }
 #sv-data-table th:nth-child(7), #sv-data-table td:nth-child(7) { width: 42px; }

@@ -718,7 +718,7 @@ public class HttpRoomData {
         logSb.append(TIME_FORMAT.get().format(System.currentTimeMillis()))
                 .append(" https://space.bilibili.com/").append(vmid)
                 .append(" ").append(uname).append(" ");
-        SelfTools.appendAt(logSb, 90, "⏩");
+        SelfTools.appendAt(logSb, 90, "");
 
         // Phase 1: 四路并发（关注列表双页同步请求）
         CompletableFuture<JSONObject> medalF = asyncHttpGetMedalWall(vmid);
@@ -732,11 +732,11 @@ public class HttpRoomData {
             JSONObject follJson2 = follF2.join();
             JSONObject cardJson = cardF.join();
 
-            // Phase 2a: 勋章墙
-            Pair<Integer, String> medalResult = processMedalWallSync(medalJson, logSb);
-
             // Phase 2b: 卡片
             CardProcessResult cardResult = processCardDataSync(cardJson, logSb);
+
+            // Phase 2a: 勋章墙
+            Pair<Integer, String> medalResult = processMedalWallSync(medalJson, logSb);
 
             // Phase 2c: 关注列表（双页合并）
             Pair<Integer, String> follResult;
@@ -766,8 +766,8 @@ public class HttpRoomData {
 
             // Phase 2d: 合并
             StringBuilder combinedType = new StringBuilder(60);
-            appendType(combinedType, medalResult.getRight());
             appendType(combinedType, cardResult.type);
+            appendType(combinedType, medalResult.getRight());
             appendType(combinedType, follResult.getRight());
 
             //黑白名单处理，pnScoreMap 直接命中
@@ -831,25 +831,25 @@ public class HttpRoomData {
      */
     private static Pair<Integer, String> processMedalWallSync(JSONObject medalData, StringBuilder logSb) {
         if (medalData == null || medalData.getIntValue("code") != 0) {
-            logSb.append("[勋章:API异常:0]");
+            logSb.append("  [勋章:API异常:0]");
             return Pair.of(0, "");
         }
         JSONObject data = medalData.getJSONObject("data");
         if (data == null || data.getIntValue("close_space_medal") == 1) {
-            logSb.append("[勋章:隐藏-1]");
+            logSb.append("  [勋章:隐藏-1]");
             return Pair.of(-1, "[灯牌隐藏-1]");
         }
         int count = data.getIntValue("count");
         JSONArray list = data.getJSONArray("list");
         if (count <= 0 || list == null || list.isEmpty()) {
-            logSb.append("[无勋章:0]");
+            logSb.append("  [无勋章:0]");
             return Pair.of(0, "");
         }
 
         int totalMedalScore = 0;
         int totalLifeMedalScore = 0;
 
-        logSb.append("[勋章数:").append(count);
+        logSb.append("  [勋章数:").append(count);
         for (int i = 0; i < list.size(); i++) {
             JSONObject item = list.getJSONObject(i);
             JSONObject medalInfo = item.getJSONObject("medal_info");
@@ -1087,7 +1087,7 @@ public class HttpRoomData {
             }
             logSb.append("[卡片:解析异常]");
         } else {
-            logSb.append("   [卡片api冷却:0]");
+            logSb.append(" [卡片api冷却:0]");
             // 全局熔断
             if (cookiePool.getTotalAvailableCount() == 0
                     && schedulercardJOColdWait.compareAndSet(false, true)) {

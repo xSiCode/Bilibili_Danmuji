@@ -13,7 +13,6 @@ import xyz.acproject.danmuji.utils.JodaTimeUtils;
 import xyz.acproject.danmuji.utils.SpringUtils;
 
 import java.io.*;
-import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
@@ -30,15 +29,10 @@ public class StrangerViewerService {
         t.setDaemon(true);
         return t;
     });
-    private static final ScheduledExecutorService avatarExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
-        Thread t = new Thread(r, "stranger-avatar-dl");
-        t.setDaemon(true);
-        return t;
-    });
-
     private static String jarDir;
     private static volatile String lastRoomId;
     private static volatile String lastAnchorName;
+    private static volatile boolean viewingExternalFile = false;
 
     static {
         initBase();
@@ -72,30 +66,6 @@ public class StrangerViewerService {
         return jarDir + File.separator + "Danmuji_log" + File.separator + roomKey() + "_" + name + "_7_陌生观众.csv";
     }
 
-    /** Build the sharded file path for a uid's avatar within the base directory.
-     *  Uses uid % 100 subdirectories to avoid single-directory bottlenecks at scale. */
-    private static String avatarPath(long uid) {
-        long shard = uid % 100;
-        return avatarDir() + File.separator + shard + File.separator + uid + ".jpg";
-    }
-
-    /** Resolve the base avatar storage directory (without shard subdirectory). */
-    public static String resolveAvatarDir() {
-        String custom = PublicDataConf.centerSetConf != null
-                ? PublicDataConf.centerSetConf.getAvatar_dir() : null;
-        if (custom != null && !custom.trim().isEmpty()) {
-            File f = new File(custom.trim());
-            if (f.isAbsolute()) return f.getAbsolutePath();
-            return new File(jarDir, custom.trim()).getAbsolutePath();
-        }
-        return jarDir + File.separator + "Danmuji_log" + File.separator + "bibliLiveFace";
-    }
-
-    /** Unified avatar directory — shared across all rooms to avoid duplicate downloads. */
-    private static String avatarDir() {
-        return resolveAvatarDir();
-    }
-
     public static void addRecord(long uid, String name, String face, int score, String scoreTypes) {
         if (uid <= 0) return;
 
@@ -104,12 +74,24 @@ public class StrangerViewerService {
         if (!rk.equals(lastRoomId)) {
             synchronized (StrangerViewerService.class) {
                 if (!rk.equals(lastRoomId)) {
-                    // flushToCsv() detects the switch internally and saves old room data,
-                    // clears the map, loads new room CSV, and updates lastRoomId/lastAnchorName.
-                    flushToCsv();
+                    if (viewingExternalFile) {
+                        // External file view: discard external data, switch to live
+                        recordMap.clear();
+                        dirtyUids.clear();
+                        blockedUids.clear();
+                        lastRoomId = rk;
+                        lastAnchorName = safeFileName(PublicDataConf.ANCHOR_NAME);
+                        loadFromCsv(currentCsvPath());
+                    } else {
+                        // flushToCsv() handles save + clear + load + lastRoomId/lastAnchorName update
+                        flushToCsv();
+                    }
+                    viewingExternalFile = false;
                 }
             }
         }
+        // Don't pollute historical file view with live data
+        if (viewingExternalFile) return;
 
         int[] cv = VisitorCountTools.getCountAndSession(uid);
         int count = cv[0];
@@ -124,51 +106,8 @@ public class StrangerViewerService {
         recordMap.put(uid, record);
         dirtyUids.add(uid);
 
-        // Download avatar to unified bibliLiveFace directory
-        downloadAvatar(uid, face);
-
         // Push to frontend via WebSocket
         pushToFrontend(record);
-    }
-
-    private static void downloadAvatar(long uid, String faceUrl) {
-        if (faceUrl == null || faceUrl.isEmpty()) return;
-
-        // Detect Bilibili default "noface" avatar — download once as shared fallback, skip per-user
-        if (faceUrl.contains("noface.jpg")) {
-            File nofaceFile = new File(avatarDir(), ".noface.jpg");
-            if (!nofaceFile.exists()) {
-                File parentDir = nofaceFile.getParentFile();
-                if (!parentDir.exists()) parentDir.mkdirs();
-                avatarExecutor.execute(() -> {
-                    try {
-                        URL url = new URL(faceUrl);
-                        try (InputStream in = url.openStream()) {
-                            Files.copy(in, nofaceFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                        }
-                    } catch (Exception e) {
-                        LOGGER.debug("Failed to download noface avatar: {}", e.getMessage());
-                    }
-                });
-            }
-            return;
-        }
-
-        File targetFile = new File(avatarPath(uid));
-        File parentDir = targetFile.getParentFile();
-        if (!parentDir.exists()) parentDir.mkdirs();
-        if (targetFile.exists()) return; // already downloaded
-
-        avatarExecutor.execute(() -> {
-            try {
-                URL url = new URL(faceUrl);
-                try (InputStream in = url.openStream()) {
-                    Files.copy(in, targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                }
-            } catch (Exception e) {
-                LOGGER.debug("Failed to download avatar for uid={}: {}", uid, e.getMessage());
-            }
-        });
     }
 
     private static void pushToFrontend(StrangerRecord record) {
@@ -399,7 +338,31 @@ public class StrangerViewerService {
 
     // ==================== Public API ====================
 
-    public static Map<String, Object> getPageData(int page, int pageSize, String search, String sortField, String sortOrder) {
+    /** Load data from a CSV file into memory, then return paged results.
+     *  If filePath matches current room CSV or is null/empty, reads from the live in-memory recordMap.
+     *  If filePath is a different CSV, saves current data first, then loads the external file
+     *  and sets viewingExternalFile flag to prevent live data from polluting the historical view. */
+    public static Map<String, Object> loadCsvAndGetPage(String filePath, int page, int pageSize,
+            String search, String sortField, String sortOrder, String startTime, String endTime) {
+        boolean isExternal = filePath != null && !filePath.isEmpty()
+                && !filePath.equals(currentCsvPath());
+        if (isExternal) {
+            synchronized (StrangerViewerService.class) {
+                flushToCsv(); // save current live data first
+                recordMap.clear();
+                blockedUids.clear();
+                dirtyUids.clear();
+                loadFromCsv(filePath);
+                viewingExternalFile = true;
+            }
+        } else {
+            viewingExternalFile = false;
+        }
+        return getPageData(page, pageSize, search, sortField, sortOrder, startTime, endTime);
+    }
+
+    public static Map<String, Object> getPageData(int page, int pageSize, String search,
+            String sortField, String sortOrder, String startTime, String endTime) {
         List<StrangerRecord> all = new ArrayList<>(recordMap.values());
 
         // Filter by search first (reduce sort cost)
@@ -414,6 +377,14 @@ public class StrangerViewerService {
                 }
             }
             all = filtered;
+        }
+
+        // Filter by time range
+        if (startTime != null && !startTime.isEmpty()) {
+            all.removeIf(r -> JodaTimeUtils.formatDateTime(r.time).compareTo(startTime) < 0);
+        }
+        if (endTime != null && !endTime.isEmpty()) {
+            all.removeIf(r -> JodaTimeUtils.formatDateTime(r.time).compareTo(endTime) > 0);
         }
 
         // Sort filtered dataset
@@ -463,6 +434,79 @@ public class StrangerViewerService {
         result.put("totalPages", totalPages);
         result.put("currentPage", totalPages > 0 ? page : 0);
         return result;
+    }
+
+    /** Export filtered records from memory as CSV string (BOM + header + rows). */
+    public static String exportCsv(String startTime, String endTime, String search) {
+        List<StrangerRecord> all = new ArrayList<>(recordMap.values());
+
+        if (search != null && !search.isEmpty()) {
+            String lower = search.toLowerCase();
+            all.removeIf(r -> !r.name.toLowerCase().contains(lower)
+                    && !r.scoreTypes.toLowerCase().contains(lower)
+                    && !String.valueOf(r.uid).contains(lower));
+        }
+        if (startTime != null && !startTime.isEmpty()) {
+            all.removeIf(r -> JodaTimeUtils.formatDateTime(r.time).compareTo(startTime) < 0);
+        }
+        if (endTime != null && !endTime.isEmpty()) {
+            all.removeIf(r -> JodaTimeUtils.formatDateTime(r.time).compareTo(endTime) > 0);
+        }
+        all.sort(Comparator.comparingLong(a -> a.time));
+
+        StringBuilder sb = new StringBuilder();
+        sb.append('﻿'); // BOM
+        sb.append("时间,id,观众名,头像URL,打分,签名,次数,场次,是否拉黑\n");
+        for (StrangerRecord r : all) {
+            sb.append(JodaTimeUtils.formatDateTime(r.time)).append(',');
+            sb.append(r.uid).append(',');
+            sb.append(escapeCsv(r.name)).append(',');
+            sb.append(escapeCsv(r.face)).append(',');
+            sb.append(r.score).append(',');
+            sb.append(escapeCsv(r.scoreTypes)).append(',');
+            sb.append(r.count).append(',');
+            sb.append(r.session).append(',');
+            sb.append(blockedUids.contains(r.uid) ? "是" : "否").append('\n');
+        }
+        return sb.toString();
+    }
+
+    /** Import records from a CSV string into memory, merging by uid. Returns count of imported rows. */
+    public static int importCsv(String csvContent) {
+        String[] lines = csvContent.split("\n");
+        int imported = 0;
+        for (String line : lines) {
+            String trimmed = line.trim();
+            if (trimmed.isEmpty() || trimmed.startsWith("时间,") || trimmed.startsWith("﻿时间,")) continue;
+            try {
+                List<String> fields = parseCsvLine(trimmed);
+                if (fields.size() < 9) continue;
+                long uid = Long.parseLong(fields.get(1));
+                String name = fields.get(2);
+                String face = fields.get(3);
+                int score = Integer.parseInt(fields.get(4));
+                String scoreTypes = fields.get(5);
+                int count = Integer.parseInt(fields.get(6));
+                int session = Integer.parseInt(fields.get(7));
+                boolean blocked = "是".equals(fields.get(8));
+                long time = JodaTimeUtils.parse(fields.get(0), "yyyy-MM-dd HH:mm:ss").getTime();
+
+                StrangerRecord existing = recordMap.get(uid);
+                if (existing == null || time > existing.time) {
+                    StrangerRecord record = new StrangerRecord(uid, name, face, score, scoreTypes, count, session);
+                    record.time = time;
+                    recordMap.put(uid, record);
+                }
+                if (blocked) blockedUids.add(uid);
+                else blockedUids.remove(uid);
+                dirtyUids.add(uid);
+                imported++;
+            } catch (Exception ignored) {}
+        }
+        if (imported > 0) {
+            doFlushFull(currentCsvPath());
+        }
+        return imported;
     }
 
     public static boolean toggleBlock(long uid) {

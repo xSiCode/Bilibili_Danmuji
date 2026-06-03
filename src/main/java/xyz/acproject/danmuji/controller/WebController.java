@@ -3953,15 +3953,71 @@ public class WebController {
     // ========== 实时陌生观众看板 ==========
 
     @ResponseBody
+    @GetMapping(value = "/listStrangerCsvFiles")
+    public Response<?> listStrangerCsvFiles(HttpServletRequest req) {
+        try {
+            File danmujiLogDir = getDanmujiLogDir();
+            List<Map<String, String>> fileList = new ArrayList<>();
+            if (danmujiLogDir.exists() && danmujiLogDir.isDirectory()) {
+                File[] files = danmujiLogDir.listFiles((dir, name) -> name.endsWith("_7_陌生观众.csv"));
+                if (files != null) {
+                    String currentRoomId = PublicDataConf.ROOMID != null ? PublicDataConf.ROOMID.toString() : "";
+                    String currentAnchor = safeFileName(PublicDataConf.ANCHOR_NAME);
+                    String currentPattern = currentRoomId + "_" + currentAnchor + "_7_陌生观众.csv";
+                    boolean currentSeen = false;
+                    for (File f : files) {
+                        Map<String, String> item = new LinkedHashMap<>();
+                        item.put("fileName", f.getName());
+                        item.put("filePath", f.getAbsolutePath());
+                        String name = f.getName();
+                        int idx1 = name.indexOf('_');
+                        int idx2 = name.indexOf('_', idx1 + 1);
+                        if (idx1 > 0 && idx2 > idx1) {
+                            item.put("roomId", name.substring(0, idx1));
+                            item.put("anchorName", name.substring(idx1 + 1, idx2));
+                        }
+                        if (f.getName().equals(currentPattern)) currentSeen = true;
+                        item.put("isCurrent", f.getName().equals(currentPattern) ? "true" : "false");
+                        fileList.add(item);
+                    }
+                    // 始终把当前直播间 CSV 放在列表最前面（即使文件尚未创建）
+                    if (!currentSeen && !currentRoomId.isEmpty() && !"unknown".equals(currentAnchor)) {
+                        Map<String, String> cur = new LinkedHashMap<>();
+                        cur.put("fileName", currentPattern);
+                        cur.put("filePath", new File(danmujiLogDir, currentPattern).getAbsolutePath());
+                        cur.put("roomId", currentRoomId);
+                        cur.put("anchorName", PublicDataConf.ANCHOR_NAME != null ? PublicDataConf.ANCHOR_NAME : "");
+                        cur.put("isCurrent", "true");
+                        fileList.add(cur);
+                    }
+                }
+            }
+            fileList.sort((a, b) -> {
+                if ("true".equals(a.get("isCurrent"))) return -1;
+                if ("true".equals(b.get("isCurrent"))) return 1;
+                return a.get("fileName").compareTo(b.get("fileName"));
+            });
+            return Response.success(fileList, req);
+        } catch (Exception e) {
+            LOGGER.error("listStrangerCsvFiles error", e);
+            return Response.success(Collections.emptyList(), req);
+        }
+    }
+
+    @ResponseBody
     @GetMapping(value = "/strangerViewerData")
     public Response<?> strangerViewerData(@RequestParam(defaultValue = "1") int page,
                                           @RequestParam(defaultValue = "10") int pageSize,
                                           @RequestParam(required = false) String search,
                                           @RequestParam(defaultValue = "time") String sortField,
                                           @RequestParam(defaultValue = "asc") String sortOrder,
+                                          @RequestParam(required = false) String startTime,
+                                          @RequestParam(required = false) String endTime,
+                                          @RequestParam(required = false) String filePath,
                                           HttpServletRequest req) {
         try {
-            Map<String, Object> data = xyz.acproject.danmuji.service.StrangerViewerService.getPageData(page, pageSize, search, sortField, sortOrder);
+            Map<String, Object> data = xyz.acproject.danmuji.service.StrangerViewerService
+                    .loadCsvAndGetPage(filePath, page, pageSize, search, sortField, sortOrder, startTime, endTime);
             return Response.success(data, req);
         } catch (Exception e) {
             LOGGER.error("strangerViewerData error", e);
@@ -3981,27 +4037,41 @@ public class WebController {
         }
     }
 
-    /** Serve local avatar files from the unified bibliLiveFace directory. */
-    @GetMapping(value = "/avatar/{uid}.jpg")
-    public void serveAvatar(@PathVariable long uid, HttpServletResponse response) throws IOException {
-        long shard = uid % 100;
-        String baseDir = xyz.acproject.danmuji.service.StrangerViewerService.resolveAvatarDir();
-        File avatarFile = new File(baseDir, shard + File.separator + uid + ".jpg");
-        if (!avatarFile.exists()) {
-            // Fallback to shared Bilibili default "noface" avatar
-            File nofaceFile = new File(baseDir, ".noface.jpg");
-            if (nofaceFile.exists()) {
-                response.setContentType("image/jpeg");
-                response.setHeader("Cache-Control", "public, max-age=86400");
-                Files.copy(nofaceFile.toPath(), response.getOutputStream());
-                return;
+    /** Export stranger viewer data from memory as CSV download. */
+    @GetMapping(value = "/strangerViewerExport")
+    public void strangerViewerExport(@RequestParam(required = false) String startTime,
+                                     @RequestParam(required = false) String endTime,
+                                     @RequestParam(required = false) String search,
+                                     HttpServletResponse response) throws Exception {
+        String csv = xyz.acproject.danmuji.service.StrangerViewerService.exportCsv(startTime, endTime, search);
+        String filename = (PublicDataConf.ROOMID != null ? PublicDataConf.ROOMID.toString() : "unknown")
+                + "_" + safeFileName(PublicDataConf.ANCHOR_NAME)
+                + "_陌生观众导出_" + java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + ".csv";
+        response.setCharacterEncoding("UTF-8");
+        response.setContentType("application/octet-stream");
+        response.addHeader("Content-Disposition", "attachment;filename=" + URLEncoder.encode(filename, "UTF-8"));
+        response.getOutputStream().write(csv.getBytes("UTF-8"));
+        response.getOutputStream().flush();
+    }
+
+    /** Import stranger viewer CSV and merge into memory. */
+    @ResponseBody
+    @PostMapping(value = "/strangerViewerImport")
+    public Response<?> strangerViewerImport(@RequestParam("file") MultipartFile file, HttpServletRequest req) {
+        try {
+            String originalFilename = file.getOriginalFilename();
+            if (originalFilename == null || !originalFilename.endsWith(".csv")) {
+                return Response.success(2, req);
             }
-            response.sendError(HttpServletResponse.SC_NOT_FOUND);
-            return;
+            String csvContent = new BufferedReader(new InputStreamReader(file.getInputStream(), "UTF-8"))
+                    .lines().collect(Collectors.joining("\n"));
+            int imported = xyz.acproject.danmuji.service.StrangerViewerService.importCsv(csvContent);
+            LOGGER.info("strangerViewerImport: imported {} records from {}", imported, originalFilename);
+            return Response.success(imported, req);
+        } catch (Exception e) {
+            LOGGER.error("strangerViewerImport error", e);
+            return Response.success(0, req);
         }
-        response.setContentType("image/jpeg");
-        response.setHeader("Cache-Control", "public, max-age=86400");
-        Files.copy(avatarFile.toPath(), response.getOutputStream());
     }
 
     @Autowired

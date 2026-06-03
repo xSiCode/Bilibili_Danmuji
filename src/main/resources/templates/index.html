@@ -2281,14 +2281,35 @@
                                     <div class="input-group mb-1"><h5>实时陌生观众看板</h5></div>
                                     <div class="row g-2 mb-2 align-items-end">
                                         <div class="col-auto">
-                                            <input type="text" id="sv-search-input" class="form-control form-control-sm" style="width:200px;" placeholder="搜索观众名/UID/类型...">
+                                            <label class="form-label mb-0" style="font-size:12px;">CSV文件</label>
+                                            <select id="sv-csv-select" class="form-select form-select-sm" style="width:260px;">
+                                                <option value="">-- 选择文件 --</option>
+                                            </select>
                                         </div>
                                         <div class="col-auto">
-                                            <button id="sv-btn-search" class="btn btn-sm btn-primary">搜索</button>
+                                            <label class="form-label mb-0" style="font-size:12px;">开始时间</label>
+                                            <input type="date" id="sv-filter-start" class="form-control form-control-sm" style="width:145px;">
+                                        </div>
+                                        <div class="col-auto">
+                                            <label class="form-label mb-0" style="font-size:12px;">结束时间</label>
+                                            <input type="date" id="sv-filter-end" class="form-control form-control-sm" style="width:145px;">
+                                        </div>
+                                        <div class="col-auto">
+                                            <label class="form-label mb-0" style="font-size:12px;">几小时前</label>
+                                            <input type="number" id="sv-filter-hours" class="form-control form-control-sm" style="width:70px;" placeholder="小时" min="0" value="3">
+                                        </div>
+                                        <div class="col-auto">
+                                            <button id="sv-btn-apply" class="btn btn-sm btn-primary">筛选</button>
                                             <button id="sv-btn-reset" class="btn btn-sm btn-outline-secondary ms-1">重置</button>
+                                        </div>
+                                        <div class="col-auto">
+                                            <input type="text" id="sv-search-input" class="form-control form-control-sm" style="width:160px;" placeholder="搜索...">
                                         </div>
                                         <div class="col-auto ms-auto">
                                             <span class="text-muted" style="font-size:12px;" id="sv-total-info"></span>
+                                            <button id="sv-btn-export" class="btn btn-sm btn-success ms-2">导出CSV</button>
+                                            <button id="sv-btn-import" class="btn btn-sm btn-outline-warning ms-1" onclick="document.getElementById('sv-import-file').click()">导入CSV</button>
+                                            <input type="file" id="sv-import-file" accept=".csv" style="display:none;">
                                         </div>
                                     </div>
                                     <div class="sv-table-wrap">

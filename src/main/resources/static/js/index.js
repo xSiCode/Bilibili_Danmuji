@@ -145,7 +145,10 @@ let svState = {
     totalRecords: 0,
     defaultToLast: true,
     sortField: 'time',
-    sortOrder: 'asc'
+    sortOrder: 'asc',
+    startTime: '',
+    endTime: '',
+    currentFile: ''
 };
 
 $(function () {
@@ -4977,32 +4980,99 @@ const method = {
             method.loadSvData();
         });
 
-        // Search
-        $('#sv-btn-search').on('click', function () {
+        // File selector
+        $('#sv-csv-select').on('change', function () {
+            svState.currentFile = $(this).val();
+            svState.startTime = ''; svState.endTime = ''; svState.search = '';
+            $('#sv-filter-hours').val('3');
+            $('#sv-filter-start').val(''); $('#sv-filter-end').val('');
+            $('#sv-search-input').val('');
+            svState.page = 1;
+            svState.defaultToLast = true;
+            if (svState.currentFile) method.loadSvData();
+        });
+
+        // Apply: time filter + search (matching management page pattern)
+        $('#sv-btn-apply').on('click', function () {
+            applyHoursFilter(svState, '#sv');
             svState.search = $('#sv-search-input').val().trim();
             svState.page = 1;
             svState.defaultToLast = false;
             method.loadSvData();
         });
         $('#sv-btn-reset').on('click', function () {
+            $('#sv-filter-hours').val('3');
+            $('#sv-filter-start').val('');
+            $('#sv-filter-end').val('');
             $('#sv-search-input').val('');
+            svState.startTime = '';
+            svState.endTime = '';
             svState.search = '';
             svState.page = 1;
             svState.defaultToLast = true;
             method.loadSvData();
         });
         $('#sv-search-input').on('keypress', function (e) {
-            if (e.which === 13) $('#sv-btn-search').click();
+            if (e.which === 13) $('#sv-btn-apply').click();
+        });
+
+        // Export CSV
+        $('#sv-btn-export').on('click', function () {
+            var url = '/strangerViewerExport?';
+            if (svState.startTime) url += 'startTime=' + encodeURIComponent(svState.startTime) + '&';
+            if (svState.endTime) url += 'endTime=' + encodeURIComponent(svState.endTime) + '&';
+            if (svState.search) url += 'search=' + encodeURIComponent(svState.search);
+            window.open(url, '_blank');
+        });
+
+        // Import CSV
+        $('#sv-import-file').on('change', function () {
+            var file = this.files[0];
+            if (!file) return;
+            var fd = new FormData();
+            fd.append('file', file);
+            $.ajax({ url: '/strangerViewerImport', type: 'POST', data: fd, processData: false, contentType: false,
+                success: function (resp) {
+                    if (resp && resp.code == "200") {
+                        alert('导入完成：' + (resp.result || 0) + ' 条记录');
+                        svState.page = 1;
+                        method.loadSvData();
+                    }
+                }
+            });
+            $(this).val('');
         });
 
         // Pagination
         $('#sv-first-btn').on('click', function () { svState.defaultToLast = false; method._svGoPage(1); });
         $('#sv-prev-btn').on('click', function () { svState.defaultToLast = false; method._svGoPage(svState.page - 1); });
         $('#sv-next-btn').on('click', function () { svState.defaultToLast = false; method._svGoPage(svState.page + 1); });
-        $('#sv-last-btn').on('click', function () { svState.defaultToLast = false; method._svGoPage(svState.totalPages); });
+        $('#sv-last-btn').on('click', function () { svState.defaultToLast = true; method._svGoPage(svState.totalPages); });
         $('#sv-btn-go').on('click', function () {
             var p = parseInt($('#sv-page-jump').val());
             if (p >= 1 && p <= svState.totalPages) { svState.defaultToLast = false; method._svGoPage(p); }
+        });
+    },
+
+    loadSvFileList: function () {
+        $.get('/listStrangerCsvFiles', function (resp) {
+            if (resp && resp.code == "200" && resp.result) {
+                var $sel = $('#sv-csv-select');
+                $sel.find('option[value!=""]').remove();
+                var files = resp.result;
+                for (var i = 0; i < files.length; i++) {
+                    var f = files[i];
+                    var label = (f.anchorName || '?') + ' - ' + f.fileName;
+                    $sel.append('<option value="' + f.filePath + '">' + label + '</option>');
+                }
+                var firstOpt = $sel.find('option[value!=""]').first();
+                if (firstOpt.length) {
+                    $sel.val(firstOpt.val());
+                    svState.currentFile = firstOpt.val();
+                    svState.defaultToLast = true;
+                    method.loadSvData();
+                }
+            }
         });
     },
 
@@ -5010,12 +5080,23 @@ const method = {
         method._initSv();
         var params = { page: svState.page, pageSize: svState.pageSize, sortField: svState.sortField, sortOrder: svState.sortOrder };
         if (svState.search) params.search = svState.search;
+        if (svState.startTime) params.startTime = svState.startTime;
+        if (svState.endTime) params.endTime = svState.endTime;
+        if (svState.currentFile) params.filePath = svState.currentFile;
         $.get('/strangerViewerData', params, function (resp) {
             if (resp && resp.code == "200" && resp.result) {
                 svState.records = resp.result.rows || [];
                 svState.totalRecords = resp.result.total || 0;
                 svState.totalPages = resp.result.totalPages || 0;
-                if (svState.defaultToLast && svState.totalPages > 0 && svState.search === '' && svState.page !== svState.totalPages) {
+                // 首次加载时初始化日期显示（不触发筛选，仅填充默认值）
+                if (!svState.startTime && !svState.endTime) {
+                    var now = new Date();
+                    var pad = function(n) { return ('0' + n).slice(-2); };
+                    var today = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
+                    if (!$('#sv-filter-start').val()) $('#sv-filter-start').val(today);
+                    if (!$('#sv-filter-end').val()) $('#sv-filter-end').val(today);
+                }
+                if (svState.defaultToLast && svState.totalPages > 0 && svState.search === '' && !svState.startTime && !svState.endTime && svState.page !== svState.totalPages) {
                     svState.page = svState.totalPages;
                     method.loadSvData();
                     return;
@@ -5026,19 +5107,22 @@ const method = {
     },
 
     _renderSvTable: function () {
+        var $table = $('#sv-data-table');
+        $table.css('visibility', 'hidden');
         var $tbody = $('#sv-table-body');
         $tbody.empty();
         var records = svState.records;
 
         if (!records || records.length === 0) {
-            $('#sv-data-table').hide();
+            $table.hide();
             $('#sv-pagination').hide();
             $('#sv-empty-msg').show();
             $('#sv-total-info').text('');
+            $table.css('visibility', '');
             return;
         }
 
-        $('#sv-data-table').show();
+        $table.show();
         $('#sv-pagination').show();
         $('#sv-empty-msg').hide();
         $('#sv-total-info').text('共 ' + svState.totalRecords + ' 条记录');
@@ -5061,13 +5145,7 @@ const method = {
                 // 头像 - hover 显示原图，点击跳转主页
                 var $avatarTd = $('<td class="sv-td"></td>');
                 // 优先加载本地头像，失败时回退 Bilibili CDN
-                var $avatar = $('<img src="/avatar/' + r.uid + '.jpg" style="width:32px;height:32px;border-radius:50%;cursor:pointer;" data-full-src="' + (r.face || '') + '">');
-                $avatar.on('error', function () {
-                    if (this.src.indexOf('/avatar/') !== -1) {
-                        this.onerror = null;
-                        this.src = r.face || '';
-                    }
-                });
+                var $avatar = $('<img src="' + (r.face || '') + '" style="width:32px;height:32px;border-radius:50%;cursor:pointer;" data-full-src="' + (r.face || '') + '">');
                 $avatar.on('mouseenter', function () {
                     var fullSrc = $(this).attr('data-full-src');
                     if (!fullSrc) return;
@@ -5120,6 +5198,7 @@ const method = {
         $('#sv-first-btn, #sv-prev-btn').prop('disabled', svState.page <= 1);
         $('#sv-next-btn, #sv-last-btn').prop('disabled', svState.page >= svState.totalPages);
         $('#sv-page-jump').attr('max', svState.totalPages);
+        $table.css('visibility', '');
     },
 
     _svGoPage: function (p) {
@@ -5291,10 +5370,15 @@ function switchTab(tabId, el) {
             method.loadGftCsvFileList();
         }
     }
-    // 切换到陌生观众看板时加载数据
+    // 切换到陌生观众看板时加载CSV文件列表
     if (tabId === 'stranger-board') {
-        method._initSv();
-        method.loadSvData();
+        svState.defaultToLast = true;
+        if (!$('#sv-csv-select option[value!=""]').length) {
+            method.loadSvFileList();
+        } else {
+            method._initSv();
+            method.loadSvData();
+        }
     }
     // 管理页面自动刷新（每60秒）
     if (window._mgrRefreshTimer) { clearInterval(window._mgrRefreshTimer); window._mgrRefreshTimer = null; }
