@@ -2241,6 +2241,7 @@ const method = {
             $(".is_watcher_log").prop('checked', set.is_watcher_log);
             $(".is_footprint_record").prop('checked', set.is_footprint_record);
             $(".connect-docket").val(set.connect_docket);
+            $(".avatar-dir").val(set.avatar_dir || "");
             $(".thankgift_is_open").prop('checked', set.thank_gift.is_open);
             $(".thankgift_is_live_open").prop('checked',
                 set.thank_gift.is_live_open);

@@ -9,6 +9,7 @@ registerPageSave('settings', function(set) {
     set.log = $(".is_log").is(':checked');
     set.is_watcher_log = $(".is_watcher_log").is(':checked');
     set.connect_docket = $(".connect-docket").val();
+    set.avatar_dir = $(".avatar-dir").val().trim();
 
     // 显示设置 - 弹幕
     set.is_barrage = $(".is_barrage").is(':checked');

@@ -72,9 +72,28 @@ public class StrangerViewerService {
         return jarDir + File.separator + "Danmuji_log" + File.separator + roomKey() + "_" + name + "_7_陌生观众.csv";
     }
 
+    /** Build the sharded file path for a uid's avatar within the base directory.
+     *  Uses uid % 100 subdirectories to avoid single-directory bottlenecks at scale. */
+    private static String avatarPath(long uid) {
+        long shard = uid % 100;
+        return avatarDir() + File.separator + shard + File.separator + uid + ".jpg";
+    }
+
+    /** Resolve the base avatar storage directory (without shard subdirectory). */
+    public static String resolveAvatarDir() {
+        String custom = PublicDataConf.centerSetConf != null
+                ? PublicDataConf.centerSetConf.getAvatar_dir() : null;
+        if (custom != null && !custom.trim().isEmpty()) {
+            File f = new File(custom.trim());
+            if (f.isAbsolute()) return f.getAbsolutePath();
+            return new File(jarDir, custom.trim()).getAbsolutePath();
+        }
+        return jarDir + File.separator + "Danmuji_log" + File.separator + "bibliLiveFace";
+    }
+
     /** Unified avatar directory — shared across all rooms to avoid duplicate downloads. */
     private static String avatarDir() {
-        return jarDir + File.separator + "Danmuji_log" + File.separator + "bibliLiveFace";
+        return resolveAvatarDir();
     }
 
     public static void addRecord(long uid, String name, String face, int score, String scoreTypes) {
@@ -114,11 +133,30 @@ public class StrangerViewerService {
 
     private static void downloadAvatar(long uid, String faceUrl) {
         if (faceUrl == null || faceUrl.isEmpty()) return;
-        String dir = avatarDir();
-        File dirFile = new File(dir);
-        if (!dirFile.exists()) dirFile.mkdirs();
 
-        File targetFile = new File(dirFile, uid + ".jpg");
+        // Detect Bilibili default "noface" avatar — download once as shared fallback, skip per-user
+        if (faceUrl.contains("noface.jpg")) {
+            File nofaceFile = new File(avatarDir(), ".noface.jpg");
+            if (!nofaceFile.exists()) {
+                File parentDir = nofaceFile.getParentFile();
+                if (!parentDir.exists()) parentDir.mkdirs();
+                avatarExecutor.execute(() -> {
+                    try {
+                        URL url = new URL(faceUrl);
+                        try (InputStream in = url.openStream()) {
+                            Files.copy(in, nofaceFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                        }
+                    } catch (Exception e) {
+                        LOGGER.debug("Failed to download noface avatar: {}", e.getMessage());
+                    }
+                });
+            }
+            return;
+        }
+
+        File targetFile = new File(avatarPath(uid));
+        File parentDir = targetFile.getParentFile();
+        if (!parentDir.exists()) parentDir.mkdirs();
         if (targetFile.exists()) return; // already downloaded
 
         avatarExecutor.execute(() -> {
@@ -433,6 +471,7 @@ public class StrangerViewerService {
             try {
                 HttpUserData.httpPostDeleteBadList(uid);
                 blockedUids.remove(uid);
+                dirtyUids.add(uid);
                 pushBlockUpdate(uid, false);
                 return false;
             } catch (Exception e) {
@@ -444,6 +483,7 @@ public class StrangerViewerService {
             try {
                 HttpUserData.httpPostAddBadList(uid);
                 blockedUids.add(uid);
+                dirtyUids.add(uid);
                 pushBlockUpdate(uid, true);
                 return true;
             } catch (Exception e) {

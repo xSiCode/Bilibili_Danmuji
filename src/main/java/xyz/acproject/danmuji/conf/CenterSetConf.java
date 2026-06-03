@@ -137,6 +137,9 @@ public class CenterSetConf implements Serializable {
     //关键词检测姬
     @JSONField(name="key_word")
     private KeyWordSetConf key_word;
+    //头像存储目录——为空则使用默认路径 Danmuji_log/bibliLiveFace，支持绝对路径或相对路径
+    @JSONField(name = "avatar_dir")
+    private String avatar_dir = "";
 
 
     @JSONField(name = "edition",serialize = false)

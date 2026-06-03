@@ -774,7 +774,7 @@ public class HttpRoomData {
             int totalScore = 0;
             Integer pnScore = pnScoreMap.get(vmid);
             if (pnScore != null) {
-                totalScore =  pnScore;
+                totalScore = pnScore; // 需求如此
                 combinedType.append("[已在名单:").append(pnScore).append("]");
             } else {
                 totalScore = medalResult.getLeft() + follResult.getLeft() + cardResult.score;
@@ -799,7 +799,7 @@ public class HttpRoomData {
             }
 
             if (totalScore == 0) {
-                logSb.append("[动态=熔断跳过]");
+                logSb.append("[动态：熔断跳过]");
             }
 
             return CompletableFuture.completedFuture(finalize(logSb, totalScore, combinedType.toString()));
@@ -927,11 +927,15 @@ public class HttpRoomData {
     private static Pair<Integer, String> processVisibleFollowingsSync(long vmid, StringBuilder logSb, JSONObject follData) {
         JSONArray list = follData.getJSONArray("list");
 
-        int blackWhiteScore = 0; 
+        int blackWhiteScore = 0;
         StringBuilder blackWhiteType = new StringBuilder(60);
+        StringBuilder name_sign_followingUser = new StringBuilder(400);
+        name_sign_followingUser
+                .append(TIME_FORMAT.get().format(System.currentTimeMillis()))
+                .append(" ").append(vmid).append(" ");
+        String name_sign_followingUser_str = null;
         int blackCount = 0, whiteCount = 0;
         int followersNameSignScore = 0;
-        JSONArray followingsList = new JSONArray();
         JSONArray matchedList = new JSONArray();
 
         logSb.append("  [");
@@ -939,7 +943,9 @@ public class HttpRoomData {
             JSONObject user = (JSONObject) obj;
             long mid = user.getLong("mid");
             String followedName = user.getString("uname");
-            followingsList.add(followedName);
+            String followedSign = user.getString("sign").replaceAll("\\s+", "-");
+            name_sign_followingUser.append(followedName).append(":").append(followedSign).append(";  ");
+
             FollowingCountTools.recordFollowing(mid, followedName);
             Integer score = pnScoreMap.get(mid);
             if (score != null) {
@@ -948,12 +954,10 @@ public class HttpRoomData {
                 MatchCountTools.recordMatch(mid, followedName, score);
                 if (score < 0) blackCount++;
                 else whiteCount++;
-            } else {
-                String followedSign = user.getString("sign");
-                followersNameSignScore += getKeyWordsScore(
-                        followedName + (followedSign != null ? followedSign : ""), logSb);
             }
         }
+        name_sign_followingUser_str = name_sign_followingUser.toString();
+        followersNameSignScore = getKeyWordsScore(name_sign_followingUser_str, logSb);
         blackWhiteScore += followersNameSignScore;
 
         if (!matchedList.isEmpty()) {
@@ -970,8 +974,8 @@ public class HttpRoomData {
         }
         logSb.append("关注黑白分:").append(blackWhiteScore).append("]");
 
-        // logSb.append(", 关注列表:").append(followingsList);   // 数据太多隐藏
-
+        LogFileTools.getlogFileTools().logTestFile(name_sign_followingUser_str);
+        
         return Pair.of(blackWhiteScore, blackWhiteType.toString());
     }
 
@@ -1004,65 +1008,72 @@ public class HttpRoomData {
                             .append(" 粉丝:").append(fans)
                             .append(" 获赞:").append(likeNum);
 
-                    // KOL
-                    long kolLv = fans / 1000 + archiveCount / 100 + articleCount / 50 + likeNum / 10_0000;
-                    if (kolLv != 0) {
-                        r.score++;
-                        r.type += "[KOL+1]";
-                        cardLog.append(" KOL+1");
-                    }
-
-                    // 关注关系
+                    // 我关注了此人
                     if (following) {
-                        r.score += 2;
-                        r.type += "[已关注+2]";
-                        cardLog.append(" 已关注+2");
-                    } else if ((fans < 50 && attention > 4500) || attention > 4990) {
-                        r.score--;
-                        r.type += "[人机关注-1]";
-                        cardLog.append(" 人机关注-1");
-                    } else if (attention == 0 && fans == 0) {
-                        r.score--;
-                        r.type += "[人机关注-1]";
-                        cardLog.append(" 人机关注-1");
-                    }
+                        r.score = 5; // 需求如此
+                        r.type += "[已关注+5]";
+                        cardLog.append(" 已关注+5");
+                    } else {
+                        // 人机
+                        if ((fans < 50 && attention > 4500) || attention > 4990 || (attention == 0 && fans == 0)) {
+                            r.score--;
+                            r.type += "[人机关注-1]";
+                            cardLog.append(" 人机关注-1");
+                        }
 
-                    // 等级
-                    JSONObject levelInfo = cardJO.getJSONObject("level_info");
-                    int lv = levelInfo != null ? levelInfo.getIntValue("current_level") : -1;
-                    cardLog.append(" Lv").append(lv);
-                    if (lv == 0) {
-                        r.score -= 2;
-                        r.type += "[Lv0:-2]";
-                        cardLog.append("[Lv0:-2]");
-                    } else if (lv <= 2 && (r.name != null && (r.name.startsWith("bili_") || "保密".equals(sex)))) {
-                        r.score--;
-                        r.type += "[Lv" + lv + " -1]";
-                        cardLog.append(" Lv").append(lv).append(":-1");
-                    } else if (lv >= 5) {
-                        r.score++;
-                        r.type += "[Lv" + lv + " +1]";
-                        cardLog.append(" Lv").append(lv).append("+1");
-                    }
-
-                    // 认证
-                    JSONObject official = cardJO.getJSONObject("Official");
-                    if (official != null && StringUtils.isNotEmpty(official.getString("title"))) {
-                        r.score++;
-                        r.type += "[认证+1]";
-                        cardLog.append(" 认证+1 ");
-                    }
-
-                    // 大会员
-                    JSONObject vip = cardJO.getJSONObject("vip");
-                    if (vip != null) {
-                        JSONObject label = vip.getJSONObject("label");
-                        if (label != null && StringUtils.contains(label.getString("text"), "大会员")) {
+                        if ((r.name.startsWith("bili_")
+                                && "https://i0.hdslb.com/bfs/face/member/noface.jpg".equals(r.face)
+                                && "保密".equals(sex))) {
+                            r.score--;
+                            r.type += "[人机信息-1]";
+                            cardLog.append(" 人机信息-1");
+                        }
+                        // 等级
+                        JSONObject levelInfo = cardJO.getJSONObject("level_info");
+                        int lv = levelInfo != null ? levelInfo.getIntValue("current_level") : -1;
+                        cardLog.append(" Lv").append(lv);
+                        if (lv == 0) {
+                            r.score -= 2;
+                            r.type += "[Lv0:-2]";
+                            cardLog.append("[Lv0:-2]");
+                        } else if (lv <= 2) {
+                            r.score--;
+                            r.type += "[Lv" + lv + " -1]";
+                            cardLog.append(" Lv").append(lv).append(":-1");
+                        } else if (lv >= 5) {
                             r.score++;
-                            r.type += "[大会员+1]";
-                            cardLog.append(" 大会员+1");
+                            r.type += "[Lv" + lv + " +1]";
+                            cardLog.append(" Lv").append(lv).append("+1");
+                        }
+
+                        // 认证
+                        JSONObject official = cardJO.getJSONObject("Official");
+                        if (official != null && StringUtils.isNotEmpty(official.getString("title"))) {
+                            r.score++;
+                            r.type += "[认证+1]";
+                            cardLog.append(" 认证+1 ");
+                        }
+
+                        // 大会员
+                        JSONObject vip = cardJO.getJSONObject("vip");
+                        if (vip != null) {
+                            JSONObject label = vip.getJSONObject("label");
+                            if (label != null && StringUtils.contains(label.getString("text"), "大会员")) {
+                                r.score++;
+                                r.type += "[大会员+1]";
+                                cardLog.append(" 大会员+1");
+                            }
+                        }
+
+                        // KOL
+                        long kolLv = fans / 1000 + archiveCount / 100 + articleCount / 50 + likeNum / 10_0000;
+                        if (kolLv != 0) {
+                            r.score++;
+                            r.type += "[KOL+1]";
+                            cardLog.append(" KOL+1");
                         }
                     }
+
 
                     // 姓名+签名关键词
                     int kw = getKeyWordsScore((r.name != null ? r.name : "") + (r.sign != null ? r.sign : ""), cardLog);
@@ -1168,8 +1179,8 @@ public class HttpRoomData {
             return Pair.of(-1, "[动态隐藏-1]");
         }
 
-        int score =1 ; // 有动态默认1分
-        score  += getKeyWordsScore(extracted.text, logSb);
+        int score = 1; // 有动态默认1分
+        score += getKeyWordsScore(extracted.text, logSb);
 
         logSb.append("  [动态数:").append(extracted.cardCount);
         if (extracted.latestTimestamp > 0) {

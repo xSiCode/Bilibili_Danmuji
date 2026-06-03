@@ -3984,8 +3984,18 @@ public class WebController {
     /** Serve local avatar files from the unified bibliLiveFace directory. */
     @GetMapping(value = "/avatar/{uid}.jpg")
     public void serveAvatar(@PathVariable long uid, HttpServletResponse response) throws IOException {
-        File avatarFile = new File(getDanmujiLogDir(), "bibliLiveFace/" + uid + ".jpg");
+        long shard = uid % 100;
+        String baseDir = xyz.acproject.danmuji.service.StrangerViewerService.resolveAvatarDir();
+        File avatarFile = new File(baseDir, shard + File.separator + uid + ".jpg");
         if (!avatarFile.exists()) {
+            // Fallback to shared Bilibili default "noface" avatar
+            File nofaceFile = new File(baseDir, ".noface.jpg");
+            if (nofaceFile.exists()) {
+                response.setContentType("image/jpeg");
+                response.setHeader("Cache-Control", "public, max-age=86400");
+                Files.copy(nofaceFile.toPath(), response.getOutputStream());
+                return;
+            }
             response.sendError(HttpServletResponse.SC_NOT_FOUND);
             return;
         }
