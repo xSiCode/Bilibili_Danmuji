@@ -2,7 +2,7 @@ package xyz.acproject.danmuji.tools;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.boot.system.ApplicationHome;
+import xyz.acproject.danmuji.conf.LogPathConf;
 import xyz.acproject.danmuji.conf.PublicDataConf;
 import xyz.acproject.danmuji.http.HttpRoomData;
 import xyz.acproject.danmuji.utils.JodaTimeUtils;
@@ -32,10 +32,8 @@ public class VisitorCountTools {
 
     private static volatile String lastRoomId;
     private static volatile String lastAnchorName;
-    private static String jarDir;
 
     static {
-        initBase();
         lastRoomId = roomKey();
         lastAnchorName = safeFileName(PublicDataConf.ANCHOR_NAME);
         loadFromCsv();
@@ -44,11 +42,6 @@ public class VisitorCountTools {
             flushScheduler.shutdown();
             flushToCsv();
         }, "visitor-csv-shutdown"));
-    }
-
-    private static void initBase() {
-        ApplicationHome home = new ApplicationHome(VisitorCountTools.class);
-        jarDir = home.getSource().getParentFile().getAbsolutePath();
     }
 
     private static String roomKey() {
@@ -63,7 +56,7 @@ public class VisitorCountTools {
 
     private static String currentCsvPath() {
         String name = safeFileName(PublicDataConf.ANCHOR_NAME);
-        return jarDir + File.separator + "Danmuji_log" + File.separator + roomKey() + "_" + name + "_4_观众信息.csv";
+        return LogPathConf.getLogDir() + File.separator + roomKey() + "_" + name + "_4_观众信息.csv";
     }
 
     public static void recordVisitor(long uid, String uname, int score, String scoreType) {
@@ -103,6 +96,12 @@ public class VisitorCountTools {
 
     private static void loadFromCsv() {
         loadFromCsv(currentCsvPath());
+    }
+
+    /** 从指定文件重载内存数据（合并后调用，防止旧数据覆盖合并结果） */
+    public static synchronized void reloadFromFile(String path) {
+        visitorMap.clear();
+        loadFromCsv(path);
     }
 
     private static void loadFromCsv(String path) {
@@ -185,10 +184,11 @@ public class VisitorCountTools {
 
     private static synchronized void flushToCsv() {
         String rk = roomKey();
+        if ("unknown".equals(rk)) return;
         if (!rk.equals(lastRoomId)) {
             // 房间切换：完整写出旧房间的所有记录
             String oldPrefix = lastRoomId + "_" + lastAnchorName;
-            String oldPath = jarDir + File.separator + "Danmuji_log" + File.separator + oldPrefix + "_4_观众信息.csv";
+            String oldPath = LogPathConf.getLogDir() + File.separator + oldPrefix + "_4_观众信息.csv";
             doFlushFull(oldPath);
             visitorMap.clear();
             dirtyUids.clear();

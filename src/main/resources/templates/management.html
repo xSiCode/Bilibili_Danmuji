@@ -23,7 +23,7 @@
         <div class="col-auto"><label class="form-label mb-0" style="font-size:12px;">几小时前</label><input type="number" id="lrm-filter-hours" class="form-control form-control-sm" style="width:90px;" placeholder="小时" min="0" value="3"></div>
         <div class="col-auto"><button id="lrm-btn-apply" class="btn btn-sm btn-primary">筛选</button><button id="lrm-btn-reset" class="btn btn-sm btn-outline-secondary ms-1">重置</button></div>
         <div class="col-auto"><input type="text" id="lrm-search-input" class="form-control form-control-sm" style="width:160px;" placeholder="搜索..."></div>
-        <div class="col-auto ms-auto"><button id="lrm-btn-export" class="btn btn-sm btn-success">导出CSV</button><button class="btn btn-sm btn-outline-warning" onclick="$('#lrm-import-file').click()">导入CSV</button><input type="file" id="lrm-import-file" accept=".csv" style="display:none;" class="import-file-input" data-file-type="lrm"></div>
+        <div class="col-auto ms-auto"><button id="lrm-btn-export" class="btn btn-sm btn-success">导出CSV</button><button class="btn btn-sm btn-outline-warning" onclick="$('#lrm-import-file').click()">导入CSV</button><button class="btn btn-sm btn-outline-info merge-csv-btn" data-merge-type="lrm" data-list-api="../listCsvFiles">合并外部CSV</button><input type="file" id="lrm-import-file" accept=".csv" style="display:none;" class="import-file-input" data-file-type="lrm"></div>
     </div>
     <div id="lrm-stats-row" class="row g-2 mb-2" style="display:none;">
         <div class="col-md-3"><div class="card border-info"><div class="card-body py-1 px-2" style="font-size:12px;"><span class="text-muted">累计观看数</span><br><strong id="lrm-stat-cum-watcher" class="text-info">--</strong></div></div></div>
@@ -52,7 +52,7 @@
         <div class="col-auto"><label class="form-label mb-0" style="font-size:12px;">几小时前</label><input type="number" id="dmgr-filter-hours" class="form-control form-control-sm" style="width:90px;" placeholder="小时" min="0" value="3"></div>
         <div class="col-auto"><button id="dmgr-btn-apply" class="btn btn-sm btn-primary">筛选</button><button id="dmgr-btn-reset" class="btn btn-sm btn-outline-secondary ms-1">重置</button></div>
         <div class="col-auto"><input type="text" id="dmgr-search-input" class="form-control form-control-sm" style="width:160px;" placeholder="搜索..."></div>
-        <div class="col-auto ms-auto"><button id="dmgr-btn-export" class="btn btn-sm btn-success">导出CSV</button><button class="btn btn-sm btn-outline-warning" onclick="$('#dmgr-import-file').click()">导入CSV</button><input type="file" id="dmgr-import-file" accept=".csv" style="display:none;" class="import-file-input" data-file-type="dmgr"></div>
+        <div class="col-auto ms-auto"><button id="dmgr-btn-export" class="btn btn-sm btn-success">导出CSV</button><button class="btn btn-sm btn-outline-warning" onclick="$('#dmgr-import-file').click()">导入CSV</button><button class="btn btn-sm btn-outline-info merge-csv-btn" data-merge-type="dmgr" data-list-api="../listBarrageCsvFiles">合并外部CSV</button><input type="file" id="dmgr-import-file" accept=".csv" style="display:none;" class="import-file-input" data-file-type="dmgr"></div>
     </div>
     <div id="dmgr-stats-row" class="row g-2 mb-2" style="display:none;">
         <div class="col-md-3"><div class="card border-info"><div class="card-body py-1 px-2" style="font-size:12px;"><span class="text-muted">发弹幕人数</span><br><strong id="dmgr-stat-users" class="text-info">--</strong></div></div></div>
@@ -84,7 +84,7 @@
         <div class="col-auto"><label class="form-label mb-0" style="font-size:12px;">几小时前</label><input type="number" id="gft-filter-hours" class="form-control form-control-sm" style="width:90px;" placeholder="小时" min="0" value="3"></div>
         <div class="col-auto"><button id="gft-btn-apply" class="btn btn-sm btn-primary">筛选</button><button id="gft-btn-reset" class="btn btn-sm btn-outline-secondary ms-1">重置</button></div>
         <div class="col-auto"><input type="text" id="gft-search-input" class="form-control form-control-sm" style="width:160px;" placeholder="搜索..."></div>
-        <div class="col-auto ms-auto"><button id="gft-btn-export" class="btn btn-sm btn-success">导出CSV</button><button class="btn btn-sm btn-outline-warning" onclick="$('#gft-import-file').click()">导入CSV</button><input type="file" id="gft-import-file" accept=".csv" style="display:none;" class="import-file-input" data-file-type="gft"></div>
+        <div class="col-auto ms-auto"><button id="gft-btn-export" class="btn btn-sm btn-success">导出CSV</button><button class="btn btn-sm btn-outline-warning" onclick="$('#gft-import-file').click()">导入CSV</button><button class="btn btn-sm btn-outline-info merge-csv-btn" data-merge-type="gft" data-list-api="../listGiftCsvFiles">合并外部CSV</button><input type="file" id="gft-import-file" accept=".csv" style="display:none;" class="import-file-input" data-file-type="gft"></div>
     </div>
     <div class="row g-2 mt-2" id="gft-stats-row" style="display:none;">
         <div class="col-auto"><div class="card text-bg-info"><div class="card-body py-1 px-3"><small>总电池数</small><br><strong id="gft-stat-amount">0</strong></div></div></div>
@@ -113,7 +113,7 @@
         <div class="col-auto"><label class="form-label mb-0" style="font-size:12px;">几小时前</label><input type="number" id="vst-filter-hours" class="form-control form-control-sm" style="width:90px;" placeholder="小时" min="0" value="3"></div>
         <div class="col-auto"><button id="vst-btn-apply" class="btn btn-sm btn-primary">筛选</button><button id="vst-btn-reset" class="btn btn-sm btn-outline-secondary ms-1">重置</button></div>
         <div class="col-auto"><input type="text" id="vst-search-input" class="form-control form-control-sm" style="width:160px;" placeholder="搜索..."></div>
-        <div class="col-auto ms-auto"><button id="vst-btn-export" class="btn btn-sm btn-success">导出CSV</button><button class="btn btn-sm btn-outline-warning" onclick="$('#vst-import-file').click()">导入CSV</button><input type="file" id="vst-import-file" accept=".csv" style="display:none;" class="import-file-input" data-file-type="vst"></div>
+        <div class="col-auto ms-auto"><button id="vst-btn-export" class="btn btn-sm btn-success">导出CSV</button><button class="btn btn-sm btn-outline-warning" onclick="$('#vst-import-file').click()">导入CSV</button><button class="btn btn-sm btn-outline-info merge-csv-btn" data-merge-type="vst" data-list-api="../listVisitorCsvFiles">合并外部CSV</button><input type="file" id="vst-import-file" accept=".csv" style="display:none;" class="import-file-input" data-file-type="vst"></div>
     </div>
     <div id="vst-stats-row" class="row g-2 mb-2" style="display:none;">
         <div class="col-md-2"><div class="card border-info"><div class="card-body py-1 px-2" style="font-size:11px;"><span class="text-muted">进场人数</span><br><strong id="vst-stat-visits" class="text-info">--</strong></div></div></div>
@@ -151,7 +151,7 @@
         <div class="col-auto"><label class="form-label mb-0" style="font-size:12px;">几小时前</label><input type="number" id="mtch-filter-hours" class="form-control form-control-sm" style="width:90px;" placeholder="小时" min="0" value="3"></div>
         <div class="col-auto"><button id="mtch-btn-apply" class="btn btn-sm btn-primary">筛选</button><button id="mtch-btn-reset" class="btn btn-sm btn-outline-secondary ms-1">重置</button></div>
         <div class="col-auto"><input type="text" id="mtch-search-input" class="form-control form-control-sm" style="width:160px;" placeholder="搜索..."></div>
-        <div class="col-auto ms-auto"><button id="mtch-btn-export" class="btn btn-sm btn-success">导出CSV</button><button class="btn btn-sm btn-outline-warning" onclick="$('#mtch-import-file').click()">导入CSV</button><input type="file" id="mtch-import-file" accept=".csv" style="display:none;" class="import-file-input" data-file-type="mtch"></div>
+        <div class="col-auto ms-auto"><button id="mtch-btn-export" class="btn btn-sm btn-success">导出CSV</button><button class="btn btn-sm btn-outline-warning" onclick="$('#mtch-import-file').click()">导入CSV</button><button class="btn btn-sm btn-outline-info merge-csv-btn" data-merge-type="mtch" data-list-api="../listMatchCsvFiles">合并外部CSV</button><input type="file" id="mtch-import-file" accept=".csv" style="display:none;" class="import-file-input" data-file-type="mtch"></div>
     </div>
     <div class="mtch-table-wrap">
         <table id="mtch-data-table" class="table table-sm table-striped" style="display:none;"><thead id="mtch-table-head"><tr><th data-sort="最近匹配">最近匹配</th><th data-sort="匹配id">匹配id</th><th data-sort="匹配名">匹配名</th><th data-sort="匹配分">匹配分</th><th data-sort="匹配次数">匹配次数</th></tr></thead><tbody id="mtch-table-body"></tbody></table>
@@ -175,7 +175,7 @@
         <div class="col-auto"><label class="form-label mb-0" style="font-size:12px;">几小时前</label><input type="number" id="flw-filter-hours" class="form-control form-control-sm" style="width:90px;" placeholder="小时" min="0" value="3"></div>
         <div class="col-auto"><button id="flw-btn-apply" class="btn btn-sm btn-primary">筛选</button><button id="flw-btn-reset" class="btn btn-sm btn-outline-secondary ms-1">重置</button></div>
         <div class="col-auto"><input type="text" id="flw-search-input" class="form-control form-control-sm" style="width:160px;" placeholder="搜索..."></div>
-        <div class="col-auto ms-auto"><button id="flw-btn-export" class="btn btn-sm btn-success">导出CSV</button><button class="btn btn-sm btn-outline-warning" onclick="$('#flw-import-file').click()">导入CSV</button><input type="file" id="flw-import-file" accept=".csv" style="display:none;" class="import-file-input" data-file-type="flw"></div>
+        <div class="col-auto ms-auto"><button id="flw-btn-export" class="btn btn-sm btn-success">导出CSV</button><button class="btn btn-sm btn-outline-warning" onclick="$('#flw-import-file').click()">导入CSV</button><button class="btn btn-sm btn-outline-info merge-csv-btn" data-merge-type="flw" data-list-api="../listFollowCsvFiles">合并外部CSV</button><input type="file" id="flw-import-file" accept=".csv" style="display:none;" class="import-file-input" data-file-type="flw"></div>
     </div>
     <div class="flw-table-wrap">
         <table id="flw-data-table" class="table table-sm table-striped" style="display:none;"><thead id="flw-table-head"><tr><th data-sort="最新时间">最新时间</th><th data-sort="id">id</th><th data-sort="名字">名字</th><th data-sort="次数">次数</th></tr></thead><tbody id="flw-table-body"></tbody></table>
@@ -199,5 +199,120 @@
 <script th:src="@{/js/common.js}" type="text/javascript"></script>
 <script th:src="@{/js/management.js}" type="text/javascript"></script>
 <th:block th:replace="~{fragments/layout :: inline-scripts(page='management')}"></th:block>
+
+<!-- ==================== 合并CSV模态框 ==================== -->
+<div class="modal fade" id="mergeCsvModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">合并外部CSV</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <p class="text-muted" style="font-size:13px;">选择同类型的CSV文件，将其数据合并到当前文件。</p>
+        <label class="form-label" style="font-size:13px;">选择源文件</label>
+        <select id="merge-source-select" class="form-select form-select-sm"><option value="">-- 加载中... --</option></select>
+        <div id="merge-result-msg" class="mt-2" style="display:none;font-size:13px;"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-sm btn-primary" id="merge-confirm-btn" disabled>执行合并</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+$(function() {
+    var mergeState = { type: '', targetFilePath: '', listApi: '' };
+
+    // 合并按钮点击 → 打开模态框
+    $(document).on('click', '.merge-csv-btn', function() {
+        var $btn = $(this);
+        mergeState.type = $btn.data('merge-type');
+        mergeState.listApi = $btn.data('list-api');
+        // 获取当前 tab 的 CSV 文件选择器中的值作为 target
+        var selectMap = { lrm:'#lrm-csv-select', dmgr:'#dmgr-csv-select', gft:'#gft-csv-select', vst:'#vst-csv-select', mtch:'#mtch-csv-select', flw:'#flw-csv-select' };
+        mergeState.targetFilePath = $(selectMap[mergeState.type]).val() || '';
+        if (!mergeState.targetFilePath) {
+            alert('请先在当前标签页选择一个CSV文件作为合并目标。');
+            return;
+        }
+        // 加载文件列表
+        $('#merge-source-select').html('<option value="">-- 加载中... --</option>');
+        $('#merge-confirm-btn').prop('disabled', true);
+        $('#merge-result-msg').hide();
+        $('#mergeCsvModal').modal('show');
+
+        $.ajax({
+            url: mergeState.listApi,
+            type: 'GET',
+            dataType: 'json',
+            success: function(data) {
+                var options = '<option value="">-- 选择源文件 --</option>';
+                if (data.code == '200' && data.result) {
+                    $.each(data.result, function(i, item) {
+                        // 排除当前目标文件
+                        if (item.filePath !== mergeState.targetFilePath) {
+                            var label = item.fileName;
+                            if (item.anchorName) label = item.anchorName + ' - ' + item.fileName;
+                            options += '<option value="' + item.filePath + '">' + label + '</option>';
+                        }
+                    });
+                }
+                $('#merge-source-select').html(options);
+            },
+            error: function() {
+                $('#merge-source-select').html('<option value="">-- 加载失败 --</option>');
+            }
+        });
+    });
+
+    // 文件选中后启用按钮
+    $(document).on('change', '#merge-source-select', function() {
+        $('#merge-confirm-btn').prop('disabled', !$(this).val());
+    });
+
+    // 执行合并
+    $('#merge-confirm-btn').click(function() {
+        var sourcePath = $('#merge-source-select').val();
+        if (!sourcePath) return;
+
+        var apiMap = { lrm:'../mergeRoomInfoCsv', dmgr:'../mergeBarrageCsv', gft:'../mergeGiftCsv', vst:'../mergeVisitorCsv', mtch:'../mergeMatchCsv', flw:'../mergeFollowCsv' };
+        var api = apiMap[mergeState.type];
+        if (!api) return;
+
+        var $btn = $(this);
+        $btn.prop('disabled', true).text('合并中...');
+        $('#merge-result-msg').hide();
+
+        $.ajax({
+            url: api,
+            type: 'POST',
+            data: { targetFilePath: mergeState.targetFilePath, sourceFilePath: sourcePath },
+            dataType: 'json',
+            success: function(data) {
+                var msg = $('#merge-result-msg');
+                if (data.code == '200' && data.result) {
+                    var r = data.result;
+                    if (r.error) {
+                        msg.removeClass('text-success').addClass('text-danger').text('合并失败: ' + r.error).show();
+                    } else {
+                        msg.removeClass('text-danger').addClass('text-success')
+                            .text('合并完成: 新增 ' + (r.mergedCount || 0) + ' 条, 跳过 ' + (r.skippedCount || 0) + ' 条。')
+                            .show();
+                        // 刷新当前表格数据
+                        setTimeout(function() { location.reload(); }, 1500);
+                    }
+                } else {
+                    msg.removeClass('text-success').addClass('text-danger').text('合并失败，请重试。').show();
+                }
+                $btn.prop('disabled', false).text('执行合并');
+            },
+            error: function() {
+                $('#merge-result-msg').removeClass('text-success').addClass('text-danger').text('请求失败，请检查网络。').show();
+                $('#merge-confirm-btn').prop('disabled', false).text('执行合并');
+            }
+        });
+    });
+});
+</script>
 </body>
 </html>

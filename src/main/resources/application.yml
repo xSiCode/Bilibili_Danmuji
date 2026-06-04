@@ -29,3 +29,8 @@ server:
 
 danmuji:
   version: 2.7.0.6
+  log:
+    # 日志文件根目录。留空=系统 Documents/Danmuji_log（默认）
+    # 多开程序时所有实例共用同一目录，历史数据自动延续
+    # 也可指定绝对路径如: D:\Danmuji_log
+    dir:

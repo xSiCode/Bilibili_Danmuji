@@ -2309,6 +2309,7 @@
                                             <span class="text-muted" style="font-size:12px;" id="sv-total-info"></span>
                                             <button id="sv-btn-export" class="btn btn-sm btn-success ms-2">导出CSV</button>
                                             <button id="sv-btn-import" class="btn btn-sm btn-outline-warning ms-1" onclick="document.getElementById('sv-import-file').click()">导入CSV</button>
+                                            <button class="btn btn-sm btn-outline-info ms-1 merge-csv-btn" data-merge-type="sv" data-list-api="listStrangerCsvFiles">合并外部CSV</button>
                                             <input type="file" id="sv-import-file" accept=".csv" style="display:none;">
                                         </div>
                                     </div>
@@ -2592,6 +2593,117 @@
         const cookie_data = $("#cookie_data").val();
         cookie_set(cookie_data);
     });
+</script>
+
+<!-- 合并CSV模态框（与 management.html 共用样式） -->
+<div class="modal fade" id="mergeCsvModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">合并外部CSV</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <p class="text-muted" style="font-size:13px;">选择同类型的CSV文件，将其数据合并到当前文件。</p>
+        <label class="form-label" style="font-size:13px;">选择源文件</label>
+        <select id="merge-source-select" class="form-select form-select-sm"><option value="">-- 加载中... --</option></select>
+        <div id="merge-result-msg" class="mt-2" style="display:none;font-size:13px;"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">取消</button>
+        <button type="button" class="btn btn-sm btn-primary" id="merge-confirm-btn" disabled>执行合并</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+$(function() {
+    var mergeState = { type: '', targetFilePath: '', listApi: '' };
+
+    $(document).on('click', '.merge-csv-btn', function() {
+        var $btn = $(this);
+        mergeState.type = $btn.data('merge-type');
+        mergeState.listApi = $btn.data('list-api');
+        // 获取当前 tab 的 CSV 文件选择器中的值作为 target
+        var selectMap = { lrm:'#lrm-csv-select', dmgr:'#dmgr-csv-select', gft:'#gft-csv-select', vst:'#vst-csv-select', mtch:'#mtch-csv-select', flw:'#flw-csv-select', sv:'#sv-csv-select' };
+        mergeState.targetFilePath = $(selectMap[mergeState.type]).val() || '';
+        if (!mergeState.targetFilePath) {
+            alert('请先在当前标签页选择一个CSV文件作为合并目标。');
+            return;
+        }
+        $('#merge-source-select').html('<option value="">-- 加载中... --</option>');
+        $('#merge-confirm-btn').prop('disabled', true);
+        $('#merge-result-msg').hide();
+        $('#mergeCsvModal').modal('show');
+
+        // 陌生观众用 listStrangerCsvFiles，其他用 ../ 前缀
+        var listUrl = mergeState.type === 'sv' ? '../listStrangerCsvFiles' : mergeState.listApi;
+        $.ajax({
+            url: listUrl,
+            type: 'GET',
+            dataType: 'json',
+            success: function(data) {
+                var options = '<option value="">-- 选择源文件 --</option>';
+                if (data.code == '200' && data.result) {
+                    $.each(data.result, function(i, item) {
+                        if (item.filePath !== mergeState.targetFilePath) {
+                            var label = item.fileName;
+                            if (item.anchorName) label = item.anchorName + ' - ' + item.fileName;
+                            options += '<option value="' + item.filePath + '">' + label + '</option>';
+                        }
+                    });
+                }
+                $('#merge-source-select').html(options);
+            },
+            error: function() {
+                $('#merge-source-select').html('<option value="">-- 加载失败 --</option>');
+            }
+        });
+    });
+
+    $(document).on('change', '#merge-source-select', function() {
+        $('#merge-confirm-btn').prop('disabled', !$(this).val());
+    });
+
+    $('#merge-confirm-btn').click(function() {
+        var sourcePath = $('#merge-source-select').val();
+        if (!sourcePath) return;
+
+        var apiMap = { sv:'../mergeStrangerCsv' };
+        var api = apiMap[mergeState.type];
+        if (!api) return;
+
+        var $btn = $(this);
+        $btn.prop('disabled', true).text('合并中...');
+        $('#merge-result-msg').hide();
+
+        $.ajax({
+            url: api,
+            type: 'POST',
+            data: { targetFilePath: mergeState.targetFilePath, sourceFilePath: sourcePath },
+            dataType: 'json',
+            success: function(data) {
+                var msg = $('#merge-result-msg');
+                if (data.code == '200' && data.result) {
+                    var r = data.result;
+                    if (r.error) {
+                        msg.removeClass('text-success').addClass('text-danger').text('合并失败: ' + r.error).show();
+                    } else {
+                        msg.removeClass('text-danger').addClass('text-success')
+                            .text('合并完成: 新增 ' + (r.mergedCount || 0) + ' 条, 跳过 ' + (r.skippedCount || 0) + ' 条。')
+                            .show();
+                        setTimeout(function() { location.reload(); }, 1500);
+                    }
+                } else {
+                    msg.removeClass('text-success').addClass('text-danger').text('合并失败，请重试。').show();
+                }
+                $btn.prop('disabled', false).text('执行合并');
+            },
+            error: function() {
+                $('#merge-result-msg').removeClass('text-success').addClass('text-danger').text('请求失败，请检查网络。').show();
+                $('#merge-confirm-btn').prop('disabled', false).text('执行合并');
+            }
+        });
+    });
+});
 </script>
 </body>
 </html>

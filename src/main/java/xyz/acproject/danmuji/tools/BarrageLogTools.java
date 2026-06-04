@@ -2,7 +2,7 @@ package xyz.acproject.danmuji.tools;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.boot.system.ApplicationHome;
+import xyz.acproject.danmuji.conf.LogPathConf;
 import xyz.acproject.danmuji.conf.PublicDataConf;
 import xyz.acproject.danmuji.utils.JodaTimeUtils;
 
@@ -22,12 +22,10 @@ public class BarrageLogTools {
 
     private static volatile String lastRoomId;
     private static volatile String lastAnchorName;
-    private static String jarDir;
     private static volatile boolean headerWritten;
     private static final byte[] BOM = new byte[]{(byte)0xEF, (byte)0xBB, (byte)0xBF};
 
     static {
-        initBase();
         lastRoomId = roomKey();
         lastAnchorName = safeFileName(PublicDataConf.ANCHOR_NAME);
         headerWritten = new File(currentCsvPath()).exists();
@@ -60,11 +58,6 @@ public class BarrageLogTools {
         }, "barrage-csv-shutdown"));
     }
 
-    private static void initBase() {
-        ApplicationHome home = new ApplicationHome(BarrageLogTools.class);
-        jarDir = home.getSource().getParentFile().getAbsolutePath();
-    }
-
     private static String roomKey() {
         Long id = PublicDataConf.ROOMID;
         return id != null ? id.toString() : "unknown";
@@ -77,7 +70,7 @@ public class BarrageLogTools {
 
     private static String currentCsvPath() {
         String name = safeFileName(PublicDataConf.ANCHOR_NAME);
-        return jarDir + File.separator + "Danmuji_log" + File.separator + roomKey() + "_" + name + "_2_弹幕信息.csv";
+        return LogPathConf.getLogDir() + File.separator + roomKey() + "_" + name + "_2_弹幕信息.csv";
     }
 
     public static void logBarrage(long uid, String uname, String msg, long timestamp) {
@@ -115,6 +108,7 @@ public class BarrageLogTools {
 
     private static synchronized void flushBatch(List<String> lines) {
         String rk = roomKey();
+        if ("unknown".equals(rk)) return;
         if (!rk.equals(lastRoomId)) {
             lastRoomId = rk;
             lastAnchorName = safeFileName(PublicDataConf.ANCHOR_NAME);

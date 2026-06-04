@@ -224,8 +224,15 @@ $(function () {
         lrmState.page = 1;
         if (lrmState.currentFile) method.loadCsvData();
     });
+    // 日期/小时 互斥：修改日期清空小时，修改小时清空日期
+    $('#lrm-filter-start, #lrm-filter-end').on('change', function() { if ($(this).val()) $('#lrm-filter-hours').val(''); });
+    $('#lrm-filter-hours').on('change input', function() { if ($(this).val()) { $('#lrm-filter-start').val(''); $('#lrm-filter-end').val(''); } });
+
     $(document).on('click', '#lrm-btn-apply', function () {
-        applyHoursFilter(lrmState, '#lrm');
+        var start = $('#lrm-filter-start').val() || '';
+        var end = $('#lrm-filter-end').val() || '';
+        if (start || end) { lrmState.startTime = start ? start + ' 00:00:01' : ''; lrmState.endTime = end ? end + ' 23:59:59' : ''; }
+        else { applyHoursFilter(lrmState, '#lrm'); }
         lrmState.search = $('#lrm-search-input').val() || '';
         lrmState.page = 1;
         method.loadCsvData();
@@ -291,8 +298,14 @@ $(function () {
         dmgrState.page = 1;
         if (dmgrState.currentFile) method.loadDmgrData();
     });
+    $('#dmgr-filter-start, #dmgr-filter-end').on('change', function() { if ($(this).val()) $('#dmgr-filter-hours').val(''); });
+    $('#dmgr-filter-hours').on('change input', function() { if ($(this).val()) { $('#dmgr-filter-start').val(''); $('#dmgr-filter-end').val(''); } });
+
     $(document).on('click', '#dmgr-btn-apply', function () {
-        applyHoursFilter(dmgrState, '#dmgr');
+        var start = $('#dmgr-filter-start').val() || '';
+        var end = $('#dmgr-filter-end').val() || '';
+        if (start || end) { dmgrState.startTime = start ? start + ' 00:00:01' : ''; dmgrState.endTime = end ? end + ' 23:59:59' : ''; }
+        else { applyHoursFilter(dmgrState, '#dmgr'); }
         dmgrState.search = $('#dmgr-search-input').val() || '';
         dmgrState.page = 1;
         method.loadDmgrData();
@@ -346,8 +359,14 @@ $(function () {
         vstState.page = 1;
         if (vstState.currentFile) method.loadVstData();
     });
+    $('#vst-filter-start, #vst-filter-end').on('change', function() { if ($(this).val()) $('#vst-filter-hours').val(''); });
+    $('#vst-filter-hours').on('change input', function() { if ($(this).val()) { $('#vst-filter-start').val(''); $('#vst-filter-end').val(''); } });
+
     $(document).on('click', '#vst-btn-apply', function () {
-        applyHoursFilter(vstState, '#vst');
+        var start = $('#vst-filter-start').val() || '';
+        var end = $('#vst-filter-end').val() || '';
+        if (start || end) { vstState.startTime = start ? start + ' 00:00:01' : ''; vstState.endTime = end ? end + ' 23:59:59' : ''; }
+        else { applyHoursFilter(vstState, '#vst'); }
         vstState.search = $('#vst-search-input').val() || '';
         vstState.page = 1;
         method.loadVstData();
@@ -387,8 +406,14 @@ $(function () {
         mtchState.page = 1;
         if (mtchState.currentFile) method.loadMtchData();
     });
+    $('#mtch-filter-start, #mtch-filter-end').on('change', function() { if ($(this).val()) $('#mtch-filter-hours').val(''); });
+    $('#mtch-filter-hours').on('change input', function() { if ($(this).val()) { $('#mtch-filter-start').val(''); $('#mtch-filter-end').val(''); } });
+
     $(document).on('click', '#mtch-btn-apply', function () {
-        applyHoursFilter(mtchState, '#mtch');
+        var start = $('#mtch-filter-start').val() || '';
+        var end = $('#mtch-filter-end').val() || '';
+        if (start || end) { mtchState.startTime = start ? start + ' 00:00:01' : ''; mtchState.endTime = end ? end + ' 23:59:59' : ''; }
+        else { applyHoursFilter(mtchState, '#mtch'); }
         mtchState.search = $('#mtch-search-input').val() || '';
         mtchState.page = 1;
         method.loadMtchData();
@@ -428,8 +453,14 @@ $(function () {
         flwState.page = 1;
         if (flwState.currentFile) method.loadFlwData();
     });
+    $('#flw-filter-start, #flw-filter-end').on('change', function() { if ($(this).val()) $('#flw-filter-hours').val(''); });
+    $('#flw-filter-hours').on('change input', function() { if ($(this).val()) { $('#flw-filter-start').val(''); $('#flw-filter-end').val(''); } });
+
     $(document).on('click', '#flw-btn-apply', function () {
-        applyHoursFilter(flwState, '#flw');
+        var start = $('#flw-filter-start').val() || '';
+        var end = $('#flw-filter-end').val() || '';
+        if (start || end) { flwState.startTime = start ? start + ' 00:00:01' : ''; flwState.endTime = end ? end + ' 23:59:59' : ''; }
+        else { applyHoursFilter(flwState, '#flw'); }
         flwState.search = $('#flw-search-input').val() || '';
         flwState.page = 1;
         method.loadFlwData();
@@ -469,8 +500,14 @@ $(function () {
         gftState.page = 1;
         if (gftState.currentFile) method.loadGftData();
     });
+    $('#gft-filter-start, #gft-filter-end').on('change', function() { if ($(this).val()) $('#gft-filter-hours').val(''); });
+    $('#gft-filter-hours').on('change input', function() { if ($(this).val()) { $('#gft-filter-start').val(''); $('#gft-filter-end').val(''); } });
+
     $(document).on('click', '#gft-btn-apply', function () {
-        applyHoursFilter(gftState, '#gft');
+        var start = $('#gft-filter-start').val() || '';
+        var end = $('#gft-filter-end').val() || '';
+        if (start || end) { gftState.startTime = start ? start + ' 00:00:01' : ''; gftState.endTime = end ? end + ' 23:59:59' : ''; }
+        else { applyHoursFilter(gftState, '#gft'); }
         gftState.search = $('#gft-search-input').val() || '';
         gftState.page = 1;
         method.loadGftData();
@@ -3267,6 +3304,9 @@ const method = {
 
     loadCsvData: function () {
         if (!lrmState.currentFile) return;
+        if (!lrmState.startTime && !lrmState.endTime) {
+            applyHoursFilter(lrmState, '#lrm');
+        }
         $.ajax({
             url: '../readCsvData',
             type: 'GET',
@@ -3289,9 +3329,6 @@ const method = {
                     lrmState.totalRows = r.total || 0;
                     lrmState.fileFirstTime = r.firstTime || '';
                     lrmState.fileLastTime = r.lastTime || '';
-                    if (!lrmState.startTime && !lrmState.endTime) {
-                        applyHoursFilter(lrmState, '#lrm');
-                    }
                     method.renderCsvTable(r.rows || []);
                     method.renderCsvPagination();
                     if (r.total > 0) {
@@ -3618,6 +3655,9 @@ const method = {
 
     loadDmgrData: function () {
         if (!dmgrState.currentFile) return;
+        if (!dmgrState.startTime && !dmgrState.endTime) {
+            applyHoursFilter(dmgrState, '#dmgr');
+        }
         $.ajax({
             url: '../readBarrageCsvData',
             type: 'GET',
@@ -3639,9 +3679,6 @@ const method = {
                     dmgrState.totalRows = r.total || 0;
                     dmgrState.fileFirstTime = r.firstTime || '';
                     dmgrState.fileLastTime = r.lastTime || '';
-                    if (!dmgrState.startTime && !dmgrState.endTime) {
-                        applyHoursFilter(dmgrState, '#dmgr');
-                    }
                     method.renderDmgrTable(r.rows || []);
                     method.renderDmgrPagination();
                     if (r.total > 0) {
@@ -4038,6 +4075,9 @@ const method = {
 
     loadVstData: function () {
         if (!vstState.currentFile) return;
+        if (!vstState.startTime && !vstState.endTime) {
+            applyHoursFilter(vstState, '#vst');
+        }
         $.ajax({
             url: '../readVisitorCsvData',
             type: 'GET',
@@ -4376,6 +4416,9 @@ const method = {
 
     loadMtchData: function () {
         if (!mtchState.currentFile) return;
+        if (!mtchState.startTime && !mtchState.endTime) {
+            applyHoursFilter(mtchState, '#mtch');
+        }
         $.ajax({
             url: '../readMatchCsvData',
             type: 'GET',
@@ -4604,6 +4647,9 @@ const method = {
 
     loadFlwData: function () {
         if (!flwState.currentFile) return;
+        if (!flwState.startTime && !flwState.endTime) {
+            applyHoursFilter(flwState, '#flw');
+        }
         $.ajax({
             url: '../readFollowCsvData',
             type: 'GET',
@@ -4812,6 +4858,9 @@ const method = {
 
     loadGftData: function () {
         if (!gftState.currentFile) return;
+        if (!gftState.startTime && !gftState.endTime) {
+            applyHoursFilter(gftState, '#gft');
+        }
         $.ajax({
             url: '../readGiftCsvData', type: 'GET',
             data: { filePath: gftState.currentFile, page: gftState.page, pageSize: gftState.pageSize, startTime: gftState.startTime || '', endTime: gftState.endTime || '', search: gftState.search || '', sortField: gftState.sortField, sortOrder: gftState.sortOrder },
@@ -5017,9 +5066,16 @@ const method = {
             if (svState.currentFile) method.loadSvData();
         });
 
-        // Apply: time filter + search (matching management page pattern)
+        // 日期/小时 互斥
+        $('#sv-filter-start, #sv-filter-end').on('change', function() { if ($(this).val()) $('#sv-filter-hours').val(''); });
+        $('#sv-filter-hours').on('change input', function() { if ($(this).val()) { $('#sv-filter-start').val(''); $('#sv-filter-end').val(''); } });
+
+        // Apply: time filter + search
         $('#sv-btn-apply').on('click', function () {
-            applyHoursFilter(svState, '#sv');
+            var start = $('#sv-filter-start').val() || '';
+            var end = $('#sv-filter-end').val() || '';
+            if (start || end) { svState.startTime = start ? start + ' 00:00:01' : ''; svState.endTime = end ? end + ' 23:59:59' : ''; }
+            else { applyHoursFilter(svState, '#sv'); }
             svState.search = $('#sv-search-input').val().trim();
             svState.page = 1;
             svState.defaultToLast = false;
@@ -5103,25 +5159,33 @@ const method = {
 
     loadSvData: function () {
         method._initSv();
+        // 默认筛选：首次加载无时间参数时应用"几小时前"
+        if (!svState.startTime && !svState.endTime) {
+            var hours = parseInt($('#sv-filter-hours').val()) || 3;
+            var now = new Date();
+            var start = new Date(now.getTime() - hours * 3600000);
+            start.setMinutes(0, 0, 0);
+            var end = new Date(now.getTime() + 3600000);
+            end.setMinutes(0, 0, 0);
+            var pad = function(n) { return ('0' + n).slice(-2); };
+            var fmt = function(d) {
+                return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate())
+                    + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+            };
+            svState.startTime = fmt(start);
+            svState.endTime = fmt(end);
+        }
         var params = { page: svState.page, pageSize: svState.pageSize, sortField: svState.sortField, sortOrder: svState.sortOrder };
         if (svState.search) params.search = svState.search;
+        if (svState.currentFile) params.filePath = svState.currentFile;
         if (svState.startTime) params.startTime = svState.startTime;
         if (svState.endTime) params.endTime = svState.endTime;
-        if (svState.currentFile) params.filePath = svState.currentFile;
         $.get('/strangerViewerData', params, function (resp) {
             if (resp && resp.code == "200" && resp.result) {
                 svState.records = resp.result.rows || [];
                 svState.totalRecords = resp.result.total || 0;
                 svState.totalPages = resp.result.totalPages || 0;
-                // 首次加载时初始化日期显示（不触发筛选，仅填充默认值）
-                if (!svState.startTime && !svState.endTime) {
-                    var now = new Date();
-                    var pad = function(n) { return ('0' + n).slice(-2); };
-                    var today = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
-                    if (!$('#sv-filter-start').val()) $('#sv-filter-start').val(today);
-                    if (!$('#sv-filter-end').val()) $('#sv-filter-end').val(today);
-                }
-                if (svState.defaultToLast && svState.totalPages > 0 && svState.search === '' && !svState.startTime && !svState.endTime && svState.page !== svState.totalPages) {
+                if (svState.defaultToLast && svState.totalPages > 0 && svState.search === '' && svState.page !== svState.totalPages) {
                     svState.page = svState.totalPages;
                     method.loadSvData();
                     return;

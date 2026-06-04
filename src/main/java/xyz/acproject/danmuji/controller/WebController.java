@@ -15,6 +15,7 @@ import xyz.acproject.danmuji.component.ServerAddressComponent;
 import xyz.acproject.danmuji.component.TaskRegisterComponent;
 import xyz.acproject.danmuji.component.ThreadComponent;
 import xyz.acproject.danmuji.conf.CenterSetConf;
+import xyz.acproject.danmuji.conf.LogPathConf;
 import xyz.acproject.danmuji.conf.PublicDataConf;
 import xyz.acproject.danmuji.conf.set.*;
 import xyz.acproject.danmuji.entity.base.Response;
@@ -1380,8 +1381,7 @@ public class WebController {
     // ========== 直播间管理 CSV ==========
 
     private File getDanmujiLogDir() {
-        FileTools fileTools = new FileTools();
-        return new File(fileTools.getBaseJarPath(), "Danmuji_log");
+        return LogPathConf.getLogDirAsFile();
     }
 
     private String safeFileName(String s) {
@@ -1937,6 +1937,87 @@ public class WebController {
         }
     }
 
+    // ========== 直播间管理 CSV 合并 ==========
+
+    @ResponseBody
+    @PostMapping(value = "/mergeRoomInfoCsv")
+    public Response<?> mergeRoomInfoCsv(@RequestParam("targetFilePath") String targetFilePath,
+                                        @RequestParam("sourceFilePath") String sourceFilePath,
+                                        HttpServletRequest req) {
+        try {
+            validateFilePath(targetFilePath);
+            validateFilePath(sourceFilePath);
+            File targetFile = new File(targetFilePath);
+            if (!targetFile.isAbsolute()) targetFile = new File(getDanmujiLogDir(), targetFilePath);
+            File sourceFile = new File(sourceFilePath);
+            if (!sourceFile.isAbsolute()) sourceFile = new File(getDanmujiLogDir(), sourceFilePath);
+
+            if (!sourceFile.exists()) {
+                Map<String, Object> err = new LinkedHashMap<>();
+                err.put("mergedCount", 0); err.put("skippedCount", 0); err.put("error", "源文件不存在");
+                return Response.success(err, req);
+            }
+
+            // 读取目标文件，按时间建立索引
+            Map<String, String[]> targetRows = new LinkedHashMap<>();
+            String headerLine = null;
+            if (targetFile.exists()) {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(targetFile), "UTF-8"))) {
+                    headerLine = reader.readLine(); // BOM + header
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        String[] parts = line.split(",", 4);
+                        if (parts.length >= 4) targetRows.put(parts[0], parts);
+                    }
+                }
+            }
+
+            // 读取源文件，合并（源文件时间冲突时跳过，不同时间则添加）
+            int mergedCount = 0, skippedCount = 0;
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(sourceFile), "UTF-8"))) {
+                String sHeader = reader.readLine(); // skip source header
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    String[] parts = line.split(",", 4);
+                    if (parts.length >= 4) {
+                        if (!targetRows.containsKey(parts[0])) {
+                            targetRows.put(parts[0], parts);
+                            mergedCount++;
+                        } else {
+                            skippedCount++;
+                        }
+                    }
+                }
+            }
+
+            // 写入合并结果（按时间排序）
+            List<String[]> sorted = new ArrayList<>(targetRows.values());
+            sorted.sort(Comparator.comparing(a -> a[0]));
+            File tmpFile = new File(targetFilePath + ".merge.tmp");
+            try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tmpFile), "UTF-8"))) {
+                writer.write('﻿');
+                writer.write("时间,观看数,在线数,点赞数");
+                writer.newLine();
+                for (String[] row : sorted) {
+                    writer.write(row[0] + "," + row[1] + "," + row[2] + "," + row[3]);
+                    writer.newLine();
+                }
+            }
+            safeReplaceFile(tmpFile, targetFile);
+            RoomInfoLogTools.reloadFromFile(targetFile.getAbsolutePath());
+
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("mergedCount", mergedCount);
+            result.put("skippedCount", skippedCount);
+            return Response.success(result, req);
+        } catch (Exception e) {
+            LOGGER.error("mergeRoomInfoCsv error target=" + targetFilePath + " source=" + sourceFilePath, e);
+            Map<String, Object> err = new LinkedHashMap<>();
+            err.put("error", e.getMessage());
+            return Response.success(err, req);
+        }
+    }
+
     // ========== 弹幕管理 CSV ==========
 
     private List<String> parseCsvLine(String line) {
@@ -1969,6 +2050,44 @@ public class WebController {
         }
         fields.add(sb.toString());
         return fields;
+    }
+
+    private String escapeCsvField(String s) {
+        if (s == null) return "";
+        if (s.contains(",") || s.contains("\"") || s.contains("\n")) {
+            return "\"" + s.replace("\"", "\"\"") + "\"";
+        }
+        return s;
+    }
+
+    private String safeGet(List<String> row, int idx) {
+        return idx < row.size() ? (row.get(idx) != null ? row.get(idx) : "0") : "0";
+    }
+
+    /** 安全替换文件：带重试机制，避免与后台 flush 调度器冲突 */
+    private void safeReplaceFile(File tmpFile, File targetFile) throws IOException {
+        IOException lastEx = null;
+        for (int attempt = 0; attempt < 5; attempt++) {
+            try {
+                if (attempt > 0) Thread.sleep(200);
+                Files.move(tmpFile.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+                return; // 成功
+            } catch (IOException e) {
+                lastEx = e;
+                // ATOMIC_MOVE 失败，尝试 copy + delete
+                try {
+                    Files.copy(tmpFile.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                    tmpFile.delete();
+                    return; // copy 成功
+                } catch (IOException e2) {
+                    lastEx = e2;
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IOException("Interrupted during safeReplaceFile", e);
+            }
+        }
+        throw new IOException("Failed to replace file after 5 attempts: " + targetFile.getName(), lastEx);
     }
 
     @ResponseBody
@@ -2424,6 +2543,94 @@ public class WebController {
             LOGGER.error("importBarrageCsvFile error", e);
             return Response.success(1, req);
         }
+    }
+
+    // ========== 弹幕管理 CSV 合并 ==========
+
+    @ResponseBody
+    @PostMapping(value = "/mergeBarrageCsv")
+    public Response<?> mergeBarrageCsv(@RequestParam("targetFilePath") String targetFilePath,
+                                       @RequestParam("sourceFilePath") String sourceFilePath,
+                                       HttpServletRequest req) {
+        try {
+            validateFilePath(targetFilePath);
+            validateFilePath(sourceFilePath);
+            File targetFile = new File(targetFilePath);
+            if (!targetFile.isAbsolute()) targetFile = new File(getDanmujiLogDir(), targetFilePath);
+            File sourceFile = new File(sourceFilePath);
+            if (!sourceFile.isAbsolute()) sourceFile = new File(getDanmujiLogDir(), sourceFilePath);
+
+            if (!sourceFile.exists()) {
+                Map<String, Object> err = new LinkedHashMap<>();
+                err.put("mergedCount", 0); err.put("skippedCount", 0); err.put("error", "源文件不存在");
+                return Response.success(err, req);
+            }
+
+            // 用 (发送时间+id+弹幕) 作为去重键
+            Set<String> seen = new LinkedHashSet<>();
+            List<String> allLines = new ArrayList<>();
+            String headerLine = null;
+            if (targetFile.exists()) {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(targetFile), "UTF-8"))) {
+                    headerLine = reader.readLine();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        String dedupKey = buildBarrageDedupKey(line);
+                        if (dedupKey != null && seen.add(dedupKey)) {
+                            allLines.add(line);
+                        }
+                    }
+                }
+            }
+            int beforeCount = allLines.size();
+
+            int mergedCount = 0, skippedCount = 0;
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(sourceFile), "UTF-8"))) {
+                reader.readLine(); // skip source header
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    String dedupKey = buildBarrageDedupKey(line);
+                    if (dedupKey != null && seen.add(dedupKey)) {
+                        allLines.add(line);
+                        mergedCount++;
+                    } else {
+                        skippedCount++;
+                    }
+                }
+            }
+
+            File tmpFile = new File(targetFilePath + ".merge.tmp");
+            try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tmpFile), "UTF-8"))) {
+                writer.write('﻿');
+                writer.write("发送时间,id,名字,弹幕");
+                writer.newLine();
+                for (String ln : allLines) {
+                    writer.write(ln);
+                    writer.newLine();
+                }
+            }
+            safeReplaceFile(tmpFile, targetFile);
+
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("mergedCount", mergedCount);
+            result.put("skippedCount", skippedCount);
+            return Response.success(result, req);
+        } catch (Exception e) {
+            LOGGER.error("mergeBarrageCsv error", e);
+            Map<String, Object> err = new LinkedHashMap<>();
+            err.put("error", e.getMessage());
+            return Response.success(err, req);
+        }
+    }
+
+    private String buildBarrageDedupKey(String csvLine) {
+        // 弹幕CSV格式: 发送时间,id,名字,弹幕
+        // 名字和弹幕可能含逗号，用标准CSV解析
+        List<String> fields = parseCsvLine(csvLine);
+        if (fields.size() >= 4) {
+            return fields.get(0) + "|" + fields.get(1) + "|" + fields.get(3);
+        }
+        return csvLine;
     }
 
     // ========== 观众管理 CSV ==========
@@ -2903,6 +3110,113 @@ public class WebController {
         }
     }
 
+    // ========== 观众管理 CSV 合并 ==========
+
+    @ResponseBody
+    @PostMapping(value = "/mergeVisitorCsv")
+    public Response<?> mergeVisitorCsv(@RequestParam("targetFilePath") String targetFilePath,
+                                       @RequestParam("sourceFilePath") String sourceFilePath,
+                                       HttpServletRequest req) {
+        try {
+            validateFilePath(targetFilePath);
+            validateFilePath(sourceFilePath);
+            File targetFile = new File(targetFilePath);
+            if (!targetFile.isAbsolute()) targetFile = new File(getDanmujiLogDir(), targetFilePath);
+            File sourceFile = new File(sourceFilePath);
+            if (!sourceFile.isAbsolute()) sourceFile = new File(getDanmujiLogDir(), sourceFilePath);
+            if (!sourceFile.exists()) {
+                Map<String, Object> err = new LinkedHashMap<>();
+                err.put("mergedCount", 0); err.put("skippedCount", 0); err.put("error", "源文件不存在");
+                return Response.success(err, req);
+            }
+
+            // id -> {time, uid, uname, score, scoreType, count, inPnTable, session}
+            Map<String, String[]> best = new LinkedHashMap<>();
+            String header = null;
+            if (targetFile.exists()) {
+                try (BufferedReader r = new BufferedReader(new InputStreamReader(new FileInputStream(targetFile), "UTF-8"))) {
+                    header = r.readLine();
+                    String line;
+                    while ((line = r.readLine()) != null) {
+                        List<String> f = parseCsvLine(line);
+                        if (f.size() >= 8) best.put(f.get(1), new String[]{f.get(0), f.get(1), f.get(2), f.get(3), f.get(4), f.get(5), f.get(6), f.get(7)});
+                    }
+                }
+            }
+            int mergedCount = 0, skippedCount = 0;
+            try (BufferedReader r = new BufferedReader(new InputStreamReader(new FileInputStream(sourceFile), "UTF-8"))) {
+                r.readLine(); // skip source header
+                String line;
+                while ((line = r.readLine()) != null) {
+                    List<String> f = parseCsvLine(line);
+                    if (f.size() >= 8) {
+                        String uid = f.get(1);
+                        String[] exist = best.get(uid);
+                        if (exist == null) {
+                            best.put(uid, new String[]{f.get(0), f.get(1), f.get(2), f.get(3), f.get(4), f.get(5), f.get(6), f.get(7)});
+                            mergedCount++;
+                        } else {
+                            // 同id合并：保留最新时间的打分；次数直接相加；场次间隔>3小时相加
+                            boolean sourceIsNewer = f.get(0).compareTo(exist[0]) > 0;
+                            if (sourceIsNewer) {
+                                // 源文件时间更新 → 以源文件为准
+                                exist[0] = f.get(0);
+                                exist[2] = f.get(2);  // uname
+                                exist[3] = f.get(3);  // 打分
+                                exist[4] = f.get(4);  // 打分类型
+                            }
+                            // 次数直接相加
+                            try {
+                                int c1 = Integer.parseInt(exist[5]), c2 = Integer.parseInt(f.get(5));
+                                exist[5] = String.valueOf(c1 + c2);
+                            } catch (NumberFormatException ignored) {}
+                            // 场次：时间差大于3小时则相加，≤3小时保留最老时间的场次（历史场次）
+                            try {
+                                String t1 = exist[0], t2 = f.get(0);
+                                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                                long diffMs = Math.abs(sdf.parse(t1).getTime() - sdf.parse(t2).getTime());
+                                if (diffMs > 3 * 3600_000L) {
+                                    int s1 = Integer.parseInt(exist[7]), s2 = Integer.parseInt(f.get(7));
+                                    exist[7] = String.valueOf(s1 + s2);
+                                } else if (!sourceIsNewer) {
+                                    // ≤3小时且源文件更老 → 保留源文件的历史场次
+                                    exist[7] = f.get(7);
+                                }
+                                // 源文件更新且≤3小时 → 保留 exist 的历史场次，无需操作
+                            } catch (Exception ignored) {}
+                            mergedCount++;
+                        }
+                    }
+                }
+            }
+
+            List<String[]> sorted = new ArrayList<>(best.values());
+            sorted.sort(Comparator.comparing(a -> a[0]));
+            File tmpFile = new File(targetFilePath + ".merge.tmp");
+            try (BufferedWriter w = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tmpFile), "UTF-8"))) {
+                w.write('﻿');
+                w.write("最近,id,观众,打分,打分类型,次数,判定表,场次");
+                w.newLine();
+                for (String[] row : sorted) {
+                    w.write(row[0] + "," + row[1] + "," + escapeCsvField(row[2]) + "," + row[3] + "," + row[4] + "," + row[5] + "," + row[6] + "," + row[7]);
+                    w.newLine();
+                }
+            }
+            safeReplaceFile(tmpFile, targetFile);
+            VisitorCountTools.reloadFromFile(targetFile.getAbsolutePath());
+
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("mergedCount", mergedCount);
+            result.put("skippedCount", skippedCount);
+            return Response.success(result, req);
+        } catch (Exception e) {
+            LOGGER.error("mergeVisitorCsv error", e);
+            Map<String, Object> err = new LinkedHashMap<>();
+            err.put("error", e.getMessage());
+            return Response.success(err, req);
+        }
+    }
+
     // ========== 匹配管理 CSV ==========
 
     @ResponseBody
@@ -3287,6 +3601,88 @@ public class WebController {
         }
     }
 
+    // ========== 匹配管理 CSV 合并 ==========
+
+    @ResponseBody
+    @PostMapping(value = "/mergeMatchCsv")
+    public Response<?> mergeMatchCsv(@RequestParam("targetFilePath") String targetFilePath,
+                                     @RequestParam("sourceFilePath") String sourceFilePath,
+                                     HttpServletRequest req) {
+        try {
+            validateFilePath(targetFilePath);
+            validateFilePath(sourceFilePath);
+            File targetFile = new File(targetFilePath);
+            if (!targetFile.isAbsolute()) targetFile = new File(getDanmujiLogDir(), targetFilePath);
+            File sourceFile = new File(sourceFilePath);
+            if (!sourceFile.isAbsolute()) sourceFile = new File(getDanmujiLogDir(), sourceFilePath);
+            if (!sourceFile.exists()) {
+                Map<String, Object> err = new LinkedHashMap<>();
+                err.put("mergedCount", 0); err.put("skippedCount", 0); err.put("error", "源文件不存在");
+                return Response.success(err, req);
+            }
+
+            Map<String, String[]> best = new LinkedHashMap<>(); // id -> {time, uid, name, score}
+            if (targetFile.exists()) {
+                try (BufferedReader r = new BufferedReader(new InputStreamReader(new FileInputStream(targetFile), "UTF-8"))) {
+                    r.readLine(); // header
+                    String line;
+                    while ((line = r.readLine()) != null) {
+                        String[] parts = line.split(",", 4);
+                        if (parts.length >= 4) best.putIfAbsent(parts[1], parts);
+                    }
+                }
+            }
+            int mergedCount = 0, skippedCount = 0;
+            try (BufferedReader r = new BufferedReader(new InputStreamReader(new FileInputStream(sourceFile), "UTF-8"))) {
+                r.readLine(); // header
+                String line;
+                while ((line = r.readLine()) != null) {
+                    String[] parts = line.split(",", 4);
+                    if (parts.length >= 4) {
+                        String[] exist = best.get(parts[1]);
+                        if (exist == null) {
+                            best.put(parts[1], parts);
+                            mergedCount++;
+                        } else {
+                            // 同匹配id合并：保留最新时间的名字和打分
+                            if (parts[0].compareTo(exist[0]) > 0) {
+                                exist[0] = parts[0];
+                                exist[2] = parts[2]; // 名字
+                                exist[3] = parts[3]; // 打分
+                            }
+                            mergedCount++;
+                        }
+                    }
+                }
+            }
+
+            List<String[]> sorted = new ArrayList<>(best.values());
+            sorted.sort(Comparator.comparing(a -> a[0]));
+            File tmpFile = new File(targetFilePath + ".merge.tmp");
+            try (BufferedWriter w = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tmpFile), "UTF-8"))) {
+                w.write('﻿');
+                w.write("最新时间,匹配id,匹配名字,打分");
+                w.newLine();
+                for (String[] row : sorted) {
+                    w.write(row[0] + "," + row[1] + "," + escapeCsvField(row[2]) + "," + row[3]);
+                    w.newLine();
+                }
+            }
+            safeReplaceFile(tmpFile, targetFile);
+            MatchCountTools.reloadFromFile(targetFile.getAbsolutePath());
+
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("mergedCount", mergedCount);
+            result.put("skippedCount", skippedCount);
+            return Response.success(result, req);
+        } catch (Exception e) {
+            LOGGER.error("mergeMatchCsv error", e);
+            Map<String, Object> err = new LinkedHashMap<>();
+            err.put("error", e.getMessage());
+            return Response.success(err, req);
+        }
+    }
+
     // ========== 关注人管理 CSV ==========
 
     @ResponseBody
@@ -3604,6 +4000,84 @@ public class WebController {
         } catch (Exception e) {
             LOGGER.error("importFollowCsvFile error", e);
             return Response.success(1, req);
+        }
+    }
+
+    // ========== 关注人管理 CSV 合并 ==========
+
+    @ResponseBody
+    @PostMapping(value = "/mergeFollowCsv")
+    public Response<?> mergeFollowCsv(@RequestParam("targetFilePath") String targetFilePath,
+                                      @RequestParam("sourceFilePath") String sourceFilePath,
+                                      HttpServletRequest req) {
+        try {
+            validateFilePath(targetFilePath);
+            validateFilePath(sourceFilePath);
+            File targetFile = new File(targetFilePath);
+            if (!targetFile.isAbsolute()) targetFile = new File(getDanmujiLogDir(), targetFilePath);
+            File sourceFile = new File(sourceFilePath);
+            if (!sourceFile.isAbsolute()) sourceFile = new File(getDanmujiLogDir(), sourceFilePath);
+            if (!sourceFile.exists()) {
+                Map<String, Object> err = new LinkedHashMap<>();
+                err.put("mergedCount", 0); err.put("skippedCount", 0); err.put("error", "源文件不存在");
+                return Response.success(err, req);
+            }
+
+            Map<String, String[]> best = new LinkedHashMap<>(); // id -> {time, uid, name, count}
+            if (targetFile.exists()) {
+                try (BufferedReader r = new BufferedReader(new InputStreamReader(new FileInputStream(targetFile), "UTF-8"))) {
+                    r.readLine();
+                    String line;
+                    while ((line = r.readLine()) != null) {
+                        List<String> f = parseCsvLine(line);
+                        if (f.size() >= 4) best.putIfAbsent(f.get(1), new String[]{f.get(0), f.get(1), f.get(2), f.get(3)});
+                    }
+                }
+            }
+            int mergedCount = 0;
+            try (BufferedReader r = new BufferedReader(new InputStreamReader(new FileInputStream(sourceFile), "UTF-8"))) {
+                r.readLine();
+                String line;
+                while ((line = r.readLine()) != null) {
+                    List<String> f = parseCsvLine(line);
+                    if (f.size() >= 4) {
+                        String[] exist = best.get(f.get(1));
+                        if (exist == null) {
+                            best.put(f.get(1), new String[]{f.get(0), f.get(1), f.get(2), f.get(3)});
+                        } else {
+                            if (f.get(0).compareTo(exist[0]) > 0) exist[0] = f.get(0);
+                            if (f.get(2) != null && !f.get(2).isEmpty()) exist[2] = f.get(2);
+                            try { exist[3] = String.valueOf(Integer.parseInt(exist[3]) + Integer.parseInt(f.get(3))); } catch (NumberFormatException ignored) {}
+                        }
+                        mergedCount++;
+                    }
+                }
+            }
+
+            List<String[]> sorted = new ArrayList<>(best.values());
+            sorted.sort(Comparator.comparing(a -> a[0]));
+            File tmpFile = new File(targetFilePath + ".merge.tmp");
+            try (BufferedWriter w = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tmpFile), "UTF-8"))) {
+                w.write('﻿');
+                w.write("最新时间,id,名字,次数");
+                w.newLine();
+                for (String[] row : sorted) {
+                    w.write(row[0] + "," + row[1] + "," + escapeCsvField(row[2]) + "," + row[3]);
+                    w.newLine();
+                }
+            }
+            safeReplaceFile(tmpFile, targetFile);
+            FollowingCountTools.reloadFromFile(targetFile.getAbsolutePath());
+
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("mergedCount", mergedCount);
+            result.put("skippedCount", 0);
+            return Response.success(result, req);
+        } catch (Exception e) {
+            LOGGER.error("mergeFollowCsv error", e);
+            Map<String, Object> err = new LinkedHashMap<>();
+            err.put("error", e.getMessage());
+            return Response.success(err, req);
         }
     }
 
@@ -3950,6 +4424,92 @@ public class WebController {
         }
     }
 
+    // ========== 礼物管理 CSV 合并 ==========
+
+    @ResponseBody
+    @PostMapping(value = "/mergeGiftCsv")
+    public Response<?> mergeGiftCsv(@RequestParam("targetFilePath") String targetFilePath,
+                                    @RequestParam("sourceFilePath") String sourceFilePath,
+                                    HttpServletRequest req) {
+        try {
+            validateFilePath(targetFilePath);
+            validateFilePath(sourceFilePath);
+            File targetFile = new File(targetFilePath);
+            if (!targetFile.isAbsolute()) targetFile = new File(getDanmujiLogDir(), targetFilePath);
+            File sourceFile = new File(sourceFilePath);
+            if (!sourceFile.isAbsolute()) sourceFile = new File(getDanmujiLogDir(), sourceFilePath);
+            if (!sourceFile.exists()) {
+                Map<String, Object> err = new LinkedHashMap<>();
+                err.put("mergedCount", 0); err.put("skippedCount", 0); err.put("error", "源文件不存在");
+                return Response.success(err, req);
+            }
+
+            // key: uid_giftName -> {time, uid, uname, giftName, totalPrice, count}
+            Map<String, String[]> best = new LinkedHashMap<>();
+            if (targetFile.exists()) {
+                try (BufferedReader r = new BufferedReader(new InputStreamReader(new FileInputStream(targetFile), "UTF-8"))) {
+                    r.readLine();
+                    String line;
+                    while ((line = r.readLine()) != null) {
+                        List<String> f = parseCsvLine(line);
+                        if (f.size() >= 6) {
+                            String key = f.get(1) + "_" + f.get(3);
+                            best.putIfAbsent(key, new String[]{f.get(0), f.get(1), f.get(2), f.get(3), f.get(4), f.get(5)});
+                        }
+                    }
+                }
+            }
+            int mergedCount = 0;
+            try (BufferedReader r = new BufferedReader(new InputStreamReader(new FileInputStream(sourceFile), "UTF-8"))) {
+                r.readLine();
+                String line;
+                while ((line = r.readLine()) != null) {
+                    List<String> f = parseCsvLine(line);
+                    if (f.size() >= 6) {
+                        String key = f.get(1) + "_" + f.get(3);
+                        String[] exist = best.get(key);
+                        if (exist == null) {
+                            best.put(key, new String[]{f.get(0), f.get(1), f.get(2), f.get(3), f.get(4), f.get(5)});
+                        } else {
+                            if (f.get(0).compareTo(exist[0]) > 0) exist[0] = f.get(0);
+                            if (f.get(2) != null && !f.get(2).isEmpty()) exist[2] = f.get(2);
+                            try {
+                                exist[4] = String.valueOf(Long.parseLong(exist[4]) + Long.parseLong(f.get(4)));
+                                exist[5] = String.valueOf(Integer.parseInt(exist[5]) + Integer.parseInt(f.get(5)));
+                            } catch (NumberFormatException ignored) {}
+                        }
+                        mergedCount++;
+                    }
+                }
+            }
+
+            List<String[]> sorted = new ArrayList<>(best.values());
+            sorted.sort(Comparator.comparing(a -> a[0]));
+            File tmpFile = new File(targetFilePath + ".merge.tmp");
+            try (BufferedWriter w = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tmpFile), "UTF-8"))) {
+                w.write('﻿');
+                w.write("最新时间,id,名字,赠送礼物名字,电池,赠礼次数");
+                w.newLine();
+                for (String[] row : sorted) {
+                    w.write(row[0] + "," + row[1] + "," + escapeCsvField(row[2]) + "," + escapeCsvField(row[3]) + "," + row[4] + "," + row[5]);
+                    w.newLine();
+                }
+            }
+            safeReplaceFile(tmpFile, targetFile);
+            GiftLogTools.reloadFromFile(targetFile.getAbsolutePath());
+
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("mergedCount", mergedCount);
+            result.put("skippedCount", 0);
+            return Response.success(result, req);
+        } catch (Exception e) {
+            LOGGER.error("mergeGiftCsv error", e);
+            Map<String, Object> err = new LinkedHashMap<>();
+            err.put("error", e.getMessage());
+            return Response.success(err, req);
+        }
+    }
+
     // ========== 实时陌生观众看板 ==========
 
     @ResponseBody
@@ -4071,6 +4631,134 @@ public class WebController {
         } catch (Exception e) {
             LOGGER.error("strangerViewerImport error", e);
             return Response.success(0, req);
+        }
+    }
+
+    // ========== 陌生观众 CSV 合并 ==========
+
+    @ResponseBody
+    @PostMapping(value = "/mergeStrangerCsv")
+    public Response<?> mergeStrangerCsv(@RequestParam("targetFilePath") String targetFilePath,
+                                        @RequestParam("sourceFilePath") String sourceFilePath,
+                                        HttpServletRequest req) {
+        try {
+            validateFilePath(targetFilePath);
+            validateFilePath(sourceFilePath);
+            File targetFile = new File(targetFilePath);
+            if (!targetFile.isAbsolute()) targetFile = new File(getDanmujiLogDir(), targetFilePath);
+            File sourceFile = new File(sourceFilePath);
+            if (!sourceFile.isAbsolute()) sourceFile = new File(getDanmujiLogDir(), sourceFilePath);
+            if (!sourceFile.exists()) {
+                Map<String, Object> err = new LinkedHashMap<>();
+                err.put("mergedCount", 0); err.put("skippedCount", 0); err.put("error", "源文件不存在");
+                return Response.success(err, req);
+            }
+
+            // 陌生人CSV格式: 时间,id,观众名,头像URL,打分,签名,次数,场次,是否拉黑 (9列)
+            // uid -> {time, uid, name, face, score, scoreTypes, count, session, blocked}
+            Map<String, List<String>> best = new LinkedHashMap<>();
+            List<String> headerComments = new ArrayList<>();
+
+            // 读取目标文件
+            if (targetFile.exists()) {
+                try (BufferedReader r = new BufferedReader(new InputStreamReader(new FileInputStream(targetFile), "UTF-8"))) {
+                    String line;
+                    boolean headerSkipped = false;
+                    while ((line = r.readLine()) != null) {
+                        if (line.startsWith("#")) { headerComments.add(line); continue; }
+                        if (!headerSkipped) { headerSkipped = true; continue; } // skip header
+                        List<String> f = parseCsvLine(line);
+                        if (f.size() >= 8) best.putIfAbsent(f.get(1), f);
+                    }
+                }
+            }
+
+            // 读取源文件并合并
+            int mergedCount = 0, skippedCount = 0;
+            try (BufferedReader r = new BufferedReader(new InputStreamReader(new FileInputStream(sourceFile), "UTF-8"))) {
+                String line;
+                boolean headerSkipped = false;
+                while ((line = r.readLine()) != null) {
+                    if (line.startsWith("#")) continue;
+                    if (!headerSkipped) { headerSkipped = true; continue; }
+                    List<String> f = parseCsvLine(line);
+                    if (f.size() >= 8) {
+                        String uid = f.get(1);
+                        List<String> exist = best.get(uid);
+                        if (exist == null) {
+                            // pad to 9 columns if needed
+                            while (f.size() < 9) f.add("0");
+                            best.put(uid, f);
+                            mergedCount++;
+                        } else {
+                            // 保留最新时间的数据（名字/头像/打分/签名/拉黑状态）
+                            boolean sourceNewer = f.get(0).compareTo(exist.get(0)) > 0;
+                            if (sourceNewer) {
+                                exist.set(0, f.get(0));
+                                exist.set(2, f.size() > 2 ? f.get(2) : exist.get(2));
+                                exist.set(3, f.size() > 3 ? f.get(3) : exist.get(3));
+                                exist.set(4, f.size() > 4 ? f.get(4) : exist.get(4));
+                                exist.set(5, f.size() > 5 ? f.get(5) : exist.get(5));
+                                if (f.size() > 8) exist.set(8, f.get(8));
+                            }
+                            // 次数累加
+                            try {
+                                int c1 = Integer.parseInt(exist.get(6));
+                                int c2 = f.size() > 6 ? Integer.parseInt(f.get(6)) : 0;
+                                exist.set(6, String.valueOf(c1 + c2));
+                            } catch (NumberFormatException ignored) {}
+                            // 场次：>3h相加，≤3h保留旧时间
+                            try {
+                                String t1 = exist.get(0), t2 = f.get(0);
+                                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                                long diffMs = Math.abs(sdf.parse(t1).getTime() - sdf.parse(t2).getTime());
+                                if (diffMs > 3 * 3600_000L) {
+                                    int s1 = Integer.parseInt(exist.get(7));
+                                    int s2 = f.size() > 7 ? Integer.parseInt(f.get(7)) : 0;
+                                    exist.set(7, String.valueOf(s1 + s2));
+                                } else if (!sourceNewer) {
+                                    exist.set(7, f.size() > 7 ? f.get(7) : exist.get(7));
+                                }
+                            } catch (Exception ignored) {}
+                            skippedCount++;
+                        }
+                    }
+                }
+            }
+
+            // 写入合并结果
+            File tmpFile = new File(targetFilePath + ".merge.tmp");
+            try (BufferedWriter w = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tmpFile), "UTF-8"))) {
+                // 写入 # 注释头
+                for (String hc : headerComments) { w.write(hc); w.newLine(); }
+                w.write('﻿');
+                w.write("时间,id,观众名,头像URL,打分,签名,次数,场次,是否拉黑");
+                w.newLine();
+                for (List<String> row : best.values()) {
+                    w.write(safeGet(row, 0) + ",");
+                    w.write(safeGet(row, 1) + ",");
+                    w.write(escapeCsvField(safeGet(row, 2)) + ",");
+                    w.write(escapeCsvField(safeGet(row, 3)) + ",");
+                    w.write(safeGet(row, 4) + ",");
+                    w.write(escapeCsvField(safeGet(row, 5)) + ",");
+                    w.write(safeGet(row, 6) + ",");
+                    w.write(safeGet(row, 7) + ",");
+                    w.write(safeGet(row, 8));
+                    w.newLine();
+                }
+            }
+            safeReplaceFile(tmpFile, targetFile);
+            xyz.acproject.danmuji.service.StrangerViewerService.reloadFromFile(targetFile.getAbsolutePath());
+
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("mergedCount", mergedCount);
+            result.put("skippedCount", skippedCount);
+            return Response.success(result, req);
+        } catch (Exception e) {
+            LOGGER.error("mergeStrangerCsv error", e);
+            Map<String, Object> err = new LinkedHashMap<>();
+            err.put("error", e.getMessage());
+            return Response.success(err, req);
         }
     }
 

@@ -3,7 +3,7 @@ package xyz.acproject.danmuji.service;
 import com.alibaba.fastjson.JSONObject;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.boot.system.ApplicationHome;
+import xyz.acproject.danmuji.conf.LogPathConf;
 import xyz.acproject.danmuji.conf.PublicDataConf;
 import xyz.acproject.danmuji.controller.DanmuWebsocket;
 import xyz.acproject.danmuji.entity.base.WsPackage;
@@ -29,13 +29,11 @@ public class StrangerViewerService {
         t.setDaemon(true);
         return t;
     });
-    private static String jarDir;
     private static volatile String lastRoomId;
     private static volatile String lastAnchorName;
     private static volatile boolean viewingExternalFile = false;
 
     static {
-        initBase();
         lastRoomId = roomKey();
         lastAnchorName = safeFileName(PublicDataConf.ANCHOR_NAME);
         loadFromCsv();
@@ -44,11 +42,6 @@ public class StrangerViewerService {
             mdScheduler.shutdown();
             flushToCsv();
         }, "stranger-csv-shutdown"));
-    }
-
-    private static void initBase() {
-        ApplicationHome home = new ApplicationHome(StrangerViewerService.class);
-        jarDir = home.getSource().getParentFile().getAbsolutePath();
     }
 
     private static String roomKey() {
@@ -63,7 +56,7 @@ public class StrangerViewerService {
 
     private static String currentCsvPath() {
         String name = safeFileName(PublicDataConf.ANCHOR_NAME);
-        return jarDir + File.separator + "Danmuji_log" + File.separator + roomKey() + "_" + name + "_7_陌生观众.csv";
+        return LogPathConf.getLogDir() + File.separator + roomKey() + "_" + name + "_7_陌生观众.csv";
     }
 
     public static void addRecord(long uid, String name, String face, int score, String scoreTypes) {
@@ -134,11 +127,12 @@ public class StrangerViewerService {
 
     private static synchronized void flushToCsv() {
         String rk = roomKey();
+        if ("unknown".equals(rk)) return;
         if (!rk.equals(lastRoomId)) {
             // Room switch: full-write old room data, then load new room
             String oldAnchor = lastAnchorName;
             if (oldAnchor != null) {
-                String oldPath = jarDir + File.separator + "Danmuji_log" + File.separator
+                String oldPath = LogPathConf.getLogDir() + File.separator
                         + lastRoomId + "_" + oldAnchor + "_7_陌生观众.csv";
                 doFlushFull(oldPath);
             }
@@ -248,6 +242,12 @@ public class StrangerViewerService {
 
     private static void loadFromCsv() {
         loadFromCsv(currentCsvPath());
+    }
+
+    /** 从指定文件重载内存数据（合并后调用，防止旧数据覆盖合并结果） */
+    public static synchronized void reloadFromFile(String path) {
+        recordMap.clear();
+        loadFromCsv(path);
     }
 
     private static void loadFromCsv(String path) {

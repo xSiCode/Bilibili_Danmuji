@@ -2,7 +2,7 @@ package xyz.acproject.danmuji.tools;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.boot.system.ApplicationHome;
+import xyz.acproject.danmuji.conf.LogPathConf;
 import xyz.acproject.danmuji.conf.PublicDataConf;
 import xyz.acproject.danmuji.utils.JodaTimeUtils;
 
@@ -28,10 +28,8 @@ public class GiftLogTools {
 
     private static volatile String lastRoomId;
     private static volatile String lastAnchorName;
-    private static String jarDir;
 
     static {
-        initBase();
         lastRoomId = roomKey();
         lastAnchorName = safeFileName(PublicDataConf.ANCHOR_NAME);
         loadFromCsv();
@@ -40,11 +38,6 @@ public class GiftLogTools {
             flushScheduler.shutdown();
             flushToCsv();
         }, "gift-csv-shutdown"));
-    }
-
-    private static void initBase() {
-        ApplicationHome home = new ApplicationHome(GiftLogTools.class);
-        jarDir = home.getSource().getParentFile().getAbsolutePath();
     }
 
     private static String roomKey() {
@@ -59,7 +52,7 @@ public class GiftLogTools {
 
     private static String currentCsvPath() {
         String name = safeFileName(PublicDataConf.ANCHOR_NAME);
-        return jarDir + File.separator + "Danmuji_log" + File.separator + roomKey() + "_" + name + "_3_礼物信息.csv";
+        return LogPathConf.getLogDir() + File.separator + roomKey() + "_" + name + "_3_礼物信息.csv";
     }
 
     private static String key(long uid, String giftName) {
@@ -92,6 +85,12 @@ public class GiftLogTools {
 
     private static void loadFromCsv() {
         loadFromCsv(currentCsvPath());
+    }
+
+    /** 从指定文件重载内存数据（合并后调用，防止旧数据覆盖合并结果） */
+    public static synchronized void reloadFromFile(String path) {
+        giftMap.clear();
+        loadFromCsv(path);
     }
 
     private static void loadFromCsv(String path) {
@@ -162,9 +161,10 @@ public class GiftLogTools {
 
     private static synchronized void flushToCsv() {
         String rk = roomKey();
+        if ("unknown".equals(rk)) return; // 房间未连接，跳过写入避免生成 unknown 文件
         if (!rk.equals(lastRoomId)) {
             String oldPrefix = lastRoomId + "_" + lastAnchorName;
-            String oldPath = jarDir + File.separator + "Danmuji_log" + File.separator + oldPrefix + "_3_礼物信息.csv";
+            String oldPath = LogPathConf.getLogDir() + File.separator + oldPrefix + "_3_礼物信息.csv";
             doFlush(oldPath);
             giftMap.clear();
             lastRoomId = rk;

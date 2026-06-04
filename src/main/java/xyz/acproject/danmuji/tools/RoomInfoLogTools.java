@@ -2,7 +2,7 @@ package xyz.acproject.danmuji.tools;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.boot.system.ApplicationHome;
+import xyz.acproject.danmuji.conf.LogPathConf;
 import xyz.acproject.danmuji.conf.PublicDataConf;
 
 import java.io.*;
@@ -25,7 +25,6 @@ public class RoomInfoLogTools {
     private static final LinkedHashMap<String, long[]> roomInfoMap = new LinkedHashMap<>();
     private static volatile String lastRoomId;
     private static volatile String lastAnchorName;
-    private static String jarDir;
     private static volatile boolean running;
     private static volatile ScheduledExecutorService roomInfoScheduler;
     private static volatile Thread shutdownHook;
@@ -34,10 +33,15 @@ public class RoomInfoLogTools {
             ThreadLocal.withInitial(() -> new SimpleDateFormat("yyyy-MM-dd HH:mm"));
 
     static {
-        initBase();
         lastRoomId = roomKey();
         lastAnchorName = safeFileName(PublicDataConf.ANCHOR_NAME);
         loadFromCsv();
+    }
+
+    /** 从指定文件重载内存数据（合并后调用，防止旧数据覆盖合并结果） */
+    public static synchronized void reloadFromFile(String path) {
+        roomInfoMap.clear();
+        loadFromCsv(path);
     }
 
     public static synchronized void start() {
@@ -81,11 +85,6 @@ public class RoomInfoLogTools {
         }
     }
 
-    private static void initBase() {
-        ApplicationHome home = new ApplicationHome(RoomInfoLogTools.class);
-        jarDir = home.getSource().getParentFile().getAbsolutePath();
-    }
-
     private static String roomKey() {
         Long id = PublicDataConf.ROOMID;
         return id != null ? id.toString() : "unknown";
@@ -98,7 +97,7 @@ public class RoomInfoLogTools {
 
     private static String currentCsvPath() {
         String name = safeFileName(PublicDataConf.ANCHOR_NAME);
-        return jarDir + File.separator + "Danmuji_log" + File.separator + roomKey() + "_" + name + "_1_直播间信息.csv";
+        return LogPathConf.getLogDir() + File.separator + roomKey() + "_" + name + "_1_直播间信息.csv";
     }
 
     private static synchronized void tick() {
@@ -187,9 +186,10 @@ public class RoomInfoLogTools {
 
     private static synchronized void flushToCsv() {
         String rk = roomKey();
+        if ("unknown".equals(rk)) return;
         if (!rk.equals(lastRoomId)) {
             String oldPrefix = lastRoomId + "_" + lastAnchorName;
-            String oldPath = jarDir + File.separator + "Danmuji_log" + File.separator + oldPrefix + "_1_直播间信息.csv";
+            String oldPath = LogPathConf.getLogDir() + File.separator + oldPrefix + "_1_直播间信息.csv";
             doFlush(oldPath);
             roomInfoMap.clear();
             lastRoomId = rk;

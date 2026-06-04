@@ -3,10 +3,10 @@ package xyz.acproject.danmuji.tools.file;
 import com.alibaba.fastjson.JSONObject;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import xyz.acproject.danmuji.conf.LogPathConf;
 import xyz.acproject.danmuji.conf.PublicDataConf;
 
 import java.io.*;
-import java.net.URLDecoder;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -94,14 +94,9 @@ public class FootprintFileTools {
     }
 
     private String getBaseDir() {
-        try {
-            String p = URLDecoder.decode(new FileTools().getBaseJarPath().toString(), "utf-8")
-                    + "/Danmuji_log/";
-            new File(p).mkdirs();
-            return p;
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        String p = LogPathConf.getLogDir() + "/";
+        new File(p).mkdirs();
+        return p;
     }
 
     private static String safeFileName(String s) {

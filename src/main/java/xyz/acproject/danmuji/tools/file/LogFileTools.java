@@ -3,11 +3,11 @@ package xyz.acproject.danmuji.tools.file;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import xyz.acproject.danmuji.conf.LogPathConf;
 import xyz.acproject.danmuji.conf.PublicDataConf;
 import xyz.acproject.danmuji.utils.JodaTimeUtils;
 
 import java.io.*;
-import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -25,13 +25,9 @@ public class LogFileTools {
 	private static String getBaseDirPath() {
 		String p = baseDirPath;
 		if (p == null) {
-			try {
-				p = URLDecoder.decode(new FileTools().getBaseJarPath().toString(), "utf-8") + "/Danmuji_log/";
-				new File(p).mkdirs();
-				baseDirPath = p;
-			} catch (Exception e) {
-				throw new RuntimeException(e);
-			}
+			p = LogPathConf.getLogDir() + "/";
+			new File(p).mkdirs();
+			baseDirPath = p;
 		}
 		return p;
 	}
@@ -115,7 +111,7 @@ public class LogFileTools {
 	}
 
 	public void logFile(String msg) {
-		String key = PublicDataConf.ROOMID + "_" + safeFileName(PublicDataConf.ANCHOR_NAME) + "_8_" + "_log";
+		String key = PublicDataConf.ROOMID + "_" + safeFileName(PublicDataConf.ANCHOR_NAME) + "_8_" + "log";
 		String fp = filePathCache;
 		if (fp == null || !key.equals(filePathKey)) {
 			fp = getBaseDirPath() + key + ".txt";
@@ -126,7 +122,7 @@ public class LogFileTools {
 	}
 
 	public void logFollowingsFile(String msg) {
-		String key = PublicDataConf.ROOMID + "_"+ safeFileName(PublicDataConf.ANCHOR_NAME) + "_9_"  + "_followings";
+		String key = PublicDataConf.ROOMID + "_"+ safeFileName(PublicDataConf.ANCHOR_NAME) + "_9_"  + "followings";
 		String fp = followingsPathCache;
 		if (fp == null || !key.equals(followingsPathKey)) {
 			fp = getBaseDirPath() + key + ".txt";
@@ -137,7 +133,7 @@ public class LogFileTools {
 	}
 
 	public void logTestFile(String msg) {
-		String key =PublicDataConf.ROOMID + "_" + safeFileName(PublicDataConf.ANCHOR_NAME) + "_10_" + "_testLog";
+		String key =PublicDataConf.ROOMID + "_" + safeFileName(PublicDataConf.ANCHOR_NAME) + "_10_" + "testLog";
 		String fp = testPathCache;
 		if (fp == null || !key.equals(testPathKey)) {
 			fp = getBaseDirPath() + key + ".txt";
