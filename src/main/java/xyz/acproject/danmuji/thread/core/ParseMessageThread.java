@@ -992,7 +992,7 @@ public class ParseMessageThread extends Thread {
                             break;
                         default:
                             LOGGER.info("其他未处理cmd: " + cmd);
-                            //   notHandle(cmd, message);
+                            notHandle(cmd, message);
                             break;
                     }
                 }
@@ -1004,8 +1004,8 @@ public class ParseMessageThread extends Thread {
     }
 
     private static void notHandle(String cmd, String message) {
-        LOGGER.info("其他未处理消息:" + message);
-
+       // LOGGER.info("其他未处理消息:" + message);
+        LogFileTools.getlogFileTools().logTestFile("其他未处理消息:" + message);
         switch (cmd) {
 
             // 部分金瓜子礼物连击
