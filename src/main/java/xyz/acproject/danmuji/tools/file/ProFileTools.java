@@ -3,6 +3,7 @@ package xyz.acproject.danmuji.tools.file;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -20,15 +21,20 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ProFileTools {
 	private static final String STORE_DIR;
 	static {
-		FileTools fileTools = new FileTools();
-		String tmp;
-		try {
-			tmp = URLDecoder.decode(fileTools.getBaseJarPath().toString(), "utf-8");
-		} catch (Exception e1) {
-			log.warn(e1.getMessage(),e1);
-			tmp = System.getProperty("user.dir");
+		String override = System.getProperty("danmuji.store.dir");
+		if (override != null && !override.isEmpty()) {
+			STORE_DIR = override;
+		} else {
+			FileTools fileTools = new FileTools();
+			String tmp;
+			try {
+				tmp = URLDecoder.decode(fileTools.getBaseJarPath().toString(), "utf-8");
+			} catch (Exception e1) {
+				log.warn(e1.getMessage(),e1);
+				tmp = System.getProperty("user.dir");
+			}
+			STORE_DIR = tmp;
 		}
-		STORE_DIR = tmp;
 	}
 
 	/**
@@ -51,7 +57,7 @@ public class ProFileTools {
 		String dataString;
 		String[] strings;
 		//try-catch-resource
-		try (BufferedReader bufferedReader = new BufferedReader(new FileReader(file))){
+		try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))){
 			while ((dataString = bufferedReader.readLine()) != null) {
 				strings = dataString.split(":@:");
 				if (strings.length == 2) {

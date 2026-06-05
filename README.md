@@ -579,3 +579,31 @@ $ java -jar BiliBili_Danmuji-2.7.0.0beta.jar
 </blockquote>
 </blockquote>  
 
+日志记录公共文件地址修改，默认 Documents/Danmuji_log
+绝对路径
+java -jar danmuji.jar --danmuji.log.dir="D:/Danmuji_log"
+java -jar danmuji.jar --danmuji.log.dir="C:/Users/xSiCo/Documents/Danmuji_log"
+
+相对路径（相对于运行命令时的当前目录）
+
+java -jar danmuji.jar --danmuji.log.dir="./Danmuji_log"
+java -jar danmuji.jar --danmuji.log.dir="../shared/Danmuji_log"
+
+
+
+     使用示例
+
+     # 最简：只指定房间
+     java -jar danmuji.jar --server.port=21201 --room.id=12345
+
+     # 完整：足迹留印模式 + 关闭浏览器自动打开
+     java -jar danmuji.jar \
+       --server.port=21201 \
+       --room.id=12345 \
+       --danmuji.conf.is_footprint_record=true \
+       --danmuji.conf.win_auto_openSet=false
+
+     # 多开批处理
+     java -jar danmuji.jar --server.port=21201 --room.id=11111 --danmuji.conf.is_footprint_record=true
+     java -jar danmuji.jar --server.port=21202 --room.id=22222 --danmuji.conf.is_footprint_record=true
+
