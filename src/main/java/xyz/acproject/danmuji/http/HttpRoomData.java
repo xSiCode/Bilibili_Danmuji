@@ -786,8 +786,8 @@ public class HttpRoomData {
                         vmid, cardResult.name, cardResult.face, totalScore, combinedType + cardResult.sign);
             }
 
-            // Phase 3: 仅当综合分==0时才触发动态API
-            if ((-1 <= totalScore && totalScore <= 1) && !schedulerDynamicColdWait.get()) {
+            // Phase 3: 仅当综合分在 -1, 0 时才触发动态API
+            if ((-1 <= totalScore && totalScore <= 0) && !schedulerDynamicColdWait.get()) {
                 // logSb.append("[动态|请求中]");
                 int finalTotalScore = totalScore;
                 return asyncHttpGetUserDynamic(vmid).thenApply(dynData -> {

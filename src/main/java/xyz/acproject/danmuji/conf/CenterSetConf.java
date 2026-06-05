@@ -78,7 +78,7 @@ public class CenterSetConf implements Serializable {
     private boolean is_watcher_log = true;
     //是否开启足迹留印（轻量级记录，跳过所有INTERACT_WORD_V2处理，零API调用）
     @JSONField(name = "is_footprint_record")
-    private boolean is_footprint_record = false;
+    private boolean is_footprint_record = true;
     //是否控制台打印
     @JSONField(name = "is_cmd")
     private boolean is_cmd = true;
