@@ -31,6 +31,7 @@ import xyz.acproject.danmuji.service.SetService;
 import xyz.acproject.danmuji.tools.CurrencyTools;
 import xyz.acproject.danmuji.tools.ParseSetStatusTools;
 import xyz.acproject.danmuji.tools.file.FileTools;
+import xyz.acproject.danmuji.tools.file.ProFileTools;
 import xyz.acproject.danmuji.tools.file.FootprintFileTools;
 import xyz.acproject.danmuji.tools.file.FootprintFileTools.FileBatch;
 import xyz.acproject.danmuji.tools.file.FootprintFileTools.FootprintRecord;
@@ -543,8 +544,7 @@ public class WebController {
     @GetMapping(value = "/getWatchedRooms")
     public Response<?> getWatchedRooms(HttpServletRequest req) {
         JSONArray list = new JSONArray();
-        FileTools fileTools = new FileTools();
-        File file = new File(fileTools.getBaseJarPath(), "set/watched_rooms.json");
+        File file = new File(ProFileTools.getStoreDir(), "set/watched_rooms.json");
         if (file.exists()) {
             try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
                 StringBuilder sb = new StringBuilder();
@@ -563,8 +563,7 @@ public class WebController {
     @PostMapping(value = "/saveWatchedRooms")
     public Response<?> saveWatchedRooms(@RequestParam("data") String data, HttpServletRequest req) {
         try {
-            FileTools fileTools = new FileTools();
-            File dir = new File(fileTools.getBaseJarPath(), "set");
+            File dir = new File(ProFileTools.getStoreDir(), "set");
             if (!dir.exists()) dir.mkdirs();
             File file = new File(dir, "watched_rooms.json");
             try (BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"))) {
@@ -894,8 +893,7 @@ public class WebController {
     @GetMapping(value = "/getNegativeBlackPositiveWhite")
     public Response<?> getNegativeBlackPositiveWhite(HttpServletRequest req) {
         try {
-            FileTools fileTools = new FileTools();
-            File file = new File(fileTools.getBaseJarPath(), "set/负黑正白判定表.json");
+            File file = new File(ProFileTools.getStoreDir(), "set/负黑正白判定表.json");
             if (!file.exists()) {
                 JSONObject empty = new JSONObject();
                 empty.put("type", "负黑正白判定表");
@@ -921,8 +919,7 @@ public class WebController {
     @PostMapping(value = "/saveNegativeBlackPositiveWhite")
     public Response<?> saveNegativeBlackPositiveWhite(@RequestParam("data") String data, HttpServletRequest req) {
         try {
-            FileTools fileTools = new FileTools();
-            File file = new File(fileTools.getBaseJarPath(), "set/负黑正白判定表.json");
+            File file = new File(ProFileTools.getStoreDir(), "set/负黑正白判定表.json");
             JSONObject inputData = JSONObject.parseObject(data);
             com.alibaba.fastjson.JSONArray inputList = inputData.getJSONArray("followings_list");
 
@@ -963,8 +960,7 @@ public class WebController {
     @GetMapping(value = "/getAutoBlockRecords")
     public Response<?> getAutoBlockRecords(HttpServletRequest req) {
         try {
-            FileTools fileTools = new FileTools();
-            File file = new File(fileTools.getBaseJarPath(), "set/负黑自动拉黑记录.json");
+            File file = new File(ProFileTools.getStoreDir(), "set/负黑自动拉黑记录.json");
             if (!file.exists()) {
                 JSONObject empty = new JSONObject();
                 empty.put("type", "负黑自动拉黑记录");
@@ -990,8 +986,7 @@ public class WebController {
     @PostMapping(value = "/deleteAutoBlockRecord")
     public Response<?> deleteAutoBlockRecord(@RequestParam("uid") long uid, HttpServletRequest req) {
         try {
-            FileTools fileTools = new FileTools();
-            File file = new File(fileTools.getBaseJarPath(), "set/负黑自动拉黑记录.json");
+            File file = new File(ProFileTools.getStoreDir(), "set/负黑自动拉黑记录.json");
             if (!file.exists()) {
                 return Response.success(0, req);
             }
@@ -1033,8 +1028,7 @@ public class WebController {
         }
         if (code == 0) {
             try {
-                FileTools fileTools = new FileTools();
-                File file = new File(fileTools.getBaseJarPath(), "set/负黑自动拉黑记录.json");
+                File file = new File(ProFileTools.getStoreDir(), "set/负黑自动拉黑记录.json");
                 if (file.exists()) {
                     StringBuilder sb = new StringBuilder();
                     try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
@@ -1072,12 +1066,11 @@ public class WebController {
     @GetMapping(value = "/pnExport")
     public Response<?> pnExport(HttpServletRequest req) {
         try {
-            FileTools fileTools = new FileTools();
-            File srcFile = new File(fileTools.getBaseJarPath(), "set/负黑正白判定表.json");
+            File srcFile = new File(ProFileTools.getStoreDir(), "set/负黑正白判定表.json");
             if (!srcFile.exists()) {
                 return Response.success(1, req);
             }
-            String destDir = fileTools.getBaseJarPath() + "/set/";
+            String destDir = ProFileTools.getStoreDir() + "/set/";
             File destDirFile = new File(destDir);
             if (!destDirFile.exists()) {
                 destDirFile.mkdirs();
@@ -1095,8 +1088,7 @@ public class WebController {
     @ResponseBody
     @GetMapping(value = "/pnExportWeb")
     public void pnExportWeb(HttpServletResponse response) throws Exception {
-        FileTools fileTools = new FileTools();
-        File file = new File(fileTools.getBaseJarPath(), "set/负黑正白判定表.json");
+        File file = new File(ProFileTools.getStoreDir(), "set/负黑正白判定表.json");
         if (!file.exists()) {
             file.createNewFile();
             try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"))) {
@@ -1135,8 +1127,7 @@ public class WebController {
             if (jsonObject == null || !"负黑正白判定表".equals(jsonObject.getString("type"))) {
                 return Response.success(1, req);
             }
-            FileTools fileTools = new FileTools();
-            File destFile = new File(fileTools.getBaseJarPath(), "set/负黑正白判定表.json");
+            File destFile = new File(ProFileTools.getStoreDir(), "set/负黑正白判定表.json");
             try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(destFile), "UTF-8"))) {
                 writer.write(com.alibaba.fastjson.JSON.toJSONString(jsonObject, true));
             }
@@ -1154,12 +1145,11 @@ public class WebController {
     @GetMapping(value = "/abExport")
     public Response<?> abExport(HttpServletRequest req) {
         try {
-            FileTools fileTools = new FileTools();
-            File srcFile = new File(fileTools.getBaseJarPath(), "set/负黑自动拉黑记录.json");
+            File srcFile = new File(ProFileTools.getStoreDir(), "set/负黑自动拉黑记录.json");
             if (!srcFile.exists()) {
                 return Response.success(1, req);
             }
-            String destDir = fileTools.getBaseJarPath() + "/set/";
+            String destDir = ProFileTools.getStoreDir() + "/set/";
             File destDirFile = new File(destDir);
             if (!destDirFile.exists()) {
                 destDirFile.mkdirs();
@@ -1177,8 +1167,7 @@ public class WebController {
     @ResponseBody
     @GetMapping(value = "/abExportWeb")
     public void abExportWeb(HttpServletResponse response) throws Exception {
-        FileTools fileTools = new FileTools();
-        File file = new File(fileTools.getBaseJarPath(), "set/负黑自动拉黑记录.json");
+        File file = new File(ProFileTools.getStoreDir(), "set/负黑自动拉黑记录.json");
         if (!file.exists()) {
             file.createNewFile();
             try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"))) {
@@ -1217,8 +1206,7 @@ public class WebController {
             if (jsonObject == null || !"负黑自动拉黑记录".equals(jsonObject.getString("type"))) {
                 return Response.success(1, req);
             }
-            FileTools fileTools = new FileTools();
-            File destFile = new File(fileTools.getBaseJarPath(), "set/负黑自动拉黑记录.json");
+            File destFile = new File(ProFileTools.getStoreDir(), "set/负黑自动拉黑记录.json");
             try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(destFile), "UTF-8"))) {
                 writer.write(com.alibaba.fastjson.JSON.toJSONString(jsonObject, true));
             }
@@ -1235,8 +1223,7 @@ public class WebController {
     @GetMapping(value = "/getDanmakuStore")
     public Response<?> getDanmakuStore(HttpServletRequest req) {
         try {
-            FileTools fileTools = new FileTools();
-            File file = new File(fileTools.getBaseJarPath(), "set/话术.json");
+            File file = new File(ProFileTools.getStoreDir(), "set/话术.json");
             if (!file.exists()) {
                 JSONObject empty = new JSONObject();
                 empty.put("type", "话术");
@@ -1262,8 +1249,7 @@ public class WebController {
     @PostMapping(value = "/saveDanmakuStore")
     public Response<?> saveDanmakuStore(@RequestParam("data") String data, HttpServletRequest req) {
         try {
-            FileTools fileTools = new FileTools();
-            File file = new File(fileTools.getBaseJarPath(), "set/话术.json");
+            File file = new File(ProFileTools.getStoreDir(), "set/话术.json");
             JSONObject inputData = JSONObject.parseObject(data);
             com.alibaba.fastjson.JSONArray inputList = inputData.getJSONArray("items");
 
@@ -1303,12 +1289,11 @@ public class WebController {
     @GetMapping(value = "/dsExport")
     public Response<?> dsExport(HttpServletRequest req) {
         try {
-            FileTools fileTools = new FileTools();
-            File srcFile = new File(fileTools.getBaseJarPath(), "set/话术.json");
+            File srcFile = new File(ProFileTools.getStoreDir(), "set/话术.json");
             if (!srcFile.exists()) {
                 return Response.success(1, req);
             }
-            String destDir = fileTools.getBaseJarPath() + "/set/";
+            String destDir = ProFileTools.getStoreDir() + "/set/";
             File destDirFile = new File(destDir);
             if (!destDirFile.exists()) {
                 destDirFile.mkdirs();
@@ -1326,8 +1311,7 @@ public class WebController {
     @ResponseBody
     @GetMapping(value = "/dsExportWeb")
     public void dsExportWeb(HttpServletResponse response) throws Exception {
-        FileTools fileTools = new FileTools();
-        File file = new File(fileTools.getBaseJarPath(), "set/话术.json");
+        File file = new File(ProFileTools.getStoreDir(), "set/话术.json");
         if (!file.exists()) {
             file.createNewFile();
             try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8"))) {
@@ -1366,8 +1350,7 @@ public class WebController {
             if (jsonObject == null || !"话术".equals(jsonObject.getString("type"))) {
                 return Response.success(1, req);
             }
-            FileTools fileTools = new FileTools();
-            File destFile = new File(fileTools.getBaseJarPath(), "set/话术.json");
+            File destFile = new File(ProFileTools.getStoreDir(), "set/话术.json");
             try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(destFile), "UTF-8"))) {
                 writer.write(com.alibaba.fastjson.JSON.toJSONString(jsonObject, true));
             }

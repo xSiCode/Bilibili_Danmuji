@@ -15,6 +15,7 @@ import xyz.acproject.danmuji.entity.user_data.MedalWallItem;
 import xyz.acproject.danmuji.entity.user_data.UserNav;
 import xyz.acproject.danmuji.tools.CurrencyTools;
 import xyz.acproject.danmuji.tools.file.FileTools;
+import xyz.acproject.danmuji.tools.file.ProFileTools;
 import xyz.acproject.danmuji.tools.FollowingCountTools;
 import xyz.acproject.danmuji.tools.MatchCountTools;
 import xyz.acproject.danmuji.tools.file.LogFileTools;
@@ -1179,25 +1180,28 @@ public class HttpRoomData {
             return Pair.of(-1, "[动态隐藏-1]");
         }
 
-        int score = 1; // 有动态默认1分
+        int score = 0;
         score += getKeyWordsScore(extracted.text, logSb);
 
         logSb.append("  [动态数:").append(extracted.cardCount);
         if (extracted.latestTimestamp > 0) {
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm");
             Date date = new Date(extracted.latestTimestamp * 1000);
+            String formattedTime = sdf.format(date);
             // logSb.append(" 最新:").append(sdf.format(date));
 
             if (extracted.cardCount == 1) {
                 boolean isNewUser = StringUtils.contains(extracted.text, "挑战转正答题考试"); //
                 if (isNewUser) {
-                    int l = "2025-10-01 08:01".compareTo(date.toString());
-                    int r = "2026-02-01 08:01".compareTo(date.toString());
+                    int l = "2025-10-01 08:01".compareTo(formattedTime);
+                    int r = "2026-02-01 08:01".compareTo(formattedTime);
                     if (l < 0 && r > 0) {
                         logSb.append(" 动态人机-1]");
                         score -= 1;
                     }
                 }
+            } else {
+                score++;
             }
         }
 
@@ -1366,8 +1370,7 @@ public class HttpRoomData {
     private static Map<Long, Integer> loadNegativeBlackPositiveWhiteScores() {
         Map<Long, Integer> map = new HashMap<>();
         try {
-            FileTools fileTools = new FileTools();
-            File file = new File(fileTools.getBaseJarPath(), "set/负黑正白判定表.json");
+            File file = new File(ProFileTools.getStoreDir(), "set/负黑正白判定表.json");
             if (!file.exists()) return map;
             StringBuilder sb = new StringBuilder();
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {

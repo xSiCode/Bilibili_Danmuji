@@ -37,6 +37,10 @@ public class ProFileTools {
 		}
 	}
 
+	public static String getStoreDir() {
+		return STORE_DIR;
+	}
+
 	/**
 	 * 读取profile文件内容 转为 Map对象
 	 * @param filename 文件名称,非绝对地址

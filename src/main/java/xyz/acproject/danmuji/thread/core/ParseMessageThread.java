@@ -39,6 +39,7 @@ import xyz.acproject.danmuji.tools.ParseSetStatusTools;
 import xyz.acproject.danmuji.tools.ShieldGiftTools;
 import xyz.acproject.danmuji.tools.VisitorCountTools;
 import xyz.acproject.danmuji.tools.file.FileTools;
+import xyz.acproject.danmuji.tools.file.ProFileTools;
 import xyz.acproject.danmuji.tools.file.FootprintFileTools;
 import xyz.acproject.danmuji.tools.file.GuardFileTools;
 import xyz.acproject.danmuji.tools.file.LogFileTools;
@@ -97,7 +98,7 @@ public class ParseMessageThread extends Thread {
     private static final String BASE_JAR_PATH;
 
     static {
-        BASE_JAR_PATH = new FileTools().getBaseJarPath().getAbsolutePath();
+        BASE_JAR_PATH = ProFileTools.getStoreDir();
     }
 
     private static final ScheduledExecutorService autoBlockFlushScheduler =

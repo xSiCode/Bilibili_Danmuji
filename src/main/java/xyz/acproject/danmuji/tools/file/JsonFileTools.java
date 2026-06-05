@@ -30,18 +30,10 @@ public class JsonFileTools {
      */
     public static boolean createJsonFile(String jsonString) {
         boolean flag = true;
-        String path = System.getProperty("user.dir");
-        FileTools fileTools = new FileTools();
-        try {
-            path = URLDecoder.decode(fileTools.getBaseJarPath().toString(), "utf-8");
-        } catch (Exception e1) {
-            // TODO 自动生成的 catch 块
-            LOGGER.error(e1);
-        }
+        String path = ProFileTools.getStoreDir() + "/set/";
 
         // 生成json格式文件
         try {
-            path = path+"/set/";
             // 保证创建一个新文件
             File file = new File(path+"set-"+JodaTimeUtils.format(new Date(),"yyyyMMddHHmmss")+".json");
 //            file.setWritable(true, false);
@@ -75,18 +67,10 @@ public class JsonFileTools {
      */
     public static File createJsonFileReturnFile(String jsonString) {
         File file = null;
-        String path = System.getProperty("user.dir");
-        FileTools fileTools = new FileTools();
-        try {
-            path = URLDecoder.decode(fileTools.getBaseJarPath().toString(), "utf-8");
-        } catch (Exception e1) {
-            // TODO 自动生成的 catch 块
-            LOGGER.error(e1);
-        }
+        String path = ProFileTools.getStoreDir() + "/set/";
 
         // 生成json格式文件
         try {
-            path = path+"/set/";
             // 保证创建一个新文件
             file = new File(path+"set-"+ JodaTimeUtils.format(new Date(),"yyyyMMddHHmmss") +".json");
 //            file.setWritable(true, false);
