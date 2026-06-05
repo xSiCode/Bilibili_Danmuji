@@ -61,13 +61,7 @@ public class HandleWebsocketPackage {
 				}
 			} else if (data_ver == 1) {
 				if (data_type == 3) {
-					try {
-						//房间人气
-						PublicDataConf.ROOM_POPULARITY = ByteUtils.byteslong(bs);
-					} catch (Exception e) {
-						// TODO 自动生成的 catch 块
-						LOGGER.error(e);
-					}
+					// 房间人气 — 不再使用服务器下发值，改为本地计算
 				} else if (data_type == 8) {
 					// 返回{code 0} 验证头消息成功后返回
 					try {
@@ -149,12 +143,7 @@ public class HandleWebsocketPackage {
 //				}
 			} else if (data_ver == 1) {
 				if (data_type == 3) {
-					try {
-						PublicDataConf.ROOM_POPULARITY = ByteUtils.byteslong(bs);
-					} catch (Exception e) {
-						// TODO 自动生成的 catch 块
-						LOGGER.error(e);
-					}
+					// 房间人气 — 不再使用服务器下发值，改为本地计算
 //					LOGGER.info(resultStr);
 				}
 //				else {

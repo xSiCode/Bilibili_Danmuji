@@ -787,7 +787,7 @@ public class HttpRoomData {
             }
 
             // Phase 3: 仅当综合分==0时才触发动态API
-            if (totalScore == 0 && !schedulerDynamicColdWait.get()) {
+            if ((-1 <= totalScore && totalScore <= 1) && !schedulerDynamicColdWait.get()) {
                 // logSb.append("[动态|请求中]");
                 int finalTotalScore = totalScore;
                 return asyncHttpGetUserDynamic(vmid).thenApply(dynData -> {
@@ -975,7 +975,7 @@ public class HttpRoomData {
         logSb.append("关注黑白分:").append(blackWhiteScore).append("]");
 
         LogFileTools.getlogFileTools().logTestFile(name_sign_followingUser_str);
-        
+
         return Pair.of(blackWhiteScore, blackWhiteType.toString());
     }
 

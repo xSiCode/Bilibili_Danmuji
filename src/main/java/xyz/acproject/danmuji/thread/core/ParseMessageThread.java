@@ -898,6 +898,11 @@ public class ParseMessageThread extends Thread {
                         case "WATCHED_CHANGE":
                             //{"cmd":"WATCHED_CHANGE","data":{"num":184547,"text_small":"18.4万","text_large":"18.4万人看过"}}
                             PublicDataConf.ROOM_WATCHER = JSONObject.parseObject(jsonObject.getString("data")).getLong("num");
+                            // 人气值 = log₂(看过人数 × 在线人数 × 点赞数)
+                            long product = PublicDataConf.ROOM_WATCHER * PublicDataConf.ROOM_ONLINE__RANK_COUNT * PublicDataConf.ROOM_LIKE;
+                            if (product > 0) {
+                                PublicDataConf.ROOM_POPULARITY = (long) (Math.log(product) / Math.log(2));
+                            }
                             LOGGER.info("多少人观看过:::" + message);
                             break;
 
