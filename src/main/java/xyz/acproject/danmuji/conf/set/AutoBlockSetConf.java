@@ -13,5 +13,5 @@ public class AutoBlockSetConf {
     private int block_score = -1;
 
     @JSONField(name = "block_interval")
-    private int block_interval = 3;
+    private int block_interval = 120;
 }

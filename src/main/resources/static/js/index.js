@@ -1784,7 +1784,7 @@ const method = {
         }
         set.auto_block.is_auto_block = $(".is_auto_block").is(':checked');
         set.auto_block.block_score = parseInt($(".auto-block-score").val()) || -1;
-        set.auto_block.block_interval = parseInt($(".auto-block-interval").val()) || 3;
+        set.auto_block.block_interval = parseInt($(".auto-block-interval").val()) || 120;
         if ($(".follow_is_open").is(':checked')) {
             if ($(".follow_follows").val().trim() !== null
                 && $(".follow_follows").val().trim() !== "") {

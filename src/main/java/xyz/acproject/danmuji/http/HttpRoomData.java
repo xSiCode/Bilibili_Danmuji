@@ -1021,21 +1021,24 @@ public class HttpRoomData {
                             r.type += "[人机关注-1]";
                             cardLog.append(" 人机关注-1");
                         }
-
-                        if ((r.name.startsWith("bili_")
-                                && "https://i0.hdslb.com/bfs/face/member/noface.jpg".equals(r.face)
-                                && "保密".equals(sex))) {
+                        if (r.name.startsWith("bili_") ){
                             r.score--;
-                            r.type += "[人机信息-1]";
-                            cardLog.append(" 人机信息-1");
+                            r.type += "[人机名字-1]";
+                            cardLog.append(" 人机名字-1");
                         }
+                        if ( "https://i0.hdslb.com/bfs/face/member/noface.jpg".equals(r.face) ) {
+                            r.score--;
+                            r.type += "[人机头像-1]";
+                            cardLog.append(" 人机头像-1");
+                        }
+
                         // 等级
                         JSONObject levelInfo = cardJO.getJSONObject("level_info");
                         int lv = levelInfo != null ? levelInfo.getIntValue("current_level") : -1;
                         cardLog.append(" Lv").append(lv);
                         if (lv == 0) {
-                            r.score -= 2;
-                            r.type += "[Lv0:-2]";
+                            r.score -= 5;
+                            r.type += "[Lv0:-5]";
                             cardLog.append("[Lv0:-2]");
                         } else if (lv <= 2) {
                             r.score--;
