@@ -288,6 +288,9 @@ public class ParseSetStatusTools {
 			if(centerSetConf.getKey_word()==null){
 				centerSetConf.setKey_word(new KeyWordSetConf());
 			}
+			if(centerSetConf.getLocalBlackWhiteList()==null){
+				centerSetConf.setLocalBlackWhiteList(new LocalBlackWhiteListSetConf());
+			}
 		}
 		return centerSetConf;
 	}

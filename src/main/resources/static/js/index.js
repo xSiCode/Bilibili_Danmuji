@@ -2172,6 +2172,9 @@ const method = {
                 $(".auto-block-score").val(set.auto_block.block_score != null ? set.auto_block.block_score : -1);
                 $(".auto-block-interval").val(set.auto_block.block_interval != null ? set.auto_block.block_interval : 3);
             }
+            if (set.local_black_white_list) {
+                $(".is_bwlist_open").prop('checked', set.local_black_white_list.is_open);
+            }
 
 
             /* 处理？ */

@@ -27,6 +27,7 @@ import xyz.acproject.danmuji.http.HttpRoomData;
 import xyz.acproject.danmuji.http.HttpUserData;
 import xyz.acproject.danmuji.service.ClientService;
 import xyz.acproject.danmuji.service.DanmujiInitService;
+import xyz.acproject.danmuji.service.LocalBlackWhiteListService;
 import xyz.acproject.danmuji.service.SetService;
 import xyz.acproject.danmuji.tools.CurrencyTools;
 import xyz.acproject.danmuji.tools.ParseSetStatusTools;
@@ -669,6 +670,13 @@ public class WebController {
             if(centerSetConf.getKey_word()==null&&PublicDataConf.centerSetConf.getKey_word()==null){
                 centerSetConf.setKey_word(new KeyWordSetConf());
             }
+            //本地黑白名单姬
+            if(centerSetConf.getLocalBlackWhiteList()==null&&PublicDataConf.centerSetConf.getLocalBlackWhiteList()!=null){
+                centerSetConf.setLocalBlackWhiteList(PublicDataConf.centerSetConf.getLocalBlackWhiteList());
+            }
+            if(centerSetConf.getLocalBlackWhiteList()==null&&PublicDataConf.centerSetConf.getLocalBlackWhiteList()==null){
+                centerSetConf.setLocalBlackWhiteList(new LocalBlackWhiteListSetConf());
+            }
             //欢迎凝视姬
             if(centerSetConf.getGaze_welcome()==null&&PublicDataConf.centerSetConf.getGaze_welcome()!=null){
                 centerSetConf.setGaze_welcome(PublicDataConf.centerSetConf.getGaze_welcome());
@@ -800,6 +808,135 @@ public class WebController {
 
 
 
+
+    // ========== 本地黑白名单姬 API ==========
+
+    @ResponseBody
+    @GetMapping(value = "/getBlackWhiteList")
+    public Response<?> getBlackWhiteList(@RequestParam(defaultValue = "black") String type,
+                                         @RequestParam(defaultValue = "1") int page,
+                                         @RequestParam(defaultValue = "10") int pageSize,
+                                         @RequestParam(defaultValue = "") String search,
+                                         @RequestParam(defaultValue = "uid") String sortField,
+                                         @RequestParam(defaultValue = "asc") String sortOrder,
+                                         HttpServletRequest req) {
+        List<LocalBlackWhiteListService.BlackWhiteEntry> source;
+        if ("white".equals(type)) {
+            source = search.isEmpty()
+                    ? LocalBlackWhiteListService.getWhitelist()
+                    : LocalBlackWhiteListService.searchWhitelist(search);
+        } else {
+            source = search.isEmpty()
+                    ? LocalBlackWhiteListService.getBlacklist()
+                    : LocalBlackWhiteListService.searchBlacklist(search);
+        }
+
+        boolean asc = !"desc".equalsIgnoreCase(sortOrder);
+        Comparator<LocalBlackWhiteListService.BlackWhiteEntry> cmp;
+        switch (sortField) {
+            case "name": cmp = Comparator.comparing(a -> a.name); break;
+            case "score": cmp = Comparator.comparingInt(a -> a.score); break;
+            case "count": cmp = Comparator.comparingInt(a -> a.count); break;
+            case "createTime": cmp = Comparator.comparingLong(a -> a.createTime); break;
+            case "updateTime": cmp = Comparator.comparingLong(a -> a.updateTime); break;
+            case "roomId": cmp = Comparator.comparingLong(a -> a.roomId); break;
+            default: cmp = Comparator.comparingLong(a -> a.uid); break;
+        }
+        source.sort(asc ? cmp : cmp.reversed());
+
+        int total = source.size();
+        int totalPages = total == 0 ? 0 : (int) Math.ceil((double) total / pageSize);
+        if (page < 1) page = 1;
+        if (totalPages > 0 && page > totalPages) page = totalPages;
+        int from = (page - 1) * pageSize;
+        int to = Math.min(from + pageSize, total);
+        List<LocalBlackWhiteListService.BlackWhiteEntry> pageItems = total > 0 ? source.subList(from, to) : new ArrayList<>();
+
+        JSONObject result = new JSONObject();
+        result.put("rows", pageItems);
+        result.put("total", total);
+        result.put("totalPages", totalPages);
+        result.put("currentPage", totalPages > 0 ? page : 0);
+        return Response.success(result, req);
+    }
+
+    @ResponseBody
+    @PostMapping(value = "/deleteBlackWhiteEntry")
+    public Response<?> deleteBlackWhiteEntry(@RequestParam("type") String type,
+                                             @RequestParam("uid") long uid,
+                                             HttpServletRequest req) {
+        if ("white".equals(type)) {
+            LocalBlackWhiteListService.removeFromWhitelist(uid);
+        } else {
+            LocalBlackWhiteListService.removeFromBlacklist(uid);
+        }
+        LocalBlackWhiteListService.flushAll();
+        return Response.success(0, req);
+    }
+
+    @ResponseBody
+    @PostMapping(value = "/moveBlackWhiteEntry")
+    public Response<?> moveBlackWhiteEntry(@RequestParam("from") String from,
+                                           @RequestParam("uid") long uid,
+                                           HttpServletRequest req) {
+        if ("white".equals(from)) {
+            LocalBlackWhiteListService.moveToBlacklist(uid);
+        } else {
+            LocalBlackWhiteListService.moveToWhitelist(uid);
+        }
+        LocalBlackWhiteListService.flushAll();
+        return Response.success(0, req);
+    }
+
+    @ResponseBody
+    @GetMapping(value = "/exportBlackWhiteCsv")
+    public void exportBlackWhiteCsv(@RequestParam(defaultValue = "black") String type,
+                                    HttpServletResponse response) throws Exception {
+        List<LocalBlackWhiteListService.BlackWhiteEntry> list;
+        String filename;
+        if ("white".equals(type)) {
+            list = LocalBlackWhiteListService.getWhitelist();
+            filename = "本地白名单.csv";
+        } else {
+            list = LocalBlackWhiteListService.getBlacklist();
+            filename = "本地黑名单.csv";
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append('﻿');
+        sb.append("id,name,createTime,updateTime,score,scoreType,roomId,count\n");
+        java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        for (LocalBlackWhiteListService.BlackWhiteEntry e : list) {
+            sb.append(e.uid).append(',').append(e.name != null ? e.name.replace(",", "，") : "").append(',');
+            sb.append(e.createTime > 0 ? sdf.format(new Date(e.createTime)) : "").append(',');
+            sb.append(e.updateTime > 0 ? sdf.format(new Date(e.updateTime)) : "").append(',');
+            sb.append(e.score).append(',').append(e.scoreType != null ? e.scoreType.replace(",", "，") : "").append(',');
+            sb.append(e.roomId).append(',').append(e.count).append('\n');
+        }
+        byte[] buffer = sb.toString().getBytes("UTF-8");
+        response.reset();
+        response.setCharacterEncoding("UTF-8");
+        response.addHeader("Content-Disposition", "attachment;filename=" + URLEncoder.encode(filename, "UTF-8"));
+        response.addHeader("Content-Length", "" + buffer.length);
+        response.setContentType("application/octet-stream");
+        response.getOutputStream().write(buffer);
+        response.getOutputStream().flush();
+    }
+
+    @ResponseBody
+    @PostMapping(value = "/importBlackWhiteCsv")
+    public Response<?> importBlackWhiteCsv(@RequestParam("file") MultipartFile file,
+                                           @RequestParam(defaultValue = "black") String type,
+                                           HttpServletRequest req) throws IOException {
+        String originalFilename = file.getOriginalFilename();
+        if (originalFilename == null || !originalFilename.endsWith(".csv")) {
+            return Response.success(-1, req);
+        }
+        String csvContent = new BufferedReader(new InputStreamReader(file.getInputStream(), "utf-8"))
+                .lines().collect(Collectors.joining("\n"));
+        boolean isBlack = !"white".equals(type);
+        int imported = LocalBlackWhiteListService.importCsv(csvContent, isBlack);
+        return Response.success(imported, req);
+    }
 
     @ResponseBody
     @GetMapping(value = "/getBiliBadList")

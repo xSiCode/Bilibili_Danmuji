@@ -92,7 +92,7 @@ public class CenterSetConf implements Serializable {
     private boolean win_auto_openSet = true;
 
     @JSONField(name = "auto_save_set")
-    private boolean auto_save_set = false;
+    private boolean auto_save_set = true;
 
     private String connect_docket = "ws://localhost:23333/danmu/sub";
     //是否开启礼物感谢线程对象体 black
@@ -128,6 +128,9 @@ public class CenterSetConf implements Serializable {
     //关键词检测姬
     @JSONField(name="key_word")
     private KeyWordSetConf key_word;
+    //本地黑白名单姬
+    @JSONField(name="local_black_white_list")
+    private LocalBlackWhiteListSetConf localBlackWhiteList;
     @JSONField(name = "edition",serialize = false)
     private String edition = "";
 
@@ -147,12 +150,13 @@ public class CenterSetConf implements Serializable {
         centerSetConf.setGaze_welcome(new GazeWelcomeSetConf());
         centerSetConf.setAuto_block(new AutoBlockSetConf());
         centerSetConf.setKey_word(new KeyWordSetConf());
+        centerSetConf.setLocalBlackWhiteList(new LocalBlackWhiteListSetConf());
         return centerSetConf;
     }
 
 
     public CenterSetConf(ThankGiftSetConf thank_gift, AdvertSetConf advert,
-                         ThankFollowSetConf follow, AutoReplySetConf reply, ThankWelcomeSetConf welcome, LiveStatusSetConf live_status, TimerSetConf timer, DanmakuStoreSetConf danmaku_store, GazeWelcomeSetConf gaze_welcome, AutoBlockSetConf auto_block, KeyWordSetConf key_word) {
+                         ThankFollowSetConf follow, AutoReplySetConf reply, ThankWelcomeSetConf welcome, LiveStatusSetConf live_status, TimerSetConf timer, DanmakuStoreSetConf danmaku_store, GazeWelcomeSetConf gaze_welcome, AutoBlockSetConf auto_block, KeyWordSetConf key_word, LocalBlackWhiteListSetConf localBlackWhiteList) {
         super();
         this.thank_gift = thank_gift;
         this.advert = advert;
@@ -165,6 +169,7 @@ public class CenterSetConf implements Serializable {
         this.gaze_welcome = gaze_welcome;
         this.auto_block = auto_block;
         this.key_word = key_word;
+        this.localBlackWhiteList = localBlackWhiteList;
     }
 
     public String toJson() {

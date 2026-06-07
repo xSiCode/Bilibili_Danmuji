@@ -60,6 +60,45 @@
                                 </div>
                             </div>
                         </div>
+                        <!-- 本地黑白名单姬 -->
+                        <div class="tab-pane" th:classappend="${! #arrays.isEmpty(param.tab) && param.tab[0] == 'bwlist-set'} ? 'active' : ''" id="tab-bwlist-set">
+                            <div class="input-group mb-1"><h5>本地黑白名单姬</h5></div>
+                            <div class="input-group mb-3 bwlist-set" id="bwlist-set">
+                                <div class="header-set"><div class="row align-items-center" style="margin-bottom:5px;--bs-gutter-x:5px">
+                                    <div class="col-auto"><label class="form-check-label"><input class="form-check-input is_bwlist_open live-save" type="checkbox" title="开启后，优先查询本地黑白名单，命中则跳过后续打分"><span class="_description" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="开启后，优先查询本地黑白名单，命中则跳过后续打分">开关</span></label></div>
+                                    <div class="col-auto" style="margin-left:8px;"><label class="form-label mb-0" for="bwlist-search">搜索</label><input id="bwlist-search" class="form-control form-control-sm bwlist-search-input" type="text" placeholder="uid/名字/分数类型..." title="搜索黑名单和白名单" style="width:200px;display:inline-block;"></div>
+                                </div></div>
+                                <!-- 黑名单表格 -->
+                                <div class="mb-2"><h6>黑名单 <small class="text-muted bwlist-black-total"></small></h6></div>
+                                <div class="form-group footer-set mb-3">
+                                    <table class="table table-bordered table-sm bwlist-table bwlist-black-table"><thead><tr>
+                                        <th class="bw-sortable" data-col="name" style="cursor:pointer;user-select:none">name <span class="bw-sort-icon"></span></th>
+                                        <th class="bw-sortable" data-col="score" style="cursor:pointer;user-select:none">score <span class="bw-sort-icon"></span></th>
+                                        <th class="bw-sortable" data-col="scoreType" style="cursor:pointer;user-select:none">scoreType <span class="bw-sort-icon"></span></th>
+                                        <th class="bw-sortable" data-col="count" style="cursor:pointer;user-select:none">count <span class="bw-sort-icon"></span></th>
+                                        <th class="bw-sortable" data-col="roomId" style="cursor:pointer;user-select:none">roomId <span class="bw-sort-icon"></span></th>
+                                        <th class="bw-sortable" data-col="updateTime" style="cursor:pointer;user-select:none">更新时间 <span class="bw-sort-icon"></span></th>
+                                        <th style="cursor:default">操作</th>
+                                    </tr></thead><tbody class="bwlist-black-tbody"></tbody></table>
+                                    <div class="bwlist-black-pagination d-flex justify-content-center align-items-center mt-2" style="display:none;"><button class="btn btn-sm btn-outline-secondary bw-black-prev">上一页</button><span class="bw-black-page-info mx-2">第1页</span><button class="btn btn-sm btn-outline-secondary bw-black-next">下一页</button></div>
+                                </div>
+                                <!-- 白名单表格 -->
+                                <div class="mb-2"><h6>白名单 <small class="text-muted bwlist-white-total"></small></h6></div>
+                                <div class="form-group footer-set">
+                                    <table class="table table-bordered table-sm bwlist-table bwlist-white-table"><thead><tr>
+                                        <th class="bw-sortable" data-col="name" style="cursor:pointer;user-select:none">name <span class="bw-sort-icon"></span></th>
+                                        <th class="bw-sortable" data-col="score" style="cursor:pointer;user-select:none">score <span class="bw-sort-icon"></span></th>
+                                        <th class="bw-sortable" data-col="scoreType" style="cursor:pointer;user-select:none">scoreType <span class="bw-sort-icon"></span></th>
+                                        <th class="bw-sortable" data-col="count" style="cursor:pointer;user-select:none">count <span class="bw-sort-icon"></span></th>
+                                        <th class="bw-sortable" data-col="roomId" style="cursor:pointer;user-select:none">roomId <span class="bw-sort-icon"></span></th>
+                                        <th class="bw-sortable" data-col="updateTime" style="cursor:pointer;user-select:none">更新时间 <span class="bw-sort-icon"></span></th>
+                                        <th style="cursor:default">操作</th>
+                                    </tr></thead><tbody class="bwlist-white-tbody"></tbody></table>
+                                    <div class="bwlist-white-pagination d-flex justify-content-center align-items-center mt-2" style="display:none;"><button class="btn btn-sm btn-outline-secondary bw-white-prev">上一页</button><span class="bw-white-page-info mx-2">第1页</span><button class="btn btn-sm btn-outline-secondary bw-white-next">下一页</button></div>
+                                </div>
+                            </div>
+                            <div class="input-group mb-3 set-control" data-file="bw"><div class="col-auto"><input class="import-file-input" style="display: none;" type="file" value="上传文件"/><button class="btn btn-warning export-set" title="导出设置到本地" type="button">导出黑/白名单</button><button class="btn btn-info import-set" title="导入CSV文件" type="button">导入黑/白名单CSV</button></div></div>
+                        </div>
                         <!-- Bili小黑屋 -->
                         <div class="tab-pane" th:classappend="${! #arrays.isEmpty(param.tab) && param.tab[0] == 'bili-badlist-set'} ? 'active' : ''" id="tab-bili-badlist-set">
                             <div class="input-group mb-1"><h5>Bili小黑屋 <small class="text-muted">(B站端拉黑列表)</small></h5></div>

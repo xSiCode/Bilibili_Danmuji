@@ -29,6 +29,7 @@ import xyz.acproject.danmuji.enums.ListPeopleShieldStatus;
 import xyz.acproject.danmuji.enums.ShieldGift;
 import xyz.acproject.danmuji.http.HttpRoomData;
 import xyz.acproject.danmuji.http.HttpUserData;
+import xyz.acproject.danmuji.service.LocalBlackWhiteListService;
 import xyz.acproject.danmuji.service.SetService;
 import xyz.acproject.danmuji.tools.CurrencyTools;
 import xyz.acproject.danmuji.tools.ParseIndentityTools;
@@ -1538,6 +1539,21 @@ public class ParseMessageThread extends Thread {
 
         stringBuilder.delete(0, stringBuilder.length());
 
+        // 本地黑白名单姬: 在耗时打分前先检查，命中则跳过后续处理
+        if (conf.getLocalBlackWhiteList() != null && conf.getLocalBlackWhiteList().is_open()) {
+            if (LocalBlackWhiteListService.isInWhitelist(_follow_uid)) {
+                LocalBlackWhiteListService.incrementWhiteCount(_follow_uid);
+                pushBwlistUpdate("white", _follow_uid);
+                return;
+            }
+            if (LocalBlackWhiteListService.isInBlacklist(_follow_uid)) {
+                LocalBlackWhiteListService.incrementBlackCount(_follow_uid);
+                pushBwlistUpdate("black", _follow_uid);
+                HttpUserData.httpPostAddBadList(_follow_uid);
+                return;
+            }
+        }
+
         if (conf.is_watcher_log()) {
             // 异步获取用户详细信息 + 关注列表分析，避免阻塞主消息处理线程
             WATCHER_EXECUTOR.execute(() -> {
@@ -1558,15 +1574,34 @@ public class ParseMessageThread extends Thread {
      * 自动拉黑处理：检查分数 → 冷却期 → 调 API → 同步名单 → 记录 → 推送前端
      */
     private void handleAutoBlock(CenterSetConf conf, long uid, String uname, int score, String type) {
-        if (conf.getAuto_block() == null || !conf.getAuto_block().is_auto_block()) {
-            return;
-        }
         int blockScore = conf.getAuto_block().getBlock_score();
-        if (score > blockScore) {
-            return;
+        int whiteThreshold = Math.abs(blockScore);
+
+        if (score > blockScore && score < whiteThreshold) {
+            return; // 积分在阈值上下限制之间，不处理
         }
         if (isWithinBlockCooldown(uid, conf.getAuto_block().getBlock_interval())) {
-            return;
+            return; // 冷静期跳过
+        }
+
+        // 本地黑白名单姬：自动加入白名单 (score ≥ |block_score|)
+        if (conf.getLocalBlackWhiteList() != null && conf.getLocalBlackWhiteList().is_open()) {
+            if (score >= whiteThreshold && whiteThreshold > 0) {
+                LocalBlackWhiteListService.addToWhitelist(uid, uname, score, type,
+                        PublicDataConf.ROOMID != null ? PublicDataConf.ROOMID : 0L);
+                pushBwlistUpdate("white", uid);
+                return;  // 已经加入了白名单
+            }
+        }
+        // 本地黑白名单姬：自动加入黑名单
+        if (conf.getLocalBlackWhiteList() != null && conf.getLocalBlackWhiteList().is_open()) {
+            LocalBlackWhiteListService.addToBlacklist(uid, uname, score, type,
+                    PublicDataConf.ROOMID != null ? PublicDataConf.ROOMID : 0L);
+            pushBwlistUpdate("black", uid);  // 加入黑名单，继续后面的api操作
+        }
+
+        if (conf.getAuto_block() == null || !conf.getAuto_block().is_auto_block()) {
+            return; // 关闭自动拉黑功能，不做api拉黑处理
         }
 
         short code = HttpUserData.httpPostAddBadList(uid);
@@ -1635,6 +1670,21 @@ public class ParseMessageThread extends Thread {
             danmuWebsocket.sendMessage(WsPackage.toJson("auto_block", (short) 0, record));
         } catch (Exception e) {
             LOGGER.error("auto_block ws push error", e);
+        }
+    }
+
+    /**
+     * 推送本地黑白名单变更至前端 WebSocket
+     */
+    private void pushBwlistUpdate(String listType, long uid) {
+        if (danmuWebsocket == null) return;
+        try {
+            JSONObject data = new JSONObject();
+            data.put("type", listType);
+            data.put("uid", uid);
+            danmuWebsocket.sendMessage(WsPackage.toJson("bwlist_update", (short) 0, data));
+        } catch (Exception e) {
+            LOGGER.error("bwlist ws push error", e);
         }
     }
 

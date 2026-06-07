@@ -2211,6 +2211,9 @@ const method = {
                 $(".auto-block-score").val(set.auto_block.block_score != null ? set.auto_block.block_score : -1);
                 $(".auto-block-interval").val(set.auto_block.block_interval != null ? set.auto_block.block_interval : 3);
             }
+            if (set.local_black_white_list) {
+                $(".is_bwlist_open").prop('checked', set.local_black_white_list.is_open);
+            }
 
 
             /* 处理？ */
@@ -2823,6 +2826,9 @@ const method = {
                 }
                 if (data.cmd === 'stranger_block' && data.result) {
                     method._handleStrangerBlock(data.result);
+                }
+                if (data.cmd === 'bwlist_update' && data.result) {
+                    method._handleBwlistUpdate(data.result);
                 }
             };
             self._autoBlockWs.onclose = function () {
@@ -5034,6 +5040,13 @@ const method = {
         }
         if ($('#tab-stranger-board').hasClass('active')) {
             method._renderSvTable();
+        }
+    },
+
+    _handleBwlistUpdate: function (data) {
+        if (!data || !data.type) return;
+        if ($('#tab-bwlist-set').hasClass('active')) {
+            method.renderBlackWhiteTable(data.type);
         }
     }
 

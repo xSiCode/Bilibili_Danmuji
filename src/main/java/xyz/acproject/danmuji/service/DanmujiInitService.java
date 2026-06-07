@@ -104,13 +104,16 @@ public class DanmujiInitService {
             if (PublicDataConf.centerSetConf.getGaze_welcome() == null) {
                 PublicDataConf.centerSetConf.setGaze_welcome(new GazeWelcomeSetConf());
             }
+            if (PublicDataConf.centerSetConf.getLocalBlackWhiteList() == null) {
+                PublicDataConf.centerSetConf.setLocalBlackWhiteList(new LocalBlackWhiteListSetConf());
+            }
         } else {
             // 无效的本地配置集则初始化一份
             // 此处无参初始化可以采用聚合根的思想
             PublicDataConf.centerSetConf = new CenterSetConf(new ThankGiftSetConf(), new AdvertSetConf(),
                     new ThankFollowSetConf(), new AutoReplySetConf(), new ThankWelcomeSetConf(),
                     new LiveStatusSetConf(),
-                    new TimerSetConf(), new DanmakuStoreSetConf(), new GazeWelcomeSetConf(), new AutoBlockSetConf(), new KeyWordSetConf());
+                    new TimerSetConf(), new DanmakuStoreSetConf(), new GazeWelcomeSetConf(), new AutoBlockSetConf(), new KeyWordSetConf(), new LocalBlackWhiteListSetConf());
         }
 
         //初始化配置文件结束
