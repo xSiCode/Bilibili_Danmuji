@@ -145,8 +145,7 @@
                                        onclick="switchTab('autoBlock-set', this);return false;">负黑自动拉黑姬</a>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="keyWord-set"
                                        onclick="switchTab('keyWord-set', this);return false;">关键词检测姬</a>
-                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="badlist-set"
-                                       onclick="switchTab('badlist-set', this);return false;">本地小黑屋</a>
+                                    <a th:href="@{/blacklist(tab=bwlist-set)}" class="sidebar-link">本地黑白名单姬</a>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="bili-badlist-set"
                                        onclick="switchTab('bili-badlist-set', this);return false;">Bili小黑屋</a>
                                 </div>
@@ -155,6 +154,10 @@
                                           onclick="toggleSidebarSection(this);return false;">看板</span>
                                     <a href="javascript:void(0)" class="sidebar-link" data-tab="stranger-board"
                                        onclick="switchTab('stranger-board', this);return false;">陌生观众看板</a>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="footprint-record"
+                                       onclick="switchTab('footprint-record', this);return false;">足迹留印</a>
+                                    <a href="javascript:void(0)" class="sidebar-link" data-tab="footprint-replay"
+                                       onclick="switchTab('footprint-replay', this);return false;">足迹还原</a>
                                     <a href="/account_pool" class="sidebar-link">账号池管理</a>
                                 </div>
                                 <div class="sidebar-section">
@@ -1487,90 +1490,7 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div class="tab-pane" id="tab-badlist-set">
-                                    <!-- 拉黑姬设置开始 -->
-                                    <div class="input-group mb-1"><h5>本地小黑屋</h5></div>
-                                    <div class="input-group mb-3 badlist-set" id="badlist-set">
-                                        <div class="header-set">
-                                            <div class="row align-items-center mb-2">
-                                                <div class="col-auto">
-                                                    <label class="form-label mb-0">UID:</label>
-                                                    <input class="form-control form-control-sm badlist_uid"
-                                                           style="width:150px;display:inline-block;"
-                                                           type="number"
-                                                           placeholder="输入用户UID">
-                                                    <button class="btn btn-sm btn-outline-secondary badlist_uid_lookup"
-                                                            title="根据UID查用户名">查
-                                                    </button>
-                                                </div>
-                                                <div class="col-auto">
-                                                    <label class="form-label mb-0">用户名:</label>
-                                                    <input class="form-control form-control-sm badlist_uname"
-                                                           style="width:180px;display:inline-block;"
-                                                           type="text"
-                                                           placeholder="输入用户名搜索">
-                                                    <button class="btn btn-sm btn-outline-secondary badlist_uname_lookup"
-                                                            title="根据用户名查UID">查
-                                                    </button>
-                                                </div>
-                                                <div class="col-auto">
-                                                    <button class="btn btn-sm btn-danger badlist_add_btn">拉黑</button>
-                                                    <button class="btn btn-sm btn-outline-danger badlist_del_btn">
-                                                        取消拉黑
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="badlist-search-results mt-2" style="display:none;">
-                                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                                <small class="text-muted">搜索结果，点击选择:</small>
-                                                <button class="btn btn-sm btn-outline-secondary badlist-result-close"
-                                                        style="font-size:10px;">关闭
-                                                </button>
-                                            </div>
-                                            <div style="overflow-x:auto;width:100%;">
-                                                <table class="table table-sm table-hover badlist-result-table mb-0">
-                                                    <thead>
-                                                    <tr>
-                                                        <th class="br-col-user">用户</th>
-                                                        <th class="br-col-fans">粉丝</th>
-                                                        <th class="br-col-attention">关注</th>
-                                                        <th class="br-col-likes">获赞</th>
-                                                        <th class="br-col-play">播放</th>
-                                                        <th class="br-col-archive">作品</th>
-                                                        <th class="br-col-visible">关注可见</th>
-                                                        <th class="br-col-dynamic">最新动态</th>
-                                                        <th class="br-col-action">操作</th>
-                                                    </tr>
-                                                    </thead>
-                                                    <tbody class="badlist-result-tbody"></tbody>
-                                                </table>
-                                            </div>
-                                        </div>
-                                        <div class="footer-set">
-                                            <table class="table table-sm table-striped badlist-table"
-                                                   style="display:none;">
-                                                <thead>
-                                                <tr>
-                                                    <th>UID</th>
-                                                    <th>用户名</th>
-                                                    <th>操作</th>
-                                                </tr>
-                                                </thead>
-                                                <tbody class="badlist-tbody"></tbody>
-                                            </table>
-                                            <div class="badlist-pagination d-flex justify-content-center align-items-center mt-2"
-                                                 style="display:none;">
-                                                <button class="btn btn-sm btn-outline-secondary badlist-prev">上一页
-                                                </button>
-                                                <span class="badlist-page-info mx-2">第1页</span>
-                                                <button class="btn btn-sm btn-outline-secondary badlist-next">下一页
-                                                </button>
-                                            </div>
-                                            <small class="text-muted">拉黑为B站用户层面的黑名单，非直播间禁言。需要登录后操作。</small>
-                                        </div>
-                                    </div>
-                                </div>
+
                                 <div class="tab-pane" id="tab-bili-badlist-set">
                                     <!-- Bili小黑屋开始 -->
                                     <div class="input-group mb-1"><h5>Bili小黑屋 <small

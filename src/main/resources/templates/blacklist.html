@@ -62,6 +62,16 @@
                         </div>
                         <!-- 本地黑白名单姬 -->
                         <div class="tab-pane" th:classappend="${! #arrays.isEmpty(param.tab) && param.tab[0] == 'bwlist-set'} ? 'active' : ''" id="tab-bwlist-set">
+                            <style>
+                                .bwlist-table{table-layout:fixed;width:100%}
+                                .bwlist-table .bw-col-name{text-align:left;width:calc((100% - 480px) * 0.3)}
+                                .bwlist-table .bw-col-scoreType{text-align:left;width:calc((100% - 480px) * 0.7)}
+                                .bwlist-table .bw-col-score{width:50px}
+                                .bwlist-table .bw-col-count{width:50px}
+                                .bwlist-table .bw-col-roomId{width:80px}
+                                .bwlist-table .bw-col-updateTime{width:180px}
+                                .bwlist-table .bw-col-action{width:120px}
+                            </style>
                             <div class="input-group mb-1"><h5>本地黑白名单姬</h5></div>
                             <div class="input-group mb-3 bwlist-set" id="bwlist-set">
                                 <div class="header-set"><div class="row align-items-center" style="margin-bottom:5px;--bs-gutter-x:5px">
@@ -72,13 +82,13 @@
                                 <div class="mb-2"><h6>黑名单 <small class="text-muted bwlist-black-total"></small></h6></div>
                                 <div class="form-group footer-set mb-3">
                                     <table class="table table-bordered table-sm bwlist-table bwlist-black-table"><thead><tr>
-                                        <th class="bw-sortable" data-col="name" style="cursor:pointer;user-select:none">name <span class="bw-sort-icon"></span></th>
-                                        <th class="bw-sortable" data-col="score" style="cursor:pointer;user-select:none">score <span class="bw-sort-icon"></span></th>
-                                        <th class="bw-sortable" data-col="scoreType" style="cursor:pointer;user-select:none">scoreType <span class="bw-sort-icon"></span></th>
-                                        <th class="bw-sortable" data-col="count" style="cursor:pointer;user-select:none">count <span class="bw-sort-icon"></span></th>
-                                        <th class="bw-sortable" data-col="roomId" style="cursor:pointer;user-select:none">roomId <span class="bw-sort-icon"></span></th>
-                                        <th class="bw-sortable" data-col="updateTime" style="cursor:pointer;user-select:none">更新时间 <span class="bw-sort-icon"></span></th>
-                                        <th style="cursor:default">操作</th>
+                                        <th class="bw-sortable bw-col-name" data-col="name" style="cursor:pointer;user-select:none">观众 <span class="bw-sort-icon"></span></th>
+                                        <th class="bw-sortable bw-col-score" data-col="score" style="cursor:pointer;user-select:none">打分 <span class="bw-sort-icon"></span></th>
+                                        <th class="bw-sortable bw-col-scoreType" data-col="scoreType" style="cursor:pointer;user-select:none">打分类型 <span class="bw-sort-icon"></span></th>
+                                        <th class="bw-sortable bw-col-count" data-col="count" style="cursor:pointer;user-select:none">次数 <span class="bw-sort-icon"></span></th>
+                                        <th class="bw-sortable bw-col-roomId" data-col="roomId" style="cursor:pointer;user-select:none">直播间 <span class="bw-sort-icon"></span></th>
+                                        <th class="bw-sortable bw-col-updateTime" data-col="updateTime" style="cursor:pointer;user-select:none">更新时间 <span class="bw-sort-icon"></span></th>
+                                        <th class="bw-col-action" style="cursor:default">操作</th>
                                     </tr></thead><tbody class="bwlist-black-tbody"></tbody></table>
                                     <div class="bwlist-black-pagination d-flex justify-content-center align-items-center mt-2" style="display:none;"><button class="btn btn-sm btn-outline-secondary bw-black-prev">上一页</button><span class="bw-black-page-info mx-2">第1页</span><button class="btn btn-sm btn-outline-secondary bw-black-next">下一页</button></div>
                                 </div>
@@ -86,13 +96,13 @@
                                 <div class="mb-2"><h6>白名单 <small class="text-muted bwlist-white-total"></small></h6></div>
                                 <div class="form-group footer-set">
                                     <table class="table table-bordered table-sm bwlist-table bwlist-white-table"><thead><tr>
-                                        <th class="bw-sortable" data-col="name" style="cursor:pointer;user-select:none">name <span class="bw-sort-icon"></span></th>
-                                        <th class="bw-sortable" data-col="score" style="cursor:pointer;user-select:none">score <span class="bw-sort-icon"></span></th>
-                                        <th class="bw-sortable" data-col="scoreType" style="cursor:pointer;user-select:none">scoreType <span class="bw-sort-icon"></span></th>
-                                        <th class="bw-sortable" data-col="count" style="cursor:pointer;user-select:none">count <span class="bw-sort-icon"></span></th>
-                                        <th class="bw-sortable" data-col="roomId" style="cursor:pointer;user-select:none">roomId <span class="bw-sort-icon"></span></th>
-                                        <th class="bw-sortable" data-col="updateTime" style="cursor:pointer;user-select:none">更新时间 <span class="bw-sort-icon"></span></th>
-                                        <th style="cursor:default">操作</th>
+                                        <th class="bw-sortable bw-col-name" data-col="name" style="cursor:pointer;user-select:none">观众 <span class="bw-sort-icon"></span></th>
+                                        <th class="bw-sortable bw-col-score" data-col="score" style="cursor:pointer;user-select:none">打分 <span class="bw-sort-icon"></span></th>
+                                        <th class="bw-sortable bw-col-scoreType" data-col="scoreType" style="cursor:pointer;user-select:none">打分类型 <span class="bw-sort-icon"></span></th>
+                                        <th class="bw-sortable bw-col-count" data-col="count" style="cursor:pointer;user-select:none">次数 <span class="bw-sort-icon"></span></th>
+                                        <th class="bw-sortable bw-col-roomId" data-col="roomId" style="cursor:pointer;user-select:none">直播间 <span class="bw-sort-icon"></span></th>
+                                        <th class="bw-sortable bw-col-updateTime" data-col="updateTime" style="cursor:pointer;user-select:none">更新时间 <span class="bw-sort-icon"></span></th>
+                                        <th class="bw-col-action" style="cursor:default">操作</th>
                                     </tr></thead><tbody class="bwlist-white-tbody"></tbody></table>
                                     <div class="bwlist-white-pagination d-flex justify-content-center align-items-center mt-2" style="display:none;"><button class="btn btn-sm btn-outline-secondary bw-white-prev">上一页</button><span class="bw-white-page-info mx-2">第1页</span><button class="btn btn-sm btn-outline-secondary bw-white-next">下一页</button></div>
                                 </div>
