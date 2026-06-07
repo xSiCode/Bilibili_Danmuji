@@ -215,8 +215,11 @@ $(function() {
         $input.off('change').on('change', function(e) {
             var file = e.target.files[0];
             if (!file) return;
+            var fname = (file.name || '').toLowerCase();
+            var type = fname.indexOf('白') >= 0 ? 'white' : 'black';
             var formData = new FormData();
             formData.append('file', file);
+            formData.append('type', type);
             $.ajax({
                 url: '../importBlackWhiteCsv',
                 type: 'POST',

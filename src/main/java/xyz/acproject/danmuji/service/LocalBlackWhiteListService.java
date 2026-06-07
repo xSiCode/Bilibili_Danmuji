@@ -2,9 +2,7 @@ package xyz.acproject.danmuji.service;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import xyz.acproject.danmuji.conf.PublicDataConf;
 import xyz.acproject.danmuji.tools.file.ProFileTools;
-import xyz.acproject.danmuji.utils.JodaTimeUtils;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -330,9 +328,14 @@ public class LocalBlackWhiteListService {
     }
 
     private static synchronized void flushSingleCsv(String path, ConcurrentHashMap<Long, BlackWhiteEntry> cache, Set<Long> dirtySet) {
-        if (cache.isEmpty()) return;
         try {
             File file = new File(path);
+            if (cache.isEmpty()) {
+                // 缓存已清空：删除 CSV 文件，避免下次启动加载旧数据
+                if (file.exists()) file.delete();
+                dirtySet.clear();
+                return;
+            }
             if (!file.getParentFile().exists()) file.getParentFile().mkdirs();
 
             // 收集所有条目（全量覆写以保证去重）

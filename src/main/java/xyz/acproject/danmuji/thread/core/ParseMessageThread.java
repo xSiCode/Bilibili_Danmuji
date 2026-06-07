@@ -1571,7 +1571,7 @@ public class ParseMessageThread extends Thread {
     // ==================== 负黑自动拉黑姬: 提取的子方法 ====================
 
     /**
-     * 自动拉黑处理：检查分数 → 冷却期 → 调 API → 同步名单 → 记录 → 推送前端
+     * 自动拉黑处理：分数在下阈值和上阈值之间拖过 → 冷却期 → 白名单 →黑名单 → 拉黑打开，拉黑 → 推送前端
      */
     private void handleAutoBlock(CenterSetConf conf, long uid, String uname, int score, String type) {
         int blockScore = conf.getAuto_block().getBlock_score();
