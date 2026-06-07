@@ -60,12 +60,22 @@ public class ProFileTools {
 
 		String dataString;
 		String[] strings;
-		//try-catch-resource
 		try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))){
 			while ((dataString = bufferedReader.readLine()) != null) {
-				strings = dataString.split(":@:");
+				strings = dataString.split(":@:", 2);
 				if (strings.length == 2) {
-					profileMap.put(strings[0], strings[1]);
+					String key = strings[0];
+					String val = strings[1];
+					// set 的值可能跨多行（格式化 JSON），读到 EOF 为止
+					if ("set".equals(key)) {
+						StringBuilder sb = new StringBuilder(val);
+						String nextLine;
+						while ((nextLine = bufferedReader.readLine()) != null) {
+							sb.append("\n").append(nextLine);
+						}
+						val = sb.toString();
+					}
+					profileMap.put(key, val);
 				}
 			}
 		} catch (FileNotFoundException e) {
@@ -83,28 +93,31 @@ public class ProFileTools {
 		File file = new File(STORE_DIR);
 		file.mkdirs();
 		file = new File(STORE_DIR + "/" + filename);
-		final StringBuffer stringBuffer = new StringBuffer();
 		try {
 			file.createNewFile();
 		} catch (IOException e) {
-			// TODO 自动生成的 catch 块
 			log.error(e.getMessage(), e);
 		}
-		BufferedWriter bufferedWriter = null;
-		try (OutputStreamWriter os = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8)){
-			bufferedWriter = new BufferedWriter(os);
-			profileMap.forEach((k, v) -> {
-
-				stringBuffer.append(k);
-				stringBuffer.append(":@:");
-				stringBuffer.append(v);
-				stringBuffer.append("\r\n");
-			});
-			bufferedWriter.write(stringBuffer.toString());
-			os.flush();
+		try (OutputStreamWriter os = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8);
+			 BufferedWriter bufferedWriter = new BufferedWriter(os)) {
+			// 先写非 set 的键值对
+			for (Map.Entry<String, String> entry : profileMap.entrySet()) {
+				if (!"set".equals(entry.getKey())) {
+					bufferedWriter.write(entry.getKey());
+					bufferedWriter.write(":@:");
+					bufferedWriter.write(entry.getValue());
+					bufferedWriter.write("\r\n");
+				}
+			}
+			// set 键放最后，支持多行值
+			String setValue = profileMap.get("set");
+			if (setValue != null) {
+				bufferedWriter.write("set:@:");
+				bufferedWriter.write(setValue);
+				bufferedWriter.write("\r\n");
+			}
 			bufferedWriter.flush();
 		} catch (IOException e) {
-			// TODO 自动生成的 catch 块
 			log.error(e.getMessage(), e);
 		}
 	}

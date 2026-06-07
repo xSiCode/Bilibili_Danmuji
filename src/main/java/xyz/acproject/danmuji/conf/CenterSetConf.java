@@ -1,6 +1,7 @@
 package xyz.acproject.danmuji.conf;
 
 import com.alibaba.fastjson.JSONException;
+import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.annotation.JSONField;
 import lombok.AllArgsConstructor;
@@ -173,27 +174,28 @@ public class CenterSetConf implements Serializable {
     }
 
     public String toJson() {
-        return FastJsonUtils.toJson(this);
+        return JSON.toJSONString(this, true);
     }
 
     /**
-     * Let a base64 content to a CenterSetConf object.
-     * @param base64 将json字符串base64编码的内容
+     * 从 profile 字符串解析 CenterSetConf，兼容明文 JSON 和旧的 base64 编码。
+     * @param content profile 中 set 字段的值
      * @return is not null
      */
-    public static CenterSetConf of(String base64){
-        Assert.notNull(base64, "Base64 must cannot be null");
+    public static CenterSetConf of(String content){
+        Assert.notNull(content, "content must cannot be null");
+        // 1. 先尝试直接解析明文 JSON
+        try {
+            return JSONObject.parseObject(content, CenterSetConf.class);
+        } catch (JSONException e) {
+            // 不是有效 JSON，尝试 base64 解码（兼容旧格式）
+        }
+        // 2. 尝试 base64 解码
         BASE64Encoder base64Encoder = new BASE64Encoder();
         try {
-            //fastjson没有完善的javadoc, 方法抛出的异常也未明确指出. 是否考虑更换较规范的库?
-            // {@link JSONObject#parseObject} 方法调用的异常捕获并未完全覆盖
-            return JSONObject.parseObject(new String(base64Encoder.decode(base64)), CenterSetConf.class);
+            return JSONObject.parseObject(new String(base64Encoder.decode(content)), CenterSetConf.class);
         } catch (IOException|JSONException e) {
-            // 因用户非法操作导致的,记录等级为warn;开发者使用方法不当导致的,记录等级为error.(不那么准确,但是warn级别确定是用户非法操作导致)
-            // 在数据模型中的方法面向开发者,故给予error级别记录. 其实此处的异常也会因为用户非法修改profile文件内容导致异常.
-            // 解析失败
             log.error(e.getMessage(), e);
-            // 在异常时提供默认对象, 避免反复处理解析失败异常
             return new CenterSetConf();
         }
     }

@@ -11,7 +11,6 @@ import xyz.acproject.danmuji.conf.set.*;
 import xyz.acproject.danmuji.entity.user_data.UserCookie;
 import xyz.acproject.danmuji.http.HttpUserData;
 import xyz.acproject.danmuji.service.impl.SetServiceImpl;
-import xyz.acproject.danmuji.tools.BASE64Encoder;
 import xyz.acproject.danmuji.tools.CookieEncryptUtils;
 import xyz.acproject.danmuji.tools.RequestHeaderTools;
 import xyz.acproject.danmuji.tools.file.ProFileTools;
@@ -117,8 +116,7 @@ public class DanmujiInitService {
         }
 
         //初始化配置文件结束
-        BASE64Encoder base64Encoder = new BASE64Encoder();
-        profileMap.put(PublicDataConf.PROFILE_SET_NAME, base64Encoder.encode(PublicDataConf.centerSetConf.toJson().getBytes()));
+        profileMap.put(PublicDataConf.PROFILE_SET_NAME, PublicDataConf.centerSetConf.toJson());
         ProFileTools.write(profileMap, PublicDataConf.PROFILE_NAME);
         // 下方解析操作逻辑冗余, 可以清除
         try {

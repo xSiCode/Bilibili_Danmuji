@@ -1,6 +1,5 @@
 package xyz.acproject.danmuji.service.impl;
 
-import com.alibaba.fastjson.JSONObject;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.apache.logging.log4j.LogManager;
@@ -14,7 +13,6 @@ import xyz.acproject.danmuji.conf.CenterSetConf;
 import xyz.acproject.danmuji.conf.PublicDataConf;
 import xyz.acproject.danmuji.service.ClientService;
 import xyz.acproject.danmuji.service.SetService;
-import xyz.acproject.danmuji.tools.BASE64Encoder;
 import xyz.acproject.danmuji.tools.CookieEncryptUtils;
 import xyz.acproject.danmuji.tools.ParseSetStatusTools;
 import xyz.acproject.danmuji.tools.file.ProFileTools;
@@ -86,14 +84,12 @@ public class SetServiceImpl implements SetService {
     public void changeSet(CenterSetConf centerSetConf) {
         synchronized (centerSetConf) {
             Map<String, String> profileMap = new ConcurrentHashMap<>();
-            BASE64Encoder base64Encoder = new BASE64Encoder();
             if (PublicDataConf.USER != null) {
                 profileMap.put(cookies, CookieEncryptUtils.encrypt(PublicDataConf.USERCOOKIE));
             }
-            profileMap.put("set", base64Encoder.encode(centerSetConf.toJson().getBytes()));
+            profileMap.put("set", centerSetConf.toJson());
             ProFileTools.write(profileMap, "DanmujiProfile");
             LOGGER.info("保存配置文件成功");
-            base64Encoder = null;
             profileMap.clear();
         }
     }
@@ -109,24 +105,19 @@ public class SetServiceImpl implements SetService {
                 centerSetConf.setRoomid(PublicDataConf.ROOMID_LONG);
             }
             Map<String, String> profileMap = new ConcurrentHashMap<>();
-            BASE64Encoder base64Encoder = new BASE64Encoder();
             if (PublicDataConf.USER != null) {
                 profileMap.put(cookies, CookieEncryptUtils.encrypt(PublicDataConf.USERCOOKIE));
             }
-            profileMap.put("set", base64Encoder.encode(centerSetConf.toJson().getBytes()));
+            profileMap.put("set", centerSetConf.toJson());
             ProFileTools.write(profileMap, "DanmujiProfile");
             try {
-                PublicDataConf.centerSetConf = JSONObject.parseObject(
-                        new String(base64Encoder.decode(ProFileTools.read("DanmujiProfile").get("set"))),
-                        CenterSetConf.class);
+                PublicDataConf.centerSetConf = CenterSetConf.of(ProFileTools.read("DanmujiProfile").get("set"));
                 PublicDataConf.centerSetConf = ParseSetStatusTools.initCenterChildConfig(PublicDataConf.centerSetConf);
                 holdSet(centerSetConf);
                 LOGGER.info("保存配置文件成功");
             } catch (Exception e) {
-                // TODO: handle exception
                 LOGGER.error("保存配置文件失败:" + e);
             }
-            base64Encoder = null;
             profileMap.clear();
         }
     }
@@ -134,26 +125,21 @@ public class SetServiceImpl implements SetService {
     public void connectSet(CenterSetConf centerSetConf) {
         synchronized (centerSetConf) {
             Map<String, String> profileMap = new ConcurrentHashMap<>();
-            BASE64Encoder base64Encoder = new BASE64Encoder();
             if (PublicDataConf.USER != null) {
                 profileMap.put(cookies, CookieEncryptUtils.encrypt(PublicDataConf.USERCOOKIE));
             }
-            profileMap.put("set", base64Encoder.encode(centerSetConf.toJson().getBytes()));
+            profileMap.put("set", centerSetConf.toJson());
             ProFileTools.write(profileMap, "DanmujiProfile");
             try {
-                PublicDataConf.centerSetConf = JSONObject.parseObject(
-                        new String(base64Encoder.decode(ProFileTools.read("DanmujiProfile").get("set"))),
-                        CenterSetConf.class);
+                PublicDataConf.centerSetConf = CenterSetConf.of(ProFileTools.read("DanmujiProfile").get("set"));
                 PublicDataConf.centerSetConf = ParseSetStatusTools.initCenterChildConfig(PublicDataConf.centerSetConf);
                 if (PublicDataConf.ROOMID != null) {
                     holdSet(centerSetConf);
                 }
                 LOGGER.info("读取配置文件历史房间成功");
             } catch (Exception e) {
-                // TODO: handle exception
                 LOGGER.error("读取配置文件历史房间失败:" + e);
             }
-            base64Encoder = null;
             profileMap.clear();
         }
     }
