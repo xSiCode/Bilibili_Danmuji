@@ -733,10 +733,10 @@ public class HttpRoomData {
             JSONObject follJson2 = follF2.join();
             JSONObject cardJson = cardF.join();
 
-            // Phase 2b: 卡片
+            // Phase 2a: 卡片
             CardProcessResult cardResult = processCardDataSync(cardJson, logSb);
 
-            // Phase 2a: 勋章墙
+            // Phase 2b: 勋章墙
             Pair<Integer, String> medalResult = processMedalWallSync(medalJson, logSb);
 
             // Phase 2c: 关注列表（双页合并）
