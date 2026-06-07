@@ -977,150 +977,6 @@ $(document).on('click', '.white_flag_parent', function () {
         $(".white_flag_child").prop('checked', true);
     }
 });
-$(document).on('click', '.badlist_add_btn', function () {
-    var uid = Number($(".badlist_uid").val());
-    var uname = $(".badlist_uname").val() || '';
-    if (!uid || uid <= 0) {
-        return;
-    }
-    $.ajax({
-        url: '../add_badlist',
-        type: 'GET',
-        data: {uid: uid, uname: uname},
-        dataType: 'json',
-        success: function (data) {
-            if (data.code == "200" && data.result == 0) {
-                var found = false;
-                for (var i = 0; i < badListData.length; i++) {
-                    if (badListData[i].uid === uid) {
-                        badListData[i].uname = uname;
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found) {
-                    badListData.push({uid: uid, uname: uname});
-                }
-                method.renderBadListTable(1);
-                if (publicData.set && publicData.set.auto_save_set) {
-                    method.saveSet(true);
-                } else {
-                    method.saveSet();
-                }
-            }
-        },
-        error: function () {
-        }
-    });
-});
-$(document).on('click', '.badlist_del_btn', function () {
-    var uid = Number($(".badlist_uid").val());
-    if (!uid || uid <= 0) {
-        return;
-    }
-    $.ajax({
-        url: '../del_badlist',
-        type: 'GET',
-        data: {uid: uid},
-        dataType: 'json',
-        success: function (data) {
-            if (data.code == "200" && data.result == 0) {
-                badListData = badListData.filter(function (item) {
-                    return item.uid !== uid;
-                });
-                method.renderBadListTable();
-                if (publicData.set && publicData.set.auto_save_set) {
-                    method.saveSet(true);
-                } else {
-                    method.saveSet();
-                }
-            }
-        },
-        error: function () {
-        }
-    });
-});
-$(document).on('click', '.badlist_row_del', function () {
-    var uid = Number($(this).data('uid'));
-    if (!uid) return;
-    $.ajax({
-        url: '../del_badlist',
-        type: 'GET',
-        data: {uid: uid},
-        dataType: 'json',
-        success: function (data) {
-            if (data.code == "200" && data.result == 0) {
-                badListData = badListData.filter(function (item) {
-                    return item.uid !== uid;
-                });
-                method.renderBadListTable();
-                if (publicData.set && publicData.set.auto_save_set) {
-                    method.saveSet(true);
-                } else {
-                    method.saveSet();
-                }
-            }
-        },
-        error: function () {
-        }
-    });
-});
-$(document).on('click', '.badlist_uid_lookup', function () {
-    var uid = Number($(".badlist_uid").val());
-    if (!uid || uid <= 0) return;
-    var $btn = $(this);
-    $btn.prop('disabled', true).text('...');
-    $.ajax({
-        url: '../get_uname_by_uid',
-        type: 'GET',
-        data: {uid: uid},
-        dataType: 'json',
-        success: function (data) {
-            if (data.code == "200" && data.result) {
-                $(".badlist_uname").val(data.result);
-            }
-        },
-        complete: function () {
-            $btn.prop('disabled', false).text('查');
-        }
-    });
-});
-$(document).on('click', '.badlist_uname_lookup', function () {
-    var uname = $.trim($(".badlist_uname").val());
-    if (!uname) return;
-    var $btn = $(this);
-    $btn.prop('disabled', true).text('...');
-    $.ajax({
-        url: '../search_uid_by_uname',
-        type: 'GET',
-        data: {uname: uname},
-        dataType: 'json',
-        success: function (data) {
-            if (data.code == "200" && data.result && data.result.length > 0) {
-                method.renderSearchResults(data.result);
-            }
-        },
-        complete: function () {
-            $btn.prop('disabled', false).text('查');
-        }
-    });
-});
-$(document).on('click', '.badlist-result-select', function () {
-    var uid = $(this).data('uid');
-    var uname = $(this).data('uname');
-    $(".badlist_uid").val(uid);
-    $(".badlist_uname").val(uname);
-    $(".badlist-search-results").hide();
-});
-$(document).on('click', '.badlist-result-close', function () {
-    $(".badlist-search-results").hide();
-});
-$(document).on('click', '.badlist-prev', function () {
-    method.renderBadListTable(badListState.page - 1);
-});
-$(document).on('click', '.badlist-next', function () {
-    method.renderBadListTable(badListState.page + 1);
-});
 $(document).on('click', '.bili-badlist-load', function () {
     var $btn = $(this);
     $btn.prop('disabled', true).text('加载中...');
@@ -1581,12 +1437,6 @@ const danmuku = {
 const publicData = {
     set: {},
 }
-let badListData = [];
-const badListState = {
-    page: 1,
-    pageSize: 10,
-    maxPages: 10
-};
 const biliBadListState = {
     page: 1,
     pageSize: 10,
@@ -1642,9 +1492,6 @@ const method = {
             },
             "live_status": {},
             "timer": {},
-            "bad_list": {
-                "bad_users": []
-            },
             "auto_block": {}
         };
         set.is_auto = $(".is_autoStart").is(
@@ -1763,24 +1610,6 @@ const method = {
         set.reply.time = Number($(".replys_time").val());
         set.reply.list_people_shield_status = Number($(".replys_list_people_shield_status")
             .find("option:selected").val()) - 1;
-        set.black.all = $(".is_black_all").is(':checked');
-        set.black.thank_gift = $(".is_black_gift").is(':checked');
-        set.black.thank_welcome = $(".is_black_welcome").is(':checked');
-        set.black.thank_follow = $(".is_black_follow").is(':checked');
-        set.black.auto_reply = $(".is_black_reply").is(':checked');
-        set.black.is_dynamic = $(".is_black_dynamic").is(':checked');
-        set.black.names = ($(".black_names").val() || '').split('\n').map(function(s) { return s.trim(); }).filter(function(s) { return s !== ''; });
-        set.black.uids = ($(".black_uids").val() || '').split('\n').map(function(s) { return s.trim(); }).filter(function(s) { return s !== ''; });
-        if (!set.white) set.white = {};
-        set.white.all = $(".is_white_all").is(':checked');
-        set.white.thank_gift = $(".is_white_gift").is(':checked');
-        set.white.thank_welcome = $(".is_white_welcome").is(':checked');
-        set.white.thank_follow = $(".is_white_follow").is(':checked');
-        set.white.auto_reply = $(".is_white_reply").is(':checked');
-        set.white.is_dynamic = $(".is_white_dynamic").is(':checked');
-        set.white.names = ($(".white_names").val() || '').split('\n').map(function(s) { return s.trim(); }).filter(function(s) { return s !== ''; });
-        set.white.uids = ($(".white_uids").val() || '').split('\n').map(function(s) { return s.trim(); }).filter(function(s) { return s !== ''; });
-        set.bad_list.bad_users = badListData;
         set.live_status.is_live_open = $(".livestatus_live_open").is(':checked');
         set.live_status.live_text = $(".livestatus_live_text").val();
         set.live_status.is_preparing_open = $(".livestatus_preparing_open").is(':checked');
@@ -2348,30 +2177,6 @@ const method = {
             $(".replys_time").val(set.reply.time);
             $(".replys_list_people_shield_status").find("option").eq(
                 set.reply.list_people_shield_status).prop('selected', true);
-            $(".is_black_all").prop('checked', set.black.all);
-            $(".is_black_gift").prop('checked', set.black.thank_gift);
-            $(".is_black_follow").prop('checked', set.black.thank_follow);
-            $(".is_black_welcome").prop('checked', set.black.thank_welcome);
-            $(".is_black_reply").prop('checked', set.black.auto_reply);
-            $(".is_black_dynamic").prop('checked', set.black.is_dynamic);
-            $(".black_names").val(set.black.names ? set.black.names.join('\n') : '');
-            $(".black_uids").val(set.black.uids ? set.black.uids.join('\n') : '');
-            if (set.white) {
-                $(".is_white_all").prop('checked', set.white.all);
-                $(".is_white_gift").prop('checked', set.white.thank_gift);
-                $(".is_white_follow").prop('checked', set.white.thank_follow);
-                $(".is_white_welcome").prop('checked', set.white.thank_welcome);
-                $(".is_white_reply").prop('checked', set.white.auto_reply);
-                $(".is_white_dynamic").prop('checked', set.white.is_dynamic);
-                $(".white_names").val(set.white.names ? set.white.names.join('\n') : '');
-                $(".white_uids").val(set.white.uids ? set.white.uids.join('\n') : '');
-            }
-            if (set.bad_list && set.bad_list.bad_users) {
-                badListData = set.bad_list.bad_users;
-            } else {
-                badListData = [];
-            }
-            method.renderBadListTable(1);
             if (set.live_status) {
                 $(".livestatus_live_open").prop('checked', set.live_status.is_live_open);
                 $(".livestatus_live_text").val(set.live_status.live_text);
@@ -3012,24 +2817,6 @@ const method = {
                             $(".ab-next").prop('disabled', autoBlockData.page >= totalPages);
                         }
                     }
-                    // Sync to badlist table
-                    var r = data.result;
-                    if (r.uid) {
-                        var found = false;
-                        for (var i = 0; i < badListData.length; i++) {
-                            if (badListData[i].uid === r.uid) {
-                                badListData[i].uname = r.uname;
-                                found = true;
-                                break;
-                            }
-                        }
-                        if (!found) {
-                            badListData.push({uid: r.uid, uname: r.uname || ''});
-                        }
-                        if ($("#tab-badlist-set").hasClass("active")) {
-                            method.renderBadListTable();
-                        }
-                    }
                 }
                 if (data.cmd === 'stranger_viewer' && data.result) {
                     method._handleStrangerViewer(data.result);
@@ -3120,87 +2907,6 @@ const method = {
         if (!ts) return '-';
         var d = new Date(ts * 1000);
         return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
-    },
-    renderSearchResults: function (list, prefix) {
-        prefix = prefix || 'badlist';
-        var $container = $("." + prefix + "-search-results");
-        var $tbody = $container.find("." + prefix + "-result-tbody");
-        $tbody.empty();
-        for (var i = 0; i < list.length; i++) {
-            var u = list[i];
-            var isTop = (i === 0);
-            var profileUrl = 'https://space.bilibili.com/' + u.uid + '/dynamic';
-            var faceHtml = u.face
-                ? '<a href="' + profileUrl + '" target="_blank"><img src="' + u.face + '" width="28" height="28" class="rounded-circle me-1" style="vertical-align:middle;" onerror="this.style.display=\'none\'"></a>'
-                : '';
-            var nameHtml = faceHtml + '<a href="' + profileUrl + '" target="_blank" title="打开用户动态页" style="display:inline-block;max-width:calc(100% - 40px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;"><strong>' + (u.uname || '') + '</strong></a>'
-                + (isTop ? ' <span class="badge bg-primary ms-1" style="font-size:10px;">推荐</span>' : '');
-            var selectBtn = '<button class="btn btn-sm btn-outline-primary ' + prefix + '-result-select" data-uid="' + u.uid + '" data-uname="' + u.uname + '" style="font-size:11px;">选择</button>';
-            var visibleIcon = u.follow_list_visible
-                ? '<span class="text-success">✓</span>'
-                : '<span class="text-danger">✗</span>';
-            var $tr = $("<tr>");
-            $tr.append($("<td>").addClass("br-col-user").html(nameHtml));
-            $tr.append($("<td>").addClass("br-col-fans").text(method.fmtNum(u.fans)));
-            $tr.append($("<td>").addClass("br-col-attention").text(method.fmtNum(u.attention)));
-            $tr.append($("<td>").addClass("br-col-likes").text(method.fmtNum(u.likes)));
-            $tr.append($("<td>").addClass("br-col-play").text(method.fmtNum(u.play_count)));
-            $tr.append($("<td>").addClass("br-col-archive").text(u.archive_count || '0'));
-            $tr.append($("<td>").addClass("br-col-visible").html(visibleIcon));
-            $tr.append($("<td>").addClass("br-col-dynamic").text(method.fmtDate(u.latest_dynamic_date)));
-            $tr.append($("<td>").addClass("br-col-action").html(selectBtn));
-            if (isTop) {
-                $tr.addClass("table-primary");
-            }
-            $tbody.append($tr);
-        }
-        $container.show();
-    },
-    renderBadListTable: function (page) {
-        var $tbody = $(".badlist-tbody");
-        var $table = $(".badlist-table");
-        var $pagination = $(".badlist-pagination");
-        if (!badListData || badListData.length === 0) {
-            $table.hide();
-            $pagination.hide();
-            return;
-        }
-        // 时间降序: 最新添加的在末尾，反转后最新在前
-        var sorted = badListData.slice().reverse();
-        var totalItems = sorted.length;
-        var maxItems = badListState.pageSize * badListState.maxPages;
-        var displayItems = sorted.slice(0, maxItems);
-        var totalPages = Math.ceil(displayItems.length / badListState.pageSize);
-        if (!page || page < 1) page = 1;
-        if (page > totalPages) page = totalPages;
-        badListState.page = page;
-        var start = (page - 1) * badListState.pageSize;
-        var end = Math.min(start + badListState.pageSize, displayItems.length);
-        var pageItems = displayItems.slice(start, end);
-
-        $table.show();
-        $tbody.empty();
-        for (var i = 0; i < pageItems.length; i++) {
-            var bu = pageItems[i];
-            var $tr = $("<tr>");
-            $tr.append($("<td>").text(bu.uid || ''));
-            $tr.append($("<td>").text(bu.uname || ''));
-            var $delBtn = $("<button>")
-                .addClass("btn btn-sm btn-outline-danger badlist_row_del")
-                .attr("data-uid", bu.uid)
-                .text("取消拉黑");
-            $tr.append($("<td>").append($delBtn));
-            $tbody.append($tr);
-        }
-
-        if (totalPages > 1) {
-            $pagination.show();
-            $(".badlist-page-info").text("第" + page + "页/共" + totalPages + "页 (" + displayItems.length + "条)");
-            $(".badlist-prev").prop("disabled", page <= 1);
-            $(".badlist-next").prop("disabled", page >= totalPages);
-        } else {
-            $pagination.hide();
-        }
     },
     loadBiliBadList: function (page, callback) {
         if (!page || page < 1) page = 1;

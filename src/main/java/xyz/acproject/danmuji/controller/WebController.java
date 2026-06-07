@@ -641,13 +641,6 @@ public class WebController {
             if(centerSetConf.getWelcome()==null&&PublicDataConf.centerSetConf.getWelcome()==null){
                 centerSetConf.setWelcome(new ThankWelcomeSetConf());
             }
-            //黑名单
-            if(centerSetConf.getBlack()==null&&PublicDataConf.centerSetConf.getBlack()!=null){
-                centerSetConf.setBlack(PublicDataConf.centerSetConf.getBlack());
-            }
-            if(centerSetConf.getBlack()==null&&PublicDataConf.centerSetConf.getBlack()==null){
-                centerSetConf.setBlack(new BlackListSetConf());
-            }
             //直播状态姬
             if(centerSetConf.getLive_status()==null&&PublicDataConf.centerSetConf.getLive_status()!=null){
                 centerSetConf.setLive_status(PublicDataConf.centerSetConf.getLive_status());
@@ -668,13 +661,6 @@ public class WebController {
             }
             if(centerSetConf.getDanmaku_store()==null&&PublicDataConf.centerSetConf.getDanmaku_store()==null){
                 centerSetConf.setDanmaku_store(new DanmakuStoreSetConf());
-            }
-            //拉黑姬
-            if(centerSetConf.getBadList()==null&&PublicDataConf.centerSetConf.getBadList()!=null){
-                centerSetConf.setBadList(PublicDataConf.centerSetConf.getBadList());
-            }
-            if(centerSetConf.getBadList()==null&&PublicDataConf.centerSetConf.getBadList()==null){
-                centerSetConf.setBadList(new BadListSetConf());
             }
             //关键词检测姬
             if(centerSetConf.getKey_word()==null&&PublicDataConf.centerSetConf.getKey_word()!=null){
@@ -757,23 +743,6 @@ public class WebController {
     }
 
     @ResponseBody
-    @GetMapping(value = "/get_uname_by_uid")
-    public Response<?> getUnameByUid(@RequestParam("uid") long uid, HttpServletRequest req) {
-        String uname = HttpUserData.httpGetUserNameByUid(uid);
-        return Response.success(uname, req);
-    }
-
-    @ResponseBody
-    @GetMapping(value = "/search_uid_by_uname")
-    public Response<?> searchUidByUname(@RequestParam("uname") String uname, HttpServletRequest req) {
-        JSONArray result = HttpUserData.httpSearchUserByName(uname);
-        return Response.success(result, req);
-    }
-
-
-
-
-    @ResponseBody
     @GetMapping(value = "/setExport")
     public Response<?> setExport(HttpServletRequest req) {
         boolean flag = JsonFileTools.createJsonFile(PublicDataConf.centerSetConf.toJson());
@@ -827,49 +796,6 @@ public class WebController {
             return Response.success(1, req);
         }
         return Response.success(0, req);
-    }
-
-    @ResponseBody
-    @GetMapping(value = "/add_badlist")
-    public Response<?> addBadList(@RequestParam("uid") long uid, @RequestParam(value = "uname", required = false) String uname, HttpServletRequest req) {
-        short code = -1;
-        if (StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
-            code = HttpUserData.httpPostAddBadList(uid);
-        }
-        if (code == 0) {
-            if (StringUtils.isBlank(uname)) {
-                uname = "";
-            }
-            List<BadListSetConf.BadUser> badUsers = PublicDataConf.centerSetConf.getBadList().getBadUsers();
-            boolean exists = false;
-            for (BadListSetConf.BadUser bu : badUsers) {
-                if (bu.getUid() != null && bu.getUid().equals(uid)) {
-                    bu.setUname(uname);
-                    exists = true;
-                    break;
-                }
-            }
-            if (!exists) {
-                badUsers.add(new BadListSetConf.BadUser(uid, uname));
-            }
-            checkService.changeSet(PublicDataConf.centerSetConf, false);
-        }
-        return Response.success(code, req);
-    }
-
-    @ResponseBody
-    @GetMapping(value = "/del_badlist")
-    public Response<?> delBadList(@RequestParam("uid") long uid, HttpServletRequest req) {
-        short code = -1;
-        if (StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
-            code = HttpUserData.httpPostDeleteBadList(uid);
-        }
-        if (code == 0) {
-            List<BadListSetConf.BadUser> badUsers = PublicDataConf.centerSetConf.getBadList().getBadUsers();
-            badUsers.removeIf(bu -> bu.getUid() != null && bu.getUid().equals(uid));
-            checkService.changeSet(PublicDataConf.centerSetConf, false);
-        }
-        return Response.success(code, req);
     }
 
 

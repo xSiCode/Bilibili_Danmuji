@@ -1266,34 +1266,6 @@ div .link-popup-panel .popup-content-ctnr p {
     text-decoration: underline;
 }
 
-/* 拉黑姬搜索结果表格列宽 */
-.badlist-result-table {
-    table-layout: fixed;
-    width: 100%;
-}
-.badlist-result-table .br-col-fans { width: 7%; }
-.badlist-result-table .br-col-attention { width: 7%; }
-.badlist-result-table .br-col-likes { width: 7%; }
-.badlist-result-table .br-col-play { width: 7%; }
-.badlist-result-table .br-col-archive { width: 5%; }
-.badlist-result-table .br-col-visible { width: 7%; }
-.badlist-result-table .br-col-dynamic { width: 11%; }
-.badlist-result-table .br-col-action { width: 7%; }
-.badlist-result-table .br-col-fans,
-.badlist-result-table .br-col-attention,
-.badlist-result-table .br-col-likes,
-.badlist-result-table .br-col-play,
-.badlist-result-table .br-col-archive,
-.badlist-result-table .br-col-visible,
-.badlist-result-table .br-col-dynamic,
-.badlist-result-table .br-col-action {
-    white-space: nowrap;
-    text-align: center;
-}
-.badlist-result-table .br-col-user {
-    /* auto width: takes remaining space */
-}
-
 /* For desktops and laptops */
 @media screen and (min-width: 1025px) {
     #floating-button {

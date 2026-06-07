@@ -270,12 +270,6 @@ public class ParseSetStatusTools {
 			if (centerSetConf.getWelcome() == null) {
 				centerSetConf.setWelcome(new ThankWelcomeSetConf());
 			}
-			if(centerSetConf.getBlack()==null){
-				centerSetConf.setBlack(new BlackListSetConf());
-			}
-			if(centerSetConf.getWhite()==null){
-				centerSetConf.setWhite(new WhiteListSetConf());
-			}
 			if(centerSetConf.getLive_status()==null){
 				centerSetConf.setLive_status(new LiveStatusSetConf());
 			}
@@ -284,9 +278,6 @@ public class ParseSetStatusTools {
 			}
 			if(centerSetConf.getDanmaku_store()==null){
 				centerSetConf.setDanmaku_store(new DanmakuStoreSetConf());
-			}
-			if(centerSetConf.getBadList()==null){
-				centerSetConf.setBadList(new BadListSetConf());
 			}
 			if(centerSetConf.getGaze_welcome()==null){
 				centerSetConf.setGaze_welcome(new GazeWelcomeSetConf());

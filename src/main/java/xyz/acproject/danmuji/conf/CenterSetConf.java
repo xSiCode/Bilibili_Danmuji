@@ -110,12 +110,6 @@ public class CenterSetConf implements Serializable {
     //是否开启欢迎进入直播间线程对象体 black
     @JSONField(name = "welcome")
     private ThankWelcomeSetConf welcome;
-    //全局黑名单
-    @JSONField(name="black")
-    private BlackListSetConf black;
-    //全局白名单
-    @JSONField(name="white")
-    private WhiteListSetConf white;
     //直播状态姬
     @JSONField(name="live_status")
     private LiveStatusSetConf live_status;
@@ -125,9 +119,6 @@ public class CenterSetConf implements Serializable {
     //弹幕话术姬
     @JSONField(name="danmaku_store")
     private DanmakuStoreSetConf danmaku_store;
-    //拉黑姬
-    @JSONField(name="bad_list")
-    private BadListSetConf badList;
     //欢迎凝视姬
     @JSONField(name="gaze_welcome")
     private GazeWelcomeSetConf gaze_welcome;
@@ -150,12 +141,9 @@ public class CenterSetConf implements Serializable {
         centerSetConf.setFollow(new ThankFollowSetConf());
         centerSetConf.setReply(new AutoReplySetConf());
         centerSetConf.setWelcome(new ThankWelcomeSetConf());
-        centerSetConf.setBlack(new BlackListSetConf());
-        centerSetConf.setWhite(new WhiteListSetConf());
         centerSetConf.setLive_status(new LiveStatusSetConf());
         centerSetConf.setTimer(new TimerSetConf());
         centerSetConf.setDanmaku_store(new DanmakuStoreSetConf());
-        centerSetConf.setBadList(new BadListSetConf());
         centerSetConf.setGaze_welcome(new GazeWelcomeSetConf());
         centerSetConf.setAuto_block(new AutoBlockSetConf());
         centerSetConf.setKey_word(new KeyWordSetConf());
@@ -164,21 +152,16 @@ public class CenterSetConf implements Serializable {
 
 
     public CenterSetConf(ThankGiftSetConf thank_gift, AdvertSetConf advert,
-                         ThankFollowSetConf follow, AutoReplySetConf reply, ThankWelcomeSetConf welcome, BlackListSetConf black,WhiteListSetConf white,LiveStatusSetConf live_status,TimerSetConf timer,DanmakuStoreSetConf danmaku_store,BadListSetConf badList,GazeWelcomeSetConf gaze_welcome, AutoBlockSetConf auto_block, KeyWordSetConf key_word) {
+                         ThankFollowSetConf follow, AutoReplySetConf reply, ThankWelcomeSetConf welcome, LiveStatusSetConf live_status, TimerSetConf timer, DanmakuStoreSetConf danmaku_store, GazeWelcomeSetConf gaze_welcome, AutoBlockSetConf auto_block, KeyWordSetConf key_word) {
         super();
         this.thank_gift = thank_gift;
         this.advert = advert;
         this.follow = follow;
         this.reply = reply;
-        
         this.welcome = welcome;
-        
-        this.black= black;
-        this.white= white;
         this.live_status = live_status;
         this.timer = timer;
         this.danmaku_store = danmaku_store;
-        this.badList = badList;
         this.gaze_welcome = gaze_welcome;
         this.auto_block = auto_block;
         this.key_word = key_word;

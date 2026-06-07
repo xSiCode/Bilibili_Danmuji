@@ -11,7 +11,6 @@ import xyz.acproject.danmuji.component.ThreadComponent;
 import xyz.acproject.danmuji.conf.CacheConf;
 import xyz.acproject.danmuji.conf.CenterSetConf;
 import xyz.acproject.danmuji.conf.PublicDataConf;
-import xyz.acproject.danmuji.conf.set.BadListSetConf;
 import xyz.acproject.danmuji.conf.set.GazeWelcomeSet;
 import xyz.acproject.danmuji.conf.set.GazeWelcomeSetConf;
 import xyz.acproject.danmuji.conf.set.ThankGiftRuleSet;
@@ -1572,7 +1571,6 @@ public class ParseMessageThread extends Thread {
 
         short code = HttpUserData.httpPostAddBadList(uid);
         if (code == 0 || code == 22120) {
-            syncBlockedUserToBadList(uid, uname);
             JSONObject record = buildAutoBlockRecord(uid, uname, score, type, code);
             if (record != null) {
                 autoBlockTimeCache.put(uid, System.currentTimeMillis());
@@ -1599,35 +1597,6 @@ public class ParseMessageThread extends Thread {
             LOGGER.error("auto_block check existing error", e);
         }
         return false;
-    }
-
-    /**
-     * 将拉黑用户同步至 badlist 配置，使 UI 即时反映
-     */
-    private void syncBlockedUserToBadList(long uid, String uname) {
-        try {
-            if (PublicDataConf.centerSetConf.getBadList() == null) {
-                return;
-            }
-            List<BadListSetConf.BadUser> badUsers = PublicDataConf.centerSetConf.getBadList().getBadUsers();
-            if (badUsers == null) {
-                badUsers = new ArrayList<>();
-                PublicDataConf.centerSetConf.getBadList().setBadUsers(badUsers);
-            }
-            boolean exists = false;
-            for (BadListSetConf.BadUser bu : badUsers) {
-                if (bu.getUid() != null && bu.getUid().equals(uid)) {
-                    bu.setUname(uname);
-                    exists = true;
-                    break;
-                }
-            }
-            if (!exists) {
-                badUsers.add(new BadListSetConf.BadUser(uid, uname));
-            }
-        } catch (Exception e) {
-            LOGGER.error("auto_block sync badlist error", e);
-        }
     }
 
     /**
