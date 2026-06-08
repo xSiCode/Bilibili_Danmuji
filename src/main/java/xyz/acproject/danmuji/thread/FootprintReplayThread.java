@@ -144,16 +144,13 @@ public class FootprintReplayThread extends Thread {
     }
 
     private void executeReplay(FootprintRecord rec) {
-        CenterSetConf conf = PublicDataConf.centerSetConf;
-        if (conf == null) conf = new CenterSetConf();
 
         ParseMessageThread thread = parseThread;
         if (thread == null) thread = PublicDataConf.parseMessageThread;
         if (thread == null) thread = new ParseMessageThread();
 
-        StringBuilder sb = new StringBuilder(100);
         try {
-            thread.audienceProcessingPublic(sb, rec.uid, rec.uname, conf);
+            thread.audienceProcessingPublic(rec.uid, rec.uname );
         } catch (Exception e) {
             LOGGER.error("FootprintReplayThread error uid={}", rec.uid, e);
         }

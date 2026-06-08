@@ -204,19 +204,19 @@ $(function() {
         method.renderBlackWhiteTable('white', bwlistState.white.page + 1);
     });
 
-    // 导出
-    $(document).on('click', '.export-set[data-file="bw"]', function() {
-        window.location.href = '../exportBlackWhiteCsv';
+    // ===== 本地黑白名单 导出/导入 =====
+    $(document).on('click', '.bw-export-btn', function() {
+        var type = $(this).closest('.set-control').attr('data-file').split('-')[1]; // black or white
+        window.location.href = '../exportBlackWhiteCsv?type=' + type;
     });
 
-    // 导入
-    $(document).on('click', '.import-set[data-file="bw"]', function() {
-        var $input = $(this).siblings('.import-file-input');
-        $input.off('change').on('change', function(e) {
-            var file = e.target.files[0];
+    $(document).on('click', '.bw-import-btn', function() {
+        var $setCtrl = $(this).closest('.set-control');
+        var type = $setCtrl.attr('data-file').split('-')[1]; // black or white
+        var $input = $setCtrl.find('.bw-import-file-input');
+        $input.off('change.bwlist').on('change.bwlist', function(ev) {
+            var file = ev.target.files[0];
             if (!file) return;
-            var fname = (file.name || '').toLowerCase();
-            var type = fname.indexOf('白') >= 0 ? 'white' : 'black';
             var formData = new FormData();
             formData.append('file', file);
             formData.append('type', type);
@@ -234,7 +234,8 @@ $(function() {
                     } else {
                         showMessage('导入失败', 'danger', 3);
                     }
-                }
+                },
+                error: function() { showMessage('导入失败', 'danger', 3); }
             });
         });
         $input.click();

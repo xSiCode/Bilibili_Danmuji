@@ -108,7 +108,10 @@
                                     <div class="bwlist-white-pagination d-flex justify-content-center align-items-center mt-2" style="display:none;"><button class="btn btn-sm btn-outline-secondary bw-white-prev">上一页</button><span class="bw-white-page-info mx-2">第1页</span><button class="btn btn-sm btn-outline-secondary bw-white-next">下一页</button></div>
                                 </div>
                             </div>
-                            <div class="input-group mb-3 set-control" data-file="bw"><div class="col-auto"><input class="import-file-input" style="display: none;" type="file" value="上传文件"/><button class="btn btn-warning export-set" title="导出设置到本地" type="button">导出黑/白名单</button><button class="btn btn-info import-set" title="导入CSV文件" type="button">导入黑/白名单CSV</button></div></div>
+                            <div class="input-group mb-3 set-control" data-file="bw"><div class="d-flex flex-wrap gap-2">
+                                <div class="set-control" data-file="bw-black" style="display:inline-flex;align-items:center;gap:4px"><input class="bw-import-file-input" style="display:none" type="file" accept=".csv"/><button class="btn btn-sm btn-dark bw-export-btn" title="导出黑名单CSV" type="button">导出黑名单CSV</button><button class="btn btn-sm btn-dark bw-import-btn" title="导入黑名单CSV" type="button">导入黑名单CSV</button></div>
+                                <div class="set-control" data-file="bw-white" style="display:inline-flex;align-items:center;gap:4px"><input class="bw-import-file-input" style="display:none" type="file" accept=".csv"/><button class="btn btn-sm btn-light bw-export-btn" title="导出白名单CSV" type="button">导出白名单CSV</button><button class="btn btn-sm btn-light bw-import-btn" title="导入白名单CSV" type="button">导入白名单CSV</button></div>
+                            </div></div>
                         </div>
                         <!-- Bili小黑屋 -->
                         <div class="tab-pane" th:classappend="${! #arrays.isEmpty(param.tab) && param.tab[0] == 'bili-badlist-set'} ? 'active' : ''" id="tab-bili-badlist-set">

@@ -843,7 +843,7 @@ public class ParseMessageThread extends Thread {
 
                                 //观众记录
                                 if (msg_type == 1) {
-                                    audienceProcessing(stringBuilder, _follow_uid, _follow_uname, conf);
+                                    audienceProcessing( _follow_uid, _follow_uname );
                                 }
 
                                 if (interactWordV2.hasFansMedal()) {
@@ -1525,20 +1525,10 @@ public class ParseMessageThread extends Thread {
         }
     }
 
-    private void audienceProcessing(StringBuilder stringBuilder, long _follow_uid, String _follow_uname, CenterSetConf conf) {
-        stringBuilder.append(TIME_FORMAT.get().format(System.currentTimeMillis()))
-                .append(" [新的访客] ")
-                .append("https://space.bilibili.com/")
-                .append(_follow_uid)
-                .append(" ")
-                .append(_follow_uname);
+    private void audienceProcessing( long _follow_uid, String _follow_uname ) {
+        logNewAudience(_follow_uid, _follow_uname);
 
-        if (PublicDataConf.logThread != null && !PublicDataConf.logThread.FLAG) {
-            PublicDataConf.logString.offer(stringBuilder.toString());
-        }
-
-        stringBuilder.delete(0, stringBuilder.length());
-
+        final CenterSetConf conf = getCenterSetConf();
         // 本地黑白名单姬: 在耗时打分前先检查，命中则跳过后续处理
         if (conf.getLocalBlackWhiteList() != null && conf.getLocalBlackWhiteList().is_open()) {
             if (LocalBlackWhiteListService.isInWhitelist(_follow_uid)) {
@@ -1568,12 +1558,31 @@ public class ParseMessageThread extends Thread {
         }
     }
 
+    private static void logNewAudience(long _follow_uid, String _follow_uname) {
+        StringBuilder stringBuilder = new StringBuilder(100);
+        stringBuilder.append(TIME_FORMAT.get().format(System.currentTimeMillis()))
+                .append(" [新的访客] ")
+                .append("https://space.bilibili.com/")
+                .append(_follow_uid)
+                .append(" ")
+                .append(_follow_uname);
+
+        if (PublicDataConf.logThread != null && !PublicDataConf.logThread.FLAG) {
+            PublicDataConf.logString.offer(stringBuilder.toString());
+        }
+
+        stringBuilder.delete(0, stringBuilder.length());
+    }
+
     // ==================== 负黑自动拉黑姬: 提取的子方法 ====================
 
     /**
      * 自动拉黑处理：分数在下阈值和上阈值之间拖过 → 冷却期 → 白名单 →黑名单 → 拉黑打开，拉黑 → 推送前端
      */
     private void handleAutoBlock(CenterSetConf conf, long uid, String uname, int score, String type) {
+        if (conf.getAuto_block() == null) {
+            return;
+        }
         int blockScore = conf.getAuto_block().getBlock_score();
         int whiteThreshold = Math.abs(blockScore);
 
@@ -1593,14 +1602,15 @@ public class ParseMessageThread extends Thread {
                 return;  // 已经加入了白名单
             }
         }
-        // 本地黑白名单姬：自动加入黑名单
-        if (conf.getLocalBlackWhiteList() != null && conf.getLocalBlackWhiteList().is_open()) {
+        // 本地黑白名单姬：自动加入黑名单（仅当分数确实达到拉黑阈值）
+        if (conf.getLocalBlackWhiteList() != null && conf.getLocalBlackWhiteList().is_open()
+                && score <= blockScore) {
             LocalBlackWhiteListService.addToBlacklist(uid, uname, score, type,
                     PublicDataConf.ROOMID != null ? PublicDataConf.ROOMID : 0L);
             pushBwlistUpdate("black", uid);  // 加入黑名单，继续后面的api操作
         }
 
-        if (conf.getAuto_block() == null || !conf.getAuto_block().is_auto_block()) {
+        if (!conf.getAuto_block().is_auto_block()) {
             return; // 关闭自动拉黑功能，不做api拉黑处理
         }
 
@@ -1704,8 +1714,8 @@ public class ParseMessageThread extends Thread {
     /**
      * 供 FootprintReplayThread 调用的公共包装方法
      */
-    public void audienceProcessingPublic(StringBuilder stringBuilder, long uid, String uname, CenterSetConf conf) {
-        audienceProcessing(stringBuilder, uid, uname, conf);
+    public void audienceProcessingPublic(long uid, String uname ) {
+        audienceProcessing( uid, uname );
     }
 
     /**
