@@ -106,7 +106,8 @@ public class FootprintFileTools {
 
     private String resolveFilePath() {
         String anchor = safeFileName(PublicDataConf.ANCHOR_NAME);
-        String key = PublicDataConf.ROOMID + "_" + anchor;
+        long auid = PublicDataConf.AUID != null ? PublicDataConf.AUID : 0L;
+        String key = PublicDataConf.ROOMID + "_" + anchor + "_" + auid;
         if (filePathCache == null || !key.equals(filePathKey)) {
             filePathCache = getBaseDir() + key + "_11_足迹留印.csv";
             filePathKey = key;
