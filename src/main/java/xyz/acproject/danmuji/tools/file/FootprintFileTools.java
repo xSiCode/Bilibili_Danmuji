@@ -106,7 +106,8 @@ public class FootprintFileTools {
 
     private String resolveFilePath() {
         String anchor = safeFileName(PublicDataConf.ANCHOR_NAME);
-        String key = PublicDataConf.ROOMID + "_" + anchor;
+        long auid = PublicDataConf.AUID != null ? PublicDataConf.AUID : 0L;
+        String key = PublicDataConf.ROOMID + "_" + anchor + "_" + auid;
         if (filePathCache == null || !key.equals(filePathKey)) {
             filePathCache = getBaseDir() + key + "_11_足迹留印.csv";
             filePathKey = key;
@@ -116,25 +117,13 @@ public class FootprintFileTools {
 
     /**
      * 记录一条足迹（非阻塞，入队后批量写入）
-     * 如果是该文件的第一条记录，自动写入直播间上下文头部
+     * 文件元数据（ROOMID, ANCHOR_NAME, AUID）已编码在文件名中，不再写 JSON 头部
      * @param timestamp 事件时间戳（毫秒）
      * @param uid       用户 UID
      * @param uname     用户名
      */
     public void record(long timestamp, long uid, String uname) {
         String filePath = resolveFilePath();
-
-        // 首次写入此文件时，先写入直播间上下文头部
-        if (headerWrittenFiles.add(filePath)) {
-            // 如果文件已存在（从上次会话延续），则不需要再写头部
-            File f = new File(filePath);
-            if (!f.exists() || f.length() == 0) {
-                String headerLine = buildHeaderLine();
-                if (headerLine != null) {
-                    batchQueue.offer(new LogEntry(filePath, headerLine));
-                }
-            }
-        }
 
         // CSV 格式：uid,"uname",utime  —— uname 用双引号包裹以处理含逗号的情况
         String escapedUname = uname != null ? uname.replace("\"", "\"\"") : "";
@@ -348,9 +337,10 @@ public class FootprintFileTools {
 
     /**
      * 从足迹文件名解析直播间上下文
-     * 文件名格式: {roomId}_{anchorName}_11_足迹留印.csv
-     * roomId 为纯数字，anchorName 可能包含下划线
-     * 例如: "27887575_是Winter喵_11_足迹留印.csv" → roomId=27887575, anchorName="是Winter喵"
+     * 新格式: {roomId}_{anchorName}_{auid}_11_足迹留印.csv
+     * 旧格式: {roomId}_{anchorName}_11_足迹留印.csv（向后兼容，auid 为 0）
+     * anchorName 可能包含下划线；从右向左解析保证正确拆分
+     * 例如: "27887575_是Winter喵_10850097_11_足迹留印.csv" → roomId=27887575, anchorName="是Winter喵", auid=10850097
      *
      * @param fileName 文件名（不含路径）
      * @return SessionMeta，解析失败时 hasData() 返回 false
@@ -365,7 +355,19 @@ public class FootprintFileTools {
         String core = fileName.substring(0, fileName.length() - suffix.length());
         if (core.isEmpty()) return meta;
 
-        // 找到第一个下划线，之前是 roomId（纯数字），之后是 anchorName
+        // 从右向左解析：最后一个 _ 之后如果是纯数字，则为 auid（新格式）
+        int lastUnderscore = core.lastIndexOf('_');
+        if (lastUnderscore > 0) {
+            String auidStr = core.substring(lastUnderscore + 1);
+            try {
+                meta.auid = Long.parseLong(auidStr);
+                core = core.substring(0, lastUnderscore);
+            } catch (NumberFormatException e) {
+                // 老格式：最后一段不是数字，整个 core 就是 roomId_anchorName
+            }
+        }
+
+        // 第一个 _ 之前是 roomId（纯数字），之后是 anchorName
         int firstUnderscore = core.indexOf('_');
         if (firstUnderscore <= 0) return meta;
 
@@ -378,7 +380,6 @@ public class FootprintFileTools {
             return meta; // roomId 解析失败
         }
         meta.anchorName = anchorName;
-        // auid 不强制从文件名解析（文件名中不含 auid），由 CSV 头部补充
         return meta;
     }
 
