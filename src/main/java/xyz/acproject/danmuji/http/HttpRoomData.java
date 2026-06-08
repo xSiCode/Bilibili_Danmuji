@@ -868,7 +868,7 @@ public class HttpRoomData {
 
             int currentMedalScore = 0;
             int level = medal.getLevel() != null ? medal.getLevel() : 0;
-            int currentMedalLevelScore = (level > 0) ? (int) (Math.log(level) / Math.log(2)) : 0;
+            int currentMedalLevelScore =level/10 +1 ;
             currentMedalScore += currentMedalLevelScore;
 
             Integer blackWhiteZhuboScore = pnScoreMap.get(medal.getTargetId());
@@ -896,6 +896,7 @@ public class HttpRoomData {
                 } else {
                     currentMedalScore = -(currentMedalScore - blackWhiteZhuboScore);
                 }
+
                 totalMedalScore += currentMedalScore;
                 logSb.append(" 黑白分:").append(currentMedalScore)
                         .append(";");

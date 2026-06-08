@@ -5516,12 +5516,12 @@ public class WebController {
                     continue;
                 }
 
-                // 合并元数据：文件名解析为主，CSV 头部补充
+                // 合并元数据：文件名解析为主，CSV 头部补充（兼容老格式）
                 SessionMeta fileNameMeta = FootprintFileTools.parseFileNameForContext(file.getName());
                 SessionMeta meta = new SessionMeta();
                 meta.roomId = fileNameMeta.roomId != 0 ? fileNameMeta.roomId : parseResult.meta.roomId;
                 meta.anchorName = !fileNameMeta.anchorName.isEmpty() ? fileNameMeta.anchorName : parseResult.meta.anchorName;
-                meta.auid = parseResult.meta.auid;
+                meta.auid = fileNameMeta.auid != 0 ? fileNameMeta.auid : parseResult.meta.auid;
 
                 batches.add(new FileBatch(file.getName(), meta, parseResult.records));
                 totalRecords += parseResult.records.size();
