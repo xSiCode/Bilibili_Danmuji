@@ -1,21 +1,18 @@
 package xyz.acproject.danmuji.tools.file;
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.*;
-import java.nio.charset.StandardCharsets;
 import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @ClassName ProFileTools
- * @Description TODO
+ * @Description profile 文件读写。新格式: 纯 JSON 对象；兼容旧 key:@:value 行格式。
  * @author BanqiJane
- * @date 2020年8月10日 下午12:28:42
- *
- * @Copyright:2020 blogs.acproject.xyz Inc. All rights reserved.
  */
 @Slf4j
 public class ProFileTools {
@@ -42,11 +39,7 @@ public class ProFileTools {
 	}
 
 	/**
-	 * 读取profile文件内容 转为 Map对象
-	 * @param filename 文件名称,非绝对地址
-	 * @return is not null
-	 * @throws IOException io流处理异常
-	 * @throws FileNotFoundException 文件未找到
+	 * 读取 profile 文件为 Map。优先尝试 JSON 格式，失败则回退到旧 key:@:value 行格式。
 	 */
 	public static Map<String, String> read(String filename) throws IOException{
 		File file = new File(STORE_DIR);
@@ -54,41 +47,52 @@ public class ProFileTools {
 		file = new File(STORE_DIR + "/" + filename);
 		Map<String, String> profileMap = new ConcurrentHashMap<>();
 		if (file.createNewFile()){
-			//如果成功创建了空文件则直接返回空Map
 			return profileMap;
 		}
 
-		String dataString;
-		String[] strings;
-		try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))){
-			while ((dataString = bufferedReader.readLine()) != null) {
-				strings = dataString.split(":@:", 2);
-				if (strings.length == 2) {
-					String key = strings[0];
-					String val = strings[1];
-					// set 的值可能跨多行（格式化 JSON），读到 EOF 为止
-					if ("set".equals(key)) {
-						StringBuilder sb = new StringBuilder(val);
-						String nextLine;
-						while ((nextLine = bufferedReader.readLine()) != null) {
-							sb.append("\n").append(nextLine);
-						}
-						val = sb.toString();
-					}
-					profileMap.put(key, val);
-				}
+		// 读取整个文件内容
+		StringBuilder sb = new StringBuilder();
+		try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
+			String line;
+			while ((line = reader.readLine()) != null) {
+				sb.append(line).append("\n");
 			}
-		} catch (FileNotFoundException e) {
-			log.warn("文件{}不存在!",file.getAbsolutePath());
-			throw e;
-		} catch(IOException e) {
-			log.error(e.getMessage(),e);
-			throw e;
+		}
+		String content = sb.toString().trim();
+
+		// 1. 尝试 JSON 格式: {"key":"val", "set":{...}}
+		if (content.startsWith("{")) {
+			try {
+				JSONObject json = JSON.parseObject(content);
+				for (String key : json.keySet()) {
+					Object val = json.get(key);
+					if (val instanceof JSONObject) {
+						profileMap.put(key, ((JSONObject) val).toJSONString());
+					} else {
+						profileMap.put(key, json.getString(key));
+					}
+				}
+				return profileMap;
+			} catch (Exception e) {
+				log.warn("JSON profile parse failed, trying legacy format: {}", e.getMessage());
+			}
+		}
+
+		// 2. 回退: 旧 key:@:value 行格式
+		for (String dataString : content.split("\n")) {
+			dataString = dataString.trim();
+			if (dataString.isEmpty()) continue;
+			String[] strings = dataString.split(":@:", 2);
+			if (strings.length == 2) {
+				profileMap.put(strings[0], strings[1]);
+			}
 		}
 		return profileMap;
-
 	}
 
+	/**
+	 * 以格式化 JSON 对象写入 profile 文件，直接可读。
+	 */
 	public static void write(Map<String, String> profileMap, String filename) {
 		File file = new File(STORE_DIR);
 		file.mkdirs();
@@ -98,25 +102,23 @@ public class ProFileTools {
 		} catch (IOException e) {
 			log.error(e.getMessage(), e);
 		}
-		try (OutputStreamWriter os = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8);
-			 BufferedWriter bufferedWriter = new BufferedWriter(os)) {
-			// 先写非 set 的键值对
-			for (Map.Entry<String, String> entry : profileMap.entrySet()) {
-				if (!"set".equals(entry.getKey())) {
-					bufferedWriter.write(entry.getKey());
-					bufferedWriter.write(":@:");
-					bufferedWriter.write(entry.getValue());
-					bufferedWriter.write("\r\n");
+		JSONObject json = new JSONObject();
+		for (Map.Entry<String, String> e : profileMap.entrySet()) {
+			// set 键的值是 JSON 字符串，尝试反序列化为对象嵌入
+			if ("set".equals(e.getKey())) {
+				try {
+					json.put(e.getKey(), JSON.parseObject(e.getValue()));
+				} catch (Exception ex) {
+					json.put(e.getKey(), e.getValue());
 				}
+			} else {
+				json.put(e.getKey(), e.getValue());
 			}
-			// set 键放最后，支持多行值
-			String setValue = profileMap.get("set");
-			if (setValue != null) {
-				bufferedWriter.write("set:@:");
-				bufferedWriter.write(setValue);
-				bufferedWriter.write("\r\n");
-			}
-			bufferedWriter.flush();
+		}
+		try (OutputStreamWriter os = new OutputStreamWriter(new FileOutputStream(file), "UTF-8");
+			 BufferedWriter writer = new BufferedWriter(os)) {
+			writer.write(JSON.toJSONString(json, true));
+			writer.flush();
 		} catch (IOException e) {
 			log.error(e.getMessage(), e);
 		}

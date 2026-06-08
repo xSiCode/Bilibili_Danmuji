@@ -219,7 +219,7 @@
         if (emoticonUrl) {
             content = buildEmoticonHtml(msg, emoticonUrl, emoticonName);
         } else {
-            content = replaceEmojiTags(he(msg || ''));
+            content = replaceEmojiTags(he(privacyText(msg)));
         }
         var $row = $('<div class="dm-row"></div>');
         $row.append(avatarHtml(uid, uname));
@@ -262,6 +262,12 @@
         while ($('#list').children().length > maxItems) {
             $('#list').children().first().remove();
         }
+    }
+
+    function privacyText(msg) {
+        var s = String(msg || '');
+        if (s.length <= 1) return s;
+        return s.charAt(0) + '****' + s.charAt(s.length - 1);
     }
 
     function he(s) {
