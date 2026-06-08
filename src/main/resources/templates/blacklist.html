@@ -64,8 +64,9 @@
                         <div class="tab-pane" th:classappend="${! #arrays.isEmpty(param.tab) && param.tab[0] == 'bwlist-set'} ? 'active' : ''" id="tab-bwlist-set">
                             <style>
                                 .bwlist-table{table-layout:fixed;width:100%}
-                                .bwlist-table .bw-col-name{text-align:left;width:calc((100% - 480px) * 0.3)}
-                                .bwlist-table .bw-col-scoreType{text-align:left;width:calc((100% - 480px) * 0.7)}
+                                .bwlist-table td{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+                                .bwlist-table .bw-col-name{width:180px}
+                                .bwlist-table .bw-col-scoreType{/*剩余宽度自动填充*/}
                                 .bwlist-table .bw-col-score{width:50px}
                                 .bwlist-table .bw-col-count{width:50px}
                                 .bwlist-table .bw-col-roomId{width:80px}

@@ -267,6 +267,8 @@
     function privacyText(msg) {
         var s = String(msg || '');
         if (s.length <= 1) return s;
+        // 纯表情标签（如 [dog] 或 [dog][happy]）不处理，让表情正常显示
+        if (/^(\[[^\]]*\])+$/.test(s)) return s;
         return s.charAt(0) + '****' + s.charAt(s.length - 1);
     }
 

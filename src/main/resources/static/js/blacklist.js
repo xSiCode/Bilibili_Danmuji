@@ -55,14 +55,14 @@ method.renderBlackWhiteTable = function(type, page) {
                         var e = r.rows[i];
                         var $tr = $("<tr>");
                         // name: 点击跳转用户空间
-                        var $nameTd = $("<td>").addClass("bw-col-name");
+                        var $nameTd = $("<td>").addClass("bw-col-name").attr("title", e.name || '');
                         if (e.name) {
                             $("<a>").attr("href", "https://space.bilibili.com/" + e.uid).attr("target", "_blank")
                                 .text(e.name).appendTo($nameTd);
                         }
                         $tr.append($nameTd);
                         $tr.append($("<td>").addClass("bw-col-score").text(e.score));
-                        $tr.append($("<td>").addClass("bw-col-scoreType").text(e.scoreType || ''));
+                        $tr.append($("<td>").addClass("bw-col-scoreType").text(e.scoreType || '').attr("title", e.scoreType || ''));
                         $tr.append($("<td>").addClass("bw-col-count").text(e.count));
                         // roomId: 点击跳转直播间
                         var $roomTd = $("<td>").addClass("bw-col-roomId");
@@ -71,7 +71,7 @@ method.renderBlackWhiteTable = function(type, page) {
                                 .text(e.roomId).appendTo($roomTd);
                         }
                         $tr.append($roomTd);
-                        $tr.append($("<td>").addClass("bw-col-updateTime").text(e.updateTime ? bwlistFmtTs(e.updateTime) : ''));
+                        $tr.append($("<td>").addClass("bw-col-updateTime").text(e.updateTime ? bwlistFmtTs(e.updateTime) : '').attr("title", e.updateTime ? bwlistFmtTs(e.updateTime) : ''));
                         var $delBtn = $("<button>").addClass("btn btn-sm btn-outline-danger bwlist-del-btn").attr("data-uid", e.uid).attr("data-type", type).attr("title", "从名单删除").text("删除");
                         var $moveLabel = type === 'black' ? '→白' : '→黑';
                         var $moveTitle = type === 'black' ? '移到白名单' : '移到黑名单';
