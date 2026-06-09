@@ -5,7 +5,7 @@
     <style>
         .aicu-search-box{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
         .aicu-search-input{flex:1;min-width:200px;max-width:400px}
-        .aicu-history-dropdown{position:absolute;z-index:1000;background:#fff;border:1px solid #dee2e6;border-radius:6px;max-height:240px;overflow-y:auto;width:400px;display:none;box-shadow:0 4px 12px rgba(0,0,0,.12)}
+        .aicu-history-dropdown{position:absolute;top:100%;left:0;z-index:1000;background:#fff;border:1px solid #dee2e6;border-radius:6px;max-height:240px;overflow-y:auto;width:400px;display:none;box-shadow:0 4px 12px rgba(0,0,0,.12);margin-top:2px}
         .aicu-history-item{padding:8px 12px;cursor:pointer;border-bottom:1px solid #f0f0f0;transition:background .15s}
         .aicu-history-item:hover{background:#e8f4fd}
         .aicu-history-item .h-uid{color:#888;font-size:12px}
@@ -17,11 +17,13 @@
         .aicu-tab-btn{padding:8px 20px;border:none;background:transparent;cursor:pointer;font-size:14px;border-radius:6px 6px 0 0;transition:all .2s;color:#666}
         .aicu-tab-btn:hover{background:#f5f5f5;color:#333}
         .aicu-tab-btn.active{background:#667eea;color:#fff;font-weight:600}
-        .aicu-tab-content{display:none;padding:12px 0}
-        .aicu-tab-content.active{display:block}
-        .aicu-table{width:100%;border-collapse:collapse;font-size:13px}
-        .aicu-table th{background:#f8f9fa;padding:6px 8px;text-align:left;border-bottom:2px solid #dee2e6;position:sticky;top:0;z-index:1}
-        .aicu-table td{padding:5px 8px;border-bottom:1px solid #eee;vertical-align:top;word-break:break-word}
+        .aicu-tabs-container{overflow:hidden;min-height:200px}
+        .aicu-tab-panel{display:none}
+        .aicu-tab-panel.active{display:block}
+        .aicu-table-wrap{max-height:60vh;overflow-y:auto}
+        .aicu-table{font-size:13px;margin-bottom:0}
+        .aicu-table th{background:#f8f9fa;padding:6px 8px;text-align:left;border-bottom:2px solid #dee2e6;white-space:nowrap;position:sticky;top:0;z-index:1}
+        .aicu-table td{padding:5px 8px;border-bottom:1px solid #eee;vertical-align:top;word-break:break-word;overflow-wrap:break-word}
         .aicu-table tr:hover{background:#f8f9ff}
         .aicu-link{color:#667eea;text-decoration:none;font-size:12px;white-space:nowrap}
         .aicu-link:hover{text-decoration:underline}
@@ -36,6 +38,10 @@
         .aicu-empty{text-align:center;padding:40px;color:#aaa}
         .aicu-count-badge{display:inline-block;background:#667eea;color:#fff;font-size:11px;padding:1px 7px;border-radius:10px;margin-left:4px;vertical-align:middle}
         .aicu-uid-match{padding:8px 12px;background:#fffbe6;border:1px solid #ffe58f;border-radius:6px;margin-bottom:12px}
+        .ext-subnav-item{padding:8px 14px;cursor:pointer;font-size:13px;color:#555;border-left:3px solid transparent;transition:all .15s;white-space:nowrap}
+        .ext-subnav-item:hover{background:#e8f4fd;color:#333}
+        .ext-subnav-item.active{background:#e0e7ff;color:#667eea;font-weight:600;border-left-color:#667eea}
+        #ext-iframe{background:#fff}
         .aicu-uid-match a{cursor:pointer;color:#667eea;font-weight:600;text-decoration:underline}
         .aicu-room-name{font-size:11px;color:#999;white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis;display:inline-block}
     </style>
@@ -51,12 +57,19 @@
                     <th:block th:replace="~{fragments/layout :: sidebar(activePage='aicu')}"></th:block>
                     <div class="settings-content flex-grow-1">
 
+                        <!-- API 不可用警告 -->
+                        <div id="aicu-api-warn" style="display:none;background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:8px 12px;margin-bottom:8px;font-size:13px;color:#856404">
+                            ⚠ <strong>aicu.cc API 当前不可用</strong>（被 WAF 拦截）。API 搜索暂时失效，但<strong>本地缓存和历史记录搜索正常</strong>。<button style="float:right;background:none;border:none;color:#856404;cursor:pointer;font-weight:bold" onclick="$('#aicu-api-warn').hide()">✕</button>
+                        </div>
+
                         <!-- 搜索区域 -->
                         <div class="aicu-search-box mb-3 pt-2" style="position:relative">
                             <input id="aicu-search-input" class="form-control form-control-sm aicu-search-input" type="text" placeholder="输入 B站 UID 或用户名...">
                             <div id="aicu-history-dropdown" class="aicu-history-dropdown"></div>
                             <button id="aicu-search-btn" class="btn btn-sm btn-primary">🔍 搜索</button>
                             <button id="aicu-reset-btn" class="btn btn-sm btn-outline-secondary">重置</button>
+                            <button id="aicu-dedup-btn" class="btn btn-sm btn-outline-warning" style="display:none" title="去重三个选项卡里的重复内容，保留最新">去重</button>
+                            <label style="font-size:12px;cursor:pointer;margin-left:4px;white-space:nowrap"><input id="aicu-brief-cb" type="checkbox" checked> 简略搜索</label>
                             <span id="aicu-progress" style="font-size:12px;color:#888;margin-left:8px;display:none"></span>
                         </div>
 
@@ -76,35 +89,119 @@
                         <div id="aicu-cache-hint" style="display:none;text-align:center;padding:4px;font-size:11px;color:#aaa"></div>
 
                         <!-- 选项卡导航 -->
-                        <div id="aicu-tabs-nav" class="aicu-tab-nav" style="display:none">
-                            <button class="aicu-tab-btn active" data-tab="reply">评论<span id="reply-count-badge" class="aicu-count-badge" style="display:none">0</span></button>
-                            <button class="aicu-tab-btn" data-tab="videodm">视频弹幕<span id="videodm-count-badge" class="aicu-count-badge" style="display:none">0</span></button>
-                            <button class="aicu-tab-btn" data-tab="livedm">直播弹幕<span id="livedm-count-badge" class="aicu-count-badge" style="display:none">0</span></button>
+                        <div id="aicu-tabs-nav" class="aicu-tab-nav">
+                            <button class="aicu-tab-btn" data-tab="reply" style="display:none">评论<span id="reply-count-badge" class="aicu-count-badge" style="display:none">0</span></button>
+                            <button class="aicu-tab-btn" data-tab="videodm" style="display:none">视频弹幕<span id="videodm-count-badge" class="aicu-count-badge" style="display:none">0</span></button>
+                            <button class="aicu-tab-btn" data-tab="livedm" style="display:none">直播弹幕<span id="livedm-count-badge" class="aicu-count-badge" style="display:none">0</span></button>
+                            <button class="aicu-tab-btn active" data-tab="ext_reply">aicc 评论</button>
+                            <button class="aicu-tab-btn" data-tab="ext_videodanmu">aicc 视频弹幕</button>
+                            <button class="aicu-tab-btn" data-tab="ext_livedanmu">aicc 直播弹幕</button>
+                            <button class="aicu-tab-btn" data-tab="ext_laplace">aicc Laplace</button>
+                            <button class="aicu-tab-btn" data-tab="ext_bili">aicc Bili空间</button>
+                            <button class="aicu-tab-btn" data-tab="ext_danmakus">aicc 弹幕库</button>
+                            <button class="aicu-tab-btn" data-tab="ext_danmakus_analyze">aicc 弹幕分析</button>
                         </div>
 
+                        <!-- 选项卡面板容器 -->
+                        <div class="aicu-tabs-container">
+
                         <!-- 评论选项卡 -->
-                        <div id="tab-reply" class="aicu-tab-content">
-                            <div style="max-height:60vh;overflow-y:auto">
-                                <table class="aicu-table"><thead><tr><th style="width:120px">时间</th><th>内容</th><th style="width:80px">来源视频</th></tr></thead><tbody id="reply-tbody"></tbody></table>
+                        <div id="tab-reply" class="aicu-tab-panel" style="display:none">
+                            <div class="aicu-table-wrap table-responsive">
+                                <table class="aicu-table table table-sm table-striped"><thead><tr><th style="width:180px;min-width:180px">时间</th><th>内容</th><th style="width:80px;min-width:80px">来源视频</th></tr></thead><tbody id="reply-tbody"></tbody></table>
                             </div>
                             <div id="reply-pagination" class="aicu-pagination"></div>
                         </div>
 
                         <!-- 视频弹幕选项卡 -->
-                        <div id="tab-videodm" class="aicu-tab-content">
-                            <div style="max-height:60vh;overflow-y:auto">
-                                <table class="aicu-table"><thead><tr><th style="width:120px">时间</th><th>内容</th><th style="width:80px">时间点</th><th style="width:80px">来源视频</th></tr></thead><tbody id="videodm-tbody"></tbody></table>
+                        <div id="tab-videodm" class="aicu-tab-panel" style="display:none">
+                            <div class="aicu-table-wrap table-responsive">
+                                <table class="aicu-table table table-sm table-striped"><thead><tr><th style="width:180px;min-width:180px">时间</th><th>内容</th><th style="width:60px;min-width:60px">时间点</th><th style="width:80px;min-width:80px">来源视频</th></tr></thead><tbody id="videodm-tbody"></tbody></table>
                             </div>
                             <div id="videodm-pagination" class="aicu-pagination"></div>
                         </div>
 
                         <!-- 直播弹幕选项卡 -->
-                        <div id="tab-livedm" class="aicu-tab-content">
-                            <div style="max-height:60vh;overflow-y:auto">
-                                <table class="aicu-table"><thead><tr><th style="width:120px">时间</th><th>内容</th><th style="width:140px">房间</th><th style="width:80px">主播</th></tr></thead><tbody id="livedm-tbody"></tbody></table>
+                        <div id="tab-livedm" class="aicu-tab-panel" style="display:none">
+                            <div class="aicu-table-wrap table-responsive">
+                                <table class="aicu-table table table-sm table-striped"><thead><tr><th style="width:180px;min-width:180px">时间</th><th>内容</th><th style="width:180px;min-width:180px">房间</th><th style="width:60px;min-width:60px">主播</th></tr></thead><tbody id="livedm-tbody"></tbody></table>
                             </div>
                             <div id="livedm-pagination" class="aicu-pagination"></div>
                         </div>
+
+                        <!-- 外部查阅：7 个独立 iframe 面板 -->
+                        <div id="tab-ext_reply" class="aicu-tab-panel" style="display:none">
+                            <div style="display:flex;flex-direction:column;height:70vh">
+                                <div style="padding:4px 8px;background:#f0f0f0;font-size:11px;color:#888;display:flex;gap:8px;align-items:center">
+                                    <span>aicc 评论</span>
+                                    <a class="ext-open-link" href="#" target="_blank" style="font-size:11px;color:#667eea;text-decoration:none">🔗 新窗口打开</a>
+                                    <span style="font-size:10px;color:#bbb">（若空白请用新窗口）</span>
+                                </div>
+                                <iframe class="ext-iframe" data-key="ext_reply" src="" style="flex:1;border:none;width:100%" sandbox="allow-scripts allow-same-origin allow-popups allow-forms"></iframe>
+                            </div>
+                        </div>
+                        <div id="tab-ext_videodanmu" class="aicu-tab-panel" style="display:none">
+                            <div style="display:flex;flex-direction:column;height:70vh">
+                                <div style="padding:4px 8px;background:#f0f0f0;font-size:11px;color:#888;display:flex;gap:8px;align-items:center">
+                                    <span>aicc 视频弹幕</span>
+                                    <a class="ext-open-link" href="#" target="_blank" style="font-size:11px;color:#667eea;text-decoration:none">🔗 新窗口打开</a>
+                                    <span style="font-size:10px;color:#bbb">（若空白请用新窗口）</span>
+                                </div>
+                                <iframe class="ext-iframe" data-key="ext_videodanmu" src="" style="flex:1;border:none;width:100%" sandbox="allow-scripts allow-same-origin allow-popups allow-forms"></iframe>
+                            </div>
+                        </div>
+                        <div id="tab-ext_livedanmu" class="aicu-tab-panel" style="display:none">
+                            <div style="display:flex;flex-direction:column;height:70vh">
+                                <div style="padding:4px 8px;background:#f0f0f0;font-size:11px;color:#888;display:flex;gap:8px;align-items:center">
+                                    <span>aicc 直播弹幕</span>
+                                    <a class="ext-open-link" href="#" target="_blank" style="font-size:11px;color:#667eea;text-decoration:none">🔗 新窗口打开</a>
+                                    <span style="font-size:10px;color:#bbb">（若空白请用新窗口）</span>
+                                </div>
+                                <iframe class="ext-iframe" data-key="ext_livedanmu" src="" style="flex:1;border:none;width:100%" sandbox="allow-scripts allow-same-origin allow-popups allow-forms"></iframe>
+                            </div>
+                        </div>
+                        <div id="tab-ext_laplace" class="aicu-tab-panel" style="display:none">
+                            <div style="display:flex;flex-direction:column;height:70vh">
+                                <div style="padding:4px 8px;background:#f0f0f0;font-size:11px;color:#888;display:flex;gap:8px;align-items:center">
+                                    <span>aicc Laplace</span>
+                                    <a class="ext-open-link" href="#" target="_blank" style="font-size:11px;color:#667eea;text-decoration:none">🔗 新窗口打开</a>
+                                    <span style="font-size:10px;color:#bbb">（若空白请用新窗口）</span>
+                                </div>
+                                <iframe class="ext-iframe" data-key="ext_laplace" src="" style="flex:1;border:none;width:100%" sandbox="allow-scripts allow-same-origin allow-popups allow-forms"></iframe>
+                            </div>
+                        </div>
+                        <div id="tab-ext_bili" class="aicu-tab-panel" style="display:none">
+                            <div style="display:flex;flex-direction:column;height:70vh">
+                                <div style="padding:4px 8px;background:#f0f0f0;font-size:11px;color:#888;display:flex;gap:8px;align-items:center">
+                                    <span>aicc Bili空间</span>
+                                    <a class="ext-open-link" href="#" target="_blank" style="font-size:11px;color:#667eea;text-decoration:none">🔗 新窗口打开</a>
+                                    <span style="font-size:10px;color:#bbb">（若空白请用新窗口）</span>
+                                </div>
+                                <iframe class="ext-iframe" data-key="ext_bili" src="" style="flex:1;border:none;width:100%" sandbox="allow-scripts allow-same-origin allow-popups allow-forms"></iframe>
+                            </div>
+                        </div>
+                        <div id="tab-ext_danmakus" class="aicu-tab-panel" style="display:none">
+                            <div style="display:flex;flex-direction:column;height:70vh">
+                                <div style="padding:4px 8px;background:#f0f0f0;font-size:11px;color:#888;display:flex;gap:8px;align-items:center">
+                                    <span>aicc 弹幕库</span>
+                                    <a class="ext-open-link" href="#" target="_blank" style="font-size:11px;color:#667eea;text-decoration:none">🔗 新窗口打开</a>
+                                    <span style="font-size:10px;color:#bbb">（若空白请用新窗口）</span>
+                                </div>
+                                <iframe class="ext-iframe" data-key="ext_danmakus" src="" style="flex:1;border:none;width:100%" sandbox="allow-scripts allow-same-origin allow-popups allow-forms"></iframe>
+                            </div>
+                        </div>
+                        <div id="tab-ext_danmakus_analyze" class="aicu-tab-panel" style="display:none">
+                            <div style="display:flex;flex-direction:column;height:70vh">
+                                <div style="padding:4px 8px;background:#f0f0f0;font-size:11px;color:#888;display:flex;gap:8px;align-items:center">
+                                    <span>aicc 弹幕分析</span>
+                                    <a class="ext-open-link" href="#" target="_blank" style="font-size:11px;color:#667eea;text-decoration:none">🔗 新窗口打开</a>
+                                    <span style="font-size:10px;color:#bbb">（若空白请用新窗口）</span>
+                                </div>
+                                <iframe class="ext-iframe" data-key="ext_danmakus_analyze" src="" style="flex:1;border:none;width:100%" sandbox="allow-scripts allow-same-origin allow-popups allow-forms"></iframe>
+                            </div>
+                        </div>
+
+                        </div><!-- end aicu-tabs-container -->
 
                     </div>
                 </div>
@@ -119,14 +216,31 @@
     var currentData = null;      // 当前搜索结果
     var currentUid = null;
     var currentPage = { reply: 1, videodm: 1, livedm: 1 };
+    var pollTimer = null;        // 后台轮询定时器
+    var fetchingPages = {};      // 正在请求中的页码 { 'reply-5': true }
 
     // ===== 初始化 =====
     $(function(){
+        // 默认显示第一个外部查阅面板
+        $('#tab-ext_reply').css('display','block').addClass('active');
+
+        // 监听搜索框：输入纯数字 UID 时实时更新当前激活的外部查阅 iframe
+        $('#aicu-search-input').on('input', function(){
+            var val = $(this).val().trim();
+            if (!/^\d+$/.test(val)) return;
+            var uid = parseInt(val);
+            var activeTab = $('#aicu-tabs-nav .aicu-tab-btn.active').data('tab');
+            if (activeTab && activeTab.startsWith('ext_')) {
+                currentUid = uid;
+                prepExtIframe(activeTab, uid);
+            }
+        });
+
         // URL 参数自动搜索
         var urlUid = new URLSearchParams(window.location.search).get('uid');
         if (urlUid) {
             $('#aicu-search-input').val(urlUid);
-            doSearch(urlUid);
+            doSearch(urlUid, true);
         }
 
         // 搜索输入框 - 历史记录
@@ -147,11 +261,11 @@
             if (e.key === 'Enter') $('#aicu-search-btn').click();
         });
 
-        // 搜索按钮
+        // 搜索按钮 → API 搜索
         $('#aicu-search-btn').on('click', function(){
             var val = $('#aicu-search-input').val().trim();
             if (!val) return;
-            doSearch(val);
+            doSearch(val, false);
         });
 
         // 重置按钮
@@ -167,15 +281,124 @@
             var tab = $(this).data('tab');
             switchTab(tab);
         });
+
+        // 去重按钮
+        $('#aicu-dedup-btn').on('click', function(){
+            if (!currentData) return;
+            var before = countItems();
+            dedupData();
+            var after = countItems();
+            var removed = before - after;
+            // 刷新当前视图
+            var activeTab = $('#aicu-tabs-nav .aicu-tab-btn.active').data('tab') || 'reply';
+            switchTab(activeTab);
+            alert('去重完成：' + before + ' → ' + after + ' 条（移除 ' + removed + ' 条重复）');
+        });
     });
 
+    function countItems() {
+        var c = 0;
+        ['reply','videodm','livedm'].forEach(function(type){
+            var pages = (currentData && currentData[type] && currentData[type].pages) ? currentData[type].pages : {};
+            Object.keys(pages).forEach(function(k){
+                var v = pages[k];
+                if (Array.isArray(v)) c += v.length;
+                else if (v && v.replies) c += v.replies.length;
+                else if (v && v.videodmlist) c += v.videodmlist.length;
+                else if (v && v.list) c += v.list.length;
+            });
+        });
+        return c;
+    }
+
+    function dedupData() {
+        // 评论：按 message 去重，保留最新 time
+        dedupPages('reply', 'message', 'time', null);
+        // 视频弹幕：按 content 去重，保留最新 ctime
+        dedupPages('videodm', 'content', 'ctime', null);
+        // 直播弹幕：按 text 去重（跨房间），保留最新 ts
+        dedupLivedm();
+    }
+
+    function dedupPages(type, contentKey, timeKey, nestedListKey) {
+        if (!currentData || !currentData[type] || !currentData[type].pages) return;
+        var pages = currentData[type].pages;
+        var seen = {};
+        // 收集所有条目
+        var allItems = [];
+        Object.keys(pages).forEach(function(k){
+            var v = pages[k];
+            var list = null;
+            if (Array.isArray(v)) list = v;
+            else if (nestedListKey && v && v[nestedListKey]) list = v[nestedListKey];
+            if (list) list.forEach(function(item){ allItems.push(item); });
+        });
+        // 去重：同内容保留时间最大的
+        allItems.forEach(function(item){
+            var key = item[contentKey] || '';
+            if (!seen[key] || (item[timeKey] || 0) > (seen[key][timeKey] || 0)) {
+                seen[key] = item;
+            }
+        });
+        // 重建 pages：单页放回
+        var deduped = Object.values(seen);
+        // 按时间倒序
+        deduped.sort(function(a,b){ return (b[timeKey]||0) - (a[timeKey]||0); });
+        // 每 100 条一页
+        currentData[type].pages = {};
+        var total = deduped.length;
+        for (var i = 0; i < deduped.length; i += 100) {
+            var pn = Math.floor(i / 100) + 1;
+            currentData[type].pages[String(pn)] = deduped.slice(i, i + 100);
+        }
+        currentData[type].total = total;
+    }
+
+    function dedupLivedm() {
+        if (!currentData || !currentData.livedm || !currentData.livedm.pages) return;
+        var pages = currentData.livedm.pages;
+        var seen = {};
+        var allRooms = [];
+        // 收集所有房间
+        Object.keys(pages).forEach(function(k){
+            var v = pages[k];
+            var list = null;
+            if (Array.isArray(v)) list = v;
+            else if (v && v.list) list = v.list;
+            if (list) list.forEach(function(room){ allRooms.push(room); });
+        });
+        // 去重每个房间内的弹幕
+        allRooms.forEach(function(room){
+            var dmList = room.danmu || [];
+            var dmSeen = {};
+            dmList.forEach(function(dm){
+                var key = dm.text || '';
+                if (!dmSeen[key] || (dm.ts || 0) > (dmSeen[key].ts || 0)) {
+                    dmSeen[key] = dm;
+                }
+            });
+            room.danmu = Object.values(dmSeen).sort(function(a,b){ return (b.ts||0) - (a.ts||0); });
+        });
+        // 重新分页：每 100 个房间一页
+        currentData.livedm.pages = {};
+        for (var i = 0; i < allRooms.length; i += 100) {
+            var pn = Math.floor(i / 100) + 1;
+            currentData.livedm.pages[String(pn)] = allRooms.slice(i, i + 100);
+        }
+        currentData.livedm.total = allRooms.length;
+    }
+
+    function showDedupBtn() {
+        $('#aicu-dedup-btn').show();
+    }
+
     // ===== 搜索流程 =====
-    function doSearch(val) {
+    // localOnly: true=仅本地(历史点击), false/undefined=API搜索(搜索按钮)
+    function doSearch(val, localOnly) {
         var isNumeric = /^\d+$/.test(val);
         if (isNumeric) {
-            startSearch(parseInt(val), val);
+            startSearch(parseInt(val), val, localOnly);
         } else {
-            // 先反查 UID
             $('#aicu-loading').show();
             $('#aicu-loading-text').text('正在反查用户名 → UID...');
             $.get('/api/aicu/findUid', {name: val}, function(arr){
@@ -186,12 +409,11 @@
                     return;
                 }
                 if (data.length === 1) {
-                    startSearch(data[0].uid, val);
+                    startSearch(data[0].uid, val, localOnly);
                 } else {
-                    // 多个匹配，显示选择
                     var html = '<strong>找到 ' + data.length + ' 个匹配用户，请选择：</strong><br>';
                     data.forEach(function(d){
-                        html += '<a onclick="$(\'#aicu-uid-match\').hide();startSearch(' + d.uid + ',\'' + d.uname + '\')">' + d.uname + ' (UID:' + d.uid + ')</a> &nbsp;|&nbsp; ';
+                        html += '<a onclick="$(\'#aicu-uid-match\').hide();startSearch(' + d.uid + ',\'' + d.uname + '\',' + (localOnly||false) + ')">' + d.uname + ' (UID:' + d.uid + ')</a> &nbsp;|&nbsp; ';
                     });
                     $('#aicu-uid-match').html(html).show();
                 }
@@ -199,48 +421,80 @@
         }
     }
 
-    function startSearch(uid, displayName) {
+    function startSearch(uid, displayName, localOnly) {
+        if (localOnly) {
+            startLocalSearch(uid, displayName);
+            return;
+        }
         currentUid = uid;
         addHistory(uid, displayName);
         hideAllPanels();
         $('#aicu-loading').show();
-        $('#aicu-loading-text').text('正在从 aicu.cc 获取数据（首次拉取需等待，请耐心...）');
-        $('#aicu-progress').text('⏳ 拉取中...').show();
+        $('#aicu-progress').text('⏳ API 查询中...').show();
 
-        // 先尝试缓存
-        $.get('/api/aicu/cached', {uid: uid}, function(resp){
-            var r = typeof resp === 'string' ? JSON.parse(resp) : resp;
-            if (r.cached) {
-                $('#aicu-cache-hint').text('📦 来自本地缓存 (上次拉取有效期内)').show();
-                renderAll(r);
-                $('#aicu-progress').hide();
-            } else {
-                // 缓存未命中，全量拉取（耗时较长）
-                $('#aicu-cache-hint').text('🔄 首次拉取，正在请求 aicu.cc API...').show();
-                fetchFull(uid);
-            }
-        }).fail(function(){
-            // /cached 失败则走全量拉取
-            fetchFull(uid);
-        });
-    }
-
-    function fetchFull(uid) {
         var startTime = Date.now();
-        $.get('/api/aicu/search', {uid: uid}, function(resp){
+        var brief = $('#aicu-brief-cb').is(':checked');
+        $.get('/api/aicu/search', {uid: uid, brief: brief}, function(resp){
             var r = typeof resp === 'string' ? JSON.parse(resp) : resp;
             var elapsed = Math.round((Date.now() - startTime) / 1000);
             $('#aicu-loading').hide();
-            $('#aicu-progress').text('✅ 完成 (' + elapsed + 's)').show();
-            $('#aicu-cache-hint').text('📥 数据已拉取并保存到本地数据库').show();
+            if (r.fromCache) {
+                $('#aicu-progress').text('✅ 来自本地缓存 (' + elapsed + 's)').show();
+                $('#aicu-cache-hint').text('📦 本地数据，秒出结果').show();
+            } else {
+                $('#aicu-progress').text('✅ 已拉取完成 (' + elapsed + 's)').show();
+                // 检测空数据 → 可能是 WAF 拦截
+                var hasData = r.usermark != null ||
+                    (r.reply && r.reply.total > 0) ||
+                    (r.videodm && r.videodm.total > 0) ||
+                    (r.livedm && r.livedm.total > 0);
+                if (!hasData) {
+                    $('#aicu-api-warn').show();
+                    $('#aicu-cache-hint').html('⚠ API 返回空数据 — 可能被 WAF 拦截。请尝试 <a href="javascript:;" onclick="$(\'#aicu-search-input\').focus()">使用历史记录搜索本地缓存</a>').show();
+                } else {
+                    $('#aicu-cache-hint').html('📥 数据已拉取 — <a href="/api/aicu/diag?uid=' + uid + '" target="_blank">点此查看入库状态</a>').show();
+                }
+            }
             setTimeout(function(){ $('#aicu-progress').fadeOut(); }, 5000);
             renderAll(r);
+            if (r.moreToFetch) {
+                $('#aicu-cache-hint').text('🔄 后台继续拉取剩余页...').show();
+                startPolling(uid);
+            }
         }).fail(function(jqXHR, textStatus){
             $('#aicu-loading').hide();
             $('#aicu-progress').text('❌ 请求失败: ' + textStatus).show();
             if (jqXHR.status === 0) {
-                alert('请求超时或网络错误。数据量可能较大，请重试。\n提示：可尝试刷新页面后再次搜索。');
+                alert('请求超时或网络错误。可能是 aicu.cc API 被 WAF 拦截，请尝试使用历史记录中的本地缓存数据。');
             }
+            // 空响应也可能是 WAF 拦截
+            $('#aicu-api-warn').show();
+        });
+    }
+
+    // 仅本地搜索（历史记录点击）
+    function startLocalSearch(uid, displayName) {
+        currentUid = uid;
+        addHistory(uid, displayName);
+        hideAllPanels();
+        $('#aicu-loading').show();
+        $('#aicu-progress').text('📦 本地搜索中...').show();
+
+        $.get('/api/aicu/cached', {uid: uid}, function(resp){
+            var r = typeof resp === 'string' ? JSON.parse(resp) : resp;
+            $('#aicu-loading').hide();
+            if (r.cached) {
+                $('#aicu-progress').text('✅ 本地数据').show();
+                $('#aicu-cache-hint').text('📦 来自本地数据库').show();
+            } else {
+                $('#aicu-progress').text('⚠ 本地无数据').show();
+                $('#aicu-cache-hint').text('💡 本地无此用户数据，请点击搜索按钮从 API 拉取').show();
+            }
+            setTimeout(function(){ $('#aicu-progress').fadeOut(); }, 3000);
+            renderAll(r);
+        }).fail(function(){
+            $('#aicu-loading').hide();
+            $('#aicu-progress').text('❌ 请求失败').show();
         });
     }
 
@@ -270,7 +524,14 @@
         $('#livedm-count-badge').text(liveTotal).toggle(liveTotal > 0);
         renderLivedmPage(livePages, 1);
 
-        $('#aicu-tabs-nav').show();
+        // 显示数据选项卡 + 外部选项卡始终可见
+        var nav = $('#aicu-tabs-nav');
+        nav.find('.aicu-tab-btn[data-tab="reply"]').show();
+        nav.find('.aicu-tab-btn[data-tab="videodm"]').show();
+        nav.find('.aicu-tab-btn[data-tab="livedm"]').show();
+        // 搜索到 UID 后预加载所有外部 iframe
+        preloadAllExtIframes(uid);
+        showDedupBtn();
         switchTab('reply');
     }
 
@@ -302,15 +563,17 @@
         $('#aicu-usermark').html(html).show();
     }
 
+    // === 工具：统一从 pages[key] 取数组（兼容缓存对象和新鲜数组） ===
+    function extractList(pageVal, arrayKey) {
+        if (!pageVal) return null;
+        if (Array.isArray(pageVal)) return pageVal;
+        if (arrayKey && pageVal[arrayKey]) return pageVal[arrayKey];
+        return null;
+    }
+
     // === reply ===
     function renderReplyPage(pages, pn) {
-        var key = String(pn);
-        var list = pages[key];
-        if (!list) {
-            // 尝试从原始数据中提取 list
-            var pageData = pages[key];
-            if (pageData && pageData.replies) list = pageData.replies;
-        }
+        var list = extractList(pages[String(pn)], 'replies');
         var tbody = $('#reply-tbody');
         tbody.empty();
         if (!list || list.length === 0) {
@@ -330,9 +593,7 @@
 
     // === videodm ===
     function renderVideodmPage(pages, pn) {
-        var key = String(pn);
-        var list = pages[key];
-        if (list && list.videodmlist) list = list.videodmlist;
+        var list = extractList(pages[String(pn)], 'videodmlist');
         var tbody = $('#videodm-tbody');
         tbody.empty();
         if (!list || list.length === 0) {
@@ -353,9 +614,7 @@
 
     // === livedm ===
     function renderLivedmPage(pages, pn) {
-        var key = String(pn);
-        var list = pages[key];
-        if (list && list.list) list = list.list;
+        var list = extractList(pages[String(pn)], 'list');
         var tbody = $('#livedm-tbody');
         tbody.empty();
         if (!list || list.length === 0) {
@@ -388,29 +647,166 @@
     function renderPagination(type, pages, curPn) {
         var container = $('#' + type + '-pagination');
         container.empty();
-        var pageKeys = Object.keys(pages).map(Number).sort(function(a,b){return a-b;});
-        if (pageKeys.length <= 1) return;
+        var allKeys = Object.keys(pages).map(Number).sort(function(a,b){return a-b;});
+        var maxAvail = allKeys.length > 0 ? Math.max.apply(null, allKeys) : 0;
+        // 尝试从 total 推算总页数
+        var total = 0;
+        if (currentData && currentData[type]) total = currentData[type].total || 0;
+        var maxPage = Math.max(maxAvail, Math.ceil(total / 100));
+        if (maxPage <= 1 && maxAvail <= 1) return;
 
-        var maxPage = Math.max.apply(null, pageKeys);
         var html = '';
         html += '<button ' + (curPn <= 1 ? 'disabled' : '') + ' data-pn="' + (curPn - 1) + '">← 上一页</button>';
         for (var p = 1; p <= maxPage; p++) {
-            html += '<button class="' + (p === curPn ? 'active' : '') + '" data-pn="' + p + '">' + p + '</button>';
+            var has = pages[String(p)] !== undefined;
+            var loading = fetchingPages[type + '-' + p];
+            var cls = p === curPn ? 'active' : '';
+            var label = p;
+            if (!has && loading) label = '⏳';
+            else if (!has) label = p + '⋯';
+            html += '<button class="' + cls + '" data-pn="' + p + '" ' + (!has ? 'style="opacity:0.5"' : '') + '>' + label + '</button>';
         }
         html += '<button ' + (curPn >= maxPage ? 'disabled' : '') + ' data-pn="' + (curPn + 1) + '">下一页 →</button>';
-        html += '<span class="page-info">第 ' + curPn + '/' + maxPage + ' 页</span>';
+        html += '<span class="page-info">第 ' + curPn + '/' + maxPage + ' 页 ' + (maxAvail < maxPage ? '(加载中...)' : '') + '</span>';
         container.html(html);
 
         container.find('button[data-pn]').on('click', function(){
             var pn = parseInt($(this).data('pn'));
-            var pagesData = null;
-            if (type === 'reply') pagesData = (currentData.reply && currentData.reply.pages) ? currentData.reply.pages : {};
-            else if (type === 'videodm') pagesData = (currentData.videodm && currentData.videodm.pages) ? currentData.videodm.pages : {};
-            else if (type === 'livedm') pagesData = (currentData.livedm && currentData.livedm.pages) ? currentData.livedm.pages : {};
+            var key = String(pn);
+            var pagesData = (currentData[type] && currentData[type].pages) ? currentData[type].pages : {};
 
-            if (type === 'reply') renderReplyPage(pagesData, pn);
-            else if (type === 'videodm') renderVideodmPage(pagesData, pn);
-            else if (type === 'livedm') renderLivedmPage(pagesData, pn);
+            if (!pagesData[key] && !fetchingPages[type + '-' + pn]) {
+                // 页面尚未拉取 → 优先请求
+                fetchPageNow(currentUid, type, pn);
+            } else if (pagesData[key]) {
+                switchRender(type, pagesData, pn);
+            }
+        });
+    }
+
+    function switchRender(type, pages, pn) {
+        if (type === 'reply') renderReplyPage(pages, pn);
+        else if (type === 'videodm') renderVideodmPage(pages, pn);
+        else if (type === 'livedm') renderLivedmPage(pages, pn);
+    }
+
+    // === 优先拉取单页（用户点击分页时调用） ===
+    function fetchPageNow(uid, type, pn) {
+        var key = type + '-' + pn;
+        if (fetchingPages[key]) return;
+        fetchingPages[key] = true;
+        console.log('AICU: prioritize fetch ' + type + ' page ' + pn);
+        $.get('/api/aicu/page', {uid: uid, type: type, pn: pn}, function(resp){
+            var r = typeof resp === 'string' ? JSON.parse(resp) : resp;
+            fetchingPages[key] = false;
+            if (r.pages && r.pages[String(pn)]) {
+                // 合并到 currentData
+                if (!currentData[type]) currentData[type] = {pages:{}, total:0};
+                currentData[type].pages[String(pn)] = r.pages[String(pn)];
+                if (r.total) currentData[type].total = r.total;
+                switchRender(type, currentData[type].pages, pn);
+            }
+        }).fail(function(){ fetchingPages[key] = false; });
+    }
+
+    // === 后台轮询：每 3 秒检查是否有新页入库 ===
+    function startPolling(uid) {
+        stopPolling();
+        pollTimer = setInterval(function(){
+            $.get('/api/aicu/cached', {uid: uid}, function(resp){
+                var r = typeof resp === 'string' ? JSON.parse(resp) : resp;
+                if (!r.cached) return;
+                var updated = false;
+                ['reply','videodm','livedm'].forEach(function(type){
+                    if (!r[type] || !r[type].pages) return;
+                    if (!currentData[type]) currentData[type] = {pages:{}, total:0};
+                    var newPages = r[type].pages;
+                    var oldKeys = Object.keys(currentData[type].pages);
+                    Object.keys(newPages).forEach(function(k){
+                        if (!currentData[type].pages[k]) {
+                            currentData[type].pages[k] = newPages[k];
+                            updated = true;
+                            // 如果请求中的页面到了，清除标记
+                            fetchingPages[type + '-' + k] = false;
+                        }
+                    });
+                    if (r[type].total) currentData[type].total = r[type].total;
+                });
+                if (updated) {
+                    console.log('AICU: poll found new pages');
+                    // 刷新当前分页 UI
+                    var activeTab = $('#aicu-tabs-nav .aicu-tab-btn.active').data('tab');
+                    if (activeTab) {
+                        var pn = currentPage[activeTab] || 1;
+                        var pagesData = (currentData[activeTab] && currentData[activeTab].pages) ? currentData[activeTab].pages : {};
+                        switchRender(activeTab, pagesData, pn);
+                    }
+                }
+                // 检查是否全部拉完
+                var allDone = true;
+                ['reply','videodm','livedm'].forEach(function(type){
+                    var t = (currentData[type] && currentData[type].total) ? currentData[type].total : 0;
+                    var p = (currentData[type] && currentData[type].pages) ? Object.keys(currentData[type].pages).length : 0;
+                    if (p * 100 < t && t > 0) allDone = false;
+                });
+                if (allDone && currentData.reply && currentData.videodm && currentData.livedm) {
+                    stopPolling();
+                    $('#aicu-cache-hint').text('✅ 全部数据拉取完成').show();
+                    // 刷新所有分页 UI 显示完整页数
+                    ['reply','videodm','livedm'].forEach(function(type){
+                        var pn = currentPage[type] || 1;
+                        var pd = (currentData[type] && currentData[type].pages) ? currentData[type].pages : {};
+                        renderPagination(type, pd, pn);
+                    });
+                }
+            });
+        }, 3000);
+    }
+
+    function stopPolling() {
+        if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    }
+
+    // === 外部查阅 7 个独立 iframe：URL 映射 ===
+    var extUrlMap = {
+        ext_reply:           'https://www.aicu.cc/reply?uid=',
+        ext_videodanmu:      'https://www.aicu.cc/videodanmu?uid=',
+        ext_livedanmu:       'https://www.aicu.cc/livedanmu?uid=',
+        ext_laplace:         'https://laplace.live/user/',
+        ext_bili:            'https://space.bilibili.com/',
+        ext_danmakus:        'https://danmakus.com/user/',
+        ext_danmakus_analyze:'https://danmakus.com/analyze/'
+    };
+    function getExtUrl(key, uid) {
+        var u = uid || currentUid || 0;
+        var base = extUrlMap[key] || '';
+        if (key === 'ext_danmakus_analyze') {
+            return base + u + '?startTime=1577808000000&endTime=' + Date.now();
+        }
+        return base + u;
+    }
+
+    // 加载单个外部 iframe
+    function prepExtIframe(key, uid) {
+        var u = uid || currentUid || 0;
+        if (!u) return;
+        var url = getExtUrl(key, u);
+        var iframe = $('#tab-' + key + ' .ext-iframe');
+        var openLink = $('#tab-' + key + ' .ext-open-link');
+        if (iframe.attr('src') !== url) {
+            iframe.attr('src', url);
+        }
+        openLink.attr('href', url);
+    }
+
+    // 后台预加载所有 7 个外部 iframe
+    function preloadAllExtIframes(uid) {
+        var u = uid || currentUid || 0;
+        if (!u) return;
+        Object.keys(extUrlMap).forEach(function(key, i){
+            setTimeout(function(){
+                prepExtIframe(key, u);
+            }, i * 200); // 错开 200ms 避免同时加载
         });
     }
 
@@ -418,9 +814,32 @@
     function switchTab(tab) {
         $('#aicu-tabs-nav .aicu-tab-btn').removeClass('active');
         $('#aicu-tabs-nav .aicu-tab-btn[data-tab="' + tab + '"]').addClass('active');
-        $('.aicu-tab-content').removeClass('active');
-        $('#tab-' + tab).addClass('active');
+        $('.aicu-tab-panel').css('display', 'none').removeClass('active');
+        $('#tab-' + tab).css('display', 'block').addClass('active');
+        // 切换到外部查阅 tab 时加载对应 iframe
+        if (tab.startsWith('ext_')) {
+            var uid = currentUid;
+            if (!uid) {
+                var val = $('#aicu-search-input').val().trim();
+                if (/^\d+$/.test(val)) uid = parseInt(val);
+            }
+            prepExtIframe(tab, uid);
+        }
     }
+
+    // 输入框回车：若当前在外部查阅 tab，立即加载
+    $('#aicu-search-input').on('keydown', function(e){
+        if (e.key === 'Enter') {
+            var val = $(this).val().trim();
+            if (/^\d+$/.test(val)) {
+                currentUid = parseInt(val);
+                var activeTab = $('#aicu-tabs-nav .aicu-tab-btn.active').data('tab');
+                if (activeTab && activeTab.startsWith('ext_')) {
+                    prepExtIframe(activeTab, currentUid);
+                }
+            }
+        }
+    });
 
     // === 搜索历史 ===
     function getHistory() {
@@ -442,7 +861,7 @@
         var h = getHistory();
         var lower = val.toLowerCase();
         h = h.filter(function(item){
-            return String(item.uid).indexOf(val) >= 0 || (item.name && item.name.toLowerCase().indexOf(lower) >= 0);
+            return String(item.uid).indexOf(val) >= 0 || (item.name != null && String(item.name).toLowerCase().indexOf(lower) >= 0);
         });
         renderHistoryDropdown(h);
     }
@@ -451,18 +870,42 @@
         if (h.length === 0) { dd.hide(); return; }
         var html = '';
         h.forEach(function(item){
-            html += '<div class="aicu-history-item" data-uid="' + item.uid + '">' +
-                '<div style="font-weight:500">' + escapeHtml(item.name) + ' <span class="h-uid">UID:' + item.uid + '</span></div>' +
-                '<div style="font-size:10px;color:#bbb">' + new Date(item.time).toLocaleString() + '</div>' +
+            html += '<div class="aicu-history-item" data-uid="' + item.uid + '" style="display:flex;justify-content:space-between;align-items:center">' +
+                '<div style="flex:1;cursor:pointer" class="hist-body">' +
+                    '<div style="font-weight:500">' + escapeHtml(item.name) + ' <span class="h-uid">UID:' + item.uid + '</span></div>' +
+                    '<div style="font-size:10px;color:#bbb">' + new Date(item.time).toLocaleString() + '</div>' +
+                '</div>' +
+                '<span class="hist-del" data-uid="' + item.uid + '" style="cursor:pointer;color:#ccc;font-size:16px;padding:4px 8px" title="删除此记录">×</span>' +
                 '</div>';
         });
         dd.html(html).show();
-        dd.find('.aicu-history-item').on('click', function(){
-            var uid = $(this).data('uid');
+        // 点击主体 → 本地搜索
+        dd.find('.hist-body').on('click', function(){
+            var uid = parseInt($(this).closest('.aicu-history-item').data('uid'));
+            var name = $(this).find('div:first').text().replace(/\s*UID:.*/, '');
             dd.hide();
             $('#aicu-search-input').val(uid);
-            doSearch(uid);
+            startLocalSearch(uid, name.trim());
         });
+        // 点击删除图标 → 删除历史+数据库
+        dd.find('.hist-del').on('click', function(e){
+            e.stopPropagation();
+            var uid = parseInt($(this).data('uid'));
+            if (!confirm('删除 UID ' + uid + ' 的所有本地数据？')) return;
+            $.post('/api/aicu/delete', {uid: uid}, function(r){
+                var d = typeof r === 'string' ? JSON.parse(r) : r;
+                console.log('AICU: deleted ' + d.deleted + ' rows for uid=' + uid);
+                removeHistory(uid);
+                dd.hide();
+                // 如果当前展示的就是被删除的 uid，清空面板
+                if (currentUid === uid) hideAllPanels();
+            });
+        });
+    }
+
+    function removeHistory(uid) {
+        var h = getHistory().filter(function(item){ return item.uid !== uid; });
+        localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(h));
     }
 
     // === 工具函数 ===
@@ -490,16 +933,28 @@
         return div.innerHTML;
     }
     function hideAllPanels() {
+        stopPolling();
+        fetchingPages = {};
+        $('#aicu-dedup-btn').hide();
         $('#aicu-usermark').hide();
-        $('#aicu-tabs-nav').hide();
-        $('.aicu-tab-content').removeClass('active');
+        // 隐藏数据选项卡，保留外部查阅
+        var nav = $('#aicu-tabs-nav');
+        nav.find('.aicu-tab-btn[data-tab="reply"]').hide();
+        nav.find('.aicu-tab-btn[data-tab="videodm"]').hide();
+        nav.find('.aicu-tab-btn[data-tab="livedm"]').hide();
+        // 隐藏数据面板 + 清空外部 iframe
+        $('.aicu-tab-panel').css('display', 'none').removeClass('active');
+        $('.ext-iframe').attr('src', '');
         $('#reply-tbody,#videodm-tbody,#livedm-tbody').empty();
         $('#reply-pagination,#videodm-pagination,#livedm-pagination').empty();
         $('#aicu-uid-match').hide();
         $('#aicu-cache-hint').hide();
         $('#aicu-loading').hide();
         $('#aicu-progress').hide();
-        $('#aicu-count-badge,#reply-count-badge,#videodm-count-badge,#livedm-count-badge').hide();
+        $('.aicu-count-badge').hide();
+        // 切回第一个外部查阅 tab
+        $('#tab-ext_reply').css('display','block').addClass('active');
+        nav.find('.aicu-tab-btn[data-tab="ext_reply"]').addClass('active');
     }
 </script>
 </body>

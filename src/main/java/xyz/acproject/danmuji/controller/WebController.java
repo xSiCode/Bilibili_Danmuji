@@ -211,13 +211,14 @@ public class WebController {
     }
 
     /**
-     * AICU 全量搜索（含限流拉取+入库+返回）
+     * AICU 搜索：缓存命中直接返回；否则拉取。brief=true 只拉第一页，false 后台拉全量
      */
     @ResponseBody
     @GetMapping(value = "/api/aicu/search")
-    public String aicuSearch(@RequestParam Long uid) {
+    public String aicuSearch(@RequestParam Long uid,
+                             @RequestParam(defaultValue = "true") boolean brief) {
         try {
-            JSONObject result = aicuService.search(uid);
+            JSONObject result = aicuService.search(uid, brief);
             return result.toJSONString();
         } catch (Exception e) {
             LOGGER.error("aicuSearch error for uid={}: {}", uid, e.getMessage(), e);
@@ -228,12 +229,66 @@ public class WebController {
     }
 
     /**
-     * AICU 仅读 SQLite 缓存
+     * AICU 拉取单页（用户点击分页时优先调用）
+     */
+    @ResponseBody
+    @GetMapping(value = "/api/aicu/page")
+    public String aicuPage(@RequestParam Long uid, @RequestParam String type, @RequestParam int pn) {
+        JSONObject result = aicuService.fetchPage(uid, type, pn);
+        return result.toJSONString();
+    }
+
+    /**
+     * AICU 诊断：直接查数据库看写了多少数据
+     */
+    @ResponseBody
+    @GetMapping(value = "/api/aicu/diag")
+    public String aicuDiag(@RequestParam Long uid) {
+        JSONObject diag = new JSONObject();
+        diag.put("uid", uid);
+        diag.put("dbPath", xyz.acproject.danmuji.tools.db.DanmujiDatabase.getDbPath());
+        try (java.sql.Connection conn = xyz.acproject.danmuji.tools.db.DanmujiDatabase.getConnection();
+             java.sql.Statement stmt = conn.createStatement()) {
+            for (String table : new String[]{"aicu_usermark", "aicu_reply", "aicu_videodm", "aicu_livedm"}) {
+                try (java.sql.ResultSet rs = stmt.executeQuery(
+                        "SELECT COUNT(*) AS cnt FROM " + table + " WHERE uid = " + uid)) {
+                    diag.put(table, rs.next() ? rs.getInt("cnt") : -1);
+                } catch (Exception e) {
+                    diag.put(table, "ERROR: " + e.getMessage());
+                }
+            }
+            // 也检查表是否存在
+            java.sql.ResultSet rs2 = stmt.executeQuery(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'aicu_%' ORDER BY name");
+            JSONArray tables = new JSONArray();
+            while (rs2.next()) tables.add(rs2.getString("name"));
+            diag.put("aicu_tables_found", tables);
+        } catch (Exception e) {
+            diag.put("error", e.getMessage());
+        }
+        return diag.toJSONString();
+    }
+
+    /**
+     * AICU 删除某 uid 的全部本地数据
+     */
+    @ResponseBody
+    @PostMapping(value = "/api/aicu/delete")
+    public String aicuDelete(@RequestParam Long uid) {
+        JSONObject result = new JSONObject();
+        int total = aicuService.deleteData(uid);
+        result.put("deleted", total);
+        result.put("uid", uid);
+        return result.toJSONString();
+    }
+
+    /**
+     * AICU 仅读 SQLite 缓存（简略模式只返回第一页）
      */
     @ResponseBody
     @GetMapping(value = "/api/aicu/cached")
     public String aicuCached(@RequestParam Long uid) {
-        JSONObject result = aicuService.getCached(uid);
+        JSONObject result = aicuService.getCached(uid, false);
         return result.toJSONString();
     }
 

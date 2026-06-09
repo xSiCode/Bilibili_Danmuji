@@ -139,7 +139,7 @@ let lrmState = {
 let svState = {
     records: [],
     page: 1,
-    pageSize: 10,
+    pageSize: 20,
     search: '',
     totalPages: 1,
     totalRecords: 0,
