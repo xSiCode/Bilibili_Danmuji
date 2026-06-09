@@ -5657,4 +5657,211 @@ public class WebController {
         }
         return Response.success(status, req);
     }
+
+    /**
+     * 查阅用户 — 按 uid 或用户名搜索，返回统一时间线（9 表 UNION ALL）
+     */
+    @ResponseBody
+    @GetMapping(value = "/queryUserTimeline")
+    public Response<?> queryUserTimeline(
+            @RequestParam String keyword,
+            @RequestParam(defaultValue = "500") int limit,
+            HttpServletRequest req) {
+        if (StringUtils.isBlank(keyword)) {
+            return Response.success(new JSONArray(), req);
+        }
+        keyword = keyword.trim();
+        boolean isNumeric = keyword.matches("\\d+");
+
+        // 纯数字 → 按 uid 精确搜索；否则 → 按 uname 模糊搜索，弹幕表同时搜索内容
+        // 使用字符串拼接（本地应用无注入风险），避免 PreparedStatement 参数数量不匹配
+        String whereClause;
+        String danmakuWhere; // 弹幕表额外搜索 content 字段
+        if (isNumeric) {
+            whereClause = "uid = " + Long.parseLong(keyword);
+            danmakuWhere = whereClause;
+        } else {
+            String escaped = keyword.replace("'", "''");
+            whereClause = "uname LIKE '%" + escaped + "%'";
+            danmakuWhere = "uname LIKE '%" + escaped + "%' OR content LIKE '%" + escaped + "%'";
+        }
+        String limitStr = String.valueOf(limit);
+
+        // 带 anchor_name 的表（所有事件表都有该字段）
+        String sql =
+            "SELECT event_type, room_id, anchor_name, uid, uname, detail, event_time FROM (" +
+            // 弹幕
+            "SELECT '弹幕' AS event_type, room_id, anchor_name, uid, uname," +
+            "  content AS detail, timestamp AS event_time" +
+            "  FROM danmaku WHERE " + danmakuWhere +
+            " UNION ALL " +
+            // 进入
+            "SELECT '进入', room_id, anchor_name, uid, uname," +
+            "  '勋章: ' || COALESCE(medal_name,'无') || ' Lv.' || COALESCE(medal_level,0) ||" +
+            "  CASE WHEN guard_level > 0 THEN ' 舰队:' || CASE guard_level WHEN 1 THEN '总督' WHEN 2 THEN '提督' ELSE '舰长' END ELSE '' END," +
+            "  timestamp FROM enter_events WHERE " + whereClause +
+            " UNION ALL " +
+            // 关注
+            "SELECT '关注', room_id, anchor_name, uid, uname," +
+            "  '勋章: ' || COALESCE(medal_name,'无') || ' Lv.' || COALESCE(medal_level,0) ||" +
+            "  CASE WHEN guard_level > 0 THEN ' 舰队:' || CASE guard_level WHEN 1 THEN '总督' WHEN 2 THEN '提督' ELSE '舰长' END ELSE '' END," +
+            "  timestamp FROM follow_events WHERE " + whereClause +
+            " UNION ALL " +
+            // 礼物
+            "SELECT '礼物', room_id, anchor_name, uid, uname," +
+            "  gift_name || ' x' || num || ' ' || total_coin || CASE coin_type WHEN 1 THEN '金瓜子' ELSE '银瓜子' END," +
+            "  timestamp FROM gift_detail WHERE " + whereClause +
+            " UNION ALL " +
+            // 上舰
+            "SELECT '上舰', room_id, anchor_name, uid, uname," +
+            "  CASE guard_level WHEN 1 THEN '总督' WHEN 2 THEN '提督' ELSE '舰长' END || ' ' || COALESCE(num,0) || '个月 ' || COALESCE(price,0) || '分'," +
+            "  start_time FROM guard_buy WHERE " + whereClause +
+            " UNION ALL " +
+            // 醒目留言
+            "SELECT '醒目留言', room_id, anchor_name, uid, uname," +
+            "  COALESCE(message,''), start_time FROM super_chat WHERE " + whereClause +
+            " UNION ALL " +
+            // 老爷进入
+            "SELECT '老爷进入', room_id, anchor_name, uid, uname," +
+            "  CASE WHEN svip=1 THEN '年费老爷' WHEN vip=1 THEN '月费老爷' ELSE '老爷' END, timestamp" +
+            "  FROM welcome_vip WHERE " + whereClause +
+            " UNION ALL " +
+            // 舰长进入
+            "SELECT '舰长进入', room_id, anchor_name, uid, uname," +
+            "  CASE guard_level WHEN 1 THEN '总督' WHEN 2 THEN '提督' ELSE '舰长' END, timestamp" +
+            "  FROM welcome_guard WHERE " + whereClause +
+            " UNION ALL " +
+            // 禁言
+            "SELECT '禁言', room_id, anchor_name, uid, uname," +
+            "  CASE operator WHEN 1 THEN '被房管禁言' ELSE '被主播禁言' END, timestamp" +
+            "  FROM block_msg WHERE " + whereClause +
+            ") ORDER BY event_time DESC LIMIT " + limitStr;
+
+        LOGGER.info("queryUserTimeline: keyword={}, isNumeric={}, whereClause={}, db={}",
+                keyword, isNumeric, whereClause, xyz.acproject.danmuji.tools.db.DanmujiDatabase.getDbPath());
+
+        try (java.sql.Connection conn = xyz.acproject.danmuji.tools.db.DanmujiDatabase.getConnection();
+             java.sql.Statement stmt = conn.createStatement();
+             java.sql.ResultSet rs = stmt.executeQuery(sql)) {
+                JSONArray results = new JSONArray();
+                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                while (rs.next()) {
+                    JSONObject row = new JSONObject();
+                    row.put("eventType", rs.getString("event_type"));
+                    row.put("roomId", rs.getLong("room_id"));
+                    row.put("anchorName", rs.getString("anchor_name"));
+                    row.put("uid", rs.getLong("uid"));
+                    row.put("uname", rs.getString("uname"));
+                    row.put("detail", rs.getString("detail"));
+                    long ts = rs.getLong("event_time");
+                    // 安全转换：如果时间戳是秒级（< 100000000000），转为毫秒
+                    if (ts > 0 && ts < 100000000000L) ts = ts * 1000;
+                    row.put("eventTime", sdf.format(new java.util.Date(ts)));
+                    results.add(row);
+                }
+                LOGGER.info("queryUserTimeline: found {} results for keyword={}", results.size(), keyword);
+                return Response.success(results, req);
+        } catch (Exception e) {
+            LOGGER.error("queryUserTimeline error for keyword={}: {}", keyword, e.getMessage(), e);
+            return Response.success(new JSONArray(), req);
+        }
+    }
+
+    /**
+     * 最新事件 — 返回最近 N 条事件（不受用户筛选限制），供实时展示
+     */
+    @ResponseBody
+    @GetMapping(value = "/latestEvents")
+    public Response<?> latestEvents(
+            @RequestParam(defaultValue = "10") int limit,
+            HttpServletRequest req) {
+        String limitStr = String.valueOf(limit);
+        String sql =
+            "SELECT event_type, room_id, anchor_name, uid, uname, detail, event_time FROM (" +
+            "SELECT '弹幕' AS event_type, room_id, anchor_name, uid, uname," +
+            "  content AS detail, timestamp AS event_time FROM danmaku" +
+            " UNION ALL SELECT '进入', room_id, anchor_name, uid, uname," +
+            "  '勋章: ' || COALESCE(medal_name,'无') || ' Lv.' || COALESCE(medal_level,0) ||" +
+            "  CASE WHEN guard_level > 0 THEN ' 舰队:' || CASE guard_level WHEN 1 THEN '总督' WHEN 2 THEN '提督' ELSE '舰长' END ELSE '' END," +
+            "  timestamp FROM enter_events" +
+            " UNION ALL SELECT '关注', room_id, anchor_name, uid, uname," +
+            "  '勋章: ' || COALESCE(medal_name,'无') || ' Lv.' || COALESCE(medal_level,0) ||" +
+            "  CASE WHEN guard_level > 0 THEN ' 舰队:' || CASE guard_level WHEN 1 THEN '总督' WHEN 2 THEN '提督' ELSE '舰长' END ELSE '' END," +
+            "  timestamp FROM follow_events" +
+            " UNION ALL SELECT '礼物', room_id, anchor_name, uid, uname," +
+            "  gift_name || ' x' || num || ' ' || total_coin || CASE coin_type WHEN 1 THEN '金瓜子' ELSE '银瓜子' END," +
+            "  timestamp FROM gift_detail" +
+            " UNION ALL SELECT '上舰', room_id, anchor_name, uid, uname," +
+            "  CASE guard_level WHEN 1 THEN '总督' WHEN 2 THEN '提督' ELSE '舰长' END || ' ' || COALESCE(num,0) || '个月 ' || COALESCE(price,0) || '分'," +
+            "  start_time FROM guard_buy" +
+            " UNION ALL SELECT '醒目留言', room_id, anchor_name, uid, uname," +
+            "  COALESCE(message,''), start_time FROM super_chat" +
+            " UNION ALL SELECT '老爷进入', room_id, anchor_name, uid, uname," +
+            "  CASE WHEN svip=1 THEN '年费老爷' WHEN vip=1 THEN '月费老爷' ELSE '老爷' END, timestamp FROM welcome_vip" +
+            " UNION ALL SELECT '舰长进入', room_id, anchor_name, uid, uname," +
+            "  CASE guard_level WHEN 1 THEN '总督' WHEN 2 THEN '提督' ELSE '舰长' END, timestamp FROM welcome_guard" +
+            " UNION ALL SELECT '禁言', room_id, anchor_name, uid, uname," +
+            "  CASE operator WHEN 1 THEN '被房管禁言' ELSE '被主播禁言' END, timestamp FROM block_msg" +
+            ") ORDER BY event_time DESC LIMIT " + limitStr;
+
+        try (java.sql.Connection conn = xyz.acproject.danmuji.tools.db.DanmujiDatabase.getConnection();
+             java.sql.Statement stmt = conn.createStatement();
+             java.sql.ResultSet rs = stmt.executeQuery(sql)) {
+            JSONArray results = new JSONArray();
+            java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            while (rs.next()) {
+                JSONObject row = new JSONObject();
+                row.put("eventType", rs.getString("event_type"));
+                row.put("roomId", rs.getLong("room_id"));
+                row.put("anchorName", rs.getString("anchor_name"));
+                row.put("uid", rs.getLong("uid"));
+                row.put("uname", rs.getString("uname"));
+                row.put("detail", rs.getString("detail"));
+                long ts = rs.getLong("event_time");
+                if (ts > 0 && ts < 100000000000L) ts = ts * 1000;
+                row.put("eventTime", sdf.format(new java.util.Date(ts)));
+                results.add(row);
+            }
+            return Response.success(results, req);
+        } catch (Exception e) {
+            LOGGER.error("latestEvents error", e);
+            return Response.success(new JSONArray(), req);
+        }
+    }
+
+    /**
+     * DB 状态诊断 — 检查数据库是否存在及各表行数
+     */
+    @ResponseBody
+    @GetMapping(value = "/dbStatus")
+    public Response<?> dbStatus(HttpServletRequest req) {
+        JSONObject status = new JSONObject();
+        try {
+            String dbPath = xyz.acproject.danmuji.tools.db.DanmujiDatabase.getDbPath();
+            status.put("dbPath", dbPath);
+            java.io.File f = new java.io.File(dbPath);
+            status.put("exists", f.exists());
+            status.put("sizeKB", f.exists() ? f.length() / 1024 : 0);
+
+            if (f.exists()) {
+                try (java.sql.Connection conn = xyz.acproject.danmuji.tools.db.DanmujiDatabase.getConnection();
+                     java.sql.Statement stmt = conn.createStatement()) {
+                    String[] tables = {"danmaku", "enter_events", "follow_events", "gift_detail",
+                            "guard_buy", "super_chat", "welcome_vip", "welcome_guard", "block_msg"};
+                    JSONObject counts = new JSONObject();
+                    for (String t : tables) {
+                        try (java.sql.ResultSet rs = stmt.executeQuery("SELECT COUNT(*) FROM " + t)) {
+                            counts.put(t, rs.getInt(1));
+                        } catch (Exception e) {
+                            counts.put(t, "error: " + e.getMessage());
+                        }
+                    }
+                    status.put("tableCounts", counts);
+                }
+            }
+        } catch (Exception e) {
+            status.put("error", e.getMessage());
+        }
+        return Response.success(status, req);
+    }
 }

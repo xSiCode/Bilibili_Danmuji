@@ -44,6 +44,15 @@ import xyz.acproject.danmuji.tools.file.FootprintFileTools;
 import xyz.acproject.danmuji.tools.file.GuardFileTools;
 import xyz.acproject.danmuji.tools.file.LogFileTools;
 import xyz.acproject.danmuji.utils.JodaTimeUtils;
+import xyz.acproject.danmuji.tools.db.BlockMsgRecorder;
+import xyz.acproject.danmuji.tools.db.DanmakuRecorder;
+import xyz.acproject.danmuji.tools.db.EnterRecorder;
+import xyz.acproject.danmuji.tools.db.FollowRecorder;
+import xyz.acproject.danmuji.tools.db.GiftDetailRecorder;
+import xyz.acproject.danmuji.tools.db.GuardBuyRecorder;
+import xyz.acproject.danmuji.tools.db.SuperChatRecorder;
+import xyz.acproject.danmuji.tools.db.WelcomeGuardRecorder;
+import xyz.acproject.danmuji.tools.db.WelcomeVipRecorder;
 import xyz.acproject.danmuji.utils.SpringUtils;
 
 import java.text.SimpleDateFormat;
@@ -373,6 +382,7 @@ public class ParseMessageThread extends Thread {
                                     stringBuilder.append(" ");
                                     stringBuilder.append(barrage.getMsg());
                                     BarrageLogTools.logBarrage(barrage.getUid(), barrage.getUname(), barrage.getMsg(), barrage.getTimestamp());
+                                    DanmakuRecorder.record(barrage);
                                     //控制台打印
                                     if (getCenterSetConf().is_cmd()) {
                                         LOGGER.info(stringBuilder.toString());
@@ -419,6 +429,7 @@ public class ParseMessageThread extends Thread {
                                     gift_type,
                                     jsonObject.getLong("total_coin"), jsonObject.getObject("medal_info", MedalInfo.class));
                             GiftLogTools.logGift(gift.getUid(), gift.getUname(), gift.getGiftName(), gift.getTotal_coin() != null ? gift.getTotal_coin() : 0L, gift.getTimestamp());
+                            GiftDetailRecorder.record(gift);
                             if (getCenterSetConf().is_gift()) {
                                 if (getCenterSetConf().is_gift_free() || (!getCenterSetConf().is_gift_free() && gift_type == 1)) {
                                     stringBuilder.append(TIME_FORMAT.get().format(System.currentTimeMillis()));
@@ -529,7 +540,7 @@ public class ParseMessageThread extends Thread {
                                 //写入
                                 if (!guardMap_local.containsKey(guard.getUid())) {
                                     GuardFileTools.write(guard.getUid() + "," + guard.getUsername());
-
+                                    GuardBuyRecorder.record(guard);
                                 }
                             }
                             // 发送上舰私聊（异步执行，避免同步HTTP阻塞主消息处理线程）
@@ -634,6 +645,7 @@ public class ParseMessageThread extends Thread {
                                 }
                                 stringBuilder.delete(0, stringBuilder.length());
                             }
+                            SuperChatRecorder.record(superChat);
                             LOGGER.info("收到醒目留言:::" + message);
                             break;
 
@@ -670,6 +682,7 @@ public class ParseMessageThread extends Thread {
                             }
 
                             LOGGER.info("让我看看哪个老爷大户进来了:::" + message);
+                            WelcomeVipRecorder.record(welcomeVip);
                             break;
 
                         // 欢迎舰长进入直播间
@@ -706,6 +719,7 @@ public class ParseMessageThread extends Thread {
                                 }
                                 stringBuilder.delete(0, stringBuilder.length());
                             }
+                            WelcomeGuardRecorder.record(welcomeGuard);
                             LOGGER.info("舰长大大进来直播间了:::" + message);
                             break;
 
@@ -739,6 +753,7 @@ public class ParseMessageThread extends Thread {
                                 }
                                 stringBuilder.delete(0, stringBuilder.length());
                             }
+                            BlockMsgRecorder.record(blockMessage);
                             LOGGER.info("谁这么惨被禁言了:::" + message);
                             break;
                         // 直播间粉丝数更新 经常
@@ -834,20 +849,8 @@ public class ParseMessageThread extends Thread {
                                 final long _follow_uid = interact.getUid();
                                 final String _follow_uname = interact.getUname();
 
-                                // 足迹留印：记录所有 INTERACT_WORD_V2 事件（进入+关注），跳过所有后续处理和 API 调用
-                                if (conf.is_footprint_record()) {
-                                    FootprintFileTools.getInstance().record(
-                                        interact.getTimestamp(), _follow_uid, _follow_uname);
-                                    break;  // 跳过当前 INTERACT_WORD_V2 的整个 switch case
-                                }
-
-                                //观众记录
-                                if (msg_type == 1) {
-                                    audienceProcessing( _follow_uid, _follow_uname );
-                                }
-
+                                // 勋章信息提取（提前到足迹留印检查之前，确保 DB 记录包含完整信息）
                                 if (interactWordV2.hasFansMedal()) {
-                                    // LOGGER.info("INTERACT_WORD_V2_PARSE_FANS:" + JsonFormat.printer().print(interactWordV2));
                                     MedalInfo medalInfo = new MedalInfo();
                                     medalInfo.setIcon_id(interactWordV2.getFansMedal().getIconId());
                                     medalInfo.setTarget_id(interactWordV2.getFansMedal().getTargetId());
@@ -861,6 +864,26 @@ public class ParseMessageThread extends Thread {
                                     medalInfo.setGuard_level((short) interactWordV2.getFansMedal().getGuardLevel());
                                     interact.setFans_medal(medalInfo);
                                 }
+
+                                // === DB: 无论何种模式，无条件记录进入/关注事件（不受足迹留印影响） ===
+                                if (msg_type == 1) {
+                                    EnterRecorder.record(interact);
+                                } else if (msg_type == 2) {
+                                    FollowRecorder.record(interact);
+                                }
+
+                                // 足迹留印：记录所有 INTERACT_WORD_V2 事件（进入+关注），跳过所有后续处理和 API 调用
+                                if (conf.is_footprint_record()) {
+                                    FootprintFileTools.getInstance().record(
+                                        interact.getTimestamp(), _follow_uid, _follow_uname);
+                                    break;  // 跳过当前 INTERACT_WORD_V2 的整个 switch case
+                                }
+
+                                //观众记录
+                                if (msg_type == 1) {
+                                    audienceProcessing( _follow_uid, _follow_uname );
+                                }
+
                                 //欢迎凝视姬 & 自动欢迎
                                 if (msg_type == 1) {
                                     // 欢迎进入直播间
@@ -970,6 +993,7 @@ public class ParseMessageThread extends Thread {
                                     }
                                 }
                             }
+                            GiftDetailRecorder.recordRedPackage(redPackage);
                             LOGGER.info("红包赠送:::" + message);
                             break;
                         case "LIKE_INFO_V3_UPDATE":

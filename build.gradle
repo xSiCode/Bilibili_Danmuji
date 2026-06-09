@@ -55,6 +55,8 @@ dependencies {
 	implementation group: 'com.google.protobuf', name: 'protobuf-java-util', version: '4.31.1'
 	// jsr305 annotations pulled by protobuf reference javax.annotation.meta.When
 	implementation 'com.google.code.findbugs:annotations:3.0.1u2'
+	// https://mvnrepository.com/artifact/org.xerial/sqlite-jdbc
+	implementation group: 'org.xerial', name: 'sqlite-jdbc', version: '3.45.3.0'
 	implementation fileTree(dir: 'lib', includes: ['*.jar'])
 }
 configurations {

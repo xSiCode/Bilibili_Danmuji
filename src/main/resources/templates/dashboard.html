@@ -27,6 +27,10 @@
                                 <button class="nav-link" id="tab-btn-footprint-replay" data-bs-toggle="tab"
                                         data-bs-target="#tab-footprint-replay" type="button" role="tab">足迹还原</button>
                             </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="tab-btn-user-query" data-bs-toggle="tab"
+                                        data-bs-target="#tab-user-query" type="button" role="tab">查阅用户</button>
+                            </li>
                         </ul>
 
                         <!-- Tab Content -->
@@ -197,6 +201,43 @@
                                         <div class="col-auto"><span class="text-muted" style="font-size:12px;" id="fpr-current-text"></span></div>
                                     </div>
                                 </div>
+                            </div>
+
+                            <!-- 查阅用户 -->
+                            <div class="tab-pane fade" id="tab-user-query" role="tabpanel">
+                                <div class="input-group mb-1"><h5>查阅用户 - 输入UID或用户名搜索</h5></div>
+                                <div class="row g-2 mb-2 align-items-end">
+                                    <div class="col-auto">
+                                        <label class="form-label mb-0" style="font-size:12px;">搜索</label>
+                                        <input type="text" id="uq-search-input" class="form-control form-control-sm" style="width:250px;" placeholder="输入UID或用户名...">
+                                    </div>
+                                    <div class="col-auto">
+                                        <button id="uq-btn-search" class="btn btn-sm btn-primary">搜索</button>
+                                    </div>
+                                    <div class="col-auto">
+                                        <button id="uq-btn-reset" class="btn btn-sm btn-outline-secondary">重置</button>
+                                    </div>
+                                    <div class="col-auto">
+                                        <span class="text-muted" style="font-size:12px;" id="uq-result-info"></span>
+                                    </div>
+                                </div>
+                                <div id="uq-result-area" style="display:none;">
+                                    <div class="table-responsive" style="max-height:600px;overflow-y:auto;">
+                                        <table class="table table-sm table-striped" id="uq-timeline-table">
+                                            <thead>
+                                                <tr>
+                                                    <th class="uq-sortable" data-sort="eventTime" style="width:180px;min-width:180px;cursor:pointer;">时间 ▼</th>
+                                                    <th class="uq-sortable" data-sort="uname" style="width:180px;min-width:180px;cursor:pointer;">观众名字</th>
+                                                    <th class="uq-sortable" data-sort="anchorName" style="width:189px;min-width:189px;cursor:pointer;">直播间</th>
+                                                    <th class="uq-sortable" data-sort="eventType" style="width:80px;min-width:80px;cursor:pointer;">事件类型</th>
+                                                    <th class="uq-sortable" data-sort="detail" style="cursor:pointer;">详情</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="uq-timeline-body"></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div id="uq-empty-msg" class="text-muted text-center py-3" style="display:none;">未找到该用户的相关记录</div>
                             </div>
                         </div>
                     </div>
