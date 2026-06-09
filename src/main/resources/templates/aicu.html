@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments/head :: head(pageCss='aicu.css', pageTitle='弹幕姬-AICU用户查阅')}"></th:block>
+    <style>
+        .aicu-search-box{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+        .aicu-search-input{flex:1;min-width:200px;max-width:400px}
+        .aicu-history-dropdown{position:absolute;z-index:1000;background:#fff;border:1px solid #dee2e6;border-radius:6px;max-height:240px;overflow-y:auto;width:400px;display:none;box-shadow:0 4px 12px rgba(0,0,0,.12)}
+        .aicu-history-item{padding:8px 12px;cursor:pointer;border-bottom:1px solid #f0f0f0;transition:background .15s}
+        .aicu-history-item:hover{background:#e8f4fd}
+        .aicu-history-item .h-uid{color:#888;font-size:12px}
+        .aicu-usermark-bar{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:8px 16px;border-radius:8px;margin-bottom:12px;font-size:13px;line-height:1.8;display:flex;flex-wrap:wrap;gap:4px 16px;align-items:center}
+        .aicu-usermark-bar strong{font-size:15px;margin-right:4px}
+        .aicu-usermark-bar .sep{opacity:.5}
+        .aicu-usermark-bar .tag{display:inline-block;background:rgba(255,255,255,.2);padding:2px 8px;border-radius:10px;font-size:12px;margin:0 2px}
+        .aicu-tab-nav{display:flex;gap:4px;margin-bottom:0;border-bottom:2px solid #e0e0e0}
+        .aicu-tab-btn{padding:8px 20px;border:none;background:transparent;cursor:pointer;font-size:14px;border-radius:6px 6px 0 0;transition:all .2s;color:#666}
+        .aicu-tab-btn:hover{background:#f5f5f5;color:#333}
+        .aicu-tab-btn.active{background:#667eea;color:#fff;font-weight:600}
+        .aicu-tab-content{display:none;padding:12px 0}
+        .aicu-tab-content.active{display:block}
+        .aicu-table{width:100%;border-collapse:collapse;font-size:13px}
+        .aicu-table th{background:#f8f9fa;padding:6px 8px;text-align:left;border-bottom:2px solid #dee2e6;position:sticky;top:0;z-index:1}
+        .aicu-table td{padding:5px 8px;border-bottom:1px solid #eee;vertical-align:top;word-break:break-word}
+        .aicu-table tr:hover{background:#f8f9ff}
+        .aicu-link{color:#667eea;text-decoration:none;font-size:12px;white-space:nowrap}
+        .aicu-link:hover{text-decoration:underline}
+        .aicu-pagination{display:flex;align-items:center;justify-content:center;gap:4px;margin-top:12px;flex-wrap:wrap}
+        .aicu-pagination button{padding:4px 10px;border:1px solid #dee2e6;background:#fff;border-radius:4px;cursor:pointer;font-size:12px}
+        .aicu-pagination button:hover{background:#667eea;color:#fff;border-color:#667eea}
+        .aicu-pagination button.active{background:#667eea;color:#fff;border-color:#667eea;font-weight:600}
+        .aicu-pagination button:disabled{opacity:.4;cursor:not-allowed}
+        .aicu-pagination .page-info{font-size:12px;color:#888;margin:0 6px}
+        .aicu-loading{text-align:center;padding:40px;color:#888}
+        .aicu-loading .spinner-border{width:3rem;height:3rem}
+        .aicu-empty{text-align:center;padding:40px;color:#aaa}
+        .aicu-count-badge{display:inline-block;background:#667eea;color:#fff;font-size:11px;padding:1px 7px;border-radius:10px;margin-left:4px;vertical-align:middle}
+        .aicu-uid-match{padding:8px 12px;background:#fffbe6;border:1px solid #ffe58f;border-radius:6px;margin-bottom:12px}
+        .aicu-uid-match a{cursor:pointer;color:#667eea;font-weight:600;text-decoration:underline}
+        .aicu-room-name{font-size:11px;color:#999;white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis;display:inline-block}
+    </style>
+</head>
+<body>
+<div class="app">
+    <div class="row align-items-center justify-content-center center-wrapper">
+        <div class="col-md-12 card-outer-wrap">
+            <div class="card border-primary">
+                <div class="card-header"><h2><span>AICU 用户查阅 - 评论/弹幕/直播弹幕历史查询</span><span style="float:right;font-size:13px;color:#888;font-weight:normal;line-height:2.2;" th:if="${BUILD_TIME} != ''" th:text="'Build: ' + ${BUILD_TIME}"></span></h2></div>
+                <div class="card-body p-1 pt-0">
+                    <th:block th:replace="~{fragments/layout :: status-bar}"></th:block>
+                    <th:block th:replace="~{fragments/layout :: sidebar(activePage='aicu')}"></th:block>
+                    <div class="settings-content flex-grow-1">
+
+                        <!-- 搜索区域 -->
+                        <div class="aicu-search-box mb-3 pt-2" style="position:relative">
+                            <input id="aicu-search-input" class="form-control form-control-sm aicu-search-input" type="text" placeholder="输入 B站 UID 或用户名...">
+                            <div id="aicu-history-dropdown" class="aicu-history-dropdown"></div>
+                            <button id="aicu-search-btn" class="btn btn-sm btn-primary">🔍 搜索</button>
+                            <button id="aicu-reset-btn" class="btn btn-sm btn-outline-secondary">重置</button>
+                            <span id="aicu-progress" style="font-size:12px;color:#888;margin-left:8px;display:none"></span>
+                        </div>
+
+                        <!-- 用户名匹配提示 -->
+                        <div id="aicu-uid-match" class="aicu-uid-match" style="display:none"></div>
+
+                        <!-- 用户信息栏 -->
+                        <div id="aicu-usermark" class="aicu-usermark-bar" style="display:none"></div>
+
+                        <!-- 加载中 -->
+                        <div id="aicu-loading" class="aicu-loading" style="display:none">
+                            <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>
+                            <p class="mt-2" id="aicu-loading-text">正在从 aicu.cc 获取数据...</p>
+                        </div>
+
+                        <!-- 缓存提示 -->
+                        <div id="aicu-cache-hint" style="display:none;text-align:center;padding:4px;font-size:11px;color:#aaa"></div>
+
+                        <!-- 选项卡导航 -->
+                        <div id="aicu-tabs-nav" class="aicu-tab-nav" style="display:none">
+                            <button class="aicu-tab-btn active" data-tab="reply">评论<span id="reply-count-badge" class="aicu-count-badge" style="display:none">0</span></button>
+                            <button class="aicu-tab-btn" data-tab="videodm">视频弹幕<span id="videodm-count-badge" class="aicu-count-badge" style="display:none">0</span></button>
+                            <button class="aicu-tab-btn" data-tab="livedm">直播弹幕<span id="livedm-count-badge" class="aicu-count-badge" style="display:none">0</span></button>
+                        </div>
+
+                        <!-- 评论选项卡 -->
+                        <div id="tab-reply" class="aicu-tab-content">
+                            <div style="max-height:60vh;overflow-y:auto">
+                                <table class="aicu-table"><thead><tr><th style="width:120px">时间</th><th>内容</th><th style="width:80px">来源视频</th></tr></thead><tbody id="reply-tbody"></tbody></table>
+                            </div>
+                            <div id="reply-pagination" class="aicu-pagination"></div>
+                        </div>
+
+                        <!-- 视频弹幕选项卡 -->
+                        <div id="tab-videodm" class="aicu-tab-content">
+                            <div style="max-height:60vh;overflow-y:auto">
+                                <table class="aicu-table"><thead><tr><th style="width:120px">时间</th><th>内容</th><th style="width:80px">时间点</th><th style="width:80px">来源视频</th></tr></thead><tbody id="videodm-tbody"></tbody></table>
+                            </div>
+                            <div id="videodm-pagination" class="aicu-pagination"></div>
+                        </div>
+
+                        <!-- 直播弹幕选项卡 -->
+                        <div id="tab-livedm" class="aicu-tab-content">
+                            <div style="max-height:60vh;overflow-y:auto">
+                                <table class="aicu-table"><thead><tr><th style="width:120px">时间</th><th>内容</th><th style="width:140px">房间</th><th style="width:80px">主播</th></tr></thead><tbody id="livedm-tbody"></tbody></table>
+                            </div>
+                            <div id="livedm-pagination" class="aicu-pagination"></div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============ 内联脚本 ============ -->
+<script type="text/javascript">
+    var SEARCH_HISTORY_KEY = 'aicu_search_history';
+    var currentData = null;      // 当前搜索结果
+    var currentUid = null;
+    var currentPage = { reply: 1, videodm: 1, livedm: 1 };
+
+    // ===== 初始化 =====
+    $(function(){
+        // URL 参数自动搜索
+        var urlUid = new URLSearchParams(window.location.search).get('uid');
+        if (urlUid) {
+            $('#aicu-search-input').val(urlUid);
+            doSearch(urlUid);
+        }
+
+        // 搜索输入框 - 历史记录
+        $('#aicu-search-input').on('focus', showHistory);
+        $('#aicu-search-input').on('input', function(){
+            var val = $(this).val().trim();
+            if (val.length >= 1) showFilteredHistory(val);
+            else showHistory();
+        });
+        $(document).on('click', function(e){
+            if (!$(e.target).closest('#aicu-search-input, #aicu-history-dropdown').length) {
+                $('#aicu-history-dropdown').hide();
+            }
+        });
+
+        // 回车搜索
+        $('#aicu-search-input').on('keydown', function(e){
+            if (e.key === 'Enter') $('#aicu-search-btn').click();
+        });
+
+        // 搜索按钮
+        $('#aicu-search-btn').on('click', function(){
+            var val = $('#aicu-search-input').val().trim();
+            if (!val) return;
+            doSearch(val);
+        });
+
+        // 重置按钮
+        $('#aicu-reset-btn').on('click', function(){
+            $('#aicu-search-input').val('');
+            currentData = null; currentUid = null;
+            currentPage = { reply: 1, videodm: 1, livedm: 1 };
+            hideAllPanels();
+        });
+
+        // 选项卡切换
+        $('#aicu-tabs-nav').on('click', '.aicu-tab-btn', function(){
+            var tab = $(this).data('tab');
+            switchTab(tab);
+        });
+    });
+
+    // ===== 搜索流程 =====
+    function doSearch(val) {
+        var isNumeric = /^\d+$/.test(val);
+        if (isNumeric) {
+            startSearch(parseInt(val), val);
+        } else {
+            // 先反查 UID
+            $('#aicu-loading').show();
+            $('#aicu-loading-text').text('正在反查用户名 → UID...');
+            $.get('/api/aicu/findUid', {name: val}, function(arr){
+                $('#aicu-loading').hide();
+                var data = typeof arr === 'string' ? JSON.parse(arr) : arr;
+                if (data.length === 0) {
+                    alert('未在本地数据库中找到匹配 "' + val + '" 的用户');
+                    return;
+                }
+                if (data.length === 1) {
+                    startSearch(data[0].uid, val);
+                } else {
+                    // 多个匹配，显示选择
+                    var html = '<strong>找到 ' + data.length + ' 个匹配用户，请选择：</strong><br>';
+                    data.forEach(function(d){
+                        html += '<a onclick="$(\'#aicu-uid-match\').hide();startSearch(' + d.uid + ',\'' + d.uname + '\')">' + d.uname + ' (UID:' + d.uid + ')</a> &nbsp;|&nbsp; ';
+                    });
+                    $('#aicu-uid-match').html(html).show();
+                }
+            }).fail(function(){ $('#aicu-loading').hide(); alert('反查请求失败'); });
+        }
+    }
+
+    function startSearch(uid, displayName) {
+        currentUid = uid;
+        addHistory(uid, displayName);
+        hideAllPanels();
+        $('#aicu-loading').show();
+        $('#aicu-loading-text').text('正在从 aicu.cc 获取数据（首次拉取需等待，请耐心...）');
+        $('#aicu-progress').text('⏳ 拉取中...').show();
+
+        // 先尝试缓存
+        $.get('/api/aicu/cached', {uid: uid}, function(resp){
+            var r = typeof resp === 'string' ? JSON.parse(resp) : resp;
+            if (r.cached) {
+                $('#aicu-cache-hint').text('📦 来自本地缓存 (上次拉取有效期内)').show();
+                renderAll(r);
+                $('#aicu-progress').hide();
+            } else {
+                // 缓存未命中，全量拉取（耗时较长）
+                $('#aicu-cache-hint').text('🔄 首次拉取，正在请求 aicu.cc API...').show();
+                fetchFull(uid);
+            }
+        }).fail(function(){
+            // /cached 失败则走全量拉取
+            fetchFull(uid);
+        });
+    }
+
+    function fetchFull(uid) {
+        var startTime = Date.now();
+        $.get('/api/aicu/search', {uid: uid}, function(resp){
+            var r = typeof resp === 'string' ? JSON.parse(resp) : resp;
+            var elapsed = Math.round((Date.now() - startTime) / 1000);
+            $('#aicu-loading').hide();
+            $('#aicu-progress').text('✅ 完成 (' + elapsed + 's)').show();
+            $('#aicu-cache-hint').text('📥 数据已拉取并保存到本地数据库').show();
+            setTimeout(function(){ $('#aicu-progress').fadeOut(); }, 5000);
+            renderAll(r);
+        }).fail(function(jqXHR, textStatus){
+            $('#aicu-loading').hide();
+            $('#aicu-progress').text('❌ 请求失败: ' + textStatus).show();
+            if (jqXHR.status === 0) {
+                alert('请求超时或网络错误。数据量可能较大，请重试。\n提示：可尝试刷新页面后再次搜索。');
+            }
+        });
+    }
+
+    // ===== 渲染 =====
+    function renderAll(r) {
+        currentData = r;
+        currentPage = { reply: 1, videodm: 1, livedm: 1 };
+
+        // usermark
+        renderUsermark(r.usermark);
+
+        // reply
+        var replyPages = (r.reply && r.reply.pages) ? r.reply.pages : {};
+        var replyTotal = r.reply ? (r.reply.total || 0) : 0;
+        $('#reply-count-badge').text(replyTotal).toggle(replyTotal > 0);
+        renderReplyPage(replyPages, 1);
+
+        // videodm
+        var dmPages = (r.videodm && r.videodm.pages) ? r.videodm.pages : {};
+        var dmTotal = r.videodm ? (r.videodm.total || 0) : 0;
+        $('#videodm-count-badge').text(dmTotal).toggle(dmTotal > 0);
+        renderVideodmPage(dmPages, 1);
+
+        // livedm
+        var livePages = (r.livedm && r.livedm.pages) ? r.livedm.pages : {};
+        var liveTotal = r.livedm ? (r.livedm.total || 0) : 0;
+        $('#livedm-count-badge').text(liveTotal).toggle(liveTotal > 0);
+        renderLivedmPage(livePages, 1);
+
+        $('#aicu-tabs-nav').show();
+        switchTab('reply');
+    }
+
+    // === usermark ===
+    function renderUsermark(um) {
+        if (!um) { $('#aicu-usermark').hide(); return; }
+        var parts = [];
+        // 公会
+        var ghName = '';
+        if (um.gh && um.gh.name) ghName = um.gh.name;
+        if (um.gh2 && um.gh2.name) ghName += (ghName ? ' / ' : '') + um.gh2.name;
+        if (ghName) parts.push('🏛 公会: <span class="tag">' + escapeHtml(ghName) + '</span>');
+
+        // 设备
+        if (um.device && um.device.length > 0) {
+            var devs = um.device.map(function(d){ return d.type + (d.name ? ' ' + d.name : ''); }).join(', ');
+            parts.push('📱 设备: ' + escapeHtml(devs));
+        }
+
+        // 历史用户名
+        if (um.hname && um.hname.length > 0) {
+            parts.push('🔄 历史名: ' + um.hname.map(function(n){ return '<span class="tag">' + escapeHtml(n) + '</span>'; }).join(' '));
+        }
+
+        if (parts.length === 0) { $('#aicu-usermark').hide(); return; }
+        // 优先显示历史用户名的第一个作为当前昵称
+        var nickname = (um.hname && um.hname.length > 0) ? um.hname[0] : ('UID:' + currentUid);
+        var html = '<strong>👤 ' + escapeHtml(nickname) + '</strong> ' + parts.join(' <span class="sep">|</span> ');
+        $('#aicu-usermark').html(html).show();
+    }
+
+    // === reply ===
+    function renderReplyPage(pages, pn) {
+        var key = String(pn);
+        var list = pages[key];
+        if (!list) {
+            // 尝试从原始数据中提取 list
+            var pageData = pages[key];
+            if (pageData && pageData.replies) list = pageData.replies;
+        }
+        var tbody = $('#reply-tbody');
+        tbody.empty();
+        if (!list || list.length === 0) {
+            tbody.html('<tr><td colspan="3" class="aicu-empty">暂无数据</td></tr>');
+        } else {
+            list.forEach(function(item){
+                var time = formatTime(item.time);
+                var msg = escapeHtml(item.message || '');
+                var oid = (item.dyn && item.dyn.oid) ? item.dyn.oid : '';
+                var link = oid ? '<a class="aicu-link" href="https://www.bilibili.com/video/av' + oid + '" target="_blank" title="打开视频 av' + oid + '">📺 视频</a>' : '-';
+                tbody.append('<tr><td>' + time + '</td><td>' + msg + '</td><td>' + link + '</td></tr>');
+            });
+        }
+        renderPagination('reply', pages, pn);
+        currentPage.reply = pn;
+    }
+
+    // === videodm ===
+    function renderVideodmPage(pages, pn) {
+        var key = String(pn);
+        var list = pages[key];
+        if (list && list.videodmlist) list = list.videodmlist;
+        var tbody = $('#videodm-tbody');
+        tbody.empty();
+        if (!list || list.length === 0) {
+            tbody.html('<tr><td colspan="4" class="aicu-empty">暂无数据</td></tr>');
+        } else {
+            list.forEach(function(item){
+                var time = item.ctime ? formatTime(item.ctime) : '-';
+                var msg = escapeHtml(item.content || '');
+                var progress = item.progress ? formatProgress(item.progress) : '-';
+                var oid = item.oid || '';
+                var link = oid ? '<a class="aicu-link" href="https://www.bilibili.com/video/av' + oid + '" target="_blank" title="打开视频 av' + oid + '">📺 视频</a>' : '-';
+                tbody.append('<tr><td>' + time + '</td><td>' + msg + '</td><td>' + progress + '</td><td>' + link + '</td></tr>');
+            });
+        }
+        renderPagination('videodm', pages, pn);
+        currentPage.videodm = pn;
+    }
+
+    // === livedm ===
+    function renderLivedmPage(pages, pn) {
+        var key = String(pn);
+        var list = pages[key];
+        if (list && list.list) list = list.list;
+        var tbody = $('#livedm-tbody');
+        tbody.empty();
+        if (!list || list.length === 0) {
+            tbody.html('<tr><td colspan="4" class="aicu-empty">暂无数据</td></tr>');
+        } else {
+            list.forEach(function(room){
+                var roomInfo = room.roominfo || {};
+                var roomName = escapeHtml(roomInfo.roomname || '');
+                var roomId = roomInfo.roomid || '';
+                var upName = escapeHtml(roomInfo.upname || '');
+                var roomLink = roomId ? '<a class="aicu-link" href="https://live.bilibili.com/' + roomId + '" target="_blank" title="进入直播间 ' + roomId + '">🏠 房间</a>' : '';
+
+                var danmuList = room.danmu || [];
+                if (danmuList.length === 0) {
+                    tbody.append('<tr><td>-</td><td class="aicu-empty">无弹幕记录</td><td><span class="aicu-room-name">' + roomName + '</span> ' + roomLink + '</td><td>' + upName + '</td></tr>');
+                } else {
+                    danmuList.forEach(function(dm, idx){
+                        var time = dm.ts ? formatTime(dm.ts) : '-';
+                        var text = escapeHtml(dm.text || '');
+                        tbody.append('<tr><td>' + time + '</td><td>' + text + '</td><td><span class="aicu-room-name" title="' + roomName + '">' + roomName + '</span> ' + roomLink + '</td><td>' + upName + '</td></tr>');
+                    });
+                }
+            });
+        }
+        renderPagination('livedm', pages, pn);
+        currentPage.livedm = pn;
+    }
+
+    // === 分页 ===
+    function renderPagination(type, pages, curPn) {
+        var container = $('#' + type + '-pagination');
+        container.empty();
+        var pageKeys = Object.keys(pages).map(Number).sort(function(a,b){return a-b;});
+        if (pageKeys.length <= 1) return;
+
+        var maxPage = Math.max.apply(null, pageKeys);
+        var html = '';
+        html += '<button ' + (curPn <= 1 ? 'disabled' : '') + ' data-pn="' + (curPn - 1) + '">← 上一页</button>';
+        for (var p = 1; p <= maxPage; p++) {
+            html += '<button class="' + (p === curPn ? 'active' : '') + '" data-pn="' + p + '">' + p + '</button>';
+        }
+        html += '<button ' + (curPn >= maxPage ? 'disabled' : '') + ' data-pn="' + (curPn + 1) + '">下一页 →</button>';
+        html += '<span class="page-info">第 ' + curPn + '/' + maxPage + ' 页</span>';
+        container.html(html);
+
+        container.find('button[data-pn]').on('click', function(){
+            var pn = parseInt($(this).data('pn'));
+            var pagesData = null;
+            if (type === 'reply') pagesData = (currentData.reply && currentData.reply.pages) ? currentData.reply.pages : {};
+            else if (type === 'videodm') pagesData = (currentData.videodm && currentData.videodm.pages) ? currentData.videodm.pages : {};
+            else if (type === 'livedm') pagesData = (currentData.livedm && currentData.livedm.pages) ? currentData.livedm.pages : {};
+
+            if (type === 'reply') renderReplyPage(pagesData, pn);
+            else if (type === 'videodm') renderVideodmPage(pagesData, pn);
+            else if (type === 'livedm') renderLivedmPage(pagesData, pn);
+        });
+    }
+
+    // === 选项卡切换 ===
+    function switchTab(tab) {
+        $('#aicu-tabs-nav .aicu-tab-btn').removeClass('active');
+        $('#aicu-tabs-nav .aicu-tab-btn[data-tab="' + tab + '"]').addClass('active');
+        $('.aicu-tab-content').removeClass('active');
+        $('#tab-' + tab).addClass('active');
+    }
+
+    // === 搜索历史 ===
+    function getHistory() {
+        try { return JSON.parse(localStorage.getItem(SEARCH_HISTORY_KEY) || '[]'); }
+        catch(e) { return []; }
+    }
+    function addHistory(uid, name) {
+        var h = getHistory();
+        h = h.filter(function(item){ return item.uid !== uid; });
+        h.unshift({uid: uid, name: name, time: Date.now()});
+        h = h.slice(0, 10);
+        localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(h));
+    }
+    function showHistory() {
+        var h = getHistory();
+        renderHistoryDropdown(h);
+    }
+    function showFilteredHistory(val) {
+        var h = getHistory();
+        var lower = val.toLowerCase();
+        h = h.filter(function(item){
+            return String(item.uid).indexOf(val) >= 0 || (item.name && item.name.toLowerCase().indexOf(lower) >= 0);
+        });
+        renderHistoryDropdown(h);
+    }
+    function renderHistoryDropdown(h) {
+        var dd = $('#aicu-history-dropdown');
+        if (h.length === 0) { dd.hide(); return; }
+        var html = '';
+        h.forEach(function(item){
+            html += '<div class="aicu-history-item" data-uid="' + item.uid + '">' +
+                '<div style="font-weight:500">' + escapeHtml(item.name) + ' <span class="h-uid">UID:' + item.uid + '</span></div>' +
+                '<div style="font-size:10px;color:#bbb">' + new Date(item.time).toLocaleString() + '</div>' +
+                '</div>';
+        });
+        dd.html(html).show();
+        dd.find('.aicu-history-item').on('click', function(){
+            var uid = $(this).data('uid');
+            dd.hide();
+            $('#aicu-search-input').val(uid);
+            doSearch(uid);
+        });
+    }
+
+    // === 工具函数 ===
+    function formatTime(ts) {
+        if (!ts) return '-';
+        // ts is in seconds
+        var d = new Date(ts * 1000);
+        return d.getFullYear() + '-' +
+            String(d.getMonth()+1).padStart(2,'0') + '-' +
+            String(d.getDate()).padStart(2,'0') + ' ' +
+            String(d.getHours()).padStart(2,'0') + ':' +
+            String(d.getMinutes()).padStart(2,'0') + ':' +
+            String(d.getSeconds()).padStart(2,'0');
+    }
+    function formatProgress(ms) {
+        var sec = Math.floor(ms / 1000);
+        var m = Math.floor(sec / 60);
+        var s = sec % 60;
+        return m + ':' + String(s).padStart(2, '0');
+    }
+    function escapeHtml(str) {
+        if (!str) return '';
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(str));
+        return div.innerHTML;
+    }
+    function hideAllPanels() {
+        $('#aicu-usermark').hide();
+        $('#aicu-tabs-nav').hide();
+        $('.aicu-tab-content').removeClass('active');
+        $('#reply-tbody,#videodm-tbody,#livedm-tbody').empty();
+        $('#reply-pagination,#videodm-pagination,#livedm-pagination').empty();
+        $('#aicu-uid-match').hide();
+        $('#aicu-cache-hint').hide();
+        $('#aicu-loading').hide();
+        $('#aicu-progress').hide();
+        $('#aicu-count-badge,#reply-count-badge,#videodm-count-badge,#livedm-count-badge').hide();
+    }
+</script>
+</body>
+</html>

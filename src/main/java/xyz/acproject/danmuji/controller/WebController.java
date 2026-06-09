@@ -25,6 +25,7 @@ import xyz.acproject.danmuji.entity.room_data.RoomInit;
 import xyz.acproject.danmuji.entity.room_data.Room;
 import xyz.acproject.danmuji.http.HttpRoomData;
 import xyz.acproject.danmuji.http.HttpUserData;
+import xyz.acproject.danmuji.service.AicuService;
 import xyz.acproject.danmuji.service.ClientService;
 import xyz.acproject.danmuji.service.DanmujiInitService;
 import xyz.acproject.danmuji.service.LocalBlackWhiteListService;
@@ -79,6 +80,8 @@ public class WebController {
     @Resource
     private ServerAddressComponent serverAddressComponent;
     private TaskRegisterComponent taskRegisterComponent;
+    @Resource
+    private AicuService aicuService;
     private static final Logger LOGGER = LogManager.getLogger(WebController.class);
 
     // 足迹还原：当前活跃的重放线程
@@ -198,6 +201,57 @@ public class WebController {
     @RequestMapping(value = "/obs_danmaku")
     public String obs_danmaku(Model model) {
         return "obs_danmaku";
+    }
+
+    // === AICU 用户查阅页面 ===
+    @RequestMapping(value = "/aicu")
+    public String aicu(HttpServletRequest req, Model model) {
+        addCommonModelAttributes(req, model);
+        return "aicu";
+    }
+
+    /**
+     * AICU 全量搜索（含限流拉取+入库+返回）
+     */
+    @ResponseBody
+    @GetMapping(value = "/api/aicu/search")
+    public String aicuSearch(@RequestParam Long uid) {
+        try {
+            JSONObject result = aicuService.search(uid);
+            return result.toJSONString();
+        } catch (Exception e) {
+            LOGGER.error("aicuSearch error for uid={}: {}", uid, e.getMessage(), e);
+            JSONObject err = new JSONObject();
+            err.put("error", e.getMessage());
+            return err.toJSONString();
+        }
+    }
+
+    /**
+     * AICU 仅读 SQLite 缓存
+     */
+    @ResponseBody
+    @GetMapping(value = "/api/aicu/cached")
+    public String aicuCached(@RequestParam Long uid) {
+        JSONObject result = aicuService.getCached(uid);
+        return result.toJSONString();
+    }
+
+    /**
+     * AICU 按用户名模糊反查 UID
+     */
+    @ResponseBody
+    @GetMapping(value = "/api/aicu/findUid")
+    public String aicuFindUid(@RequestParam String name) {
+        List<Map<String, Object>> list = aicuService.findUidByUname(name);
+        JSONArray arr = new JSONArray();
+        for (Map<String, Object> row : list) {
+            JSONObject obj = new JSONObject();
+            obj.put("uid", row.get("uid"));
+            obj.put("uname", row.get("uname"));
+            arr.add(obj);
+        }
+        return arr.toJSONString();
     }
 
     // === Emoji panel: proxy Bilibili emoji API with 24h in-memory cache ===

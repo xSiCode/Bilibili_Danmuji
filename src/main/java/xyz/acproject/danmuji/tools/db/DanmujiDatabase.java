@@ -262,6 +262,59 @@ public class DanmujiDatabase {
                     ")"
                 );
 
+                // ========================
+                // 表10：AICU 用户标记
+                // ========================
+                stmt.execute(
+                    "CREATE TABLE IF NOT EXISTS aicu_usermark (" +
+                    "  uid        BIGINT PRIMARY KEY," +
+                    "  data_json  TEXT," +
+                    "  fetch_time BIGINT" +
+                    ")"
+                );
+
+                // ========================
+                // 表11：AICU 评论
+                // ========================
+                stmt.execute(
+                    "CREATE TABLE IF NOT EXISTS aicu_reply (" +
+                    "  uid         BIGINT NOT NULL," +
+                    "  pn          INTEGER NOT NULL DEFAULT 1," +
+                    "  data_json   TEXT," +
+                    "  total_count INTEGER DEFAULT 0," +
+                    "  fetch_time  BIGINT," +
+                    "  PRIMARY KEY (uid, pn)" +
+                    ")"
+                );
+
+                // ========================
+                // 表12：AICU 视频弹幕
+                // ========================
+                stmt.execute(
+                    "CREATE TABLE IF NOT EXISTS aicu_videodm (" +
+                    "  uid         BIGINT NOT NULL," +
+                    "  pn          INTEGER NOT NULL DEFAULT 1," +
+                    "  data_json   TEXT," +
+                    "  total_count INTEGER DEFAULT 0," +
+                    "  fetch_time  BIGINT," +
+                    "  PRIMARY KEY (uid, pn)" +
+                    ")"
+                );
+
+                // ========================
+                // 表13：AICU 直播弹幕
+                // ========================
+                stmt.execute(
+                    "CREATE TABLE IF NOT EXISTS aicu_livedm (" +
+                    "  uid         BIGINT NOT NULL," +
+                    "  pn          INTEGER NOT NULL DEFAULT 1," +
+                    "  data_json   TEXT," +
+                    "  total_count INTEGER DEFAULT 0," +
+                    "  fetch_time  BIGINT," +
+                    "  PRIMARY KEY (uid, pn)" +
+                    ")"
+                );
+
                 // 创建索引
                 stmt.execute("CREATE INDEX IF NOT EXISTS idx_danmaku_uid ON danmaku(uid)");
                 stmt.execute("CREATE INDEX IF NOT EXISTS idx_danmaku_ts ON danmaku(timestamp)");

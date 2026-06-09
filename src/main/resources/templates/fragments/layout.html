@@ -89,6 +89,7 @@
                     <a th:href="@{/dashboard(tab=footprint-record)}" class="sidebar-link" th:classappend="${activePage == 'dashboard' && !#arrays.isEmpty(param.tab) && param.tab[0] == 'footprint-record'} ? 'active'">足迹留印</a>
                     <a th:href="@{/dashboard(tab=footprint-replay)}" class="sidebar-link" th:classappend="${activePage == 'dashboard' && !#arrays.isEmpty(param.tab) && param.tab[0] == 'footprint-replay'} ? 'active'">足迹还原</a>
                     <a th:href="@{/dashboard(tab=user-query)}" class="sidebar-link" th:classappend="${activePage == 'dashboard' && !#arrays.isEmpty(param.tab) && param.tab[0] == 'user-query'} ? 'active'">查阅用户</a>
+                    <a th:href="@{/aicu}" class="sidebar-link" th:classappend="${activePage == 'aicu'} ? 'active'">AICU查阅</a>
                     <a th:href="@{/account_pool}" class="sidebar-link" th:classappend="${activePage == 'account-pool'} ? 'active'">账号池管理</a>
                 </div>
                 <div class="sidebar-section">
