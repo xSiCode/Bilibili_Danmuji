@@ -5774,8 +5774,22 @@ public class WebController {
     @GetMapping(value = "/latestEvents")
     public Response<?> latestEvents(
             @RequestParam(defaultValue = "10") int limit,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) Long contextTs,
             HttpServletRequest req) {
         String limitStr = String.valueOf(limit);
+        String orderClause;
+        // 类型筛选
+        String typeFilter = "";
+        if (org.apache.commons.lang3.StringUtils.isNotBlank(type)) {
+            typeFilter = " WHERE event_type = '" + type.replace("'", "''") + "'";
+        }
+        // 如果传了 contextTs，按时间距离排序（上下文模式），否则按时间倒序
+        if (contextTs != null && contextTs > 0 && org.apache.commons.lang3.StringUtils.isNotBlank(type)) {
+            orderClause = " ORDER BY ABS(event_time - " + contextTs + ") ASC";
+        } else {
+            orderClause = " ORDER BY event_time DESC";
+        }
         String sql =
             "SELECT event_type, room_id, anchor_name, uid, uname, detail, event_time FROM (" +
             "SELECT '弹幕' AS event_type, room_id, anchor_name, uid, uname," +
@@ -5802,7 +5816,7 @@ public class WebController {
             "  CASE guard_level WHEN 1 THEN '总督' WHEN 2 THEN '提督' ELSE '舰长' END, timestamp FROM welcome_guard" +
             " UNION ALL SELECT '禁言', room_id, anchor_name, uid, uname," +
             "  CASE operator WHEN 1 THEN '被房管禁言' ELSE '被主播禁言' END, timestamp FROM block_msg" +
-            ") ORDER BY event_time DESC LIMIT " + limitStr;
+            ") " + typeFilter + orderClause + " LIMIT " + limitStr;
 
         try (java.sql.Connection conn = xyz.acproject.danmuji.tools.db.DanmujiDatabase.getConnection();
              java.sql.Statement stmt = conn.createStatement();

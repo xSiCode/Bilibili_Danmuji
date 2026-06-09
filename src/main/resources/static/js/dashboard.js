@@ -567,11 +567,11 @@ function startDisplayTimer() {
         var evt = displayQueue.shift();
         // 插入到列表顶部
         timelineData.unshift(evt);
-        // 保持最多 200 条
-        if (timelineData.length > 200) timelineData = timelineData.slice(0, 200);
+        // 保持最多 50 条（列表固定 20 行高度）
+        if (timelineData.length > 50) timelineData = timelineData.slice(0, 50);
         sortAndRender();
         $('#uq-empty-msg').hide();
-    }, 1000);  // 每秒最多 1 条
+    }, 500);  // 每 0.5 秒 1 条
 }
 
 function stopDisplayTimer() {
@@ -586,6 +586,33 @@ function stopLiveFeed() {
     stopLivePolling();
     stopDisplayTimer();
     displayQueue = [];
+}
+
+// 点击事件类型 → 显示该时间前后最近的同类事件 20 条（上下文）
+function filterByEventType(type, ts) {
+    stopLiveFeed();
+    liveMode = false;
+    $('#uq-search-input').val('');
+    $.ajax({
+        url: '../latestEvents',
+        type: 'GET',
+        data: { limit: 20, type: type, ts: ts },
+        dataType: 'json',
+        success: function(data) {
+            if (data.code == '200' && data.result && data.result.length > 0) {
+                timelineData = data.result;
+                sortColumn = 'eventTime';
+                sortAsc = false;
+                sortAndRender();
+                $('#uq-result-info').text('事件类型: ' + type + ' — 时间前后最近 20 条上下文');
+            } else {
+                timelineData = [];
+                $('#uq-result-area').hide();
+                $('#uq-empty-msg').show();
+                $('#uq-result-info').text('事件类型: ' + type + ' — 暂无记录');
+            }
+        }
+    });
 }
 
 // 解析时间字符串为毫秒时间戳
@@ -642,11 +669,17 @@ function renderUserTimeline(events) {
         tbody.append(
             '<tr>' +
             '<td style="width:180px;min-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + e.eventTime + '">' + e.eventTime + '</td>' +
-            '<td style="width:180px;min-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + e.uname + '">' + e.uname + '</td>' +
-            '<td style="width:189px;min-width:189px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + roomDisplay + '">' + roomDisplay + '</td>' +
-            '<td style="width:80px;min-width:80px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + e.eventType + '">' + (iconMap[e.eventType] || '') + ' ' + e.eventType + '</td>' +
+            '<td style="width:180px;min-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + e.uname + '"><a href="https://space.bilibili.com/' + e.uid + '" target="_blank" class="uq-link">' + e.uname + '</a></td>' +
+            '<td style="width:189px;min-width:189px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + roomDisplay + '"><a href="https://live.bilibili.com/' + e.roomId + '" target="_blank" class="uq-link">' + roomDisplay + '</a></td>' +
+            '<td style="width:80px;min-width:80px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="查看该时间前后同类事件上下文"><a href="javascript:;" class="uq-type-link" data-type="' + e.eventType + '" data-ts="' + parseTimestamp(e.eventTime) + '">' + (iconMap[e.eventType] || '') + ' ' + e.eventType + '</a></td>' +
             '<td style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + e.detail + '">' + e.detail + '</td>' +
             '</tr>');
+    });
+    // 绑定事件类型点击 → 按时间距离找同类事件上下文
+    $('.uq-type-link').off('click').on('click', function() {
+        var type = $(this).data('type');
+        var ts = $(this).data('ts');
+        filterByEventType(type, ts);
     });
     $('#uq-result-area').show();
     $('#uq-empty-msg').hide();
