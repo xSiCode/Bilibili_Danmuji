@@ -444,6 +444,12 @@ public class StrangerViewerService {
             String sortField, String sortOrder, String startTime, String endTime) {
         List<StrangerRecord> all = new ArrayList<>(recordMap.values());
 
+        // recordMap 为空时从 SQLite 重新加载历史数据，避免显示空白页
+        if (all.isEmpty() && !viewingExternalFile) {
+            loadFromCsv();
+            all = new ArrayList<>(recordMap.values());
+        }
+
         // Filter by search first (reduce sort cost)
         if (search != null && !search.isEmpty()) {
             String lower = search.toLowerCase();
