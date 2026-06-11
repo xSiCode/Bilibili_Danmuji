@@ -30,6 +30,7 @@ import xyz.acproject.danmuji.service.ClientService;
 import xyz.acproject.danmuji.service.DanmujiInitService;
 import xyz.acproject.danmuji.service.LocalBlackWhiteListService;
 import xyz.acproject.danmuji.service.SetService;
+import xyz.acproject.danmuji.service.ViewerActivitySummary;
 import xyz.acproject.danmuji.tools.CurrencyTools;
 import xyz.acproject.danmuji.tools.ParseSetStatusTools;
 import xyz.acproject.danmuji.tools.file.FileTools;
@@ -961,8 +962,24 @@ public class WebController {
         int to = Math.min(from + pageSize, total);
         List<LocalBlackWhiteListService.BlackWhiteEntry> pageItems = total > 0 ? source.subList(from, to) : new ArrayList<>();
 
+        List<JSONObject> rows = new ArrayList<>();
+        for (LocalBlackWhiteListService.BlackWhiteEntry e : pageItems) {
+            JSONObject row = new JSONObject();
+            row.put("uid", e.uid);
+            row.put("name", e.name);
+            row.put("createTime", e.createTime);
+            row.put("updateTime", e.updateTime);
+            row.put("score", e.score);
+            String summary = ViewerActivitySummary.buildSummary(e.uid);
+            row.put("scoreType", (e.scoreType != null ? e.scoreType : "")
+                    + (summary.isEmpty() ? "" : " " + summary));
+            row.put("roomId", e.roomId);
+            row.put("count", e.count);
+            rows.add(row);
+        }
+
         JSONObject result = new JSONObject();
-        result.put("rows", pageItems);
+        result.put("rows", rows);
         result.put("total", total);
         result.put("totalPages", totalPages);
         result.put("currentPage", totalPages > 0 ? page : 0);
