@@ -200,19 +200,11 @@ public class LocalBlackWhiteListService {
 
     private static synchronized void loadFromCsv() {
         if (loaded) return;
-        // 优先从 SQLite 加载
-        boolean sqliteOk = false;
-        try {
-            sqliteOk = loadFromSqlite();
-        } catch (Exception e) {
-            LOGGER.warn("load bwlist from SQLite failed, fallback to CSV: {}", e.getMessage());
-        }
-        if (!sqliteOk) {
-            File blackFile = new File(blackCsvPath());
-            if (blackFile.exists()) loadSingleCsv(blackFile, blacklistCache);
-            File whiteFile = new File(whiteCsvPath());
-            if (whiteFile.exists()) loadSingleCsv(whiteFile, whitelistCache);
-        }
+        // 每个实例只从自己的 CSV 加载，保证黑白名单实例隔离
+        File blackFile = new File(blackCsvPath());
+        if (blackFile.exists()) loadSingleCsv(blackFile, blacklistCache);
+        File whiteFile = new File(whiteCsvPath());
+        if (whiteFile.exists()) loadSingleCsv(whiteFile, whitelistCache);
         loaded = true;
     }
 
@@ -429,7 +421,7 @@ public class LocalBlackWhiteListService {
                     StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
             dirtySet.clear();
 
-            // 同步写入 SQLite
+            // 同步写入 SQLite（仅作记录，不影响各实例 CSV 独立性）
             flushToSqlite(path, all);
         } catch (Exception e) {
             LOGGER.error("flush bwlist CSV failed: {}", path, e);
@@ -508,11 +500,9 @@ public class LocalBlackWhiteListService {
     public static synchronized void reloadFromFile(String path, boolean isBlack) {
         ConcurrentHashMap<Long, BlackWhiteEntry> target = isBlack ? blacklistCache : whitelistCache;
         target.clear();
-        // 优先从 SQLite 重载
-        if (!loadFromSqlite()) {
-            File file = new File(path);
-            if (file.exists()) loadSingleCsv(file, target);
-        }
+        // 每个实例只从自己的 CSV 重载
+        File file = new File(path);
+        if (file.exists()) loadSingleCsv(file, target);
     }
 
     // ==================== 数据对象 ====================
