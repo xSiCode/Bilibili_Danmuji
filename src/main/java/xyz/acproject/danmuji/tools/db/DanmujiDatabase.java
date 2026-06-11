@@ -461,7 +461,24 @@ public class DanmujiDatabase {
                 stmt.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_black_white_list ON black_white_list(list_type, uid)");
 
                 // ========================
-                // 表22：迁移日志（记录 CSV→SQLite 迁移状态）
+                // 表22：点赞记录
+                // ========================
+                stmt.execute(
+                    "CREATE TABLE IF NOT EXISTS like_record (" +
+                    "  id            INTEGER PRIMARY KEY AUTOINCREMENT," +
+                    "  room_id       BIGINT  NOT NULL," +
+                    "  room_name     TEXT," +
+                    "  anchor_name   TEXT," +
+                    "  uid           BIGINT  NOT NULL," +
+                    "  uname         TEXT," +
+                    "  ruid          BIGINT," +
+                    "  timestamp     BIGINT  NOT NULL," +
+                    "  created_at    TEXT DEFAULT (datetime('now','localtime'))" +
+                    ")"
+                );
+
+                // ========================
+                // 表23：迁移日志（记录 CSV→SQLite 迁移状态）
                 // ========================
                 stmt.execute(
                     "CREATE TABLE IF NOT EXISTS _migration_log (" +
@@ -512,6 +529,11 @@ public class DanmujiDatabase {
                 stmt.execute("CREATE INDEX IF NOT EXISTS idx_match_summary_room ON match_summary(room_id, anchor_name)");
                 stmt.execute("CREATE INDEX IF NOT EXISTS idx_follow_summary_room ON follow_summary(room_id, anchor_name)");
                 stmt.execute("CREATE INDEX IF NOT EXISTS idx_stranger_viewer_room ON stranger_viewer(room_id, anchor_name)");
+
+                stmt.execute("CREATE INDEX IF NOT EXISTS idx_like_record_uid ON like_record(uid)");
+                stmt.execute("CREATE INDEX IF NOT EXISTS idx_like_record_ruid ON like_record(ruid)");
+                stmt.execute("CREATE INDEX IF NOT EXISTS idx_like_record_room ON like_record(room_id)");
+                stmt.execute("CREATE INDEX IF NOT EXISTS idx_like_record_ts ON like_record(timestamp)");
 
                 LOGGER.info("DanmujiDatabase all tables and indexes created at: {}", dbPath);
 

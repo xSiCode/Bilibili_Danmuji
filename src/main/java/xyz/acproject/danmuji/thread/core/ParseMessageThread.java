@@ -49,6 +49,7 @@ import xyz.acproject.danmuji.tools.db.DanmakuRecorder;
 import xyz.acproject.danmuji.tools.db.EnterRecorder;
 import xyz.acproject.danmuji.tools.db.FollowRecorder;
 import xyz.acproject.danmuji.tools.db.GiftDetailRecorder;
+import xyz.acproject.danmuji.tools.db.LikeRecorder;
 import xyz.acproject.danmuji.tools.db.GuardBuyRecorder;
 import xyz.acproject.danmuji.tools.db.SuperChatRecorder;
 import xyz.acproject.danmuji.tools.db.WelcomeGuardRecorder;
@@ -1390,6 +1391,21 @@ public class ParseMessageThread extends Thread {
 
             case "LIKE_INFO_V3_CLICK":
                 LOGGER.info("点赞信息v3推送:CLICK::" + message);
+                try {
+                    JSONObject likeJson = JSONObject.parseObject(message);
+                    JSONObject data = likeJson.getJSONObject("data");
+                    if (data != null) {
+                        Long uid = data.getLong("uid");
+                        String uname = data.getString("uname");
+                        Long ruid = PublicDataConf.AUID;
+                        Long roomId = PublicDataConf.ROOMID;
+                        String roomName = PublicDataConf.ROOM_TITLE;
+                        String anchorName = PublicDataConf.ANCHOR_NAME;
+                        LikeRecorder.record(uid, uname, ruid, roomId, roomName, anchorName, System.currentTimeMillis());
+                    }
+                } catch (Exception e) {
+                    LOGGER.error("解析点赞信息失败: {}", e.getMessage());
+                }
                 break;
             case "CORE_USER_ATTENTION":
                 LOGGER.info("中心用户推送:::" + message);
