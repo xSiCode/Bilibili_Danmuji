@@ -515,12 +515,9 @@ public class DanmujiDatabase {
 
                 LOGGER.info("DanmujiDatabase all tables and indexes created at: {}", dbPath);
 
-                // 一次性 CSV → SQLite 迁移（独立 try-catch，不影响核心功能）
-                try {
-                    DanmujiMigration.migrateIfNeeded();
-                } catch (Exception e) {
-                    LOGGER.warn("DanmujiDatabase: migration skipped: {}", e.getMessage());
-                }
+                // CSV → SQLite 一次性迁移已完成（2026-06-11），后续不再自动执行。
+                // 如需手动重新迁移，调用 DanmujiMigration.migrateIfNeeded() 即可。
+                // DanmujiMigration.migrateIfNeeded();
 
                 // FTS5 全文搜索（可选功能，失败不影响核心功能）
                 try {
