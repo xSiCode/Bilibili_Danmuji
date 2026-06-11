@@ -135,7 +135,7 @@ public class ViewerActivitySummary {
         int show = Math.min(rooms.size(), 3);
         for (int i = 0; i < show; i++) {
             RoomSummary r = rooms.get(i);
-            sb.append("[").append(r.anchorName).append(":");
+            sb.append("  [").append(r.anchorName).append(":");
             List<String> parts = new ArrayList<>();
             if (r.danmaku > 0)   parts.add("弹幕" + r.danmaku);
             if (r.enterEvents > 0) parts.add("进入" + r.enterEvents);
