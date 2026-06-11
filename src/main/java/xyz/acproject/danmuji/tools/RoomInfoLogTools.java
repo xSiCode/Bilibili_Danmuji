@@ -273,26 +273,33 @@ public class RoomInfoLogTools {
         }
 
         try (Connection c = DanmujiDatabase.getConnection()) {
-            // 先删后插（全量覆写）
-            try (PreparedStatement del = c.prepareStatement(
-                    "DELETE FROM room_info_series WHERE room_id = ? AND anchor_name = ?")) {
-                del.setLong(1, roomId);
-                del.setString(2, anchorName);
-                del.executeUpdate();
-            }
-            String sql = "INSERT INTO room_info_series(room_id,anchor_name,time_key,watch_count,online_count,like_count) VALUES (?,?,?,?,?,?)";
-            try (PreparedStatement ps = c.prepareStatement(sql)) {
-                for (Map.Entry<String, long[]> e : entries) {
-                    long[] v = e.getValue();
-                    ps.setLong(1, roomId);
-                    ps.setString(2, anchorName);
-                    ps.setString(3, e.getKey());
-                    ps.setLong(4, v[0]);
-                    ps.setLong(5, v[1]);
-                    ps.setLong(6, v[2]);
-                    ps.addBatch();
+            c.setAutoCommit(false);
+            try {
+                // 先删后插（全量覆写）
+                try (PreparedStatement del = c.prepareStatement(
+                        "DELETE FROM room_info_series WHERE room_id = ? AND anchor_name = ?")) {
+                    del.setLong(1, roomId);
+                    del.setString(2, anchorName);
+                    del.executeUpdate();
                 }
-                ps.executeBatch();
+                String sql = "INSERT INTO room_info_series(room_id,anchor_name,time_key,watch_count,online_count,like_count) VALUES (?,?,?,?,?,?)";
+                try (PreparedStatement ps = c.prepareStatement(sql)) {
+                    for (Map.Entry<String, long[]> e : entries) {
+                        long[] v = e.getValue();
+                        ps.setLong(1, roomId);
+                        ps.setString(2, anchorName);
+                        ps.setString(3, e.getKey());
+                        ps.setLong(4, v[0]);
+                        ps.setLong(5, v[1]);
+                        ps.setLong(6, v[2]);
+                        ps.addBatch();
+                    }
+                    ps.executeBatch();
+                }
+                c.commit();
+            } catch (Exception e2) {
+                try { c.rollback(); } catch (Exception ignored) {}
+                throw e2;
             }
         } catch (Exception e) {
             LOGGER.error("flush room info to SQLite failed", e);

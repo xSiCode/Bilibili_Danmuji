@@ -248,23 +248,29 @@ public class StrangerViewerService {
         String anchorName = info[1];
 
         String sql = "INSERT OR REPLACE INTO stranger_viewer(room_id,anchor_name,uid,name,face,score,score_types,count,session,blocked,time) VALUES (?,?,?,?,?,?,?,?,?,?,?)";
-        try (java.sql.Connection c = xyz.acproject.danmuji.tools.db.DanmujiDatabase.getConnection();
-             java.sql.PreparedStatement ps = c.prepareStatement(sql)) {
-            for (StrangerRecord r : records) {
-                ps.setLong(1, roomId);
-                ps.setString(2, anchorName);
-                ps.setLong(3, r.uid);
-                ps.setString(4, r.name != null ? r.name : "");
-                ps.setString(5, r.face != null ? r.face : "");
-                ps.setInt(6, r.score);
-                ps.setString(7, r.scoreTypes != null ? r.scoreTypes : "");
-                ps.setInt(8, r.count);
-                ps.setInt(9, r.session > 0 ? r.session : 1);
-                ps.setInt(10, blockedUids.contains(r.uid) ? 1 : 0);
-                ps.setLong(11, r.time);
-                ps.addBatch();
+        try (java.sql.Connection c = xyz.acproject.danmuji.tools.db.DanmujiDatabase.getConnection()) {
+            c.setAutoCommit(false);
+            try (java.sql.PreparedStatement ps = c.prepareStatement(sql)) {
+                for (StrangerRecord r : records) {
+                    ps.setLong(1, roomId);
+                    ps.setString(2, anchorName);
+                    ps.setLong(3, r.uid);
+                    ps.setString(4, r.name != null ? r.name : "");
+                    ps.setString(5, r.face != null ? r.face : "");
+                    ps.setInt(6, r.score);
+                    ps.setString(7, r.scoreTypes != null ? r.scoreTypes : "");
+                    ps.setInt(8, r.count);
+                    ps.setInt(9, r.session > 0 ? r.session : 1);
+                    ps.setInt(10, blockedUids.contains(r.uid) ? 1 : 0);
+                    ps.setLong(11, r.time);
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+                c.commit();
+            } catch (Exception e2) {
+                try { c.rollback(); } catch (Exception ignored) {}
+                throw e2;
             }
-            ps.executeBatch();
         } catch (Exception e) {
             LOGGER.error("flush stranger to SQLite failed", e);
         }

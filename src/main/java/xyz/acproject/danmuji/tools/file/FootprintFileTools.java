@@ -452,36 +452,42 @@ public class FootprintFileTools {
         String anchorName = anchorSb.toString();
 
         String sql = "INSERT INTO footprint(room_id,anchor_name,auid,uid,uname,utime) VALUES (?,?,?,?,?,?)";
-        try (Connection c = DanmujiDatabase.getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
-            for (String line : lines) {
-                // 解析: uid,"uname",utime
-                int firstComma = line.indexOf(',');
-                if (firstComma <= 0) continue;
-                try {
-                    long uid = Long.parseLong(line.substring(0, firstComma).trim());
-                    String remain = line.substring(firstComma + 1);
-                    String uname = "";
-                    long utime = 0;
-                    if (!remain.isEmpty() && remain.charAt(0) == '"') {
-                        int endQuote = remain.indexOf('"', 1);
-                        if (endQuote >= 0) {
-                            uname = remain.substring(1, endQuote).replace("\"\"", "\"");
-                            String after = remain.substring(endQuote + 1);
-                            if (after.startsWith(",")) after = after.substring(1);
-                            try { utime = Long.parseLong(after.trim()); } catch (NumberFormatException ignored) {}
+        try (Connection c = DanmujiDatabase.getConnection()) {
+            c.setAutoCommit(false);
+            try (PreparedStatement ps = c.prepareStatement(sql)) {
+                for (String line : lines) {
+                    // 解析: uid,"uname",utime
+                    int firstComma = line.indexOf(',');
+                    if (firstComma <= 0) continue;
+                    try {
+                        long uid = Long.parseLong(line.substring(0, firstComma).trim());
+                        String remain = line.substring(firstComma + 1);
+                        String uname = "";
+                        long utime = 0;
+                        if (!remain.isEmpty() && remain.charAt(0) == '"') {
+                            int endQuote = remain.indexOf('"', 1);
+                            if (endQuote >= 0) {
+                                uname = remain.substring(1, endQuote).replace("\"\"", "\"");
+                                String after = remain.substring(endQuote + 1);
+                                if (after.startsWith(",")) after = after.substring(1);
+                                try { utime = Long.parseLong(after.trim()); } catch (NumberFormatException ignored) {}
+                            }
                         }
-                    }
-                    ps.setLong(1, roomId);
-                    ps.setString(2, anchorName);
-                    ps.setLong(3, auid);
-                    ps.setLong(4, uid);
-                    ps.setString(5, uname);
-                    ps.setLong(6, utime);
-                    ps.addBatch();
-                } catch (NumberFormatException ignored) {}
+                        ps.setLong(1, roomId);
+                        ps.setString(2, anchorName);
+                        ps.setLong(3, auid);
+                        ps.setLong(4, uid);
+                        ps.setString(5, uname);
+                        ps.setLong(6, utime);
+                        ps.addBatch();
+                    } catch (NumberFormatException ignored) {}
+                }
+                ps.executeBatch();
+                c.commit();
+            } catch (Exception e2) {
+                try { c.rollback(); } catch (Exception ignored) {}
+                throw e2;
             }
-            ps.executeBatch();
         } catch (Exception e) {
             LOGGER.error("FootprintFileTools flushToSqlite failed", e);
         }

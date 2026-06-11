@@ -258,19 +258,25 @@ public class MatchCountTools {
         String anchorName = info[1];
 
         String sql = "INSERT OR REPLACE INTO match_summary(room_id,anchor_name,matched_uid,matched_name,score,count,latest_match_time) VALUES (?,?,?,?,?,?,?)";
-        try (Connection c = DanmujiDatabase.getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
-            for (MatchRecord r : records) {
-                ps.setLong(1, roomId);
-                ps.setString(2, anchorName);
-                ps.setLong(3, r.matchedUid);
-                ps.setString(4, r.matchedName != null ? r.matchedName : "");
-                ps.setInt(5, r.score);
-                ps.setInt(6, r.count);
-                ps.setLong(7, r.latestMatchTime);
-                ps.addBatch();
+        try (Connection c = DanmujiDatabase.getConnection()) {
+            c.setAutoCommit(false);
+            try (PreparedStatement ps = c.prepareStatement(sql)) {
+                for (MatchRecord r : records) {
+                    ps.setLong(1, roomId);
+                    ps.setString(2, anchorName);
+                    ps.setLong(3, r.matchedUid);
+                    ps.setString(4, r.matchedName != null ? r.matchedName : "");
+                    ps.setInt(5, r.score);
+                    ps.setInt(6, r.count);
+                    ps.setLong(7, r.latestMatchTime);
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+                c.commit();
+            } catch (Exception e2) {
+                try { c.rollback(); } catch (Exception ignored) {}
+                throw e2;
             }
-            ps.executeBatch();
         } catch (Exception e) {
             LOGGER.error("flush match to SQLite failed", e);
         }

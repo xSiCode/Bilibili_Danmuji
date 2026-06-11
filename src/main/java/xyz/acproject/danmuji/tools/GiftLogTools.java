@@ -258,20 +258,26 @@ public class GiftLogTools {
         String anchorName = info[1];
 
         String sql = "INSERT OR REPLACE INTO gift_summary(room_id,anchor_name,uid,uname,gift_name,total_price,count,latest_time) VALUES (?,?,?,?,?,?,?,?)";
-        try (Connection c = DanmujiDatabase.getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
-            for (GiftRecord r : records) {
-                ps.setLong(1, roomId);
-                ps.setString(2, anchorName);
-                ps.setLong(3, r.uid);
-                ps.setString(4, r.uname != null ? r.uname : "");
-                ps.setString(5, r.giftName != null ? r.giftName : "");
-                ps.setLong(6, r.totalPrice);
-                ps.setInt(7, r.count);
-                ps.setLong(8, r.latestTime);
-                ps.addBatch();
+        try (Connection c = DanmujiDatabase.getConnection()) {
+            c.setAutoCommit(false);
+            try (PreparedStatement ps = c.prepareStatement(sql)) {
+                for (GiftRecord r : records) {
+                    ps.setLong(1, roomId);
+                    ps.setString(2, anchorName);
+                    ps.setLong(3, r.uid);
+                    ps.setString(4, r.uname != null ? r.uname : "");
+                    ps.setString(5, r.giftName != null ? r.giftName : "");
+                    ps.setLong(6, r.totalPrice);
+                    ps.setInt(7, r.count);
+                    ps.setLong(8, r.latestTime);
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+                c.commit();
+            } catch (Exception e) {
+                try { c.rollback(); } catch (Exception ignored) {}
+                throw e;
             }
-            ps.executeBatch();
         } catch (Exception e) {
             LOGGER.error("flush gift to SQLite failed", e);
         }

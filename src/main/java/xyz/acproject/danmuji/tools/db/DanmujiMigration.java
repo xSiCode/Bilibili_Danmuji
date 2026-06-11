@@ -117,64 +117,10 @@ public class DanmujiMigration {
     }
 
     /**
-     * 从文件名解析 roomId 和 anchorName
-     * 格式: {roomId}_{anchorName}_{N}_{中文名}.csv
-     */
-    private static long[] parseRoomAndAnchor(String filename) {
-        // 去掉后缀
-        String base = filename;
-        if (base.endsWith(".csv")) base = base.substring(0, base.length() - 4);
-        // 按 _ 分割，提取 roomId（索引0）和 anchorName（索引1 到倒数第二个_之前的所有部分）
-        // 文件名示例: 27034701_胡律师看法_1_直播间信息
-        // 或: 27034701_胡律师看法_116132301_11_足迹留印
-        String[] parts = base.split("_");
-        if (parts.length < 3) return null;
-        try {
-            long roomId = Long.parseLong(parts[0]);
-            // anchorName 是从 parts[1] 到倒数第二个 _ 前的所有部分连接
-            // 对于 3 段: parts[0]=roomId, parts[1]=anchorName, parts[2]=序号
-            // 对于 4 段: parts[0]=roomId, parts[1]=anchorName, parts[2]=序号, parts[3]=名称
-            // 对于更多段: roomId_anchorName_part1_part2...（anchorName 可能不含下划线，也可能含）
-            // 启发式: 倒数两个 part 是序号和中文名，其余中间部分是 anchorName
-            int lastPartIdx = parts.length - 1;
-            int secondLastPartIdx = parts.length - 2;
-
-            // 如果倒数第二个部分是纯数字（序号），那么序号之前直到 parts[1] 都是 anchorName
-            StringBuilder anchorSb = new StringBuilder();
-            int anchorEnd;
-            if (parts[secondLastPartIdx].matches("\\d+")) {
-                anchorEnd = secondLastPartIdx;
-            } else {
-                // 旧格式，只有 3 段: roomId_anchorName_中文名
-                // 或更多段但序号不是纯数字
-                anchorEnd = parts.length - 1;
-            }
-            for (int i = 1; i < anchorEnd; i++) {
-                if (anchorSb.length() > 0) anchorSb.append('_');
-                anchorSb.append(parts[i]);
-            }
-            String anchorName = anchorSb.toString();
-
-            // 对于足迹文件: 可能有 auid 嵌入在中间
-            // 格式: {roomId}_{anchorName}_{auid}_11_足迹留印
-            long auid = 0;
-            // 检查是否有额外的数字段（auid）
-            // 如果倒数第二个 part 是 "11"（足迹编号）且倒数第三个是纯数字，那可能是 auid
-            if (parts.length >= 4 && "11".equals(parts[parts.length - 2])) {
-                // 倒数第三个可能是 auid
-                try {
-                    auid = Long.parseLong(parts[parts.length - 3]);
-                } catch (NumberFormatException ignored) {}
-            }
-
-            return new long[]{roomId, auid, anchorName.hashCode()}; // 用 anchorName 字符串本身不太方便，返回到调用方处理
-        } catch (NumberFormatException e) {
-            return null;
-        }
-    }
-
-    /**
-     * 从文件名解析 roomId 和 anchorName 字符串
+     * 从文件名解析 roomId 和 anchorName 字符串。
+     * 支持普通格式 ({roomId}_{anchorName}_{N}_{中文名}.csv)
+     * 和足迹格式 ({roomId}_{anchorName}_{auid}_11_足迹留印.csv)。
+     * 返回 String[]{roomIdStr, anchorNameStr}，解析失败返回 null。
      */
     public static String[] parseRoomAnchorStr(String filename) {
         String base = filename;
@@ -182,14 +128,22 @@ public class DanmujiMigration {
         String[] parts = base.split("_");
         if (parts.length < 3) return null;
 
-        StringBuilder anchorSb = new StringBuilder();
-        // 倒数第二个如果是纯数字（序号），anchor从parts[1]到倒数第三个
+        // 确定 anchorName 的结束位置
+        // 足迹格式: {roomId}_{anchorName}_{auid}_11_足迹留印 → 倒数第2是 "11"，倒数第3是 auid（纯数字）
+        // 普通格式: {roomId}_{anchorName}_{N}_{中文名} → 倒数第2是序号（纯数字）
         int anchorEnd;
-        if (parts.length >= 3 && parts[parts.length - 2].matches("\\d+")) {
+        if (parts.length >= 5 && "11".equals(parts[parts.length - 2])
+                && parts[parts.length - 3].matches("\\d+")) {
+            // 足迹新格式：排除 auid 数字段
+            anchorEnd = parts.length - 3;
+        } else if (parts.length >= 3 && parts[parts.length - 2].matches("\\d+")) {
+            // 普通格式：倒数第二个纯数字是序号
             anchorEnd = parts.length - 2;
         } else {
             anchorEnd = parts.length - 1;
         }
+
+        StringBuilder anchorSb = new StringBuilder();
         for (int i = 1; i < anchorEnd; i++) {
             if (anchorSb.length() > 0) anchorSb.append('_');
             anchorSb.append(parts[i]);

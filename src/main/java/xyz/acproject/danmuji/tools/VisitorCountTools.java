@@ -317,22 +317,28 @@ public class VisitorCountTools {
         String anchorName = info[1];
 
         String sql = "INSERT OR REPLACE INTO visitor_summary(room_id,anchor_name,uid,uname,score,score_type,count,in_pn_table,session,latest_entry_time) VALUES (?,?,?,?,?,?,?,?,?,?)";
-        try (Connection c = DanmujiDatabase.getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
-            for (VisitorRecord r : records) {
-                ps.setLong(1, roomId);
-                ps.setString(2, anchorName);
-                ps.setLong(3, r.uid);
-                ps.setString(4, r.uname != null ? r.uname : "");
-                ps.setInt(5, r.score);
-                ps.setString(6, r.scoreType != null ? r.scoreType : "");
-                ps.setInt(7, r.count);
-                ps.setInt(8, r.inPnTable ? 1 : 0);
-                ps.setInt(9, r.session > 0 ? r.session : 1);
-                ps.setLong(10, r.latestEntryTime);
-                ps.addBatch();
+        try (Connection c = DanmujiDatabase.getConnection()) {
+            c.setAutoCommit(false);
+            try (PreparedStatement ps = c.prepareStatement(sql)) {
+                for (VisitorRecord r : records) {
+                    ps.setLong(1, roomId);
+                    ps.setString(2, anchorName);
+                    ps.setLong(3, r.uid);
+                    ps.setString(4, r.uname != null ? r.uname : "");
+                    ps.setInt(5, r.score);
+                    ps.setString(6, r.scoreType != null ? r.scoreType : "");
+                    ps.setInt(7, r.count);
+                    ps.setInt(8, r.inPnTable ? 1 : 0);
+                    ps.setInt(9, r.session > 0 ? r.session : 1);
+                    ps.setLong(10, r.latestEntryTime);
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+                c.commit();
+            } catch (Exception e2) {
+                try { c.rollback(); } catch (Exception ignored) {}
+                throw e2;
             }
-            ps.executeBatch();
         } catch (Exception e) {
             LOGGER.error("flush visitor to SQLite failed", e);
         }

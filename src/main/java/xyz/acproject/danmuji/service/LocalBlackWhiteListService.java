@@ -439,21 +439,27 @@ public class LocalBlackWhiteListService {
     private static void flushToSqlite(String csvPath, List<BlackWhiteEntry> all) {
         String listType = csvPath.contains("白名单") ? "white" : "black";
         String sql = "INSERT OR REPLACE INTO black_white_list(list_type,uid,name,create_time,update_time,score,score_type,room_id,count) VALUES (?,?,?,?,?,?,?,?,?)";
-        try (Connection c = DanmujiDatabase.getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
-            for (BlackWhiteEntry e : all) {
-                ps.setString(1, listType);
-                ps.setLong(2, e.uid);
-                ps.setString(3, e.name != null ? e.name : "");
-                ps.setLong(4, e.createTime);
-                ps.setLong(5, e.updateTime);
-                ps.setInt(6, e.score);
-                ps.setString(7, e.scoreType != null ? e.scoreType : "");
-                ps.setLong(8, e.roomId);
-                ps.setInt(9, e.count);
-                ps.addBatch();
+        try (Connection c = DanmujiDatabase.getConnection()) {
+            c.setAutoCommit(false);
+            try (PreparedStatement ps = c.prepareStatement(sql)) {
+                for (BlackWhiteEntry e : all) {
+                    ps.setString(1, listType);
+                    ps.setLong(2, e.uid);
+                    ps.setString(3, e.name != null ? e.name : "");
+                    ps.setLong(4, e.createTime);
+                    ps.setLong(5, e.updateTime);
+                    ps.setInt(6, e.score);
+                    ps.setString(7, e.scoreType != null ? e.scoreType : "");
+                    ps.setLong(8, e.roomId);
+                    ps.setInt(9, e.count);
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+                c.commit();
+            } catch (Exception e2) {
+                try { c.rollback(); } catch (Exception ignored) {}
+                throw e2;
             }
-            ps.executeBatch();
         } catch (Exception e) {
             LOGGER.error("flush bwlist to SQLite failed: {}", csvPath, e);
         }

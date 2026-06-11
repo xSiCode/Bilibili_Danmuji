@@ -248,18 +248,24 @@ public class FollowingCountTools {
         String anchorName = info[1];
 
         String sql = "INSERT OR REPLACE INTO follow_summary(room_id,anchor_name,uid,uname,count,latest_time) VALUES (?,?,?,?,?,?)";
-        try (Connection c = DanmujiDatabase.getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
-            for (FollowingRecord r : records) {
-                ps.setLong(1, roomId);
-                ps.setString(2, anchorName);
-                ps.setLong(3, r.uid);
-                ps.setString(4, r.name != null ? r.name : "");
-                ps.setInt(5, r.count);
-                ps.setLong(6, r.latestTime);
-                ps.addBatch();
+        try (Connection c = DanmujiDatabase.getConnection()) {
+            c.setAutoCommit(false);
+            try (PreparedStatement ps = c.prepareStatement(sql)) {
+                for (FollowingRecord r : records) {
+                    ps.setLong(1, roomId);
+                    ps.setString(2, anchorName);
+                    ps.setLong(3, r.uid);
+                    ps.setString(4, r.name != null ? r.name : "");
+                    ps.setInt(5, r.count);
+                    ps.setLong(6, r.latestTime);
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+                c.commit();
+            } catch (Exception e2) {
+                try { c.rollback(); } catch (Exception ignored) {}
+                throw e2;
             }
-            ps.executeBatch();
         } catch (Exception e) {
             LOGGER.error("flush following to SQLite failed", e);
         }
