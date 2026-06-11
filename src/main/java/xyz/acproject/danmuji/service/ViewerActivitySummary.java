@@ -49,7 +49,7 @@ public class ViewerActivitySummary {
         List<RoomSummary> rooms = new ArrayList<>();
         try (Connection c = DanmujiDatabase.getConnection();
              PreparedStatement ps = c.prepareStatement(buildSql())) {
-            for (int i = 1; i <= 7; i++) {
+            for (int i = 1; i <= 8; i++) {
                 ps.setLong(i, uid);
             }
             try (ResultSet rs = ps.executeQuery()) {
@@ -62,9 +62,10 @@ public class ViewerActivitySummary {
                     int f  = rs.getInt("follow");
                     int gb = rs.getInt("guard");
                     int sc = rs.getInt("sc");
-                    int total = d + en + g + l + f + gb + sc;
+                    int fp = rs.getInt("footprint");
+                    int total = d + en + g + l + f + gb + sc + fp;
                     if (total > 0) {
-                        rooms.add(new RoomSummary(anchor, d, en, g, l, f, gb, sc, total));
+                        rooms.add(new RoomSummary(anchor, d, en, g, l, f, gb, sc, fp, total));
                     }
                 }
             }
@@ -91,7 +92,8 @@ public class ViewerActivitySummary {
             " SUM(CASE WHEN src='like'    THEN cnt ELSE 0 END) AS likes," +
             " SUM(CASE WHEN src='follow'  THEN cnt ELSE 0 END) AS follow," +
             " SUM(CASE WHEN src='guard'   THEN cnt ELSE 0 END) AS guard," +
-            " SUM(CASE WHEN src='sc'      THEN cnt ELSE 0 END) AS sc" +
+            " SUM(CASE WHEN src='sc'      THEN cnt ELSE 0 END) AS sc," +
+            " SUM(CASE WHEN src='footprint' THEN cnt ELSE 0 END) AS footprint" +
             " FROM (" +
             "  SELECT COALESCE(NULLIF(anchor_name,''),'未知') AS anchor_name, 'danmaku' AS src, COUNT(*) AS cnt" +
             "    FROM danmaku WHERE uid=? GROUP BY anchor_name" +
@@ -113,6 +115,9 @@ public class ViewerActivitySummary {
             "  UNION ALL" +
             "  SELECT COALESCE(NULLIF(anchor_name,''),'未知'), 'sc', COUNT(*)" +
             "    FROM super_chat WHERE uid=? GROUP BY anchor_name" +
+            "  UNION ALL" +
+            "  SELECT COALESCE(NULLIF(anchor_name,''),'未知'), 'footprint', COUNT(*)" +
+            "    FROM footprint WHERE uid=? GROUP BY anchor_name" +
             " ) GROUP BY anchor_name" +
             " ORDER BY (" +
             "  SUM(CASE WHEN src='danmaku' THEN cnt ELSE 0 END)+" +
@@ -121,7 +126,8 @@ public class ViewerActivitySummary {
             "  SUM(CASE WHEN src='like'    THEN cnt ELSE 0 END)+" +
             "  SUM(CASE WHEN src='follow'  THEN cnt ELSE 0 END)+" +
             "  SUM(CASE WHEN src='guard'   THEN cnt ELSE 0 END)+" +
-            "  SUM(CASE WHEN src='sc'      THEN cnt ELSE 0 END)" +
+            "  SUM(CASE WHEN src='sc'      THEN cnt ELSE 0 END)+" +
+            "  SUM(CASE WHEN src='footprint' THEN cnt ELSE 0 END)" +
             " ) DESC" +
             " LIMIT 4";
     }
@@ -144,6 +150,7 @@ public class ViewerActivitySummary {
             if (r.follow > 0)    parts.add("关注" + r.follow);
             if (r.guard > 0)     parts.add("上舰" + r.guard);
             if (r.sc > 0)        parts.add("SC" + r.sc);
+            if (r.footprint > 0) parts.add("足迹" + r.footprint);
             if (parts.isEmpty()) parts.add("活跃" + r.total);
             sb.append(String.join(",", parts));
             sb.append("] ");
@@ -158,10 +165,10 @@ public class ViewerActivitySummary {
 
     private static class RoomSummary {
         final String anchorName;
-        final int danmaku, enterEvents, gift, likes, follow, guard, sc, total;
+        final int danmaku, enterEvents, gift, likes, follow, guard, sc, footprint, total;
 
         RoomSummary(String anchorName, int danmaku, int enterEvents, int gift, int likes,
-                    int follow, int guard, int sc, int total) {
+                    int follow, int guard, int sc, int footprint, int total) {
             this.anchorName = anchorName;
             this.danmaku = danmaku;
             this.enterEvents = enterEvents;
@@ -170,6 +177,7 @@ public class ViewerActivitySummary {
             this.follow = follow;
             this.guard = guard;
             this.sc = sc;
+            this.footprint = footprint;
             this.total = total;
         }
     }
