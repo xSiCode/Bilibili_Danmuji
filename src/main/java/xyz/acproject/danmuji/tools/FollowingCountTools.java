@@ -4,11 +4,15 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xyz.acproject.danmuji.conf.LogPathConf;
 import xyz.acproject.danmuji.conf.PublicDataConf;
+import xyz.acproject.danmuji.tools.db.DanmujiDatabase;
+import xyz.acproject.danmuji.tools.db.DanmujiMigration;
 import xyz.acproject.danmuji.utils.JodaTimeUtils;
 
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -87,29 +91,56 @@ public class FollowingCountTools {
     }
 
     private static void loadFromCsv() {
-        loadFromCsv(currentCsvPath());
+        if (!loadFromSqlite(currentCsvPath())) {
+            loadFromCsvLegacy(currentCsvPath());
+        }
     }
 
     /** 从指定文件重载内存数据（合并后调用，防止旧数据覆盖合并结果） */
     public static synchronized void reloadFromFile(String path) {
         followingMap.clear();
-        loadFromCsv(path);
+        if (!loadFromSqlite(path)) {
+            loadFromCsvLegacy(path);
+        }
     }
 
-    private static void loadFromCsv(String path) {
+    private static boolean loadFromSqlite(String csvPath) {
+        String filename = new File(csvPath).getName();
+        String[] info = DanmujiMigration.parseRoomAnchorStr(filename);
+        if (info == null) return false;
+        long roomId;
+        try { roomId = Long.parseLong(info[0]); } catch (NumberFormatException e) { return false; }
+        String anchorName = info[1];
+
+        String sql = "SELECT uid, uname, count, latest_time FROM follow_summary WHERE room_id = ? AND anchor_name = ?";
+        try (Connection c = DanmujiDatabase.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setLong(1, roomId);
+            ps.setString(2, anchorName);
+            try (java.sql.ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    followingMap.put(rs.getLong("uid"),
+                        new FollowingRecord(rs.getLong("uid"), rs.getString("uname"),
+                            rs.getInt("count"), rs.getLong("latest_time")));
+                }
+            }
+            return true;
+        } catch (Exception e) {
+            LOGGER.warn("load following from SQLite failed, fallback to CSV: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    private static void loadFromCsvLegacy(String path) {
         File file = new File(path);
         if (!file.exists()) return;
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
-            String line = reader.readLine(); // skip header
+            String line = reader.readLine();
             while ((line = reader.readLine()) != null) {
                 FollowingRecord record = parseLine(line);
-                if (record != null) {
-                    followingMap.put(record.uid, record);
-                }
+                if (record != null) followingMap.put(record.uid, record);
             }
-        } catch (Exception e) {
-            LOGGER.error("load following CSV failed", e);
-        }
+        } catch (Exception e) { LOGGER.error("load following CSV failed", e); }
     }
 
     private static FollowingRecord parseLine(String line) {
@@ -170,7 +201,7 @@ public class FollowingCountTools {
             followingMap.clear();
             lastRoomId = rk;
             lastAnchorName = safeFileName(PublicDataConf.ANCHOR_NAME);
-            loadFromCsv(currentCsvPath());
+            loadFromCsv();
         }
         doFlush(currentCsvPath());
     }
@@ -204,6 +235,33 @@ public class FollowingCountTools {
             dirtyUids.clear();
         } catch (IOException e) {
             LOGGER.error("move following CSV failed", e);
+        }
+
+        flushToSqlite(path, records);
+    }
+
+    private static void flushToSqlite(String csvPath, List<FollowingRecord> records) {
+        String filename = new File(csvPath).getName();
+        String[] info = DanmujiMigration.parseRoomAnchorStr(filename);
+        if (info == null) return;
+        long roomId = Long.parseLong(info[0]);
+        String anchorName = info[1];
+
+        String sql = "INSERT OR REPLACE INTO follow_summary(room_id,anchor_name,uid,uname,count,latest_time) VALUES (?,?,?,?,?,?)";
+        try (Connection c = DanmujiDatabase.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            for (FollowingRecord r : records) {
+                ps.setLong(1, roomId);
+                ps.setString(2, anchorName);
+                ps.setLong(3, r.uid);
+                ps.setString(4, r.name != null ? r.name : "");
+                ps.setInt(5, r.count);
+                ps.setLong(6, r.latestTime);
+                ps.addBatch();
+            }
+            ps.executeBatch();
+        } catch (Exception e) {
+            LOGGER.error("flush following to SQLite failed", e);
         }
     }
 

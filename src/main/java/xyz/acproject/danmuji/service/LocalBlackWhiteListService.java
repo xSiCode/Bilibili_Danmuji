@@ -2,11 +2,14 @@ package xyz.acproject.danmuji.service;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import xyz.acproject.danmuji.tools.db.DanmujiDatabase;
 import xyz.acproject.danmuji.tools.file.ProFileTools;
 
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -197,13 +200,69 @@ public class LocalBlackWhiteListService {
 
     private static synchronized void loadFromCsv() {
         if (loaded) return;
-        File blackFile = new File(blackCsvPath());
-        if (blackFile.exists()) loadSingleCsv(blackFile, blacklistCache);
-        File whiteFile = new File(whiteCsvPath());
-        if (whiteFile.exists()) loadSingleCsv(whiteFile, whitelistCache);
+        // 优先从 SQLite 加载
+        boolean sqliteOk = false;
+        try {
+            sqliteOk = loadFromSqlite();
+        } catch (Exception e) {
+            LOGGER.warn("load bwlist from SQLite failed, fallback to CSV: {}", e.getMessage());
+        }
+        if (!sqliteOk) {
+            File blackFile = new File(blackCsvPath());
+            if (blackFile.exists()) loadSingleCsv(blackFile, blacklistCache);
+            File whiteFile = new File(whiteCsvPath());
+            if (whiteFile.exists()) loadSingleCsv(whiteFile, whitelistCache);
+        }
         loaded = true;
     }
 
+    /** 从 SQLite 加载，成功返回 true */
+    private static boolean loadFromSqlite() {
+        String sql = "SELECT list_type, uid, name, create_time, update_time, score, score_type, room_id, count FROM black_white_list";
+        try (Connection c = DanmujiDatabase.getConnection();
+             java.sql.PreparedStatement ps = c.prepareStatement(sql);
+             java.sql.ResultSet rs = ps.executeQuery()) {
+            boolean hasData = false;
+            while (rs.next()) {
+                hasData = true;
+                String listType = rs.getString("list_type");
+                long uid = rs.getLong("uid");
+                String name = rs.getString("name");
+                long createTime = rs.getLong("create_time");
+                long updateTime = rs.getLong("update_time");
+                int score = rs.getInt("score");
+                String scoreType = rs.getString("score_type");
+                long roomId = rs.getLong("room_id");
+                int count = rs.getInt("count");
+                BlackWhiteEntry entry = new BlackWhiteEntry(uid, name, createTime, updateTime, score, scoreType, roomId, count);
+                ConcurrentHashMap<Long, BlackWhiteEntry> cache = "black".equals(listType) ? blacklistCache : whitelistCache;
+                BlackWhiteEntry existing = cache.get(uid);
+                if (existing != null) {
+                    existing.count += entry.count;
+                    if (entry.updateTime > existing.updateTime) {
+                        existing.updateTime = entry.updateTime;
+                        existing.name = orNewer(existing.name, entry.name);
+                        existing.score = entry.score != 0 ? entry.score : existing.score;
+                        existing.scoreType = orNewer(existing.scoreType, entry.scoreType);
+                        existing.roomId = entry.roomId != 0 ? entry.roomId : existing.roomId;
+                    }
+                    if (entry.createTime < existing.createTime) {
+                        existing.createTime = entry.createTime;
+                    }
+                } else {
+                    if (entry.count == 0) entry.count = 1;
+                    if (entry.createTime == 0) entry.createTime = entry.updateTime;
+                    cache.put(uid, entry);
+                }
+            }
+            return hasData;
+        } catch (Exception e) {
+            LOGGER.error("load bwlist from SQLite failed: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    /** 从 CSV 加载（兜底） */
     private static void loadSingleCsv(File file, ConcurrentHashMap<Long, BlackWhiteEntry> cache) {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
             String line = reader.readLine(); // skip header (may have BOM)
@@ -369,8 +428,34 @@ public class LocalBlackWhiteListService {
             Files.move(tmpFile.toPath(), file.toPath(),
                     StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
             dirtySet.clear();
+
+            // 同步写入 SQLite
+            flushToSqlite(path, all);
         } catch (Exception e) {
             LOGGER.error("flush bwlist CSV failed: {}", path, e);
+        }
+    }
+
+    private static void flushToSqlite(String csvPath, List<BlackWhiteEntry> all) {
+        String listType = csvPath.contains("白名单") ? "white" : "black";
+        String sql = "INSERT OR REPLACE INTO black_white_list(list_type,uid,name,create_time,update_time,score,score_type,room_id,count) VALUES (?,?,?,?,?,?,?,?,?)";
+        try (Connection c = DanmujiDatabase.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            for (BlackWhiteEntry e : all) {
+                ps.setString(1, listType);
+                ps.setLong(2, e.uid);
+                ps.setString(3, e.name != null ? e.name : "");
+                ps.setLong(4, e.createTime);
+                ps.setLong(5, e.updateTime);
+                ps.setInt(6, e.score);
+                ps.setString(7, e.scoreType != null ? e.scoreType : "");
+                ps.setLong(8, e.roomId);
+                ps.setInt(9, e.count);
+                ps.addBatch();
+            }
+            ps.executeBatch();
+        } catch (Exception e) {
+            LOGGER.error("flush bwlist to SQLite failed: {}", csvPath, e);
         }
     }
 
@@ -417,8 +502,11 @@ public class LocalBlackWhiteListService {
     public static synchronized void reloadFromFile(String path, boolean isBlack) {
         ConcurrentHashMap<Long, BlackWhiteEntry> target = isBlack ? blacklistCache : whitelistCache;
         target.clear();
-        File file = new File(path);
-        if (file.exists()) loadSingleCsv(file, target);
+        // 优先从 SQLite 重载
+        if (!loadFromSqlite()) {
+            File file = new File(path);
+            if (file.exists()) loadSingleCsv(file, target);
+        }
     }
 
     // ==================== 数据对象 ====================

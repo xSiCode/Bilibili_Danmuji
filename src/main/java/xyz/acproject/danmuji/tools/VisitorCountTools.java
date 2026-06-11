@@ -5,11 +5,15 @@ import org.apache.logging.log4j.Logger;
 import xyz.acproject.danmuji.conf.LogPathConf;
 import xyz.acproject.danmuji.conf.PublicDataConf;
 import xyz.acproject.danmuji.http.HttpRoomData;
+import xyz.acproject.danmuji.tools.db.DanmujiDatabase;
+import xyz.acproject.danmuji.tools.db.DanmujiMigration;
 import xyz.acproject.danmuji.utils.JodaTimeUtils;
 
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -95,20 +99,54 @@ public class VisitorCountTools {
     }
 
     private static void loadFromCsv() {
-        loadFromCsv(currentCsvPath());
+        if (!loadFromSqlite(currentCsvPath())) {
+            loadFromCsvLegacy(currentCsvPath());
+        }
     }
 
     /** 从指定文件重载内存数据（合并后调用，防止旧数据覆盖合并结果） */
     public static synchronized void reloadFromFile(String path) {
         visitorMap.clear();
-        loadFromCsv(path);
+        if (!loadFromSqlite(path)) {
+            loadFromCsvLegacy(path);
+        }
     }
 
-    private static void loadFromCsv(String path) {
+    private static boolean loadFromSqlite(String csvPath) {
+        String filename = new File(csvPath).getName();
+        String[] info = DanmujiMigration.parseRoomAnchorStr(filename);
+        if (info == null) return false;
+        long roomId;
+        try { roomId = Long.parseLong(info[0]); } catch (NumberFormatException e) { return false; }
+        String anchorName = info[1];
+
+        String sql = "SELECT uid, uname, score, score_type, count, in_pn_table, session, latest_entry_time FROM visitor_summary WHERE room_id = ? AND anchor_name = ?";
+        try (Connection c = DanmujiDatabase.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setLong(1, roomId);
+            ps.setString(2, anchorName);
+            try (java.sql.ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    long uid = rs.getLong("uid");
+                    int session = rs.getInt("session");
+                    if (session == 0) session = 1;
+                    visitorMap.put(uid, new VisitorRecord(uid, rs.getString("uname"),
+                        rs.getInt("score"), rs.getString("score_type"), rs.getInt("count"),
+                        rs.getLong("latest_entry_time"), rs.getInt("in_pn_table") == 1, session));
+                }
+            }
+            return true;
+        } catch (Exception e) {
+            LOGGER.warn("load visitor from SQLite failed, fallback to CSV: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    private static void loadFromCsvLegacy(String path) {
         File file = new File(path);
         if (!file.exists()) return;
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
-            String line = reader.readLine(); // skip header
+            String line = reader.readLine();
             while ((line = reader.readLine()) != null) {
                 VisitorRecord record = parseLine(line);
                 if (record != null) {
@@ -116,9 +154,7 @@ public class VisitorCountTools {
                     visitorMap.put(record.uid, record);
                 }
             }
-        } catch (Exception e) {
-            LOGGER.error("load visitor CSV failed", e);
-        }
+        } catch (Exception e) { LOGGER.error("load visitor CSV failed", e); }
     }
 
     private static VisitorRecord parseLine(String line) {
@@ -194,7 +230,7 @@ public class VisitorCountTools {
             dirtyUids.clear();
             lastRoomId = rk;
             lastAnchorName = safeFileName(PublicDataConf.ANCHOR_NAME);
-            loadFromCsv(currentCsvPath());
+            loadFromCsv();
         }
         doFlushAppend(currentCsvPath());
     }
@@ -268,6 +304,37 @@ public class VisitorCountTools {
             Files.move(tmpFile.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
         } catch (IOException e) {
             LOGGER.error("move visitor CSV failed", e);
+        }
+
+        flushToSqlite(path, records);
+    }
+
+    private static void flushToSqlite(String csvPath, List<VisitorRecord> records) {
+        String filename = new File(csvPath).getName();
+        String[] info = DanmujiMigration.parseRoomAnchorStr(filename);
+        if (info == null) return;
+        long roomId = Long.parseLong(info[0]);
+        String anchorName = info[1];
+
+        String sql = "INSERT OR REPLACE INTO visitor_summary(room_id,anchor_name,uid,uname,score,score_type,count,in_pn_table,session,latest_entry_time) VALUES (?,?,?,?,?,?,?,?,?,?)";
+        try (Connection c = DanmujiDatabase.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            for (VisitorRecord r : records) {
+                ps.setLong(1, roomId);
+                ps.setString(2, anchorName);
+                ps.setLong(3, r.uid);
+                ps.setString(4, r.uname != null ? r.uname : "");
+                ps.setInt(5, r.score);
+                ps.setString(6, r.scoreType != null ? r.scoreType : "");
+                ps.setInt(7, r.count);
+                ps.setInt(8, r.inPnTable ? 1 : 0);
+                ps.setInt(9, r.session > 0 ? r.session : 1);
+                ps.setLong(10, r.latestEntryTime);
+                ps.addBatch();
+            }
+            ps.executeBatch();
+        } catch (Exception e) {
+            LOGGER.error("flush visitor to SQLite failed", e);
         }
     }
 

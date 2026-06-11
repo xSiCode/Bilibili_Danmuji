@@ -74,7 +74,7 @@ public class StrangerViewerService {
                         blockedUids.clear();
                         lastRoomId = rk;
                         lastAnchorName = safeFileName(PublicDataConf.ANCHOR_NAME);
-                        loadFromCsv(currentCsvPath());
+                        loadFromCsv();
                     } else {
                         // flushToCsv() handles save + clear + load + lastRoomId/lastAnchorName update
                         flushToCsv();
@@ -140,7 +140,7 @@ public class StrangerViewerService {
             dirtyUids.clear();
             lastRoomId = rk;
             lastAnchorName = safeFileName(PublicDataConf.ANCHOR_NAME);
-            loadFromCsv(currentCsvPath());
+            loadFromCsv();
             return;
         }
         // Normal cycle: append dirty records
@@ -236,21 +236,92 @@ public class StrangerViewerService {
         } catch (IOException e) {
             LOGGER.error("move stranger CSV failed", e);
         }
+
+        flushToSqlite(path, records);
+    }
+
+    private static void flushToSqlite(String csvPath, List<StrangerRecord> records) {
+        String filename = new File(csvPath).getName();
+        String[] info = xyz.acproject.danmuji.tools.db.DanmujiMigration.parseRoomAnchorStr(filename);
+        if (info == null) return;
+        long roomId = Long.parseLong(info[0]);
+        String anchorName = info[1];
+
+        String sql = "INSERT OR REPLACE INTO stranger_viewer(room_id,anchor_name,uid,name,face,score,score_types,count,session,blocked,time) VALUES (?,?,?,?,?,?,?,?,?,?,?)";
+        try (java.sql.Connection c = xyz.acproject.danmuji.tools.db.DanmujiDatabase.getConnection();
+             java.sql.PreparedStatement ps = c.prepareStatement(sql)) {
+            for (StrangerRecord r : records) {
+                ps.setLong(1, roomId);
+                ps.setString(2, anchorName);
+                ps.setLong(3, r.uid);
+                ps.setString(4, r.name != null ? r.name : "");
+                ps.setString(5, r.face != null ? r.face : "");
+                ps.setInt(6, r.score);
+                ps.setString(7, r.scoreTypes != null ? r.scoreTypes : "");
+                ps.setInt(8, r.count);
+                ps.setInt(9, r.session > 0 ? r.session : 1);
+                ps.setInt(10, blockedUids.contains(r.uid) ? 1 : 0);
+                ps.setLong(11, r.time);
+                ps.addBatch();
+            }
+            ps.executeBatch();
+        } catch (Exception e) {
+            LOGGER.error("flush stranger to SQLite failed", e);
+        }
     }
 
     // ==================== CSV parsing (startup loading) ====================
 
     private static void loadFromCsv() {
-        loadFromCsv(currentCsvPath());
+        if (!loadFromSqlite(currentCsvPath())) {
+            loadFromCsvLegacy(currentCsvPath());
+        }
     }
 
     /** 从指定文件重载内存数据（合并后调用，防止旧数据覆盖合并结果） */
     public static synchronized void reloadFromFile(String path) {
         recordMap.clear();
-        loadFromCsv(path);
+        blockedUids.clear();
+        if (!loadFromSqlite(path)) {
+            loadFromCsvLegacy(path);
+        }
     }
 
-    private static void loadFromCsv(String path) {
+    private static boolean loadFromSqlite(String csvPath) {
+        String filename = new File(csvPath).getName();
+        String[] info = xyz.acproject.danmuji.tools.db.DanmujiMigration.parseRoomAnchorStr(filename);
+        if (info == null) return false;
+        long roomId;
+        try { roomId = Long.parseLong(info[0]); } catch (NumberFormatException e) { return false; }
+        String anchorName = info[1];
+
+        String sql = "SELECT uid, name, face, score, score_types, count, session, blocked, time FROM stranger_viewer WHERE room_id = ? AND anchor_name = ?";
+        try (java.sql.Connection c = xyz.acproject.danmuji.tools.db.DanmujiDatabase.getConnection();
+             java.sql.PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setLong(1, roomId);
+            ps.setString(2, anchorName);
+            try (java.sql.ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    long uid = rs.getLong("uid");
+                    int session = rs.getInt("session");
+                    if (session == 0) session = 1;
+                    StrangerRecord r = new StrangerRecord(uid, rs.getString("name"), rs.getString("face"),
+                        rs.getInt("score"), rs.getString("score_types"), rs.getInt("count"), session);
+                    r.time = rs.getLong("time");
+                    recordMap.put(uid, r);
+                    if (rs.getInt("blocked") == 1) {
+                        blockedUids.add(uid);
+                    }
+                }
+            }
+            return true;
+        } catch (Exception e) {
+            LOGGER.warn("load stranger from SQLite failed, fallback to CSV: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    private static void loadFromCsvLegacy(String path) {
         File file = new File(path);
         if (!file.exists()) return;
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
@@ -352,7 +423,7 @@ public class StrangerViewerService {
                 recordMap.clear();
                 blockedUids.clear();
                 dirtyUids.clear();
-                loadFromCsv(filePath);
+                reloadFromFile(filePath);
                 viewingExternalFile = true;
             }
         } else {

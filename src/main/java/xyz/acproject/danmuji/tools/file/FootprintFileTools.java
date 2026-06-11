@@ -5,8 +5,11 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xyz.acproject.danmuji.conf.LogPathConf;
 import xyz.acproject.danmuji.conf.PublicDataConf;
+import xyz.acproject.danmuji.tools.db.DanmujiDatabase;
 
 import java.io.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -68,6 +71,8 @@ public class FootprintFileTools {
                             } catch (Exception e) {
                                 LOGGER.error("FootprintFileTools flush error", e);
                             }
+                            // 同步写入 SQLite
+                            flushToSqlite(batch.getKey(), batch.getValue());
                         }
                     }
                 } catch (InterruptedException e) {
@@ -408,6 +413,77 @@ public class FootprintFileTools {
 
         public boolean hasData() {
             return roomId != 0 || !anchorName.isEmpty() || auid != 0;
+        }
+    }
+
+    /**
+     * 将足迹批量写入 SQLite footprint 表
+     * @param filePath  CSV 文件路径（从中解析 roomId/anchorName/auid）
+     * @param lines     待写入的 CSV 行（格式: uid,"uname",utime）
+     */
+    private static void flushToSqlite(String filePath, List<String> lines) {
+        // 从文件路径解析上下文
+        String name = new File(filePath).getName();
+        String base = name.endsWith(".csv") ? name.substring(0, name.length() - 4) : name;
+        String[] parts = base.split("_");
+        if (parts.length < 3) return;
+
+        long roomId;
+        try { roomId = Long.parseLong(parts[0]); } catch (NumberFormatException e) { return; }
+
+        long auid = 0;
+        int idx11 = -1;
+        for (int i = 0; i < parts.length; i++) {
+            if ("11".equals(parts[i])) { idx11 = i; break; }
+        }
+        StringBuilder anchorSb = new StringBuilder();
+        if (idx11 > 1 && parts[idx11 - 1].matches("\\d+")) {
+            try { auid = Long.parseLong(parts[idx11 - 1]); } catch (NumberFormatException ignored) {}
+            for (int i = 1; i < idx11 - 1; i++) {
+                if (anchorSb.length() > 0) anchorSb.append('_');
+                anchorSb.append(parts[i]);
+            }
+        } else if (idx11 > 1) {
+            for (int i = 1; i < idx11; i++) {
+                if (anchorSb.length() > 0) anchorSb.append('_');
+                anchorSb.append(parts[i]);
+            }
+        }
+        String anchorName = anchorSb.toString();
+
+        String sql = "INSERT INTO footprint(room_id,anchor_name,auid,uid,uname,utime) VALUES (?,?,?,?,?,?)";
+        try (Connection c = DanmujiDatabase.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            for (String line : lines) {
+                // 解析: uid,"uname",utime
+                int firstComma = line.indexOf(',');
+                if (firstComma <= 0) continue;
+                try {
+                    long uid = Long.parseLong(line.substring(0, firstComma).trim());
+                    String remain = line.substring(firstComma + 1);
+                    String uname = "";
+                    long utime = 0;
+                    if (!remain.isEmpty() && remain.charAt(0) == '"') {
+                        int endQuote = remain.indexOf('"', 1);
+                        if (endQuote >= 0) {
+                            uname = remain.substring(1, endQuote).replace("\"\"", "\"");
+                            String after = remain.substring(endQuote + 1);
+                            if (after.startsWith(",")) after = after.substring(1);
+                            try { utime = Long.parseLong(after.trim()); } catch (NumberFormatException ignored) {}
+                        }
+                    }
+                    ps.setLong(1, roomId);
+                    ps.setString(2, anchorName);
+                    ps.setLong(3, auid);
+                    ps.setLong(4, uid);
+                    ps.setString(5, uname);
+                    ps.setLong(6, utime);
+                    ps.addBatch();
+                } catch (NumberFormatException ignored) {}
+            }
+            ps.executeBatch();
+        } catch (Exception e) {
+            LOGGER.error("FootprintFileTools flushToSqlite failed", e);
         }
     }
 

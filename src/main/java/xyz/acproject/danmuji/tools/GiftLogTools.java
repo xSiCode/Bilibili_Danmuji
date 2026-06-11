@@ -4,11 +4,14 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xyz.acproject.danmuji.conf.LogPathConf;
 import xyz.acproject.danmuji.conf.PublicDataConf;
+import xyz.acproject.danmuji.tools.db.DanmujiDatabase;
 import xyz.acproject.danmuji.utils.JodaTimeUtils;
 
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -84,16 +87,54 @@ public class GiftLogTools {
     private static volatile long lastGiftNotify = 0;
 
     private static void loadFromCsv() {
-        loadFromCsv(currentCsvPath());
+        // 优先从 SQLite 加载
+        if (!loadFromSqlite(currentCsvPath())) {
+            loadFromCsvLegacy(currentCsvPath());
+        }
     }
 
     /** 从指定文件重载内存数据（合并后调用，防止旧数据覆盖合并结果） */
     public static synchronized void reloadFromFile(String path) {
         giftMap.clear();
-        loadFromCsv(path);
+        if (!loadFromSqlite(path)) {
+            loadFromCsvLegacy(path);
+        }
     }
 
-    private static void loadFromCsv(String path) {
+    /** 从 SQLite 加载，成功返回 true */
+    private static boolean loadFromSqlite(String csvPath) {
+        String filename = new File(csvPath).getName();
+        String[] info = xyz.acproject.danmuji.tools.db.DanmujiMigration.parseRoomAnchorStr(filename);
+        if (info == null) return false;
+        long roomId;
+        try { roomId = Long.parseLong(info[0]); } catch (NumberFormatException e) { return false; }
+        String anchorName = info[1];
+
+        String sql = "SELECT uid, uname, gift_name, total_price, count, latest_time FROM gift_summary WHERE room_id = ? AND anchor_name = ?";
+        try (Connection c = DanmujiDatabase.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setLong(1, roomId);
+            ps.setString(2, anchorName);
+            try (java.sql.ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    long uid = rs.getLong("uid");
+                    String uname = rs.getString("uname");
+                    String giftName = rs.getString("gift_name");
+                    long totalPrice = rs.getLong("total_price");
+                    int count = rs.getInt("count");
+                    long latestTime = rs.getLong("latest_time");
+                    giftMap.put(key(uid, giftName), new GiftRecord(uid, uname, giftName, 0, totalPrice, count, latestTime));
+                }
+            }
+            return true;
+        } catch (Exception e) {
+            LOGGER.warn("load gift from SQLite failed, falling back to CSV: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    /** 从 CSV 文件加载（兜底） */
+    private static void loadFromCsvLegacy(String path) {
         File file = new File(path);
         if (!file.exists()) return;
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
@@ -169,7 +210,7 @@ public class GiftLogTools {
             giftMap.clear();
             lastRoomId = rk;
             lastAnchorName = safeFileName(PublicDataConf.ANCHOR_NAME);
-            loadFromCsv(currentCsvPath());
+            loadFromCsv();
         }
         doFlush(currentCsvPath());
     }
@@ -202,6 +243,37 @@ public class GiftLogTools {
             Files.move(tmpFile.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
         } catch (IOException e) {
             LOGGER.error("move gift CSV failed", e);
+        }
+
+        // 同步写入 SQLite
+        flushToSqlite(path, records);
+    }
+
+    private static void flushToSqlite(String csvPath, List<GiftRecord> records) {
+        // 从 CSV 文件名解析 roomId / anchorName
+        String filename = new File(csvPath).getName();
+        String[] info = xyz.acproject.danmuji.tools.db.DanmujiMigration.parseRoomAnchorStr(filename);
+        if (info == null) return;
+        long roomId = Long.parseLong(info[0]);
+        String anchorName = info[1];
+
+        String sql = "INSERT OR REPLACE INTO gift_summary(room_id,anchor_name,uid,uname,gift_name,total_price,count,latest_time) VALUES (?,?,?,?,?,?,?,?)";
+        try (Connection c = DanmujiDatabase.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            for (GiftRecord r : records) {
+                ps.setLong(1, roomId);
+                ps.setString(2, anchorName);
+                ps.setLong(3, r.uid);
+                ps.setString(4, r.uname != null ? r.uname : "");
+                ps.setString(5, r.giftName != null ? r.giftName : "");
+                ps.setLong(6, r.totalPrice);
+                ps.setInt(7, r.count);
+                ps.setLong(8, r.latestTime);
+                ps.addBatch();
+            }
+            ps.executeBatch();
+        } catch (Exception e) {
+            LOGGER.error("flush gift to SQLite failed", e);
         }
     }
 

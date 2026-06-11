@@ -4,10 +4,14 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xyz.acproject.danmuji.conf.LogPathConf;
 import xyz.acproject.danmuji.conf.PublicDataConf;
+import xyz.acproject.danmuji.tools.db.DanmujiDatabase;
+import xyz.acproject.danmuji.tools.db.DanmujiMigration;
 
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.text.SimpleDateFormat;
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -40,8 +44,10 @@ public class RoomInfoLogTools {
 
     /** 从指定文件重载内存数据（合并后调用，防止旧数据覆盖合并结果） */
     public static synchronized void reloadFromFile(String path) {
-        roomInfoMap.clear();
-        loadFromCsv(path);
+        synchronized (roomInfoMap) { roomInfoMap.clear(); }
+        if (!loadFromSqlite(path)) {
+            loadFromCsvLegacy(path);
+        }
     }
 
     public static synchronized void start() {
@@ -112,14 +118,44 @@ public class RoomInfoLogTools {
     }
 
     private static void loadFromCsv() {
-        loadFromCsv(currentCsvPath());
+        if (!loadFromSqlite(currentCsvPath())) {
+            loadFromCsvLegacy(currentCsvPath());
+        }
     }
 
-    private static void loadFromCsv(String path) {
+    private static boolean loadFromSqlite(String csvPath) {
+        String filename = new File(csvPath).getName();
+        String[] info = DanmujiMigration.parseRoomAnchorStr(filename);
+        if (info == null) return false;
+        long roomId;
+        try { roomId = Long.parseLong(info[0]); } catch (NumberFormatException e) { return false; }
+        String anchorName = info[1];
+
+        String sql = "SELECT time_key, watch_count, online_count, like_count FROM room_info_series WHERE room_id = ? AND anchor_name = ? ORDER BY time_key";
+        try (Connection c = DanmujiDatabase.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setLong(1, roomId);
+            ps.setString(2, anchorName);
+            try (java.sql.ResultSet rs = ps.executeQuery()) {
+                synchronized (roomInfoMap) {
+                    while (rs.next()) {
+                        long[] vals = new long[]{rs.getLong("watch_count"), rs.getLong("online_count"), rs.getLong("like_count")};
+                        roomInfoMap.put(rs.getString("time_key"), vals);
+                    }
+                }
+            }
+            return true;
+        } catch (Exception e) {
+            LOGGER.warn("load room info from SQLite failed, fallback to CSV: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    private static void loadFromCsvLegacy(String path) {
         File file = new File(path);
         if (!file.exists()) return;
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
-            String line = reader.readLine(); // skip header + BOM
+            String line = reader.readLine();
             while ((line = reader.readLine()) != null) {
                 String[] parts = line.split(",", 4);
                 if (parts.length >= 4) {
@@ -127,14 +163,11 @@ public class RoomInfoLogTools {
                     vals[0] = Long.parseLong(parts[1]);
                     vals[1] = Long.parseLong(parts[2]);
                     vals[2] = Long.parseLong(parts[3]);
-                    // 统一为分钟精度（旧秒级格式截断前16位）
                     String timeKey = parts[0].length() >= 16 ? parts[0].substring(0, 16) : parts[0];
-                    roomInfoMap.put(timeKey, vals);
+                    synchronized (roomInfoMap) { roomInfoMap.put(timeKey, vals); }
                 }
             }
-        } catch (Exception e) {
-            LOGGER.error("load room info CSV failed", e);
-        }
+        } catch (Exception e) { LOGGER.error("load room info CSV failed", e); }
     }
 
     /**
@@ -194,7 +227,7 @@ public class RoomInfoLogTools {
             roomInfoMap.clear();
             lastRoomId = rk;
             lastAnchorName = safeFileName(PublicDataConf.ANCHOR_NAME);
-            loadFromCsv(currentCsvPath());
+            loadFromCsv();
         }
         doFlush(currentCsvPath());
     }
@@ -222,6 +255,47 @@ public class RoomInfoLogTools {
             Files.move(tmpFile.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
         } catch (IOException e) {
             LOGGER.error("move room info CSV failed", e);
+        }
+
+        flushToSqlite(path);
+    }
+
+    private static void flushToSqlite(String csvPath) {
+        String filename = new File(csvPath).getName();
+        String[] info = DanmujiMigration.parseRoomAnchorStr(filename);
+        if (info == null) return;
+        long roomId = Long.parseLong(info[0]);
+        String anchorName = info[1];
+
+        List<Map.Entry<String, long[]>> entries;
+        synchronized (roomInfoMap) {
+            entries = new ArrayList<>(roomInfoMap.entrySet());
+        }
+
+        try (Connection c = DanmujiDatabase.getConnection()) {
+            // 先删后插（全量覆写）
+            try (PreparedStatement del = c.prepareStatement(
+                    "DELETE FROM room_info_series WHERE room_id = ? AND anchor_name = ?")) {
+                del.setLong(1, roomId);
+                del.setString(2, anchorName);
+                del.executeUpdate();
+            }
+            String sql = "INSERT INTO room_info_series(room_id,anchor_name,time_key,watch_count,online_count,like_count) VALUES (?,?,?,?,?,?)";
+            try (PreparedStatement ps = c.prepareStatement(sql)) {
+                for (Map.Entry<String, long[]> e : entries) {
+                    long[] v = e.getValue();
+                    ps.setLong(1, roomId);
+                    ps.setString(2, anchorName);
+                    ps.setString(3, e.getKey());
+                    ps.setLong(4, v[0]);
+                    ps.setLong(5, v[1]);
+                    ps.setLong(6, v[2]);
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+            }
+        } catch (Exception e) {
+            LOGGER.error("flush room info to SQLite failed", e);
         }
     }
 }

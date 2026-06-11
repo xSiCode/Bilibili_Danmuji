@@ -315,6 +315,161 @@ public class DanmujiDatabase {
                     ")"
                 );
 
+                // ========================
+                // 表14：直播间信息时间序列（对应 _1_直播间信息.csv）
+                // ========================
+                stmt.execute(
+                    "CREATE TABLE IF NOT EXISTS room_info_series (" +
+                    "  id            INTEGER PRIMARY KEY AUTOINCREMENT," +
+                    "  room_id       BIGINT  NOT NULL," +
+                    "  anchor_name   TEXT    NOT NULL DEFAULT ''," +
+                    "  time_key      TEXT    NOT NULL," +
+                    "  watch_count   BIGINT  NOT NULL DEFAULT 0," +
+                    "  online_count  BIGINT  NOT NULL DEFAULT 0," +
+                    "  like_count    BIGINT  NOT NULL DEFAULT 0" +
+                    ")"
+                );
+                stmt.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_room_info_series ON room_info_series(room_id, anchor_name, time_key)");
+
+                // ========================
+                // 表15：礼物聚合记录（对应 _3_礼物信息.csv）
+                // ========================
+                stmt.execute(
+                    "CREATE TABLE IF NOT EXISTS gift_summary (" +
+                    "  id            INTEGER PRIMARY KEY AUTOINCREMENT," +
+                    "  room_id       BIGINT  NOT NULL," +
+                    "  anchor_name   TEXT    NOT NULL DEFAULT ''," +
+                    "  uid           BIGINT  NOT NULL," +
+                    "  uname         TEXT    NOT NULL DEFAULT ''," +
+                    "  gift_name     TEXT    NOT NULL," +
+                    "  total_price   BIGINT  NOT NULL DEFAULT 0," +
+                    "  count         INTEGER NOT NULL DEFAULT 0," +
+                    "  latest_time   BIGINT  NOT NULL DEFAULT 0" +
+                    ")"
+                );
+                stmt.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_gift_summary ON gift_summary(room_id, anchor_name, uid, gift_name)");
+                stmt.execute("CREATE INDEX IF NOT EXISTS idx_gift_summary_uid ON gift_summary(uid)");
+
+                // ========================
+                // 表16：观众聚合记录（对应 _4_观众信息.csv）
+                // ========================
+                stmt.execute(
+                    "CREATE TABLE IF NOT EXISTS visitor_summary (" +
+                    "  id                INTEGER PRIMARY KEY AUTOINCREMENT," +
+                    "  room_id           BIGINT  NOT NULL," +
+                    "  anchor_name       TEXT    NOT NULL DEFAULT ''," +
+                    "  uid               BIGINT  NOT NULL," +
+                    "  uname             TEXT    NOT NULL DEFAULT ''," +
+                    "  score             INTEGER NOT NULL DEFAULT 0," +
+                    "  score_type        TEXT    NOT NULL DEFAULT ''," +
+                    "  count             INTEGER NOT NULL DEFAULT 0," +
+                    "  in_pn_table       INTEGER NOT NULL DEFAULT 0," +
+                    "  session           INTEGER NOT NULL DEFAULT 1," +
+                    "  latest_entry_time BIGINT  NOT NULL DEFAULT 0" +
+                    ")"
+                );
+                stmt.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_visitor_summary ON visitor_summary(room_id, anchor_name, uid)");
+
+                // ========================
+                // 表17：匹配聚合记录（对应 _5_匹配信息.csv）
+                // ========================
+                stmt.execute(
+                    "CREATE TABLE IF NOT EXISTS match_summary (" +
+                    "  id                INTEGER PRIMARY KEY AUTOINCREMENT," +
+                    "  room_id           BIGINT  NOT NULL," +
+                    "  anchor_name       TEXT    NOT NULL DEFAULT ''," +
+                    "  matched_uid       BIGINT  NOT NULL," +
+                    "  matched_name      TEXT    NOT NULL DEFAULT ''," +
+                    "  score             INTEGER NOT NULL DEFAULT 0," +
+                    "  count             INTEGER NOT NULL DEFAULT 0," +
+                    "  latest_match_time BIGINT  NOT NULL DEFAULT 0" +
+                    ")"
+                );
+                stmt.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_match_summary ON match_summary(room_id, anchor_name, matched_uid)");
+
+                // ========================
+                // 表18：关注聚合记录（对应 _6_关注人信息.csv）
+                // ========================
+                stmt.execute(
+                    "CREATE TABLE IF NOT EXISTS follow_summary (" +
+                    "  id          INTEGER PRIMARY KEY AUTOINCREMENT," +
+                    "  room_id     BIGINT  NOT NULL," +
+                    "  anchor_name TEXT    NOT NULL DEFAULT ''," +
+                    "  uid         BIGINT  NOT NULL," +
+                    "  uname       TEXT    NOT NULL DEFAULT ''," +
+                    "  count       INTEGER NOT NULL DEFAULT 0," +
+                    "  latest_time BIGINT  NOT NULL DEFAULT 0" +
+                    ")"
+                );
+                stmt.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_follow_summary ON follow_summary(room_id, anchor_name, uid)");
+
+                // ========================
+                // 表19：陌生观众记录（对应 _7_陌生观众.csv）
+                // ========================
+                stmt.execute(
+                    "CREATE TABLE IF NOT EXISTS stranger_viewer (" +
+                    "  id            INTEGER PRIMARY KEY AUTOINCREMENT," +
+                    "  room_id       BIGINT  NOT NULL," +
+                    "  anchor_name   TEXT    NOT NULL DEFAULT ''," +
+                    "  uid           BIGINT  NOT NULL," +
+                    "  name          TEXT    NOT NULL DEFAULT ''," +
+                    "  face          TEXT    DEFAULT ''," +
+                    "  score         INTEGER NOT NULL DEFAULT 0," +
+                    "  score_types   TEXT    NOT NULL DEFAULT ''," +
+                    "  count         INTEGER NOT NULL DEFAULT 0," +
+                    "  session       INTEGER NOT NULL DEFAULT 1," +
+                    "  blocked       INTEGER NOT NULL DEFAULT 0," +
+                    "  time          BIGINT  NOT NULL DEFAULT 0" +
+                    ")"
+                );
+                stmt.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_stranger_viewer ON stranger_viewer(room_id, anchor_name, uid)");
+
+                // ========================
+                // 表20：足迹留印（对应 _11_足迹留印.csv）
+                // ========================
+                stmt.execute(
+                    "CREATE TABLE IF NOT EXISTS footprint (" +
+                    "  id          INTEGER PRIMARY KEY AUTOINCREMENT," +
+                    "  room_id     BIGINT  NOT NULL DEFAULT 0," +
+                    "  anchor_name TEXT    NOT NULL DEFAULT ''," +
+                    "  auid        BIGINT  NOT NULL DEFAULT 0," +
+                    "  uid         BIGINT  NOT NULL," +
+                    "  uname       TEXT    NOT NULL DEFAULT ''," +
+                    "  utime       BIGINT  NOT NULL DEFAULT 0" +
+                    ")"
+                );
+                stmt.execute("CREATE INDEX IF NOT EXISTS idx_footprint_room ON footprint(room_id)");
+                stmt.execute("CREATE INDEX IF NOT EXISTS idx_footprint_uid ON footprint(uid)");
+
+                // ========================
+                // 表21：本地黑/白名单（对应 set/本地黑名单.csv / 本地白名单.csv）
+                // ========================
+                stmt.execute(
+                    "CREATE TABLE IF NOT EXISTS black_white_list (" +
+                    "  id          INTEGER PRIMARY KEY AUTOINCREMENT," +
+                    "  list_type   TEXT    NOT NULL CHECK(list_type IN ('black','white'))," +
+                    "  uid         BIGINT  NOT NULL," +
+                    "  name        TEXT    NOT NULL DEFAULT ''," +
+                    "  create_time BIGINT  NOT NULL DEFAULT 0," +
+                    "  update_time BIGINT  NOT NULL DEFAULT 0," +
+                    "  score       INTEGER NOT NULL DEFAULT 0," +
+                    "  score_type  TEXT    NOT NULL DEFAULT ''," +
+                    "  room_id     BIGINT  NOT NULL DEFAULT 0," +
+                    "  count       INTEGER NOT NULL DEFAULT 0" +
+                    ")"
+                );
+                stmt.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_black_white_list ON black_white_list(list_type, uid)");
+
+                // ========================
+                // 表22：迁移日志（记录 CSV→SQLite 迁移状态）
+                // ========================
+                stmt.execute(
+                    "CREATE TABLE IF NOT EXISTS _migration_log (" +
+                    "  table_name  TEXT PRIMARY KEY," +
+                    "  migrated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))" +
+                    ")"
+                );
+
                 // 创建索引
                 stmt.execute("CREATE INDEX IF NOT EXISTS idx_danmaku_uid ON danmaku(uid)");
                 stmt.execute("CREATE INDEX IF NOT EXISTS idx_danmaku_ts ON danmaku(timestamp)");
@@ -348,7 +503,24 @@ public class DanmujiDatabase {
                 stmt.execute("CREATE INDEX IF NOT EXISTS idx_block_msg_uid ON block_msg(uid)");
                 stmt.execute("CREATE INDEX IF NOT EXISTS idx_block_msg_uname ON block_msg(uname)");
 
+                // 新聚合表的辅助索引
+                stmt.execute("CREATE INDEX IF NOT EXISTS idx_room_info_room ON room_info_series(room_id, anchor_name)");
+                stmt.execute("CREATE INDEX IF NOT EXISTS idx_gift_summary_room ON gift_summary(room_id, anchor_name)");
+                stmt.execute("CREATE INDEX IF NOT EXISTS idx_gift_summary_uname ON gift_summary(uname)");
+                stmt.execute("CREATE INDEX IF NOT EXISTS idx_visitor_summary_room ON visitor_summary(room_id, anchor_name)");
+                stmt.execute("CREATE INDEX IF NOT EXISTS idx_visitor_summary_uname ON visitor_summary(uname)");
+                stmt.execute("CREATE INDEX IF NOT EXISTS idx_match_summary_room ON match_summary(room_id, anchor_name)");
+                stmt.execute("CREATE INDEX IF NOT EXISTS idx_follow_summary_room ON follow_summary(room_id, anchor_name)");
+                stmt.execute("CREATE INDEX IF NOT EXISTS idx_stranger_viewer_room ON stranger_viewer(room_id, anchor_name)");
+
                 LOGGER.info("DanmujiDatabase all tables and indexes created at: {}", dbPath);
+
+                // 一次性 CSV → SQLite 迁移（独立 try-catch，不影响核心功能）
+                try {
+                    DanmujiMigration.migrateIfNeeded();
+                } catch (Exception e) {
+                    LOGGER.warn("DanmujiDatabase: migration skipped: {}", e.getMessage());
+                }
 
                 // FTS5 全文搜索（可选功能，失败不影响核心功能）
                 try {

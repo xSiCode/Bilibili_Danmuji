@@ -1544,6 +1544,99 @@ public class WebController {
         return s.replaceAll("[\\\\/:*?\"<>|]", "_");
     }
 
+    /** 从 CSV 文件路径解析 roomId */
+    private long parseRoomIdFromPath(String filePath) {
+        if (filePath == null || filePath.isEmpty()) return 0;
+        String name = new File(filePath).getName();
+        String[] info = xyz.acproject.danmuji.tools.db.DanmujiMigration.parseRoomAnchorStr(name);
+        if (info != null) {
+            try { return Long.parseLong(info[0]); } catch (NumberFormatException e) { return 0; }
+        }
+        // fallback: extract first underscore-separated segment
+        int idx = name.indexOf('_');
+        if (idx > 0) {
+            try { return Long.parseLong(name.substring(0, idx)); } catch (NumberFormatException e) { return 0; }
+        }
+        return 0;
+    }
+
+    /** 从 CSV 文件路径解析 anchorName */
+    private String parseAnchorFromPath(String filePath) {
+        if (filePath == null || filePath.isEmpty()) return "";
+        String name = new File(filePath).getName();
+        String[] info = xyz.acproject.danmuji.tools.db.DanmujiMigration.parseRoomAnchorStr(name);
+        if (info != null) return info[1];
+        return "";
+    }
+
+    /** 获取数据库连接 */
+    private java.sql.Connection getDbConnection() throws Exception {
+        return xyz.acproject.danmuji.tools.db.DanmujiDatabase.getConnection();
+    }
+
+    /** 通用 SQLite 文件列表查询 */
+    private Response<?> listFromSqlite(HttpServletRequest req, String table, String fileSuffix) {
+        List<Map<String, String>> fileList = new ArrayList<>();
+        try {
+            String currentRoomId = PublicDataConf.ROOMID != null ? PublicDataConf.ROOMID.toString() : "";
+            String currentAnchor = safeFileName(PublicDataConf.ANCHOR_NAME);
+
+            try (java.sql.Connection c = getDbConnection();
+                 java.sql.Statement stmt = c.createStatement();
+                 java.sql.ResultSet rs = stmt.executeQuery(
+                     "SELECT DISTINCT room_id, anchor_name FROM " + table + " ORDER BY anchor_name")) {
+                while (rs.next()) {
+                    String rid = String.valueOf(rs.getLong("room_id"));
+                    String anchor = rs.getString("anchor_name");
+                    String fileName = rid + "_" + anchor + fileSuffix;
+                    Map<String, String> item = new LinkedHashMap<>();
+                    item.put("fileName", fileName);
+                    item.put("filePath", new File(getDanmujiLogDir(), fileName).getAbsolutePath());
+                    item.put("roomId", rid);
+                    item.put("anchorName", anchor);
+                    item.put("isCurrent", rid.equals(currentRoomId) && anchor.equals(currentAnchor) ? "true" : "false");
+                    fileList.add(item);
+                }
+            } catch (Exception e) {
+                LOGGER.warn("listFromSqlite {} failed: {}", table, e.getMessage());
+            }
+
+            // fallback: filesystem scan
+            if (fileList.isEmpty()) {
+                File danmujiLogDir = getDanmujiLogDir();
+                String suffix = fileSuffix.startsWith("_") ? fileSuffix : ("_" + fileSuffix);
+                String currentPattern = currentRoomId + "_" + currentAnchor + fileSuffix;
+                if (danmujiLogDir.exists() && danmujiLogDir.isDirectory()) {
+                    File[] files = danmujiLogDir.listFiles((dir, name) -> name.endsWith(fileSuffix));
+                    if (files != null) {
+                        for (File f : files) {
+                            Map<String, String> item = new LinkedHashMap<>();
+                            item.put("fileName", f.getName());
+                            item.put("filePath", f.getAbsolutePath());
+                            int idx1 = f.getName().indexOf('_');
+                            int idx2 = f.getName().indexOf('_', idx1 + 1);
+                            if (idx1 > 0 && idx2 > idx1) {
+                                item.put("roomId", f.getName().substring(0, idx1));
+                                item.put("anchorName", f.getName().substring(idx1 + 1, idx2));
+                            }
+                            item.put("isCurrent", f.getName().equals(currentPattern) ? "true" : "false");
+                            fileList.add(item);
+                        }
+                    }
+                }
+            }
+
+            fileList.sort((a, b) -> {
+                if ("true".equals(a.get("isCurrent"))) return -1;
+                if ("true".equals(b.get("isCurrent"))) return 1;
+                return a.get("fileName").compareTo(b.get("fileName"));
+            });
+        } catch (Exception e) {
+            LOGGER.error("listFromSqlite error for {}", table, e);
+        }
+        return Response.success(fileList, req);
+    }
+
     private void validateFilePath(String filePath) {
         File danmujiLogDir = getDanmujiLogDir();
         File resolved = new File(filePath);
@@ -1565,45 +1658,65 @@ public class WebController {
     @ResponseBody
     @GetMapping(value = "/listCsvFiles")
     public Response<?> listCsvFiles(HttpServletRequest req) {
+        List<Map<String, String>> fileList = new ArrayList<>();
         try {
-            File danmujiLogDir = getDanmujiLogDir();
-            List<Map<String, String>> fileList = new ArrayList<>();
-            if (danmujiLogDir.exists() && danmujiLogDir.isDirectory()) {
-                File[] files = danmujiLogDir.listFiles((dir, name) -> name.endsWith("直播间信息.csv"));
-                if (files != null) {
-                    // current room identifier
-                    String currentRoomId = PublicDataConf.ROOMID != null ? PublicDataConf.ROOMID.toString() : "";
-                    String currentAnchor = safeFileName(PublicDataConf.ANCHOR_NAME);
-                    String currentPattern = currentRoomId + "_" + currentAnchor + "_1_直播间信息.csv";
+            String currentRoomId = PublicDataConf.ROOMID != null ? PublicDataConf.ROOMID.toString() : "";
+            String currentAnchor = safeFileName(PublicDataConf.ANCHOR_NAME);
 
-                    for (File f : files) {
-                        Map<String, String> item = new LinkedHashMap<>();
-                        item.put("fileName", f.getName());
-                        item.put("filePath", f.getAbsolutePath());
-                        // parse roomId and anchor from filename: {roomId}_{anchorName}_1_直播间信息.csv
-                        String name = f.getName();
-                        int idx1 = name.indexOf('_');
-                        int idx2 = name.indexOf('_', idx1 + 1);
-                        if (idx1 > 0 && idx2 > idx1) {
-                            item.put("roomId", name.substring(0, idx1));
-                            item.put("anchorName", name.substring(idx1 + 1, idx2));
+            // 优先从 SQLite 查询
+            try (java.sql.Connection c = getDbConnection();
+                 java.sql.Statement stmt = c.createStatement();
+                 java.sql.ResultSet rs = stmt.executeQuery(
+                     "SELECT DISTINCT room_id, anchor_name FROM room_info_series ORDER BY anchor_name")) {
+                while (rs.next()) {
+                    String rid = String.valueOf(rs.getLong("room_id"));
+                    String anchor = rs.getString("anchor_name");
+                    String fileName = rid + "_" + anchor + "_1_直播间信息.csv";
+                    Map<String, String> item = new LinkedHashMap<>();
+                    item.put("fileName", fileName);
+                    item.put("filePath", new File(getDanmujiLogDir(), fileName).getAbsolutePath());
+                    item.put("roomId", rid);
+                    item.put("anchorName", anchor);
+                    item.put("isCurrent", rid.equals(currentRoomId) && anchor.equals(currentAnchor) ? "true" : "false");
+                    fileList.add(item);
+                }
+            } catch (Exception e) {
+                LOGGER.warn("listCsvFiles from SQLite failed: {}", e.getMessage());
+            }
+
+            // fallback: filesystem scan
+            if (fileList.isEmpty()) {
+                File danmujiLogDir = getDanmujiLogDir();
+                String currentPattern = currentRoomId + "_" + currentAnchor + "_1_直播间信息.csv";
+                if (danmujiLogDir.exists() && danmujiLogDir.isDirectory()) {
+                    File[] files = danmujiLogDir.listFiles((dir, name) -> name.endsWith("直播间信息.csv"));
+                    if (files != null) {
+                        for (File f : files) {
+                            Map<String, String> item = new LinkedHashMap<>();
+                            item.put("fileName", f.getName());
+                            item.put("filePath", f.getAbsolutePath());
+                            int idx1 = f.getName().indexOf('_');
+                            int idx2 = f.getName().indexOf('_', idx1 + 1);
+                            if (idx1 > 0 && idx2 > idx1) {
+                                item.put("roomId", f.getName().substring(0, idx1));
+                                item.put("anchorName", f.getName().substring(idx1 + 1, idx2));
+                            }
+                            item.put("isCurrent", f.getName().equals(currentPattern) ? "true" : "false");
+                            fileList.add(item);
                         }
-                        item.put("isCurrent", f.getName().equals(currentPattern) ? "true" : "false");
-                        fileList.add(item);
                     }
                 }
             }
-            // sort: current file first, then by name
+
             fileList.sort((a, b) -> {
                 if ("true".equals(a.get("isCurrent"))) return -1;
                 if ("true".equals(b.get("isCurrent"))) return 1;
                 return a.get("fileName").compareTo(b.get("fileName"));
             });
-            return Response.success(fileList, req);
         } catch (Exception e) {
             LOGGER.error("listCsvFiles error", e);
-            return Response.success(Collections.emptyList(), req);
         }
+        return Response.success(fileList, req);
     }
 
     // === 内存级实时数据端点（0延迟，绕过CSV文件读写） ===
@@ -2248,41 +2361,7 @@ public class WebController {
     @ResponseBody
     @GetMapping(value = "/listBarrageCsvFiles")
     public Response<?> listBarrageCsvFiles(HttpServletRequest req) {
-        try {
-            File danmujiLogDir = getDanmujiLogDir();
-            List<Map<String, String>> fileList = new ArrayList<>();
-            if (danmujiLogDir.exists() && danmujiLogDir.isDirectory()) {
-                File[] files = danmujiLogDir.listFiles((dir, name) -> name.endsWith("弹幕信息.csv"));
-                if (files != null) {
-                    String currentRoomId = PublicDataConf.ROOMID != null ? PublicDataConf.ROOMID.toString() : "";
-                    String currentAnchor = safeFileName(PublicDataConf.ANCHOR_NAME);
-                    String currentPattern = currentRoomId + "_" + currentAnchor + "_2_弹幕信息.csv";
-                    for (File f : files) {
-                        Map<String, String> item = new LinkedHashMap<>();
-                        item.put("fileName", f.getName());
-                        item.put("filePath", f.getAbsolutePath());
-                        String name = f.getName();
-                        int idx1 = name.indexOf('_');
-                        int idx2 = name.indexOf('_', idx1 + 1);
-                        if (idx1 > 0 && idx2 > idx1) {
-                            item.put("roomId", name.substring(0, idx1));
-                            item.put("anchorName", name.substring(idx1 + 1, idx2));
-                        }
-                        item.put("isCurrent", f.getName().equals(currentPattern) ? "true" : "false");
-                        fileList.add(item);
-                    }
-                }
-            }
-            fileList.sort((a, b) -> {
-                if ("true".equals(a.get("isCurrent"))) return -1;
-                if ("true".equals(b.get("isCurrent"))) return 1;
-                return a.get("fileName").compareTo(b.get("fileName"));
-            });
-            return Response.success(fileList, req);
-        } catch (Exception e) {
-            LOGGER.error("listBarrageCsvFiles error", e);
-            return Response.success(Collections.emptyList(), req);
-        }
+        return listFromSqlite(req, "danmaku", "_2_弹幕信息.csv");
     }
 
     @ResponseBody
@@ -2793,41 +2872,7 @@ public class WebController {
     @ResponseBody
     @GetMapping(value = "/listVisitorCsvFiles")
     public Response<?> listVisitorCsvFiles(HttpServletRequest req) {
-        try {
-            File danmujiLogDir = getDanmujiLogDir();
-            List<Map<String, String>> fileList = new ArrayList<>();
-            if (danmujiLogDir.exists() && danmujiLogDir.isDirectory()) {
-                File[] files = danmujiLogDir.listFiles((dir, name) -> name.endsWith("观众信息.csv"));
-                if (files != null) {
-                    String currentRoomId = PublicDataConf.ROOMID != null ? PublicDataConf.ROOMID.toString() : "";
-                    String currentAnchor = safeFileName(PublicDataConf.ANCHOR_NAME);
-                    String currentPattern = currentRoomId + "_" + currentAnchor + "_4_观众信息.csv";
-                    for (File f : files) {
-                        Map<String, String> item = new LinkedHashMap<>();
-                        item.put("fileName", f.getName());
-                        item.put("filePath", f.getAbsolutePath());
-                        String name = f.getName();
-                        int idx1 = name.indexOf('_');
-                        int idx2 = name.indexOf('_', idx1 + 1);
-                        if (idx1 > 0 && idx2 > idx1) {
-                            item.put("roomId", name.substring(0, idx1));
-                            item.put("anchorName", name.substring(idx1 + 1, idx2));
-                        }
-                        item.put("isCurrent", f.getName().equals(currentPattern) ? "true" : "false");
-                        fileList.add(item);
-                    }
-                }
-            }
-            fileList.sort((a, b) -> {
-                if ("true".equals(a.get("isCurrent"))) return -1;
-                if ("true".equals(b.get("isCurrent"))) return 1;
-                return a.get("fileName").compareTo(b.get("fileName"));
-            });
-            return Response.success(fileList, req);
-        } catch (Exception e) {
-            LOGGER.error("listVisitorCsvFiles error", e);
-            return Response.success(Collections.emptyList(), req);
-        }
+        return listFromSqlite(req, "visitor_summary", "_4_观众信息.csv");
     }
 
     private int compareField(String a, String b, boolean numeric) {
@@ -3377,39 +3422,7 @@ public class WebController {
     @ResponseBody
     @GetMapping(value = "/listMatchCsvFiles")
     public Response<?> listMatchCsvFiles(HttpServletRequest req) {
-        try {
-            File danmujiLogDir = getDanmujiLogDir();
-            List<Map<String, String>> fileList = new ArrayList<>();
-            if (danmujiLogDir.exists() && danmujiLogDir.isDirectory()) {
-                File[] files = danmujiLogDir.listFiles((dir, name) -> name.endsWith("匹配信息.csv"));
-                if (files != null) {
-                    String currentRoomId = PublicDataConf.ROOMID != null ? PublicDataConf.ROOMID.toString() : "";
-                    String currentAnchor = safeFileName(PublicDataConf.ANCHOR_NAME);
-                    String currentPattern = currentRoomId + "_" + currentAnchor + "_5_匹配信息.csv";
-                    for (File f : files) {
-                        Map<String, String> item = new LinkedHashMap<>();
-                        item.put("fileName", f.getName());
-                        item.put("filePath", f.getAbsolutePath());
-                        String name = f.getName();
-                        int idx1 = name.indexOf('_');
-                        int idx2 = name.indexOf('_', idx1 + 1);
-                        item.put("roomId", idx1 > 0 ? name.substring(0, idx1) : "");
-                        item.put("anchorName", idx2 > idx1 ? name.substring(idx1 + 1, idx2) : "");
-                        item.put("isCurrent", f.getName().equals(currentPattern) ? "1" : "0");
-                        fileList.add(item);
-                    }
-                }
-            }
-            fileList.sort((a, b) -> {
-                if ("1".equals(a.get("isCurrent")) && !"1".equals(b.get("isCurrent"))) return -1;
-                if (!"1".equals(a.get("isCurrent")) && "1".equals(b.get("isCurrent"))) return 1;
-                return b.get("fileName").compareTo(a.get("fileName"));
-            });
-            return Response.success(fileList, req);
-        } catch (Exception e) {
-            LOGGER.error("listMatchCsvFiles error", e);
-            return Response.success(Collections.emptyList(), req);
-        }
+        return listFromSqlite(req, "match_summary", "_5_匹配信息.csv");
     }
 
     @ResponseBody
@@ -3843,39 +3856,7 @@ public class WebController {
     @ResponseBody
     @GetMapping(value = "/listFollowCsvFiles")
     public Response<?> listFollowCsvFiles(HttpServletRequest req) {
-        try {
-            File danmujiLogDir = getDanmujiLogDir();
-            List<Map<String, String>> fileList = new ArrayList<>();
-            if (danmujiLogDir.exists() && danmujiLogDir.isDirectory()) {
-                File[] files = danmujiLogDir.listFiles((dir, name) -> name.endsWith("关注人信息.csv"));
-                if (files != null) {
-                    String currentRoomId = PublicDataConf.ROOMID != null ? PublicDataConf.ROOMID.toString() : "";
-                    String currentAnchor = safeFileName(PublicDataConf.ANCHOR_NAME);
-                    String currentPattern = currentRoomId + "_" + currentAnchor + "_6_关注人信息.csv";
-                    for (File f : files) {
-                        Map<String, String> item = new LinkedHashMap<>();
-                        item.put("fileName", f.getName());
-                        item.put("filePath", f.getAbsolutePath());
-                        String name = f.getName();
-                        int idx1 = name.indexOf('_');
-                        int idx2 = name.indexOf('_', idx1 + 1);
-                        item.put("roomId", idx1 > 0 ? name.substring(0, idx1) : "");
-                        item.put("anchorName", idx2 > idx1 ? name.substring(idx1 + 1, idx2) : "");
-                        item.put("isCurrent", f.getName().equals(currentPattern) ? "1" : "0");
-                        fileList.add(item);
-                    }
-                }
-            }
-            fileList.sort((a, b) -> {
-                if ("1".equals(a.get("isCurrent")) && !"1".equals(b.get("isCurrent"))) return -1;
-                if (!"1".equals(a.get("isCurrent")) && "1".equals(b.get("isCurrent"))) return 1;
-                return b.get("fileName").compareTo(a.get("fileName"));
-            });
-            return Response.success(fileList, req);
-        } catch (Exception e) {
-            LOGGER.error("listFollowCsvFiles error", e);
-            return Response.success(Collections.emptyList(), req);
-        }
+        return listFromSqlite(req, "follow_summary", "_6_关注人信息.csv");
     }
 
     @ResponseBody
@@ -4241,39 +4222,7 @@ public class WebController {
     @ResponseBody
     @GetMapping(value = "/listGiftCsvFiles")
     public Response<?> listGiftCsvFiles(HttpServletRequest req) {
-        try {
-            File danmujiLogDir = getDanmujiLogDir();
-            List<Map<String, String>> fileList = new ArrayList<>();
-            if (danmujiLogDir.exists() && danmujiLogDir.isDirectory()) {
-                File[] files = danmujiLogDir.listFiles((dir, name) -> name.endsWith("礼物信息.csv"));
-                if (files != null) {
-                    String currentRoomId = PublicDataConf.ROOMID != null ? PublicDataConf.ROOMID.toString() : "";
-                    String currentAnchor = safeFileName(PublicDataConf.ANCHOR_NAME);
-                    String currentPattern = currentRoomId + "_" + currentAnchor + "_3_礼物信息.csv";
-                    for (File f : files) {
-                        Map<String, String> item = new LinkedHashMap<>();
-                        item.put("fileName", f.getName());
-                        item.put("filePath", f.getAbsolutePath());
-                        String name = f.getName();
-                        int idx1 = name.indexOf('_');
-                        int idx2 = name.indexOf('_', idx1 + 1);
-                        item.put("roomId", idx1 > 0 ? name.substring(0, idx1) : "");
-                        item.put("anchorName", idx2 > idx1 ? name.substring(idx1 + 1, idx2) : "");
-                        item.put("isCurrent", f.getName().equals(currentPattern) ? "1" : "0");
-                        fileList.add(item);
-                    }
-                }
-            }
-            fileList.sort((a, b) -> {
-                if ("1".equals(a.get("isCurrent")) && !"1".equals(b.get("isCurrent"))) return -1;
-                if (!"1".equals(a.get("isCurrent")) && "1".equals(b.get("isCurrent"))) return 1;
-                return b.get("fileName").compareTo(a.get("fileName"));
-            });
-            return Response.success(fileList, req);
-        } catch (Exception e) {
-            LOGGER.error("listGiftCsvFiles error", e);
-            return Response.success(Collections.emptyList(), req);
-        }
+        return listFromSqlite(req, "gift_summary", "_3_礼物信息.csv");
     }
 
     @ResponseBody
@@ -4670,53 +4619,7 @@ public class WebController {
     @ResponseBody
     @GetMapping(value = "/listStrangerCsvFiles")
     public Response<?> listStrangerCsvFiles(HttpServletRequest req) {
-        try {
-            File danmujiLogDir = getDanmujiLogDir();
-            List<Map<String, String>> fileList = new ArrayList<>();
-            if (danmujiLogDir.exists() && danmujiLogDir.isDirectory()) {
-                File[] files = danmujiLogDir.listFiles((dir, name) -> name.endsWith("_7_陌生观众.csv"));
-                if (files != null) {
-                    String currentRoomId = PublicDataConf.ROOMID != null ? PublicDataConf.ROOMID.toString() : "";
-                    String currentAnchor = safeFileName(PublicDataConf.ANCHOR_NAME);
-                    String currentPattern = currentRoomId + "_" + currentAnchor + "_7_陌生观众.csv";
-                    boolean currentSeen = false;
-                    for (File f : files) {
-                        Map<String, String> item = new LinkedHashMap<>();
-                        item.put("fileName", f.getName());
-                        item.put("filePath", f.getAbsolutePath());
-                        String name = f.getName();
-                        int idx1 = name.indexOf('_');
-                        int idx2 = name.indexOf('_', idx1 + 1);
-                        if (idx1 > 0 && idx2 > idx1) {
-                            item.put("roomId", name.substring(0, idx1));
-                            item.put("anchorName", name.substring(idx1 + 1, idx2));
-                        }
-                        if (f.getName().equals(currentPattern)) currentSeen = true;
-                        item.put("isCurrent", f.getName().equals(currentPattern) ? "true" : "false");
-                        fileList.add(item);
-                    }
-                    // 始终把当前直播间 CSV 放在列表最前面（即使文件尚未创建）
-                    if (!currentSeen && !currentRoomId.isEmpty() && !"unknown".equals(currentAnchor)) {
-                        Map<String, String> cur = new LinkedHashMap<>();
-                        cur.put("fileName", currentPattern);
-                        cur.put("filePath", new File(danmujiLogDir, currentPattern).getAbsolutePath());
-                        cur.put("roomId", currentRoomId);
-                        cur.put("anchorName", PublicDataConf.ANCHOR_NAME != null ? PublicDataConf.ANCHOR_NAME : "");
-                        cur.put("isCurrent", "true");
-                        fileList.add(cur);
-                    }
-                }
-            }
-            fileList.sort((a, b) -> {
-                if ("true".equals(a.get("isCurrent"))) return -1;
-                if ("true".equals(b.get("isCurrent"))) return 1;
-                return a.get("fileName").compareTo(b.get("fileName"));
-            });
-            return Response.success(fileList, req);
-        } catch (Exception e) {
-            LOGGER.error("listStrangerCsvFiles error", e);
-            return Response.success(Collections.emptyList(), req);
-        }
+        return listFromSqlite(req, "stranger_viewer", "_7_陌生观众.csv");
     }
 
     @ResponseBody

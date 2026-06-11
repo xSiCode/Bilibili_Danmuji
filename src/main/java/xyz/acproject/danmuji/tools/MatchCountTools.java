@@ -4,11 +4,15 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import xyz.acproject.danmuji.conf.LogPathConf;
 import xyz.acproject.danmuji.conf.PublicDataConf;
+import xyz.acproject.danmuji.tools.db.DanmujiDatabase;
+import xyz.acproject.danmuji.tools.db.DanmujiMigration;
 import xyz.acproject.danmuji.utils.JodaTimeUtils;
 
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -95,29 +99,56 @@ public class MatchCountTools {
     }
 
     private static void loadFromCsv() {
-        loadFromCsv(currentCsvPath());
+        if (!loadFromSqlite(currentCsvPath())) {
+            loadFromCsvLegacy(currentCsvPath());
+        }
     }
 
     /** 从指定文件重载内存数据（合并后调用，防止旧数据覆盖合并结果） */
     public static synchronized void reloadFromFile(String path) {
         matchMap.clear();
-        loadFromCsv(path);
+        if (!loadFromSqlite(path)) {
+            loadFromCsvLegacy(path);
+        }
     }
 
-    private static void loadFromCsv(String path) {
+    private static boolean loadFromSqlite(String csvPath) {
+        String filename = new File(csvPath).getName();
+        String[] info = DanmujiMigration.parseRoomAnchorStr(filename);
+        if (info == null) return false;
+        long roomId;
+        try { roomId = Long.parseLong(info[0]); } catch (NumberFormatException e) { return false; }
+        String anchorName = info[1];
+
+        String sql = "SELECT matched_uid, matched_name, score, count, latest_match_time FROM match_summary WHERE room_id = ? AND anchor_name = ?";
+        try (Connection c = DanmujiDatabase.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setLong(1, roomId);
+            ps.setString(2, anchorName);
+            try (java.sql.ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    matchMap.put(rs.getLong("matched_uid"),
+                        new MatchRecord(rs.getLong("matched_uid"), rs.getString("matched_name"),
+                            rs.getInt("score"), rs.getInt("count"), rs.getLong("latest_match_time")));
+                }
+            }
+            return true;
+        } catch (Exception e) {
+            LOGGER.warn("load match from SQLite failed, fallback to CSV: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    private static void loadFromCsvLegacy(String path) {
         File file = new File(path);
         if (!file.exists()) return;
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
-            String line = reader.readLine(); // skip header
+            String line = reader.readLine();
             while ((line = reader.readLine()) != null) {
                 MatchRecord record = parseLine(line);
-                if (record != null) {
-                    matchMap.put(record.matchedUid, record);
-                }
+                if (record != null) matchMap.put(record.matchedUid, record);
             }
-        } catch (Exception e) {
-            LOGGER.error("load match CSV failed", e);
-        }
+        } catch (Exception e) { LOGGER.error("load match CSV failed", e); }
     }
 
     private static MatchRecord parseLine(String line) {
@@ -179,7 +210,7 @@ public class MatchCountTools {
             matchMap.clear();
             lastRoomId = rk;
             lastAnchorName = safeFileName(PublicDataConf.ANCHOR_NAME);
-            loadFromCsv(currentCsvPath());
+            loadFromCsv();
         }
         doFlush(currentCsvPath());
     }
@@ -214,6 +245,34 @@ public class MatchCountTools {
             dirtyUids.clear();
         } catch (IOException e) {
             LOGGER.error("move match CSV failed", e);
+        }
+
+        flushToSqlite(path, records);
+    }
+
+    private static void flushToSqlite(String csvPath, List<MatchRecord> records) {
+        String filename = new File(csvPath).getName();
+        String[] info = DanmujiMigration.parseRoomAnchorStr(filename);
+        if (info == null) return;
+        long roomId = Long.parseLong(info[0]);
+        String anchorName = info[1];
+
+        String sql = "INSERT OR REPLACE INTO match_summary(room_id,anchor_name,matched_uid,matched_name,score,count,latest_match_time) VALUES (?,?,?,?,?,?,?)";
+        try (Connection c = DanmujiDatabase.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            for (MatchRecord r : records) {
+                ps.setLong(1, roomId);
+                ps.setString(2, anchorName);
+                ps.setLong(3, r.matchedUid);
+                ps.setString(4, r.matchedName != null ? r.matchedName : "");
+                ps.setInt(5, r.score);
+                ps.setInt(6, r.count);
+                ps.setLong(7, r.latestMatchTime);
+                ps.addBatch();
+            }
+            ps.executeBatch();
+        } catch (Exception e) {
+            LOGGER.error("flush match to SQLite failed", e);
         }
     }
 
