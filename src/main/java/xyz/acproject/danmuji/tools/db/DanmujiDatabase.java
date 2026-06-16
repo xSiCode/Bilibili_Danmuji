@@ -545,12 +545,21 @@ public class DanmujiDatabase {
                     "  vmid          INTEGER NOT NULL," +
                     "  response_body TEXT NOT NULL," +
                     "  created_at    INTEGER NOT NULL," +
-                    "  ttl_seconds   INTEGER NOT NULL DEFAULT 2592000" +
+                    "  hit_count     INTEGER NOT NULL DEFAULT 1" +
                     ")"
                 );
                 stmt.execute("CREATE INDEX IF NOT EXISTS idx_api_cache_type ON api_cache(api_type)");
                 stmt.execute("CREATE INDEX IF NOT EXISTS idx_api_cache_vmid ON api_cache(vmid)");
-                stmt.execute("CREATE INDEX IF NOT EXISTS idx_api_cache_expire ON api_cache(created_at, ttl_seconds)");
+                stmt.execute("CREATE INDEX IF NOT EXISTS idx_api_cache_evict ON api_cache(hit_count, created_at)");
+
+                // 兼容旧表：如果 api_cache 缺少 hit_count 列则补齐
+                try {
+                    stmt.execute("ALTER TABLE api_cache ADD COLUMN hit_count INTEGER NOT NULL DEFAULT 1");
+                    LOGGER.info("api_cache 表已补齐 hit_count 列");
+                } catch (Exception e) {
+                    // 列已存在时 SQLite 会抛错；表不存在时也会失败
+                    LOGGER.debug("api_cache hit_count 列迁移跳过: {}", e.getMessage());
+                }
 
                 LOGGER.info("DanmujiDatabase all tables and indexes created at: {}", dbPath);
 

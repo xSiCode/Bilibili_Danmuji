@@ -7,16 +7,16 @@ import xyz.acproject.danmuji.tools.db.DanmujiDatabase;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * SQLite 持久化 API 响应缓存管理器。
  * 为 processFollowings 的 5 个 HTTP 请求（勋章墙、用户卡片、关注列表双页、用户动态）
  * 提供基于 SQLite 的缓存，key 为 vmid + API 类型。
- * 所有 API 统一 30 天 TTL，过期自动清理。
+ * <p>
+ * 清理策略：无 TTL，仅通过条数阈值 + 命中次数控制。
+ * 超过阈值时优先删除 hit_count=1 的记录（即从未再次被查询到的观众数据）。
  *
  * @author xsicode
  */
@@ -24,41 +24,14 @@ public class SqliteApiCacheManager {
 
     private static final Logger LOGGER = LogManager.getLogger(SqliteApiCacheManager.class);
 
-    /** 默认 TTL：30 天（秒） */
-    public static final int DEFAULT_TTL_SECONDS = 2592000;
-
-    /** 缓存条目上限，超过则触发强制清理 */
-    private static final int MAX_CACHE_ENTRIES = 200_000;
-
-    /** 定期清理间隔（分钟） */
-    private static final int CLEANUP_INTERVAL_MINUTES = 30;
+    /** 缓存条目上限，超过则淘汰 hit_count=1 的低频记录 */
+    private static final int MAX_CACHE_ENTRIES = 1_000_000;
 
     /** 缓存命中统计 */
     private static final AtomicLong hitCount = new AtomicLong(0);
 
     /** 缓存未命中统计 */
     private static final AtomicLong missCount = new AtomicLong(0);
-
-    /** 定期清理调度器 */
-    private static final ScheduledExecutorService cleanupScheduler =
-            Executors.newSingleThreadScheduledExecutor(r -> {
-                Thread t = new Thread(r, "sqlite-cache-cleanup");
-                t.setDaemon(true);
-                return t;
-            });
-
-    static {
-        cleanupScheduler.scheduleWithFixedDelay(
-                SqliteApiCacheManager::cleanupExpired,
-                CLEANUP_INTERVAL_MINUTES,
-                CLEANUP_INTERVAL_MINUTES,
-                TimeUnit.MINUTES
-        );
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            cleanupScheduler.shutdown();
-            cleanupExpired();
-        }, "sqlite-cache-shutdown"));
-    }
 
     private SqliteApiCacheManager() {
         // 工具类，禁止实例化
@@ -96,7 +69,6 @@ public class SqliteApiCacheManager {
      */
     private static long vmidFromKey(String cacheKey) {
         if (cacheKey == null) return 0;
-        // 格式：api_type:vmid 或 api_type:vmid:pn
         String[] parts = cacheKey.split(":");
         if (parts.length >= 2) {
             try {
@@ -111,8 +83,7 @@ public class SqliteApiCacheManager {
     // ==================== 缓存操作 ====================
 
     /**
-     * 从 SQLite 获取缓存数据。
-     * 如果条目不存在或已过期，返回 null。
+     * 从 SQLite 获取缓存数据（无 TTL，只要存在即命中）。
      *
      * @param cacheKey 缓存键
      * @return 缓存的响应体 JSON 字符串，未命中返回 null
@@ -120,27 +91,21 @@ public class SqliteApiCacheManager {
     public static String get(String cacheKey) {
         if (cacheKey == null) return null;
 
-        long nowSec = System.currentTimeMillis() / 1000;
-        String sql = "SELECT response_body, created_at, ttl_seconds FROM api_cache WHERE cache_key = ?";
+        String sql = "SELECT response_body FROM api_cache WHERE cache_key = ?";
 
         try (Connection c = DanmujiDatabase.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, cacheKey);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    long createdAt = rs.getLong("created_at");
-                    int ttl = rs.getInt("ttl_seconds");
-                    if (nowSec < createdAt + ttl) {
-                        // 未过期，命中
-                        hitCount.incrementAndGet();
-                        if (hitCount.get() % 100 == 0) {
-                            LOGGER.debug("SqliteApiCache 命中: {} (总计命中 {})", cacheKey, hitCount.get());
-                        }
-                        return rs.getString("response_body");
+                    hitCount.incrementAndGet();
+                    if (hitCount.get() % 100 == 0) {
+                        LOGGER.debug("SqliteApiCache 命中: {} (总计命中 {})", cacheKey, hitCount.get());
                     }
-                    // 已过期，删除并返回 null
-                    LOGGER.debug("SqliteApiCache 过期: {}", cacheKey);
-                    deleteExpired(cacheKey);
+                    // 异步递增 hit_count，不阻塞返回
+                    final String key = cacheKey;
+                    CompletableFuture.runAsync(() -> incrementHitCount(key));
+                    return rs.getString("response_body");
                 }
             }
         } catch (Exception e) {
@@ -156,28 +121,23 @@ public class SqliteApiCacheManager {
      *
      * @param cacheKey     缓存键
      * @param responseBody HTTP 响应体 JSON 字符串
-     * @param ttlSeconds   有效时长（秒）
      */
-    public static void put(String cacheKey, String responseBody, int ttlSeconds) {
+    public static void put(String cacheKey, String responseBody) {
         if (cacheKey == null || responseBody == null) return;
 
-        // 上限控制
+        // 上限控制：超过阈值时淘汰 hit_count=1 的记录（从未再次查询的观众）
         long count = getTotalCount();
         if (count >= MAX_CACHE_ENTRIES) {
-            LOGGER.warn("SqliteApiCache 条目数已达上限 {}，触发强制清理", count);
-            cleanupExpired();
-            long afterClean = getTotalCount();
-            if (afterClean >= MAX_CACHE_ENTRIES) {
-                LOGGER.warn("SqliteApiCache 清理后仍超限 ({}), 跳过写入: {}", afterClean, cacheKey);
-                return;
-            }
+            int evicted = evictHitCountOne();
+            LOGGER.info("SqliteApiCache 容量 {} >= {}，淘汰 hit_count=1 记录: {} 条，剩余 {}",
+                    count, MAX_CACHE_ENTRIES, evicted, getTotalCount());
         }
 
         long nowSec = System.currentTimeMillis() / 1000;
         String apiType = apiTypeFromKey(cacheKey);
         long vmid = vmidFromKey(cacheKey);
 
-        String sql = "INSERT OR REPLACE INTO api_cache(cache_key, api_type, vmid, response_body, created_at, ttl_seconds) VALUES (?,?,?,?,?,?)";
+        String sql = "INSERT OR REPLACE INTO api_cache(cache_key, api_type, vmid, response_body, created_at, hit_count) VALUES (?,?,?,?,?,1)";
 
         try (Connection c = DanmujiDatabase.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
@@ -186,7 +146,6 @@ public class SqliteApiCacheManager {
             ps.setLong(3, vmid);
             ps.setString(4, responseBody);
             ps.setLong(5, nowSec);
-            ps.setInt(6, ttlSeconds);
             ps.executeUpdate();
             LOGGER.debug("SqliteApiCache 写入: {} ({} bytes)", cacheKey, responseBody.length());
         } catch (Exception e) {
@@ -194,38 +153,45 @@ public class SqliteApiCacheManager {
         }
     }
 
-    /**
-     * 存入缓存（使用默认 30 天 TTL）。
-     */
-    public static void put(String cacheKey, String responseBody) {
-        put(cacheKey, responseBody, DEFAULT_TTL_SECONDS);
-    }
-
     // ==================== 清理操作 ====================
 
     /**
-     * 清理所有过期条目。
-     * 由定时调度器和 shutdown hook 调用。
+     * 异步递增指定 key 的命中次数（fire-and-forget）。
      */
-    public static void cleanupExpired() {
-        long nowSec = System.currentTimeMillis() / 1000;
-        String sql = "DELETE FROM api_cache WHERE created_at + ttl_seconds < ?";
-
+    private static void incrementHitCount(String cacheKey) {
+        String sql = "UPDATE api_cache SET hit_count = hit_count + 1 WHERE cache_key = ?";
         try (Connection c = DanmujiDatabase.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setLong(1, nowSec);
+            ps.setString(1, cacheKey);
+            ps.executeUpdate();
+        } catch (Exception e) {
+            LOGGER.debug("SqliteApiCache hit_count 更新失败: {}", cacheKey, e);
+        }
+    }
+
+    /**
+     * 淘汰所有 hit_count=1 的记录（即写入后再未被查询过的观众数据）。
+     * 高频观众的 hit_count 会因反复命中而增长，不受影响。
+     *
+     * @return 实际删除的记录数
+     */
+    public static int evictHitCountOne() {
+        String sql = "DELETE FROM api_cache WHERE hit_count = 1";
+        try (Connection c = DanmujiDatabase.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
             int deleted = ps.executeUpdate();
             if (deleted > 0) {
-                LOGGER.info("SqliteApiCache 过期清理完成，删除了 {} 条过期记录", deleted);
+                LOGGER.info("SqliteApiCache 淘汰 hit_count=1 记录: {} 条，剩余 {}", deleted, getTotalCount());
             }
+            return deleted;
         } catch (Exception e) {
-            LOGGER.error("SqliteApiCache 过期清理失败", e);
+            LOGGER.error("SqliteApiCache 淘汰 hit_count=1 记录失败", e);
+            return 0;
         }
     }
 
     /**
      * 按前缀删除缓存条目（可用于手动清除某类 API 的全部缓存）。
-     * 注意：SQLite LIKE 走全表扫描，大量数据时较慢，仅用于手动操作。
      */
     public static void invalidateByPrefix(String keyPrefix) {
         if (keyPrefix == null) return;
@@ -239,20 +205,6 @@ public class SqliteApiCacheManager {
             LOGGER.info("SqliteApiCache 按前缀清除: '{}' -> {} 条", keyPrefix, deleted);
         } catch (Exception e) {
             LOGGER.error("SqliteApiCache 按前缀清除失败: {}", keyPrefix, e);
-        }
-    }
-
-    /**
-     * 删除单条过期记录。
-     */
-    private static void deleteExpired(String cacheKey) {
-        String sql = "DELETE FROM api_cache WHERE cache_key = ?";
-        try (Connection c = DanmujiDatabase.getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setString(1, cacheKey);
-            ps.executeUpdate();
-        } catch (Exception e) {
-            LOGGER.debug("SqliteApiCache 删除过期条目失败: {}", cacheKey, e);
         }
     }
 
@@ -284,6 +236,19 @@ public class SqliteApiCacheManager {
         return 0;
     }
 
+    public static long getHitCountOne() {
+        try (Connection c = DanmujiDatabase.getConnection();
+             PreparedStatement ps = c.prepareStatement("SELECT COUNT(*) FROM api_cache WHERE hit_count = 1");
+             ResultSet rs = ps.executeQuery()) {
+            if (rs.next()) {
+                return rs.getLong(1);
+            }
+        } catch (Exception e) {
+            return 0;
+        }
+        return 0;
+    }
+
     public static long getHitCount() {
         return hitCount.get();
     }
@@ -306,7 +271,7 @@ public class SqliteApiCacheManager {
 
     @Override
     public String toString() {
-        return String.format("SqliteApiCache[total=%d, hits=%d, misses=%d, rate=%.2f%%]",
-                getTotalCount(), hitCount.get(), missCount.get(), getHitRate() * 100);
+        return String.format("SqliteApiCache[total=%d, hit_count_1=%d, hits=%d, misses=%d, rate=%.2f%%]",
+                getTotalCount(), getHitCountOne(), hitCount.get(), missCount.get(), getHitRate() * 100);
     }
 }
