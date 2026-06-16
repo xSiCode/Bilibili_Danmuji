@@ -503,9 +503,22 @@ public class HttpRoomData {
     }
 
     /**
-     * 异步获取关注列表 — 集成Cookie池轮换
+     * 异步获取关注列表 — 集成SQLite缓存 + Cookie池轮换。
+     * 缓存命中直接返回；未命中则使用Cookie池中的可用Cookie发起请求。
      */
     private static CompletableFuture<JSONObject> asyncHttpGetFollowings(long vmid, int page, int pageSize) {
+        // 1. 检查 SQLite 缓存
+        String cacheKey = SqliteApiCacheManager.followingsKey(vmid, page);
+        String cached = SqliteApiCacheManager.get(cacheKey);
+        if (cached != null) {
+            try {
+                JSONObject jo = JSONObject.parseObject(cached);
+                if (jo != null) return CompletableFuture.completedFuture(jo);
+            } catch (Exception e) {
+                LOGGER.debug("关注列表缓存JSON解析失败 vmid={} page={}", vmid, page, e);
+            }
+        }
+
         String poolCookie = cookiePool.getNextCookie();
         if (poolCookie == null && StringUtils.isBlank(PublicDataConf.USERCOOKIE)) {
             poolCookie = PublicDataConf.USERCOOKIE;
@@ -526,8 +539,15 @@ public class HttpRoomData {
                 .thenApply(body -> {
                     if (body != null) {
                         JSONObject json = JSONObject.parseObject(body);
-                        if (json != null && json.getShort("code") != 0) {
-                            cookiePool.markRateLimited(usedCookie);
+                        if (json != null) {
+                            int code = json.getIntValue("code");
+                            if (code != 0) {
+                                cookiePool.markRateLimited(usedCookie);
+                            }
+                            // 缓存成功和普通错误响应，但不缓存限流响应（-412/-509 为临时性错误）
+                            if (code != -412 && code != -509) {
+                                SqliteApiCacheManager.put(cacheKey, body);
+                            }
                         }
                         return json;
                     }
@@ -536,15 +556,25 @@ public class HttpRoomData {
     }
 
     /**
-     * 异步获取用户动态 — 集成缓存 + 令牌桶限流 + Cookie池轮换。
-     * 缓存命中直接返回；否则获取令牌后使用Cookie池中的可用Cookie发起请求。
+     * 异步获取用户动态 — 双层缓存(L1内存 + L2 SQLite) + 令牌桶限流 + Cookie池轮换。
+     * L1 内存缓存命中直接返回；未命中则查 L2 SQLite；仍未命中则获取令牌后发起请求。
      */
     private static CompletableFuture<String> asyncHttpGetUserDynamic(long mid) {
-        // 1. 检查缓存
-        String cacheKey = ApiCacheManager.dynamicKey(mid);
-        String cached = apiCache.get(cacheKey);
+        String memCacheKey = ApiCacheManager.dynamicKey(mid);
+        String sqliteCacheKey = SqliteApiCacheManager.dynamicKey(mid);
+
+        // 1. L1 内存缓存
+        String cached = apiCache.get(memCacheKey);
         if (cached != null) {
             return CompletableFuture.completedFuture(cached);
+        }
+
+        // 2. L2 SQLite 缓存（降级）
+        String sqliteCached = SqliteApiCacheManager.get(sqliteCacheKey);
+        if (sqliteCached != null) {
+            // 回填 L1 内存缓存
+            apiCache.put(memCacheKey, sqliteCached);
+            return CompletableFuture.completedFuture(sqliteCached);
         }
 
         // 2. 全局熔断检查（所有Cookie耗尽，跳过请求）
@@ -583,16 +613,21 @@ public class HttpRoomData {
                             JSONObject respJson = JSONObject.parseObject(result);
                             Integer code = respJson != null ? respJson.getInteger("code") : null;
                             if (code != null && code == 0) {
-                                // 正常响应，缓存结果
-                                apiCache.put(cacheKey, result);
+                                // 正常响应，存入 L1 内存缓存
+                                apiCache.put(memCacheKey, result);
                             } else {
                                 // 异常响应，标记该Cookie被限流
                                 cookiePool.markRateLimited(usedCookie);
                                 LOGGER.warn("动态API异常响应 mid={}，code={}，已标记Cookie冷却", mid, code);
                             }
+                            // 缓存成功和普通错误响应到 L2，但不缓存限流响应（-412/-509 为临时性错误）
+                            if (code == null || (code != -412 && code != -509)) {
+                                SqliteApiCacheManager.put(sqliteCacheKey, result);
+                            }
                         } catch (Exception e) {
-                            // JSON 解析失败，视为异常响应
+                            // JSON 解析失败，视为异常响应（非限流，仍缓存避免重复请求）
                             cookiePool.markRateLimited(usedCookie);
+                            SqliteApiCacheManager.put(sqliteCacheKey, result);
                             LOGGER.warn("动态API JSON解析失败 mid={}，已标记Cookie冷却", mid);
                         }
                     }
@@ -601,9 +636,22 @@ public class HttpRoomData {
     }
 
     /**
-     * 异步获取粉丝勋章墙 — 集成Cookie池轮换
+     * 异步获取粉丝勋章墙 — 集成SQLite缓存 + Cookie池轮换。
+     * 缓存命中直接返回；未命中则使用Cookie池中的可用Cookie发起请求。
      */
     private static CompletableFuture<JSONObject> asyncHttpGetMedalWall(long targetId) {
+        // 1. 检查 SQLite 缓存
+        String cacheKey = SqliteApiCacheManager.medalWallKey(targetId);
+        String cached = SqliteApiCacheManager.get(cacheKey);
+        if (cached != null) {
+            try {
+                JSONObject jo = JSONObject.parseObject(cached);
+                if (jo != null) return CompletableFuture.completedFuture(jo);
+            } catch (Exception e) {
+                LOGGER.debug("勋章墙缓存JSON解析失败 vmid={}", targetId, e);
+            }
+        }
+
         String poolCookie = cookiePool.getNextCookie();
         if (poolCookie == null && StringUtils.isBlank(PublicDataConf.USERCOOKIE)) {
             poolCookie = PublicDataConf.USERCOOKIE;
@@ -622,8 +670,15 @@ public class HttpRoomData {
                 .thenApply(body -> {
                     if (body != null) {
                         JSONObject json = JSONObject.parseObject(body);
-                        if (json != null && json.getIntValue("code") != 0) {
-                            cookiePool.markRateLimited(usedCookie);
+                        if (json != null) {
+                            int code = json.getIntValue("code");
+                            if (code != 0) {
+                                cookiePool.markRateLimited(usedCookie);
+                            }
+                            // 缓存成功和普通错误响应，但不缓存限流响应（-412/-509 为临时性错误）
+                            if (code != -412 && code != -509) {
+                                SqliteApiCacheManager.put(cacheKey, body);
+                            }
                         }
                         return json;
                     }
@@ -632,19 +687,36 @@ public class HttpRoomData {
     }
 
     /**
-     * 异步获取用户卡片信息 — 集成缓存 + 令牌桶限流 + Cookie池轮换。
-     * 缓存命中直接返回；否则获取令牌后使用Cookie池中的可用Cookie发起请求。
+     * 异步获取用户卡片信息 — 双层缓存(L1内存 + L2 SQLite) + 令牌桶限流 + Cookie池轮换。
+     * L1 内存缓存命中直接返回；未命中则查 L2 SQLite；仍未命中则获取令牌发起请求。
      */
     private static CompletableFuture<JSONObject> asyncHttpGetUserCard(long mid) {
-        // 1. 检查缓存
-        String cacheKey = ApiCacheManager.cardKey(mid);
-        String cached = apiCache.get(cacheKey);
+        String memCacheKey = ApiCacheManager.cardKey(mid);
+        String sqliteCacheKey = SqliteApiCacheManager.cardKey(mid);
+
+        // 1. L1 内存缓存
+        String cached = apiCache.get(memCacheKey);
         if (cached != null) {
             try {
                 return CompletableFuture.completedFuture(JSONObject.parseObject(cached));
             } catch (Exception e) {
                 LOGGER.warn("卡片缓存JSON解析失败 mid={}", mid, e);
                 apiCache.clearAll(); // 异常则清除所有缓存避免持续出错
+            }
+        }
+
+        // 2. L2 SQLite 缓存（降级）
+        String sqliteCached = SqliteApiCacheManager.get(sqliteCacheKey);
+        if (sqliteCached != null) {
+            try {
+                JSONObject jo = JSONObject.parseObject(sqliteCached);
+                if (jo != null) {
+                    // 回填 L1 内存缓存
+                    apiCache.put(memCacheKey, sqliteCached);
+                    return CompletableFuture.completedFuture(jo);
+                }
+            } catch (Exception e) {
+                LOGGER.debug("卡片SQLite缓存JSON解析失败 mid={}", mid, e);
             }
         }
 
@@ -681,14 +753,20 @@ public class HttpRoomData {
                 .thenApply(body -> {
                     if (body != null) {
                         JSONObject json = JSONObject.parseObject(body);
-                        if (json != null && json.getShort("code") == 0) {
-                            // 正常响应，缓存结果
-                            apiCache.put(cacheKey, body);
-                        } else {
-                            // 异常响应，标记该Cookie被限流
-                            cookiePool.markRateLimited(usedCookie);
-                            LOGGER.warn("卡片API异常响应 mid={} code={}，已标记Cookie冷却",
-                                    mid, json != null ? json.getShort("code") : -1);
+                        if (json != null) {
+                            short code = json.getShort("code");
+                            if (code == 0) {
+                                // 正常响应，存入 L1 内存缓存
+                                apiCache.put(memCacheKey, body);
+                            } else {
+                                // 异常响应，标记该Cookie被限流
+                                cookiePool.markRateLimited(usedCookie);
+                                LOGGER.warn("卡片API异常响应 mid={} code={}，已标记Cookie冷却", mid, code);
+                            }
+                            // 缓存成功和普通错误响应到 L2，但不缓存限流响应（-412/-509 为临时性错误）
+                            if (code != -412 && code != -509) {
+                                SqliteApiCacheManager.put(sqliteCacheKey, body);
+                            }
                         }
                         return json;
                     }

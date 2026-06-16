@@ -535,6 +535,23 @@ public class DanmujiDatabase {
                 stmt.execute("CREATE INDEX IF NOT EXISTS idx_like_record_room ON like_record(room_id)");
                 stmt.execute("CREATE INDEX IF NOT EXISTS idx_like_record_ts ON like_record(timestamp)");
 
+                // ========================
+                // 表24：API 响应缓存（processFollowings 的5个HTTP请求结果持久化）
+                // ========================
+                stmt.execute(
+                    "CREATE TABLE IF NOT EXISTS api_cache (" +
+                    "  cache_key     TEXT PRIMARY KEY," +
+                    "  api_type      TEXT NOT NULL," +
+                    "  vmid          INTEGER NOT NULL," +
+                    "  response_body TEXT NOT NULL," +
+                    "  created_at    INTEGER NOT NULL," +
+                    "  ttl_seconds   INTEGER NOT NULL DEFAULT 2592000" +
+                    ")"
+                );
+                stmt.execute("CREATE INDEX IF NOT EXISTS idx_api_cache_type ON api_cache(api_type)");
+                stmt.execute("CREATE INDEX IF NOT EXISTS idx_api_cache_vmid ON api_cache(vmid)");
+                stmt.execute("CREATE INDEX IF NOT EXISTS idx_api_cache_expire ON api_cache(created_at, ttl_seconds)");
+
                 LOGGER.info("DanmujiDatabase all tables and indexes created at: {}", dbPath);
 
                 // CSV → SQLite 一次性迁移已完成（2026-06-11），后续不再自动执行。
