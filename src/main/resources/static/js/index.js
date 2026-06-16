@@ -600,6 +600,14 @@ $(function () {
         let protocol = window.location.protocol;
         $(".connect-docket").val((protocol === 'http:' ? "ws://" : "wss://") + url_start + "/danmu/sub");
     });
+    // 页面加载时自动填充弹幕WebSocket地址（适配非localhost/IPv6访问）
+    $(function() {
+        var currentVal = $(".connect-docket").val();
+        if (!currentVal || currentVal.indexOf('localhost') !== -1) {
+            var protocol = window.location.protocol;
+            $(".connect-docket").val((protocol === 'http:' ? "ws://" : "wss://") + window.location.host + "/danmu/sub");
+        }
+    });
     $('body').click(function (e) {
         let target = $(e.target);
         if (!target.is('.danmu-child-li')) {
