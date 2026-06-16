@@ -1642,3 +1642,41 @@ div .link-popup-panel .popup-content-ctnr p {
 #sv-data-table th:nth-child(8), #sv-data-table td:nth-child(8) { width: 90px; }
 #sv-data-table th.sv-sort { cursor: pointer; user-select: none; }
 #sv-data-table th.sv-sort:hover { color: #0d6efd; }
+
+/* ========== Tap-to-expand truncated text (mobile friendly popup) ========== */
+.truncate-expandable { cursor: pointer; }
+.truncate-popup {
+    position: absolute;
+    z-index: 1060;
+    max-width: 90vw;
+    min-width: 120px;
+    padding: 10px 26px 10px 14px;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    font-size: 13px;
+    line-height: 1.5;
+    word-break: break-all;
+    white-space: normal;
+    pointer-events: auto;
+    animation: truncate-popup-in 0.15s ease-out;
+}
+@keyframes truncate-popup-in {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.truncate-popup .truncate-popup-close {
+    position: absolute;
+    top: 2px;
+    right: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    color: #999;
+    padding: 2px 4px;
+    user-select: none;
+}
+.truncate-popup .truncate-popup-close:hover {
+    color: #333;
+}

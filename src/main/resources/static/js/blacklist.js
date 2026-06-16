@@ -55,29 +55,29 @@ method.renderBlackWhiteTable = function(type, page) {
                         var e = r.rows[i];
                         var $tr = $("<tr>");
                         // name: 点击跳转用户空间
-                        var $nameTd = $("<td>").addClass("bw-col-name").attr("title", e.name || '');
+                        var $nameTd = $("<td>").addClass("bw-col-name truncate-expandable").attr("title", e.name || '');
                         if (e.name) {
                             $("<a>").attr("href", "https://space.bilibili.com/" + e.uid).attr("target", "_blank")
                                 .text(e.name).appendTo($nameTd);
                         }
                         $tr.append($nameTd);
-                        $tr.append($("<td>").addClass("bw-col-score").text(e.score));
-                        $tr.append($("<td>").addClass("bw-col-scoreType").text(e.scoreType || '').attr("title", e.scoreType || ''));
-                        $tr.append($("<td>").addClass("bw-col-count").text(e.count));
+                        $tr.append($("<td>").addClass("bw-col-score truncate-expandable").text(e.score));
+                        $tr.append($("<td>").addClass("bw-col-scoreType truncate-expandable").text(e.scoreType || '').attr("title", e.scoreType || ''));
+                        $tr.append($("<td>").addClass("bw-col-count truncate-expandable").text(e.count));
                         // roomId: 点击跳转直播间
-                        var $roomTd = $("<td>").addClass("bw-col-roomId");
+                        var $roomTd = $("<td>").addClass("bw-col-roomId truncate-expandable");
                         if (e.roomId && e.roomId > 0) {
                             $("<a>").attr("href", "https://live.bilibili.com/" + e.roomId).attr("target", "_blank")
                                 .text(e.roomId).appendTo($roomTd);
                         }
                         $tr.append($roomTd);
-                        $tr.append($("<td>").addClass("bw-col-updateTime").text(e.updateTime ? bwlistFmtTs(e.updateTime) : '').attr("title", e.updateTime ? bwlistFmtTs(e.updateTime) : ''));
+                        $tr.append($("<td>").addClass("bw-col-updateTime truncate-expandable").text(e.updateTime ? bwlistFmtTs(e.updateTime) : '').attr("title", e.updateTime ? bwlistFmtTs(e.updateTime) : ''));
                         var $delBtn = $("<button>").addClass("btn btn-sm btn-outline-danger bwlist-del-btn").attr("data-uid", e.uid).attr("data-type", type).attr("title", "从名单删除").text("删除");
                         var $moveLabel = type === 'black' ? '→白' : '→黑';
                         var $moveTitle = type === 'black' ? '移到白名单' : '移到黑名单';
                         var $moveBtnClass = type === 'black' ? 'btn-outline-success' : 'btn-outline-dark';
                         var $moveBtn = $("<button>").addClass("btn btn-sm " + $moveBtnClass + " bwlist-move-btn ms-1").attr("data-uid", e.uid).attr("data-type", type).attr("title", $moveTitle).text($moveLabel);
-                        $tr.append($("<td>").addClass("bw-col-action").append($delBtn).append($moveBtn));
+                        $tr.append($("<td>").addClass("bw-col-action truncate-expandable").append($delBtn).append($moveBtn));
                         $tbody.append($tr);
                     }
                     if (r.totalPages > 1) {

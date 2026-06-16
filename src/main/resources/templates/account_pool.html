@@ -397,10 +397,10 @@
                             '<tr class="' + rowClass + '">' +
                             '<td><img class="avatar-sm acc-avatar" data-face="' + escAttr(acc.face || '') + '" src="' + FALLBACK_AVATAR + '" alt=""></td>' +
                             '<td>' + typeBadge + '</td>' +
-                            '<td>' + (acc.uid || '-') + '</td>' +
-                            '<td>' + escHtml(acc.name || '-') + '</td>' +
+                            '<td class="truncate-expandable">' + (acc.uid || '-') + '</td>' +
+                            '<td class="truncate-expandable">' + escHtml(acc.name || '-') + '</td>' +
                             '<td>' + lvHtml + '</td>' +
-                            '<td><span class="cookie-preview" title="' + escAttr(acc.cookiePreview || '') + '">' + escHtml(acc.cookiePreview || '-') + '</span></td>' +
+                            '<td><span class="cookie-preview truncate-expandable inline-expand" title="' + escAttr(acc.cookiePreview || '') + '">' + escHtml(acc.cookiePreview || '-') + '</span></td>' +
                             '<td><span class="' + statusClass + ' status-badge">' + acc.status + '</span>' +
                                 (acc.cooldownRemaining > 0 ? ' <small class="text-muted">' + formatCooldown(acc.cooldownRemaining) + '</small>' : '') + '</td>' +
                             '<td><small>' + (acc.useCount || 0) + ' / ' + (acc.rateLimitedCount || 0) + '</small></td>' +

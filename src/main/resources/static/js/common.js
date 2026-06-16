@@ -2980,7 +2980,7 @@ const method = {
                 ? '<a href="https://space.bilibili.com/' + user.mid + '" target="_blank" title="查看用户主页">' + (user.uname || '') + '</a>'
                 : (user.uname || '');
             $tr.append($("<td>").html(nameHtml));
-            $tr.append($("<td>").text(user.sign || '').css({'max-width':'200px','overflow':'hidden','text-overflow':'ellipsis','white-space':'nowrap'}));
+            $tr.append($("<td>").text(user.sign || '').addClass('truncate-expandable').css({'max-width':'200px','overflow':'hidden','text-overflow':'ellipsis','white-space':'nowrap'}));
             var timeStr = user.mtime ? new Date(user.mtime * 1000).toLocaleString() : '';
             $tr.append($("<td>").text(timeStr));
             $tbody.append($tr);
@@ -4950,9 +4950,9 @@ const method = {
             if (i < records.length) {
                 let r = records[i];
                 // 时间
-                $tr.append($('<td class="sv-td"></td>').text(r.time || ''));
+                $tr.append($('<td class="sv-td truncate-expandable"></td>').text(r.time || ''));
                 // 头像 - hover 显示原图，点击跳转主页
-                var $avatarTd = $('<td class="sv-td"></td>');
+                var $avatarTd = $('<td class="sv-td truncate-expandable"></td>');
                 var $avatar = $('<img src="' + (r.face || '') + '" style="width:32px;height:32px;border-radius:50%;cursor:pointer;" data-full-src="' + (r.face || '') + '">');
                 $avatar.on('mouseenter', function () {
                     var fullSrc = $(this).attr('data-full-src');
@@ -4972,17 +4972,17 @@ const method = {
                 $avatarTd.append($avatar);
                 $tr.append($avatarTd);
                 // 观众名
-                $tr.append($('<td class="sv-td"></td>').text(r.name || ''));
+                $tr.append($('<td class="sv-td truncate-expandable"></td>').text(r.name || ''));
                 // 签名
-                $tr.append($('<td class="sv-td"></td>').text(r.scoreTypes || '').attr('title', r.scoreTypes || ''));
+                $tr.append($('<td class="sv-td truncate-expandable"></td>').text(r.scoreTypes || '').attr('title', r.scoreTypes || ''));
                 // 打分
-                $tr.append($('<td class="sv-td"></td>').text(r.score != null ? r.score : ''));
+                $tr.append($('<td class="sv-td truncate-expandable"></td>').text(r.score != null ? r.score : ''));
                 // 次数
-                $tr.append($('<td class="sv-td"></td>').text(r.count || 0));
+                $tr.append($('<td class="sv-td truncate-expandable"></td>').text(r.count || 0));
                 // 场次
-                $tr.append($('<td class="sv-td"></td>').text(r.session || 0));
+                $tr.append($('<td class="sv-td truncate-expandable"></td>').text(r.session || 0));
                 // 拉黑
-                var $blockTd = $('<td class="sv-td"></td>');
+                var $blockTd = $('<td class="sv-td truncate-expandable"></td>');
                 var isBlocked = r.blocked === true || r.blocked === 'true' || r.blocked === 1 || r.blocked === '1';
                 var blockLabel = isBlocked ? '解除拉黑' : '拉黑';
                 var $blockBtn = $('<button class="btn btn-sm ' + (isBlocked ? 'btn-warning' : 'btn-danger') + '"></button>')
@@ -5599,7 +5599,7 @@ method.renderWatchedRoomTable = function() {
         var onlineHtml = (room.online > 0) ? room.online : '<span style="color:#ccc;">-</span>';
         var row = '<tr' + (isCurrent ? ' class="table-active"' : '') + '>' +
             '<td>' + anchorHtml + '</td>' +
-            '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + roomNameHtml + '</td>' +
+            '<td class="truncate-expandable" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + roomNameHtml + '</td>' +
             '<td>' + areaHtml + '</td>' +
             '<td style="width:80px;text-align:right;">' + onlineHtml + '</td>' +
             '<td style="width:80px;text-align:right;">' + statusHtml + '</td>' +
@@ -6091,6 +6091,96 @@ $(function() {
             else { kwData.sortCol = 'score'; kwData.sortAsc = true; }
             kwData.page = 1;
             method.kwRenderTable();
+        });
+    });
+
+    // ==== Tap-to-expand truncated text via floating popup (mobile friendly) ====
+    $(function() {
+        var $popup = null;
+        var _activeEl = null;
+
+        function _hidePopup() {
+            if ($popup) { $popup.remove(); $popup = null; }
+            _activeEl = null;
+        }
+
+        function _showPopup($el) {
+            _hidePopup();
+            var text = ($el.attr('title') || $el.text() || '').trim();
+            if (!text) return;
+
+            $popup = $('<div class="truncate-popup">')
+                .append('<span class="truncate-popup-close">&times;</span>')
+                .append($('<span>').text(text))
+                .appendTo('body');
+
+            $popup.on('click', '.truncate-popup-close', function(e) {
+                e.stopPropagation();
+                _hidePopup();
+            });
+
+            // Position near the element
+            var offset = $el.offset();
+            var elH = $el.outerHeight();
+            var elW = $el.outerWidth();
+            var popupW = $popup.outerWidth();
+            var popupH = $popup.outerHeight();
+            var winW = $(window).width();
+            var winH = $(window).height();
+            var scrollTop = $(window).scrollTop();
+            var scrollLeft = $(window).scrollLeft();
+
+            // Horizontal: align left edge with element, clamp to viewport
+            var left = Math.min(offset.left, winW + scrollLeft - popupW - 10);
+            left = Math.max(left, scrollLeft + 10);
+
+            // Vertical: show below if room, else above
+            var top;
+            var spaceBelow = winH + scrollTop - (offset.top + elH);
+            if (spaceBelow >= popupH + 8 || spaceBelow >= offset.top - scrollTop) {
+                top = offset.top + elH + 4;
+            } else {
+                top = offset.top - popupH - 4;
+            }
+
+            $popup.css({ left: left + 'px', top: top + 'px' });
+            _activeEl = $el[0];
+        }
+
+        $(document).on('click', '.truncate-expandable', function(e) {
+            var $el = $(this);
+
+            // If clicking the same element that already has popup, dismiss
+            if (_activeEl === $el[0] && $popup) {
+                _hidePopup();
+                return;
+            }
+
+            // Only show popup if text is actually truncated
+            if (this.scrollWidth > this.clientWidth) {
+                _showPopup($el);
+            } else if ($popup) {
+                _hidePopup();
+            }
+
+            e.stopPropagation();
+        });
+
+        // Reposition on scroll/resize while popup is visible
+        $(window).on('scroll.truncatePopup resize.truncatePopup', function() {
+            if ($popup && _activeEl) {
+                var $el = $(_activeEl);
+                if (!$el.length) { _hidePopup(); return; }
+                var offset = $el.offset();
+                var elH = $el.outerHeight();
+                var popupW = $popup.outerWidth();
+                var winW = $(window).width();
+                var scrollLeft = $(window).scrollLeft();
+                var left = Math.min(offset.left, winW + scrollLeft - popupW - 10);
+                left = Math.max(left, scrollLeft + 10);
+                var top = offset.top + elH + 4;
+                $popup.css({ left: left + 'px', top: top + 'px' });
+            }
         });
     });
 })();

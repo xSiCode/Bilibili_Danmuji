@@ -27,7 +27,7 @@
                                     <div class="row g-2 align-items-center">
                                         <div class="col-auto"><img th:src="${ROOM_INFO.cover}" alt="封面" style="width:72px;height:45px;object-fit:cover;border-radius:4px;" onerror="this.style.display='none'"></div>
                                         <div class="col" style="min-width:0;">
-                                            <div style="font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" th:text="${ROOM_INFO.title}"></div>
+                                            <div class="truncate-expandable" style="font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" th:text="${ROOM_INFO.title}" th:attr="title=${ROOM_INFO.title}"></div>
                                             <div style="font-size:12px;color:#888;">
                                                 主播：<span th:text="${ANAME}"></span><span style="margin:0 8px;">|</span>房间：<a class="window-open-x" th:text="${ROOMID}" th:href="@{'https://live.bilibili.com/'+${ROOMID}}" target="_blank" style="text-decoration:none;"></a>
                                                 <span style="margin:0 8px;" th:if="${ROOM_INFO.area_name} != null">|</span><span th:if="${ROOM_INFO.area_name} != null" th:text="${ROOM_INFO.parent_area_name} + '·' + ${ROOM_INFO.area_name}"></span>

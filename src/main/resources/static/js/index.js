@@ -2938,7 +2938,7 @@ const method = {
                 ? '<a href="https://space.bilibili.com/' + user.mid + '" target="_blank" title="查看用户主页">' + (user.uname || '') + '</a>'
                 : (user.uname || '');
             $tr.append($("<td>").html(nameHtml));
-            $tr.append($("<td>").text(user.sign || '').css({'max-width':'200px','overflow':'hidden','text-overflow':'ellipsis','white-space':'nowrap'}));
+            $tr.append($("<td>").text(user.sign || '').addClass('truncate-expandable').css({'max-width':'200px','overflow':'hidden','text-overflow':'ellipsis','white-space':'nowrap'}));
             var timeStr = user.mtime ? new Date(user.mtime * 1000).toLocaleString() : '';
             $tr.append($("<td>").text(timeStr));
             $tbody.append($tr);
@@ -4858,9 +4858,9 @@ const method = {
             if (i < records.length) {
                 let r = records[i];
                 // 时间
-                $tr.append($('<td class="sv-td"></td>').text(r.time || ''));
+                $tr.append($('<td class="sv-td truncate-expandable"></td>').text(r.time || ''));
                 // 头像 - hover 显示原图，点击跳转主页
-                var $avatarTd = $('<td class="sv-td"></td>');
+                var $avatarTd = $('<td class="sv-td truncate-expandable"></td>');
                 // 优先加载本地头像，失败时回退 Bilibili CDN
                 var $avatar = $('<img src="' + (r.face || '') + '" style="width:32px;height:32px;border-radius:50%;cursor:pointer;" data-full-src="' + (r.face || '') + '">');
                 $avatar.on('mouseenter', function () {
@@ -4881,17 +4881,17 @@ const method = {
                 $avatarTd.append($avatar);
                 $tr.append($avatarTd);
                 // 观众名
-                $tr.append($('<td class="sv-td"></td>').text(r.name || ''));
+                $tr.append($('<td class="sv-td truncate-expandable"></td>').text(r.name || ''));
                 // 签名
-                $tr.append($('<td class="sv-td"></td>').text(r.scoreTypes || '').attr('title', r.scoreTypes || ''));
+                $tr.append($('<td class="sv-td truncate-expandable"></td>').text(r.scoreTypes || '').attr('title', r.scoreTypes || ''));
                 // 打分
-                $tr.append($('<td class="sv-td"></td>').text(r.score != null ? r.score : ''));
+                $tr.append($('<td class="sv-td truncate-expandable"></td>').text(r.score != null ? r.score : ''));
                 // 次数
-                $tr.append($('<td class="sv-td"></td>').text(r.count || 0));
+                $tr.append($('<td class="sv-td truncate-expandable"></td>').text(r.count || 0));
                 // 场次
-                $tr.append($('<td class="sv-td"></td>').text(r.session || 0));
+                $tr.append($('<td class="sv-td truncate-expandable"></td>').text(r.session || 0));
                 // 拉黑
-                var $blockTd = $('<td class="sv-td"></td>');
+                var $blockTd = $('<td class="sv-td truncate-expandable"></td>');
                 var isBlocked = r.blocked === true || r.blocked === 'true' || r.blocked === 1 || r.blocked === '1';
                 var blockLabel = isBlocked ? '解除拉黑' : '拉黑';
                 var $blockBtn = $('<button class="btn btn-sm ' + (isBlocked ? 'btn-warning' : 'btn-danger') + '"></button>')

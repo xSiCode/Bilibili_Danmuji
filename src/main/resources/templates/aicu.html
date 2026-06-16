@@ -629,12 +629,12 @@
 
                 var danmuList = room.danmu || [];
                 if (danmuList.length === 0) {
-                    tbody.append('<tr><td>-</td><td class="aicu-empty">无弹幕记录</td><td><span class="aicu-room-name">' + roomName + '</span> ' + roomLink + '</td><td>' + upName + '</td></tr>');
+                    tbody.append('<tr><td>-</td><td class="aicu-empty">无弹幕记录</td><td><span class="aicu-room-name truncate-expandable inline-expand" title="' + roomName + '">' + roomName + '</span> ' + roomLink + '</td><td>' + upName + '</td></tr>');
                 } else {
                     danmuList.forEach(function(dm, idx){
                         var time = dm.ts ? formatTime(dm.ts) : '-';
                         var text = escapeHtml(dm.text || '');
-                        tbody.append('<tr><td>' + time + '</td><td>' + text + '</td><td><span class="aicu-room-name" title="' + roomName + '">' + roomName + '</span> ' + roomLink + '</td><td>' + upName + '</td></tr>');
+                        tbody.append('<tr><td>' + time + '</td><td>' + text + '</td><td><span class="aicu-room-name truncate-expandable inline-expand" title="' + roomName + '">' + roomName + '</span> ' + roomLink + '</td><td>' + upName + '</td></tr>');
                     });
                 }
             });

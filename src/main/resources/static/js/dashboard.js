@@ -668,11 +668,11 @@ function renderUserTimeline(events) {
         var roomDisplay = e.anchorName ? e.anchorName : '房间' + e.roomId;
         tbody.append(
             '<tr>' +
-            '<td style="width:180px;min-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + e.eventTime + '">' + e.eventTime + '</td>' +
-            '<td style="width:180px;min-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + e.uname + '"><a href="https://space.bilibili.com/' + e.uid + '" target="_blank" class="uq-link">' + e.uname + '</a></td>' +
-            '<td style="width:189px;min-width:189px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + roomDisplay + '"><a href="https://live.bilibili.com/' + e.roomId + '" target="_blank" class="uq-link">' + roomDisplay + '</a></td>' +
-            '<td style="width:80px;min-width:80px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="查看该时间前后同类事件上下文"><a href="javascript:;" class="uq-type-link" data-type="' + e.eventType + '" data-ts="' + parseTimestamp(e.eventTime) + '">' + (iconMap[e.eventType] || '') + ' ' + e.eventType + '</a></td>' +
-            '<td style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + e.detail + '">' + e.detail + '</td>' +
+            '<td class="truncate-expandable" style="width:180px;min-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + e.eventTime + '">' + e.eventTime + '</td>' +
+            '<td class="truncate-expandable" style="width:180px;min-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + e.uname + '"><a href="https://space.bilibili.com/' + e.uid + '" target="_blank" class="uq-link">' + e.uname + '</a></td>' +
+            '<td class="truncate-expandable" style="width:189px;min-width:189px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + roomDisplay + '"><a href="https://live.bilibili.com/' + e.roomId + '" target="_blank" class="uq-link">' + roomDisplay + '</a></td>' +
+            '<td class="truncate-expandable" style="width:80px;min-width:80px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="查看该时间前后同类事件上下文"><a href="javascript:;" class="uq-type-link" data-type="' + e.eventType + '" data-ts="' + parseTimestamp(e.eventTime) + '">' + (iconMap[e.eventType] || '') + ' ' + e.eventType + '</a></td>' +
+            '<td class="truncate-expandable" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + e.detail + '">' + e.detail + '</td>' +
             '</tr>');
     });
     // 绑定事件类型点击 → 按时间距离找同类事件上下文
