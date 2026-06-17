@@ -860,17 +860,8 @@ public class HttpRoomData {
                 totalScore = medalResult.getLeft() + follResult.getLeft() + cardResult.score;
             }
 
-            CenterSetConf conf = PublicDataConf.centerSetConf;
-            if (conf.getAuto_block() != null) {
-                int blockScore = conf.getAuto_block().getBlock_score();
-                int whiteThreshold = Math.abs(blockScore);
-
-                // Phase 2e: 陌生观众看板（仅卡片数据有效时，face才有值）
-                if (blockScore < totalScore && totalScore < whiteThreshold) { // 现在
-                    xyz.acproject.danmuji.service.StrangerViewerService.addRecord(
-                            vmid, cardResult.name, cardResult.face, totalScore, cardResult.sign);
-                }
-            }
+            xyz.acproject.danmuji.service.StrangerViewerService.addRecord(
+                    vmid, cardResult.name, cardResult.face, totalScore, cardResult.sign);
 
             // Phase 3: 仅当综合分在 -1, 0 时才触发动态API
             if ((-1 <= totalScore && totalScore <= 0) && !schedulerDynamicColdWait.get()) {
