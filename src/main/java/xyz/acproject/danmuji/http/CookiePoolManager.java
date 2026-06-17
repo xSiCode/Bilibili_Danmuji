@@ -133,12 +133,12 @@ public class CookiePoolManager {
         }
 
         if (useMain) {
-            LOGGER.warn("CookiePool: 所有账号均在冷却中，使用最早恢复的主账号（剩余{}秒）", minRemaining / 1000);
+  //          LOGGER.warn("CookiePool: 所有账号均在冷却中，使用最早恢复的主账号（剩余{}秒）", minRemaining / 1000);
             mainUseCount.incrementAndGet();
             return PublicDataConf.USERCOOKIE;
         } else if (earliestSub != null) {
-            LOGGER.warn("CookiePool: 所有子账号均在冷却中，使用最早恢复的账号 [{}] (剩余{}秒)",
-                    earliestSub.getName(), minRemaining / 1000);
+//            LOGGER.warn("CookiePool: 所有子账号均在冷却中，使用最早恢复的账号 [{}] (剩余{}秒)",
+//                    earliestSub.getName(), minRemaining / 1000);
             earliestSub.setLastUsedTime(now);
             earliestSub.setUseCount(earliestSub.getUseCount() + 1);
             return earliestSub.getCookie();

@@ -1054,7 +1054,7 @@ public class HttpRoomData {
         }
         logSb.append("关注黑白分:").append(blackWhiteScore).append("]");
 
-        LogFileTools.getlogFileTools().logTestFile(name_sign_followingUser_str);
+       // LogFileTools.getlogFileTools().logTestFile(name_sign_followingUser_str);
 
         return Pair.of(blackWhiteScore, blackWhiteType.toString());
     }

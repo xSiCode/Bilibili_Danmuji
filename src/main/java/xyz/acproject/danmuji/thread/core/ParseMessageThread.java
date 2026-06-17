@@ -1002,6 +1002,24 @@ public class ParseMessageThread extends Thread {
                             //{"cmd":"LIKE_INFO_V3_UPDATE","data":{"click_count":371578}}
                             PublicDataConf.ROOM_LIKE = JSONObject.parseObject(jsonObject.getString("data")).getLong("click_count");
                             break;
+                        case "LIKE_INFO_V3_CLICK":
+                            LOGGER.info("点赞信息v3推送:CLICK::" + message);
+                            try {
+                                JSONObject likeJson = JSONObject.parseObject(message);
+                                JSONObject data = likeJson.getJSONObject("data");
+                                if (data != null) {
+                                    Long uid = data.getLong("uid");
+                                    String uname = data.getString("uname");
+                                    Long ruid = PublicDataConf.AUID;
+                                    Long roomId = PublicDataConf.ROOMID;
+                                    String roomName = PublicDataConf.ROOM_TITLE;
+                                    String anchorName = PublicDataConf.ANCHOR_NAME;
+                                    LikeRecorder.record(uid, uname, ruid, roomId, roomName, anchorName, System.currentTimeMillis());
+                                }
+                            } catch (Exception e) {
+                                LOGGER.error("解析点赞信息失败: {}", e.getMessage());
+                            }
+                            break;
                         case "POPULARITY_RED_POCKET_START":
 //                        {"cmd":"POPULARITY_RED_POCKET_START", "data":{"lot_id":15279655,
 //                                "sender_uid":300700903,"sender_name":"肉嘟嘟喽","sender_face":"https://i1.hdslb.com/bfs/face/3af2996893e1c77561fd9422e42bfb7a06292b23.jpg",
@@ -1022,7 +1040,7 @@ public class ParseMessageThread extends Thread {
                             }
                             break;
                         default:
-                            LOGGER.info("其他未处理cmd: " + cmd);
+                           // LOGGER.info("其他未处理cmd: " + cmd);
                             notHandle(cmd, message);
                             break;
                     }
@@ -1036,7 +1054,7 @@ public class ParseMessageThread extends Thread {
 
     private static void notHandle(String cmd, String message) {
        // LOGGER.info("其他未处理消息:" + message);
-        LogFileTools.getlogFileTools().logTestFile("其他未处理消息:" + message);
+      //  LogFileTools.getlogFileTools().logTestFile("其他未处理消息:" + message);
         switch (cmd) {
 
             // 部分金瓜子礼物连击
@@ -1387,26 +1405,6 @@ public class ParseMessageThread extends Thread {
             case "POPULARITY_RED_POCKET_WINNER_LIST":
                 LOGGER.info("红包抽奖结果推送:::" + message);
                 break;
-
-
-            case "LIKE_INFO_V3_CLICK":
-                LOGGER.info("点赞信息v3推送:CLICK::" + message);
-                try {
-                    JSONObject likeJson = JSONObject.parseObject(message);
-                    JSONObject data = likeJson.getJSONObject("data");
-                    if (data != null) {
-                        Long uid = data.getLong("uid");
-                        String uname = data.getString("uname");
-                        Long ruid = PublicDataConf.AUID;
-                        Long roomId = PublicDataConf.ROOMID;
-                        String roomName = PublicDataConf.ROOM_TITLE;
-                        String anchorName = PublicDataConf.ANCHOR_NAME;
-                        LikeRecorder.record(uid, uname, ruid, roomId, roomName, anchorName, System.currentTimeMillis());
-                    }
-                } catch (Exception e) {
-                    LOGGER.error("解析点赞信息失败: {}", e.getMessage());
-                }
-                break;
             case "CORE_USER_ATTENTION":
                 LOGGER.info("中心用户推送:::" + message);
                 break;
@@ -1504,6 +1502,8 @@ public class ParseMessageThread extends Thread {
                 break;
             default:
 
+                // LOGGER.info("其他未处理消息:" + message);
+                LogFileTools.getlogFileTools().logTestFile("其他未处理消息:" + message);
                 LOGGER.info("not compare success cmd is:::" + cmd);
                 break;
         }
@@ -1748,7 +1748,7 @@ public class ParseMessageThread extends Thread {
                 .append(uid)
                 .append("  name:").append(uname)
                 .append("  拉黑api error, code:").append(code);
-        LogFileTools.getlogFileTools().logTestFile(sb.toString());
+       // LogFileTools.getlogFileTools().logTestFile(sb.toString());
     }
 
     /**
