@@ -918,7 +918,7 @@ public class ParseMessageThread extends Thread {
                         case "ONLINE_RANK_COUNT":
                             // 在线排名人数更新信息推送:::{"cmd":"ONLINE_RANK_COUNT","data":{"count":729,"count_text":"729","online_count":729,"online_count_text":"729"}}
                             PublicDataConf.ROOM_ONLINE__RANK_COUNT = JSONObject.parseObject(jsonObject.getString("data")).getLong("count");
-                            LOGGER.info("在线排名人数更新信息推送:::" + message);
+                          //  LOGGER.info("在线排名人数更新信息推送:::" + message);
                             break;
                         case "WATCHED_CHANGE":
                             //{"cmd":"WATCHED_CHANGE","data":{"num":184547,"text_small":"18.4万","text_large":"18.4万人看过"}}
@@ -928,7 +928,7 @@ public class ParseMessageThread extends Thread {
                             if (product > 0) {
                                 PublicDataConf.ROOM_POPULARITY = (long) (Math.log(product) / Math.log(2));
                             }
-                            LOGGER.info("多少人观看过:::" + message);
+                          //  LOGGER.info("多少人观看过:::" + message);
                             break;
 
                         case "POPULARITY_RED_POCKET_NEW":
@@ -998,12 +998,12 @@ public class ParseMessageThread extends Thread {
                             LOGGER.info("红包赠送:::" + message);
                             break;
                         case "LIKE_INFO_V3_UPDATE":
-                            LOGGER.info("点赞信息v3推送:UPDATE::" + message);
+                           // LOGGER.info("点赞信息v3推送:UPDATE::" + message);
                             //{"cmd":"LIKE_INFO_V3_UPDATE","data":{"click_count":371578}}
                             PublicDataConf.ROOM_LIKE = JSONObject.parseObject(jsonObject.getString("data")).getLong("click_count");
                             break;
                         case "LIKE_INFO_V3_CLICK":
-                            LOGGER.info("点赞信息v3推送:CLICK::" + message);
+                            // LOGGER.info("点赞信息v3推送:CLICK::" + message);
                             try {
                                 JSONObject likeJson = JSONObject.parseObject(message);
                                 JSONObject data = likeJson.getJSONObject("data");
@@ -1383,7 +1383,7 @@ public class ParseMessageThread extends Thread {
                 LOGGER.info("热门榜v2版本set推送:::" + message);
                 break;
             case "WIDGET_BANNER":
-                LOGGER.info("直播横幅广告推送:::" + message);
+                // LOGGER.info("直播横幅广告推送:::" + message);
                 break;
             case "MESSAGEBOX_USER_MEDAL_CHANGE":
                 LOGGER.info("本人勋章升级推送:::" + message);

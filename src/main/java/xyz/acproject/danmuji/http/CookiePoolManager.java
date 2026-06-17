@@ -165,8 +165,8 @@ public class CookiePoolManager {
                 long cooldownMs = poolConf.getCooldownSeconds() * 1000L;
                 acc.setCooldownUntil(System.currentTimeMillis() + cooldownMs);
                 acc.setRateLimitedCount(acc.getRateLimitedCount() + 1);
-                LOGGER.warn("CookiePool: 账号 [{}] uid={} 触发限流，冷却 {} 秒",
-                        acc.getName(), acc.getUid(), poolConf.getCooldownSeconds());
+//                LOGGER.warn("CookiePool: 账号 [{}] uid={} 触发限流，冷却 {} 秒",
+//                        acc.getName(), acc.getUid(), poolConf.getCooldownSeconds());
                 saveToFile();
                 return;
             }
@@ -178,8 +178,8 @@ public class CookiePoolManager {
             if (poolConf != null && poolConf.isMainPollingEnabled()) {
                 long cooldownMs = poolConf.getCooldownSeconds() * 1000L;
                 poolConf.setMainCooldownUntil(System.currentTimeMillis() + cooldownMs);
-                LOGGER.warn("CookiePool: 主账号触发限流！冷却{}秒 (累计{}次)",
-                        poolConf.getCooldownSeconds(), mainRateLimitedCount.get());
+                /*LOGGER.warn("CookiePool: 主账号触发限流！冷却{}秒 (累计{}次)",
+                        poolConf.getCooldownSeconds(), mainRateLimitedCount.get());*/
                 saveToFile();
                 return;
             }
