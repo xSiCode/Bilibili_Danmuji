@@ -137,11 +137,11 @@ public class ViewerActivitySummary {
     private static String formatSummary(List<RoomSummary> rooms) {
         if (rooms == null || rooms.isEmpty()) return "";
 
-        StringBuilder sb = new StringBuilder("🍉");
+        StringBuilder sb = new StringBuilder( );
         int show = Math.min(rooms.size(), 5);
         for (int i = 0; i < show; i++) {
             RoomSummary r = rooms.get(i);
-            sb.append(" [").append(r.anchorName).append(":");
+            sb.append("[").append(r.anchorName).append(":");
             List<String> parts = new ArrayList<>();
             if (r.danmaku > 0)   parts.add("弹幕" + r.danmaku);
             if (r.enterEvents > 0) parts.add("进入" + r.enterEvents);
@@ -153,7 +153,7 @@ public class ViewerActivitySummary {
             if (r.footprint > 0) parts.add("足迹" + r.footprint);
             if (parts.isEmpty()) parts.add("活跃" + r.total);
             sb.append(String.join(",", parts));
-            sb.append("] ");
+            sb.append("]  ");
         }
         if (rooms.size() > 5) {
             sb.append("等更多直播间");

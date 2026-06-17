@@ -860,9 +860,9 @@ public class HttpRoomData {
             }
 
             // Phase 2e: 陌生观众看板（仅卡片数据有效时，face才有值）
-            if (cardResult.name != null) {
+            if ( -5 <= totalScore && totalScore <= 5 ) { // 现在
                 xyz.acproject.danmuji.service.StrangerViewerService.addRecord(
-                        vmid, cardResult.name, cardResult.face, totalScore, combinedType + cardResult.sign);
+                        vmid, cardResult.name, cardResult.face, totalScore, cardResult.sign);
             }
 
             // Phase 3: 仅当综合分在 -1, 0 时才触发动态API

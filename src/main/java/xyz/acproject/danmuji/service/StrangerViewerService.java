@@ -113,8 +113,7 @@ public class StrangerViewerService {
             data.put("face", record.face);
             data.put("score", record.score);
             String summary = ViewerActivitySummary.buildSummary(record.uid);
-            data.put("scoreTypes", (record.scoreTypes != null ? record.scoreTypes : "")
-                    + (summary.isEmpty() ? "" : " " + summary));
+            data.put("scoreTypes", (summary.isEmpty() ? "" : " " + summary) + (record.scoreTypes != null ? record.scoreTypes : "") );
             data.put("count", record.count);
             data.put("session", record.session);
             data.put("blocked", blockedUids.contains(record.uid));
@@ -507,8 +506,7 @@ public class StrangerViewerService {
             row.put("face", r.face);
             row.put("score", r.score);
             String svSummary = ViewerActivitySummary.buildSummary(r.uid);
-            row.put("scoreTypes", (r.scoreTypes != null ? r.scoreTypes : "")
-                    + (svSummary.isEmpty() ? "" : " " + svSummary));
+            row.put("scoreTypes", (svSummary.isEmpty() ? "" : " " + svSummary) + (r.scoreTypes != null ? r.scoreTypes : "")  );
             row.put("count", r.count);
             row.put("session", r.session);
             row.put("blocked", blockedUids.contains(r.uid));
@@ -551,8 +549,7 @@ public class StrangerViewerService {
             sb.append(escapeCsv(r.face)).append(',');
             sb.append(r.score).append(',');
             String csvSummary = ViewerActivitySummary.buildSummary(r.uid);
-            sb.append(escapeCsv((r.scoreTypes != null ? r.scoreTypes : "")
-                    + (csvSummary.isEmpty() ? "" : " " + csvSummary))).append(',');
+            sb.append(escapeCsv((csvSummary.isEmpty() ? "" : " " + csvSummary) + (r.scoreTypes != null ? r.scoreTypes : ""))).append(',');
             sb.append(r.count).append(',');
             sb.append(r.session).append(',');
             sb.append(blockedUids.contains(r.uid) ? "是" : "否").append('\n');

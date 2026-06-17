@@ -971,8 +971,7 @@ public class WebController {
             row.put("updateTime", e.updateTime);
             row.put("score", e.score);
             String summary = ViewerActivitySummary.buildSummary(e.uid);
-            row.put("scoreType", (e.scoreType != null ? e.scoreType : "")
-                    + (summary.isEmpty() ? "" : " " + summary));
+            row.put("scoreType",  (summary.isEmpty() ? "" : " " + summary) + (e.scoreType != null ? e.scoreType : "") );
             row.put("roomId", e.roomId);
             row.put("count", e.count);
             rows.add(row);
