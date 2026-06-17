@@ -8,6 +8,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.util.CollectionUtils;
+import xyz.acproject.danmuji.conf.CenterSetConf;
 import xyz.acproject.danmuji.conf.PublicDataConf;
 import xyz.acproject.danmuji.entity.room_data.*;
 import xyz.acproject.danmuji.entity.server_data.Conf;
@@ -859,10 +860,16 @@ public class HttpRoomData {
                 totalScore = medalResult.getLeft() + follResult.getLeft() + cardResult.score;
             }
 
-            // Phase 2e: 陌生观众看板（仅卡片数据有效时，face才有值）
-            if ( -5 <= totalScore && totalScore <= 5 ) { // 现在
-                xyz.acproject.danmuji.service.StrangerViewerService.addRecord(
-                        vmid, cardResult.name, cardResult.face, totalScore, cardResult.sign);
+            CenterSetConf conf = PublicDataConf.centerSetConf;
+            if (conf.getAuto_block() != null) {
+                int blockScore = conf.getAuto_block().getBlock_score();
+                int whiteThreshold = Math.abs(blockScore);
+
+                // Phase 2e: 陌生观众看板（仅卡片数据有效时，face才有值）
+                if (blockScore < totalScore && totalScore < whiteThreshold) { // 现在
+                    xyz.acproject.danmuji.service.StrangerViewerService.addRecord(
+                            vmid, cardResult.name, cardResult.face, totalScore, cardResult.sign);
+                }
             }
 
             // Phase 3: 仅当综合分在 -1, 0 时才触发动态API
@@ -946,7 +953,7 @@ public class HttpRoomData {
 
             int currentMedalScore = 0;
             int level = medal.getLevel() != null ? medal.getLevel() : 0;
-            int currentMedalLevelScore =level/10 +1 ;
+            int currentMedalLevelScore = level / 10 + 1;
             currentMedalScore += currentMedalLevelScore;
 
             Integer blackWhiteZhuboScore = pnScoreMap.get(medal.getTargetId());
@@ -1054,7 +1061,7 @@ public class HttpRoomData {
         }
         logSb.append("关注黑白分:").append(blackWhiteScore).append("]");
 
-       // LogFileTools.getlogFileTools().logTestFile(name_sign_followingUser_str);
+        // LogFileTools.getlogFileTools().logTestFile(name_sign_followingUser_str);
 
         return Pair.of(blackWhiteScore, blackWhiteType.toString());
     }
@@ -1100,12 +1107,12 @@ public class HttpRoomData {
                             r.type += "[人机关注-1]";
                             cardLog.append(" 人机关注-1");
                         }
-                        if (r.name.startsWith("bili_") ){
+                        if (r.name.startsWith("bili_")) {
                             r.score--;
                             r.type += "[人机名字-1]";
                             cardLog.append(" 人机名字-1");
                         }
-                        if ( "https://i0.hdslb.com/bfs/face/member/noface.jpg".equals(r.face) ) {
+                        if ("https://i0.hdslb.com/bfs/face/member/noface.jpg".equals(r.face)) {
                             r.score--;
                             r.type += "[人机头像-1]";
                             cardLog.append(" 人机头像-1");
