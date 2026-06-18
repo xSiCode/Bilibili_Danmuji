@@ -61,9 +61,9 @@ method.renderBlackWhiteTable = function(type, page) {
                                 .text(e.name).appendTo($nameTd);
                         }
                         $tr.append($nameTd);
-                        $tr.append($("<td>").addClass("bw-col-score truncate-expandable").text(e.score));
-                        $tr.append($("<td>").addClass("bw-col-scoreType truncate-expandable").text(e.scoreType || '').attr("title", e.scoreType || ''));
                         $tr.append($("<td>").addClass("bw-col-count truncate-expandable").text(e.count));
+                        $tr.append($("<td>").addClass("bw-col-scoreType truncate-expandable").text(e.scoreType || '').attr("title", e.scoreType || ''));
+                        $tr.append($("<td>").addClass("bw-col-score truncate-expandable").text(e.score));
                         // roomId: 点击跳转直播间
                         var $roomTd = $("<td>").addClass("bw-col-roomId truncate-expandable");
                         if (e.roomId && e.roomId > 0) {
