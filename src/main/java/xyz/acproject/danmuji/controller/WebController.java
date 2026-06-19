@@ -1667,12 +1667,18 @@ public class WebController {
         }
     }
 
-    /** 将 "yyyy-MM-dd HH:mm:ss" 字符串转为 Unix 毫秒时间戳 */
+    /** 将时间字符串转为 Unix 毫秒时间戳，兼容两种格式 */
     private Long parseTimeToMillis(String timeStr) {
         if (timeStr == null || timeStr.isEmpty()) return null;
         try {
             return new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(timeStr).getTime();
-        } catch (Exception e) { return null; }
+        } catch (Exception e) {
+            try {
+                return new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").parse(timeStr).getTime();
+            } catch (Exception e2) {
+                return null;
+            }
+        }
     }
 
     /** 将 Unix 毫秒时间戳转为 "yyyy-MM-dd HH:mm:ss" 字符串 */
