@@ -4921,35 +4921,23 @@ const method = {
                         svState.currentFile = fallback.val();
                     }
                 }
-                if (svState.currentFile) {
-                    svState.defaultToLast = true;
-                    method.loadSvData();
-                }
+                if (!svState.currentFile) svState.currentFile = '';
+                svState.defaultToLast = true;
+                method.loadSvData();
             }
         });
     },
 
     loadSvData: function () {
         method._initSv();
-        // 默认筛选：首次加载无时间参数时应用"几小时前"
         if (!svState.startTime && !svState.endTime) {
-            var hours = parseInt($('#sv-filter-hours').val()) || 3;
-            var now = new Date();
-            var start = new Date(now.getTime() - hours * 3600000);
-            start.setMinutes(0, 0, 0);
-            var end = new Date(now.getTime() + 3600000);
-            end.setMinutes(0, 0, 0);
-            var pad = function(n) { return ('0' + n).slice(-2); };
-            var fmt = function(d) {
-                return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate())
-                    + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
-            };
-            svState.startTime = fmt(start);
-            svState.endTime = fmt(end);
+            applyHoursFilter(svState, '#sv');
         }
-        var params = { page: svState.page, pageSize: svState.pageSize, sortField: svState.sortField, sortOrder: svState.sortOrder };
+        $('#sv-filter-start').val((svState.startTime || '').substring(0, 10));
+        $('#sv-filter-end').val((svState.endTime || '').substring(0, 10));
+        var params = { page: svState.page, pageSize: svState.pageSize, sortField: svState.sortField, sortOrder: svState.sortOrder,
+            filePath: svState.currentFile || '' };
         if (svState.search) params.search = svState.search;
-        if (svState.currentFile) params.filePath = svState.currentFile;
         if (svState.startTime) params.startTime = svState.startTime;
         if (svState.endTime) params.endTime = svState.endTime;
         $.get('/strangerViewerData', params, function (resp) {
@@ -5112,6 +5100,31 @@ const method = {
 
 
 };
+
+// 陌生观众看板：页面加载时如果标签页已活跃，自动加载数据
+$(function() {
+    if ($('#tab-stranger-board').hasClass('active') || $('#tab-stranger-board').hasClass('show')) {
+        if (!$('#sv-csv-select option[value!=""]').length) {
+            method.loadSvFileList();
+        } else {
+            method._initSv();
+            method.loadSvData();
+        }
+    }
+});
+
+// Bootstrap 标签页切换：陌生观众看板自动加载
+$(document).on('shown.bs.tab', function(e) {
+    var tabId = ($(e.target).attr('data-bs-target') || '').replace('#tab-', '');
+    if (tabId === 'stranger-board') {
+        if (!$('#sv-csv-select option[value!=""]').length) {
+            method.loadSvFileList();
+        } else {
+            method._initSv();
+            method.loadSvData();
+        }
+    }
+});
 
 function openSocket(ip, sliceh) {
     if (typeof (WebSocket) == "undefined") {

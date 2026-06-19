@@ -1560,9 +1560,12 @@ public class WebController {
         return s.replaceAll("[\\\\/:*?\"<>|]", "_");
     }
 
-    /** 从 CSV 文件路径解析 roomId */
+    /** 从 CSV 文件路径解析 roomId，为空时取当前直播间 */
     private long parseRoomIdFromPath(String filePath) {
-        if (filePath == null || filePath.isEmpty()) return 0;
+        if (filePath == null || filePath.isEmpty()) {
+            Long rid = PublicDataConf.ROOMID;
+            return rid != null ? rid : 0;
+        }
         String name = new File(filePath).getName();
         String[] info = xyz.acproject.danmuji.tools.db.DanmujiMigration.parseRoomAnchorStr(name);
         if (info != null) {
@@ -1726,11 +1729,14 @@ public class WebController {
             String idCol = tableName.equals("danmaku") ? "danmaku.id" : tableName + ".id";
             sel.append(", ").append(idCol).append(" AS _id");
 
-            // 构建 WHERE
-            StringBuilder where = new StringBuilder("WHERE room_id = ? AND anchor_name = ?");
+            // 构建 WHERE（anchorName 为空时不加此条件，查整个房间）
+            StringBuilder where = new StringBuilder("WHERE room_id = ?");
             List<Object> params = new ArrayList<>();
             params.add(roomId);
-            params.add(anchorName);
+            if (anchorName != null && !anchorName.isEmpty()) {
+                where.append(" AND anchor_name = ?");
+                params.add(anchorName);
+            }
 
             // 时间过滤（使用时间列的第一列作为默认时间列）
             String timeCol = columns.get(0).sqlCol;
@@ -2134,10 +2140,10 @@ public class WebController {
 
             try (java.sql.Connection c = getDbConnection()) {
                 // 构建 WHERE（time_key 为 TEXT，可直接字符串比较）
-                StringBuilder where = new StringBuilder("WHERE room_id = ? AND anchor_name = ?");
+                StringBuilder where = new StringBuilder("WHERE room_id = ?");
                 List<Object> params = new ArrayList<>();
                 params.add(roomId);
-                params.add(anchorName);
+                if (anchorName != null && !anchorName.isEmpty()) { where.append(" AND anchor_name = ?"); params.add(anchorName); }
                 if (startTime != null && !startTime.isEmpty()) { where.append(" AND time_key >= ?"); params.add(startTime); }
                 if (endTime != null && !endTime.isEmpty()) { where.append(" AND time_key <= ?"); params.add(endTime); }
                 if (search != null && !search.isEmpty()) {
@@ -2222,17 +2228,25 @@ public class WebController {
                                     @RequestParam("timeKey") String timeKey,
                                     HttpServletRequest req) {
         try {
-            validateFilePath(filePath);
+            // SQLite 优先删除
+            long roomId = parseRoomIdFromPath(filePath);
+            if (roomId != 0) {
+                try (java.sql.Connection c = getDbConnection();
+                     java.sql.PreparedStatement ps = c.prepareStatement(
+                         "DELETE FROM room_info_series WHERE room_id=? AND time_key=?")) {
+                    ps.setLong(1, roomId);
+                    ps.setString(2, timeKey);
+                    ps.executeUpdate();
+                }
+            }
+            // 内存缓存清理
+            RoomInfoLogTools.removeByTimeKey(timeKey);
+            // CSV 兼容：如果文件存在则同步删除
             File file = new File(filePath);
-            if (!file.isAbsolute()) {
+            if (!file.isAbsolute() && !filePath.isEmpty()) {
                 file = new File(getDanmujiLogDir(), filePath);
             }
-            if (!file.exists()) {
-                return Response.success(false, req);
-            }
-
-            // 1. 先移除内存中的记录，防止后续定时 flush 恢复被删行
-            RoomInfoLogTools.removeByTimeKey(timeKey);
+            if (!filePath.isEmpty() && file.exists()) {
 
             // 2. 直接修改 CSV 文件（读写过滤），保证对任意文件路径都生效
             List<String> lines = new ArrayList<>();
@@ -2263,6 +2277,7 @@ public class WebController {
                 }
             }
             Files.move(tmpFile.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            }
             return Response.success(true, req);
         } catch (Exception e) {
             LOGGER.error("deleteCsvRow error", e);
@@ -2336,34 +2351,26 @@ public class WebController {
                                         @RequestParam(required = false) String endTime,
                                         HttpServletRequest req) {
         try {
-            validateFilePath(filePath);
-            File file = new File(filePath);
-            if (!file.isAbsolute()) {
-                file = new File(getDanmujiLogDir(), filePath);
-            }
-
             Map<String, Object> stats = new LinkedHashMap<>();
-            if (!file.exists()) {
-                stats.put("cumulativeWatcher", 0L);
-                stats.put("cumulativeLike", 0L);
-                stats.put("avgOnlineCount", 0);
-                stats.put("maxOnlineCount", null);
-                stats.put("totalWatchSeconds", 0L);
-                stats.put("avgWatchSeconds", 0L);
-                return Response.success(stats, req);
-            }
-
             List<String[]> filteredRows = new ArrayList<>();
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
-                reader.readLine(); // skip header
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    String[] parts = line.split(",", 4);
-                    if (parts.length >= 4) {
-                        String time = parts[0];
-                        if (startTime != null && !startTime.isEmpty() && time.compareTo(startTime) < 0) continue;
-                        if (endTime != null && !endTime.isEmpty() && time.compareTo(endTime) > 0) continue;
-                        filteredRows.add(parts);
+            long roomId = parseRoomIdFromPath(filePath);
+            if (roomId != 0) {
+                try (java.sql.Connection c = getDbConnection()) {
+                    StringBuilder w = new StringBuilder("WHERE room_id=?");
+                    List<Object> p = new ArrayList<>(); p.add(roomId);
+                    if (startTime != null && !startTime.isEmpty()) { w.append(" AND time_key >= ?"); p.add(startTime); }
+                    if (endTime != null && !endTime.isEmpty()) { w.append(" AND time_key <= ?"); p.add(endTime); }
+                    String sql = "SELECT time_key,watch_count,online_count,like_count FROM room_info_series " + w + " ORDER BY time_key";
+                    try (java.sql.PreparedStatement ps = c.prepareStatement(sql)) {
+                        for (int i = 0; i < p.size(); i++) ps.setObject(i + 1, p.get(i));
+                        try (java.sql.ResultSet rs = ps.executeQuery()) {
+                            while (rs.next()) {
+                                filteredRows.add(new String[]{rs.getString("time_key"),
+                                    String.valueOf(rs.getLong("watch_count")),
+                                    String.valueOf(rs.getLong("online_count")),
+                                    String.valueOf(rs.getLong("like_count"))});
+                            }
+                        }
                     }
                 }
             }
@@ -2775,8 +2782,9 @@ public class WebController {
             String anchorName = parseAnchorFromPath(filePath);
             if (roomId != 0) {
                 try (java.sql.Connection c = getDbConnection()) {
-                    StringBuilder w = new StringBuilder("WHERE room_id=? AND anchor_name=?");
-                    List<Object> p = new ArrayList<>(); p.add(roomId); p.add(anchorName);
+                    StringBuilder w = new StringBuilder("WHERE room_id=?");
+                    List<Object> p = new ArrayList<>(); p.add(roomId);
+                    if (anchorName != null && !anchorName.isEmpty()) { w.append(" AND anchor_name=?"); p.add(anchorName); }
                     Long sm = parseTimeToMillis(startTime); Long em = parseTimeToMillis(endTime);
                     if (sm != null) { w.append(" AND timestamp >= ?"); p.add(sm); }
                     if (em != null) { w.append(" AND timestamp <= ?"); p.add(em); }
@@ -3215,8 +3223,9 @@ public class WebController {
             String anchorName = parseAnchorFromPath(filePath);
             if (roomId != 0) {
                 try (java.sql.Connection c = getDbConnection()) {
-                    StringBuilder w = new StringBuilder("WHERE room_id=? AND anchor_name=?");
-                    List<Object> p = new ArrayList<>(); p.add(roomId); p.add(anchorName);
+                    StringBuilder w = new StringBuilder("WHERE room_id=?");
+                    List<Object> p = new ArrayList<>(); p.add(roomId);
+                    if (anchorName != null && !anchorName.isEmpty()) { w.append(" AND anchor_name=?"); p.add(anchorName); }
                     Long sm = parseTimeToMillis(startTime); Long em = parseTimeToMillis(endTime);
                     if (sm != null) { w.append(" AND latest_entry_time >= ?"); p.add(sm); }
                     if (em != null) { w.append(" AND latest_entry_time <= ?"); p.add(em); }
@@ -3677,30 +3686,29 @@ public class WebController {
                                            @RequestParam(defaultValue = "10") int limit,
                                            HttpServletRequest req) {
         try {
-            validateFilePath(filePath);
-            File file = new File(filePath);
-            if (!file.isAbsolute()) file = new File(getDanmujiLogDir(), filePath);
             Map<String, Object> stats = new LinkedHashMap<>();
-            if (!file.exists()) {
-                stats.put("totalRecords", 0); stats.put("totalMatches", 0L); stats.put("uniqueUsers", 0);
-                stats.put("scoreSum", 0L); stats.put("scoreAvg", 0.0);
-                stats.put("scoreDistribution", Collections.emptyList());
-                stats.put("matchCountDist", Collections.emptyList());
-                stats.put("topMatches", Collections.emptyList());
-                return Response.success(stats, req);
-            }
-
             List<String[]> rows = new ArrayList<>();
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
-                reader.readLine();
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    List<String> fields = parseCsvLine(line);
-                    if (fields.size() < 5) continue;
-                    String time = fields.get(0);
-                    if (startTime != null && !startTime.isEmpty() && time.compareTo(startTime) < 0) continue;
-                    if (endTime != null && !endTime.isEmpty() && time.compareTo(endTime) > 0) continue;
-                    rows.add(new String[]{time, fields.get(1), fields.get(2), fields.get(3), fields.get(4)});
+            long roomId = parseRoomIdFromPath(filePath);
+            if (roomId != 0) {
+                try (java.sql.Connection c = getDbConnection()) {
+                    StringBuilder w = new StringBuilder("WHERE room_id=?");
+                    List<Object> p = new ArrayList<>(); p.add(roomId);
+                    Long sm = parseTimeToMillis(startTime); Long em = parseTimeToMillis(endTime);
+                    if (sm != null) { w.append(" AND latest_match_time >= ?"); p.add(sm); }
+                    if (em != null) { w.append(" AND latest_match_time <= ?"); p.add(em); }
+                    String sql = "SELECT latest_match_time,matched_uid,matched_name,score,count FROM match_summary " + w + " ORDER BY latest_match_time";
+                    try (java.sql.PreparedStatement ps = c.prepareStatement(sql)) {
+                        for (int i = 0; i < p.size(); i++) ps.setObject(i + 1, p.get(i));
+                        try (java.sql.ResultSet rs = ps.executeQuery()) {
+                            while (rs.next()) {
+                                rows.add(new String[]{millisToTimeStr(rs.getLong("latest_match_time")),
+                                    String.valueOf(rs.getLong("matched_uid")),
+                                    rs.getString("matched_name"),
+                                    String.valueOf(rs.getInt("score")),
+                                    String.valueOf(rs.getInt("count"))});
+                            }
+                        }
+                    }
                 }
             }
 
@@ -3995,28 +4003,28 @@ public class WebController {
                                             @RequestParam(defaultValue = "10") int limit,
                                             HttpServletRequest req) {
         try {
-            validateFilePath(filePath);
-            File file = new File(filePath);
-            if (!file.isAbsolute()) file = new File(getDanmujiLogDir(), filePath);
             Map<String, Object> stats = new LinkedHashMap<>();
-            if (!file.exists()) {
-                stats.put("totalRecords", 0); stats.put("uniqueUsers", 0); stats.put("totalFollows", 0L);
-                stats.put("countDist", Collections.emptyList());
-                stats.put("topFollows", Collections.emptyList());
-                return Response.success(stats, req);
-            }
-
             List<String[]> rows = new ArrayList<>();
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
-                reader.readLine();
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    List<String> fields = parseCsvLine(line);
-                    if (fields.size() < 4) continue;
-                    String time = fields.get(0);
-                    if (startTime != null && !startTime.isEmpty() && time.compareTo(startTime) < 0) continue;
-                    if (endTime != null && !endTime.isEmpty() && time.compareTo(endTime) > 0) continue;
-                    rows.add(new String[]{time, fields.get(1), fields.get(2), fields.get(3)});
+            long roomId = parseRoomIdFromPath(filePath);
+            if (roomId != 0) {
+                try (java.sql.Connection c = getDbConnection()) {
+                    StringBuilder w = new StringBuilder("WHERE room_id=?");
+                    List<Object> p = new ArrayList<>(); p.add(roomId);
+                    Long sm = parseTimeToMillis(startTime); Long em = parseTimeToMillis(endTime);
+                    if (sm != null) { w.append(" AND latest_time >= ?"); p.add(sm); }
+                    if (em != null) { w.append(" AND latest_time <= ?"); p.add(em); }
+                    String sql = "SELECT latest_time,uid,uname,count FROM follow_summary " + w + " ORDER BY latest_time";
+                    try (java.sql.PreparedStatement ps = c.prepareStatement(sql)) {
+                        for (int i = 0; i < p.size(); i++) ps.setObject(i + 1, p.get(i));
+                        try (java.sql.ResultSet rs = ps.executeQuery()) {
+                            while (rs.next()) {
+                                rows.add(new String[]{millisToTimeStr(rs.getLong("latest_time")),
+                                    String.valueOf(rs.getLong("uid")),
+                                    rs.getString("uname"),
+                                    String.valueOf(rs.getInt("count"))});
+                            }
+                        }
+                    }
                 }
             }
 
@@ -4280,29 +4288,30 @@ public class WebController {
                                           @RequestParam(defaultValue = "10") int limit,
                                           HttpServletRequest req) {
         try {
-            validateFilePath(filePath);
-            File file = new File(filePath);
-            if (!file.isAbsolute()) file = new File(getDanmujiLogDir(), filePath);
             Map<String, Object> stats = new LinkedHashMap<>();
-            if (!file.exists()) {
-                stats.put("totalRecords", 0); stats.put("totalAmount", 0L); stats.put("uniqueUsers", 0); stats.put("uniqueGifts", 0);
-                stats.put("amountRanking", Collections.emptyList());
-                stats.put("giftNameFreq", Collections.emptyList());
-                stats.put("perIntervalData", Collections.emptyList());
-                return Response.success(stats, req);
-            }
-
             List<String[]> rows = new ArrayList<>();
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
-                reader.readLine();
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    List<String> fields = parseCsvLine(line);
-                    if (fields.size() < 6) continue;
-                    String time = fields.get(0);
-                    if (startTime != null && !startTime.isEmpty() && time.compareTo(startTime) < 0) continue;
-                    if (endTime != null && !endTime.isEmpty() && time.compareTo(endTime) > 0) continue;
-                    rows.add(new String[]{time, fields.get(1), fields.get(2), fields.get(3), fields.get(4), fields.get(5)});
+            long roomId = parseRoomIdFromPath(filePath);
+            if (roomId != 0) {
+                try (java.sql.Connection c = getDbConnection()) {
+                    StringBuilder w = new StringBuilder("WHERE room_id=?");
+                    List<Object> p = new ArrayList<>(); p.add(roomId);
+                    Long sm = parseTimeToMillis(startTime); Long em = parseTimeToMillis(endTime);
+                    if (sm != null) { w.append(" AND latest_time >= ?"); p.add(sm); }
+                    if (em != null) { w.append(" AND latest_time <= ?"); p.add(em); }
+                    String sql = "SELECT latest_time,uid,uname,gift_name,total_price,count FROM gift_summary " + w + " ORDER BY latest_time";
+                    try (java.sql.PreparedStatement ps = c.prepareStatement(sql)) {
+                        for (int i = 0; i < p.size(); i++) ps.setObject(i + 1, p.get(i));
+                        try (java.sql.ResultSet rs = ps.executeQuery()) {
+                            while (rs.next()) {
+                                rows.add(new String[]{millisToTimeStr(rs.getLong("latest_time")),
+                                    String.valueOf(rs.getLong("uid")),
+                                    rs.getString("uname"),
+                                    rs.getString("gift_name"),
+                                    String.valueOf(rs.getLong("total_price")),
+                                    String.valueOf(rs.getInt("count"))});
+                            }
+                        }
+                    }
                 }
             }
 
@@ -4520,9 +4529,83 @@ public class WebController {
                                           @RequestParam(required = false) String filePath,
                                           HttpServletRequest req) {
         try {
-            Map<String, Object> data = xyz.acproject.danmuji.service.StrangerViewerService
-                    .loadCsvAndGetPage(filePath, page, pageSize, search, sortField, sortOrder, startTime, endTime);
-            return Response.success(data, req);
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("rows", Collections.emptyList());
+            result.put("total", 0);
+            result.put("totalPages", 0);
+            result.put("currentPage", page);
+
+            long roomId = parseRoomIdFromPath(filePath);
+            if (roomId == 0) return Response.success(result, req);
+
+            try (java.sql.Connection c = getDbConnection()) {
+                StringBuilder where = new StringBuilder("WHERE room_id = ?");
+                List<Object> params = new ArrayList<>();
+                params.add(roomId);
+
+                Long sm = parseTimeToMillis(startTime);
+                Long em = parseTimeToMillis(endTime);
+                if (sm != null) { where.append(" AND time >= ?"); params.add(sm); }
+                if (em != null) { where.append(" AND time <= ?"); params.add(em); }
+                if (search != null && !search.isEmpty()) {
+                    where.append(" AND (name LIKE ? OR score_types LIKE ? OR CAST(uid AS TEXT) LIKE ?)");
+                    String q = "%" + search + "%";
+                    params.add(q); params.add(q); params.add(q);
+                }
+
+                // 排序映射
+                String orderCol = "time";
+                if ("score".equals(sortField)) orderCol = "score";
+                else if ("count".equals(sortField)) orderCol = "count";
+                else if ("session".equals(sortField)) orderCol = "session";
+                else if ("name".equals(sortField)) orderCol = "name";
+                String dir = "asc".equalsIgnoreCase(sortOrder) ? "ASC" : "DESC";
+
+                // 总数
+                int total = 0;
+                String countSql = "SELECT COUNT(*) FROM stranger_viewer " + where;
+                try (java.sql.PreparedStatement ps = c.prepareStatement(countSql)) {
+                    for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
+                    try (java.sql.ResultSet rs = ps.executeQuery()) { if (rs.next()) total = rs.getInt(1); }
+                }
+                int totalPages = (int) Math.ceil((double) total / pageSize);
+                if (page < 1) page = 1;
+                if (totalPages > 0 && page > totalPages) page = totalPages;
+
+                // 数据
+                String dataSql = "SELECT uid, name, face, score, score_types, count, session, blocked, time"
+                        + " FROM stranger_viewer " + where
+                        + " ORDER BY " + orderCol + " " + dir + " LIMIT ? OFFSET ?";
+                params.add(pageSize);
+                params.add((page - 1) * pageSize);
+
+                List<Map<String, Object>> rows = new ArrayList<>();
+                try (java.sql.PreparedStatement ps = c.prepareStatement(dataSql)) {
+                    for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
+                    try (java.sql.ResultSet rs = ps.executeQuery()) {
+                        while (rs.next()) {
+                            Map<String, Object> row = new LinkedHashMap<>();
+                            row.put("time", millisToTimeStr(rs.getLong("time")));
+                            row.put("uid", rs.getLong("uid"));
+                            row.put("name", rs.getString("name"));
+                            row.put("face", rs.getString("face"));
+                            row.put("score", rs.getInt("score"));
+                            String svSummary = xyz.acproject.danmuji.service.ViewerActivitySummary.buildSummary(rs.getLong("uid"));
+                            row.put("scoreTypes", (svSummary.isEmpty() ? "" : " " + svSummary)
+                                    + (rs.getString("score_types") != null ? rs.getString("score_types") : ""));
+                            row.put("count", rs.getInt("count"));
+                            row.put("session", rs.getInt("session"));
+                            row.put("blocked", rs.getInt("blocked") == 1);
+                            rows.add(row);
+                        }
+                    }
+                }
+                result.put("rows", rows);
+                result.put("total", total);
+                result.put("totalPages", totalPages);
+                result.put("currentPage", totalPages > 0 ? page : 0);
+            }
+            return Response.success(result, req);
         } catch (Exception e) {
             LOGGER.error("strangerViewerData error", e);
             return Response.success(null, req);
