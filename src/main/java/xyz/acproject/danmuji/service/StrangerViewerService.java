@@ -106,6 +106,36 @@ public class StrangerViewerService {
 
         // Push to frontend via WebSocket
         pushToFrontend(record);
+
+        // 立即写入 SQLite（保证查询时能立即看到新观众）
+        insertToSqlite(record);
+    }
+
+    /** 单条记录立即写入 SQLite */
+    private static void insertToSqlite(StrangerRecord r) {
+        try {
+            Long rid = PublicDataConf.ROOMID;
+            if (rid == null) return;
+            String an = safeFileName(PublicDataConf.ANCHOR_NAME);
+            String sql = "INSERT OR REPLACE INTO stranger_viewer(room_id,anchor_name,uid,name,face,score,score_types,count,session,blocked,time) VALUES (?,?,?,?,?,?,?,?,?,?,?)";
+            try (java.sql.Connection c = xyz.acproject.danmuji.tools.db.DanmujiDatabase.getConnection();
+                 java.sql.PreparedStatement ps = c.prepareStatement(sql)) {
+                ps.setLong(1, rid);
+                ps.setString(2, an != null ? an : "");
+                ps.setLong(3, r.uid);
+                ps.setString(4, r.name != null ? r.name : "");
+                ps.setString(5, r.face != null ? r.face : "");
+                ps.setInt(6, r.score);
+                ps.setString(7, r.scoreTypes != null ? r.scoreTypes : "");
+                ps.setInt(8, r.count);
+                ps.setInt(9, r.session > 0 ? r.session : 1);
+                ps.setInt(10, blockedUids.contains(r.uid) ? 1 : 0);
+                ps.setLong(11, r.time);
+                ps.executeUpdate();
+            }
+        } catch (Exception e) {
+            LOGGER.debug("insertToSqlite error: {}", e.getMessage());
+        }
     }
 
     private static void pushToFrontend(StrangerRecord record) {
@@ -431,30 +461,52 @@ public class StrangerViewerService {
                 && !filePath.equals(currentCsvPath());
         if (isExternal) {
             synchronized (StrangerViewerService.class) {
-                flushToCsv(); // save current live data first
+                flushToCsv();
                 recordMap.clear();
                 blockedUids.clear();
                 dirtyUids.clear();
                 reloadFromFile(filePath);
                 viewingExternalFile = true;
             }
-        } else {
-            viewingExternalFile = false;
+            return getPageData(page, pageSize, search, sortField, sortOrder, startTime, endTime);
+        }
+        viewingExternalFile = false;
+        // 当前直播间：直接从 filePath 解析房间 ID 查 SQLite
+        long roomId = parseRoomId(filePath);
+        if (roomId != 0) {
+            return querySqlitePage(roomId, page, pageSize, search, sortField, sortOrder, startTime, endTime);
         }
         return getPageData(page, pageSize, search, sortField, sortOrder, startTime, endTime);
     }
 
+    /** 从文件路径解析 roomId（兼容 null/空时取当前直播间） */
+    private static long parseRoomId(String filePath) {
+        if (filePath != null && !filePath.isEmpty()) {
+            String filename = new File(filePath).getName();
+            String[] info = xyz.acproject.danmuji.tools.db.DanmujiMigration.parseRoomAnchorStr(filename);
+            if (info != null) {
+                try { return Long.parseLong(info[0]); } catch (NumberFormatException e) {}
+            }
+        }
+        Long rid = PublicDataConf.ROOMID;
+        return rid != null ? rid : 0;
+    }
+
     public static Map<String, Object> getPageData(int page, int pageSize, String search,
             String sortField, String sortOrder, String startTime, String endTime) {
-        List<StrangerRecord> all = new ArrayList<>(recordMap.values());
 
-        // recordMap 为空时从 SQLite 重新加载历史数据，避免显示空白页
-        if (all.isEmpty() && !viewingExternalFile) {
-            loadFromCsv();
-            all = new ArrayList<>(recordMap.values());
+        // 外部文件查看模式：使用内存 recordMap（已从外部文件加载）
+        List<StrangerRecord> all = new ArrayList<>(recordMap.values());
+        if (all.isEmpty()) {
+            Map<String, Object> empty = new LinkedHashMap<>();
+            empty.put("rows", Collections.emptyList());
+            empty.put("total", 0);
+            empty.put("totalPages", 0);
+            empty.put("currentPage", 0);
+            return empty;
         }
 
-        // Filter by search first (reduce sort cost)
+        // Filter by search
         if (search != null && !search.isEmpty()) {
             String lower = search.toLowerCase();
             List<StrangerRecord> filtered = new ArrayList<>();
@@ -476,7 +528,7 @@ public class StrangerViewerService {
             all.removeIf(r -> JodaTimeUtils.formatDateTime(r.time).compareTo(endTime) > 0);
         }
 
-        // Sort filtered dataset
+        // Sort
         boolean asc = !"desc".equalsIgnoreCase(sortOrder);
         Comparator<StrangerRecord> cmp;
         if ("score".equals(sortField)) {
@@ -504,18 +556,7 @@ public class StrangerViewerService {
         List<JSONObject> rows = new ArrayList<>();
         for (int i = from; i < to; i++) {
             StrangerRecord r = all.get(i);
-            JSONObject row = new JSONObject();
-            row.put("time", JodaTimeUtils.formatDateTime(r.time));
-            row.put("uid", r.uid);
-            row.put("name", r.name);
-            row.put("face", r.face);
-            row.put("score", r.score);
-            String svSummary = ViewerActivitySummary.buildSummary(r.uid);
-            row.put("scoreTypes", (svSummary.isEmpty() ? "" : " " + svSummary) + (r.scoreTypes != null ? r.scoreTypes : "")  );
-            row.put("count", r.count);
-            row.put("session", r.session);
-            row.put("blocked", blockedUids.contains(r.uid));
-            rows.add(row);
+            rows.add(toRowJson(r));
         }
 
         Map<String, Object> result = new LinkedHashMap<>();
@@ -524,6 +565,121 @@ public class StrangerViewerService {
         result.put("totalPages", totalPages);
         result.put("currentPage", totalPages > 0 ? page : 0);
         return result;
+    }
+
+    /** 当前直播间模式：直接从 SQLite 分页查询 */
+    private static Map<String, Object> querySqlitePage(long roomId, int page, int pageSize, String search,
+            String sortField, String sortOrder, String startTime, String endTime) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("rows", Collections.emptyList());
+        result.put("total", 0);
+        result.put("totalPages", 0);
+        result.put("currentPage", page);
+
+        try (java.sql.Connection c = xyz.acproject.danmuji.tools.db.DanmujiDatabase.getConnection()) {
+            StringBuilder where = new StringBuilder("WHERE room_id = ?");
+            List<Object> params = new ArrayList<>();
+            params.add(roomId);
+
+            if (startTime != null && !startTime.isEmpty()) {
+                Long sm = parseStrangerTime(startTime);
+                if (sm != null) { where.append(" AND time >= ?"); params.add(sm); }
+            }
+            if (endTime != null && !endTime.isEmpty()) {
+                Long em = parseStrangerTime(endTime);
+                if (em != null) { where.append(" AND time <= ?"); params.add(em); }
+            }
+            if (search != null && !search.isEmpty()) {
+                where.append(" AND (name LIKE ? OR score_types LIKE ? OR CAST(uid AS TEXT) LIKE ?)");
+                String q = "%" + search + "%";
+                params.add(q); params.add(q); params.add(q);
+            }
+
+            // 排序
+            String orderCol = "time";
+            if ("score".equals(sortField)) orderCol = "score";
+            else if ("count".equals(sortField)) orderCol = "count";
+            else if ("session".equals(sortField)) orderCol = "session";
+            else if ("name".equals(sortField)) orderCol = "name";
+            String dir = "desc".equalsIgnoreCase(sortOrder) ? "DESC" : "ASC";
+
+            // COUNT
+            int total = 0;
+            String countSql = "SELECT COUNT(*) FROM stranger_viewer " + where;
+            try (java.sql.PreparedStatement ps = c.prepareStatement(countSql)) {
+                for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
+                try (java.sql.ResultSet rs = ps.executeQuery()) { if (rs.next()) total = rs.getInt(1); }
+            }
+
+            int totalPages = (int) Math.ceil((double) total / pageSize);
+            if (page < 1) page = 1;
+            if (totalPages > 0 && page > totalPages) page = totalPages;
+            int offset = (page - 1) * pageSize;
+
+            // DATA
+            String dataSql = "SELECT uid,name,face,score,score_types,count,session,blocked,time FROM stranger_viewer "
+                    + where + " ORDER BY " + orderCol + " " + dir + " LIMIT ? OFFSET ?";
+            params.add(pageSize);
+            params.add(offset);
+
+            List<JSONObject> rows = new ArrayList<>();
+            try (java.sql.PreparedStatement ps = c.prepareStatement(dataSql)) {
+                for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
+                try (java.sql.ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        JSONObject row = new JSONObject();
+                        row.put("time", JodaTimeUtils.formatDateTime(rs.getLong("time")));
+                        row.put("uid", rs.getLong("uid"));
+                        row.put("name", rs.getString("name"));
+                        row.put("face", rs.getString("face"));
+                        row.put("score", rs.getInt("score"));
+                        String svSummary = ViewerActivitySummary.buildSummary(rs.getLong("uid"));
+                        row.put("scoreTypes", (svSummary.isEmpty() ? "" : " " + svSummary)
+                                + (rs.getString("score_types") != null ? rs.getString("score_types") : ""));
+                        row.put("count", rs.getInt("count"));
+                        row.put("session", rs.getInt("session"));
+                        row.put("blocked", rs.getInt("blocked") == 1);
+                        rows.add(row);
+                    }
+                }
+            }
+
+            result.put("rows", rows);
+            result.put("total", total);
+            result.put("totalPages", totalPages);
+            result.put("currentPage", totalPages > 0 ? page : 0);
+        } catch (Exception e) {
+            LOGGER.warn("querySqlitePage error: {}", e.getMessage());
+        }
+        return result;
+    }
+
+    /** 解析时间字符串为毫秒（兼容 yyyy-MM-dd HH:mm:ss 和 yyyy-MM-dd HH:mm） */
+    private static Long parseStrangerTime(String timeStr) {
+        if (timeStr == null || timeStr.isEmpty()) return null;
+        try {
+            return JodaTimeUtils.parse(timeStr, "yyyy-MM-dd HH:mm:ss").getTime();
+        } catch (Exception e) {
+            try {
+                return JodaTimeUtils.parse(timeStr, "yyyy-MM-dd HH:mm").getTime();
+            } catch (Exception e2) { return null; }
+        }
+    }
+
+    /** 将 StrangerRecord 转为前端 JSON */
+    private static JSONObject toRowJson(StrangerRecord r) {
+        JSONObject row = new JSONObject();
+        row.put("time", JodaTimeUtils.formatDateTime(r.time));
+        row.put("uid", r.uid);
+        row.put("name", r.name);
+        row.put("face", r.face);
+        row.put("score", r.score);
+        String svSummary = ViewerActivitySummary.buildSummary(r.uid);
+        row.put("scoreTypes", (svSummary.isEmpty() ? "" : " " + svSummary) + (r.scoreTypes != null ? r.scoreTypes : ""));
+        row.put("count", r.count);
+        row.put("session", r.session);
+        row.put("blocked", blockedUids.contains(r.uid));
+        return row;
     }
 
     /** Export filtered records from memory as CSV string (BOM + header + rows). */
