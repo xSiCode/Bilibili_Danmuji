@@ -1500,6 +1500,10 @@ public class ParseMessageThread extends Thread {
             case "LIKE_INFO_V3_NOTICE":
                 LOGGER.info("LIKE_INFO_V3_NOTICE:::" + message);
                 break;
+            case "GOTO_BUY_FLOW":
+                // {"data":{"text":"林**正在去买"},"cmd":"GOTO_BUY_FLOW"}
+                LOGGER.info("GOTO_BUY_FLOW:::" + message);
+                break;
             default:
 
                 // LOGGER.info("其他未处理消息:" + message);
