@@ -637,6 +637,57 @@ public class HttpRoomData {
     }
 
     /**
+     * 异步获取共同关注列表 — 集成SQLite缓存 + Cookie池轮换。
+     * 对应API: x/relation/same/followings
+     */
+    private static CompletableFuture<JSONObject> asyncHttpGetSameFollowings(long vmid) {
+        // 1. 检查 SQLite 缓存
+        String cacheKey = SqliteApiCacheManager.sameFollowingsKey(vmid);
+        String cached = SqliteApiCacheManager.get(cacheKey);
+        if (cached != null) {
+            try {
+                JSONObject jo = JSONObject.parseObject(cached);
+                if (jo != null) return CompletableFuture.completedFuture(jo);
+            } catch (Exception e) {
+                LOGGER.debug("共同关注缓存JSON解析失败 vmid={}", vmid, e);
+            }
+        }
+
+        String poolCookie = cookiePool.getNextCookieForSameFollow();
+        if (poolCookie == null && StringUtils.isBlank(PublicDataConf.USERCOOKIE)) {
+            poolCookie = PublicDataConf.USERCOOKIE;
+        }
+        Map<String, String> headers = new HashMap<>(3);
+        headers.put("referer", "https://space.bilibili.com/" + vmid + "/");
+        headers.put("user-agent",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36");
+        if (StringUtils.isNotBlank(poolCookie)) {
+            headers.put("cookie", poolCookie);
+        }
+        Map<String, String> datas = new HashMap<>(1);
+        datas.put("vmid", String.valueOf(vmid));
+        final String usedCookie = poolCookie;
+        return asyncHttpGetBody("https://api.bilibili.com/x/relation/same/followings", headers, datas)
+                .thenApply(body -> {
+                    if (body != null) {
+                        JSONObject json = JSONObject.parseObject(body);
+                        if (json != null) {
+                            int code = json.getIntValue("code");
+                            if (code != 0) {
+                                cookiePool.markRateLimited(usedCookie);
+                            }
+                            // 缓存成功和普通错误响应，但不缓存限流响应（-412/-509 为临时性错误）
+                            if (code != -412 && code != -509) {
+                                SqliteApiCacheManager.put(cacheKey, body);
+                            }
+                        }
+                        return json;
+                    }
+                    return null;
+                });
+    }
+
+    /**
      * 异步获取粉丝勋章墙 — 集成SQLite缓存 + Cookie池轮换。
      * 缓存命中直接返回；未命中则使用Cookie池中的可用Cookie发起请求。
      */
@@ -823,9 +874,24 @@ public class HttpRoomData {
             short follCode = follJson1 != null ? follJson1.getShort("code") : -1;
             JSONObject follData = follJson1 != null && follCode == 0 ? follJson1.getJSONObject("data") : null;
             long total = follData != null ? follData.getLongValue("total") : 0;
+            logSb.append(" [total:").append(total).append("]");
             if (follJson1 == null || follCode != 0 || follData == null || total == 0) {
                 follResult = processHiddenFollowingsSync(vmid, logSb);
-            } else {
+            } else if(total > 100){
+                // 共同关注: 当用户关注数超过100时，B站常规API只返回前1000条，
+                // 通过 same/followings API 获取与主播共同关注的用户列表进行评分
+                logSb.append(" [关注>100:共同关注请求中]");
+                try {
+                    JSONObject sameFollowJson = asyncHttpGetSameFollowings(vmid).get(10, TimeUnit.SECONDS);
+                    follResult = processSameFollowingsSync(vmid, logSb, sameFollowJson);
+                } catch (Exception e) {
+                    LOGGER.warn("共同关注API超时 vmid={}", vmid, e);
+                    logSb.append(" [共同关注:异常:").append(e.getMessage()).append("]");
+                    follResult = Pair.of(0, "");
+                }
+
+
+            }else {
                 // 合并两页的 list
                 JSONArray mergedList = follData.getJSONArray("list");
                 if (mergedList == null) mergedList = new JSONArray();
@@ -850,15 +916,8 @@ public class HttpRoomData {
             appendType(combinedType, medalResult.getRight());
             appendType(combinedType, follResult.getRight());
 
-            //黑白名单处理，pnScoreMap 直接命中
-            int totalScore = 0;
-            Integer pnScore = pnScoreMap.get(vmid);
-            if (pnScore != null) {
-                totalScore = pnScore; // 需求如此
-                combinedType.append("[已在名单:").append(pnScore).append("]");
-            } else {
-                totalScore = medalResult.getLeft() + follResult.getLeft() + cardResult.score;
-            }
+            //三者的总分合计
+            int totalScore =  medalResult.getLeft() + follResult.getLeft() + cardResult.score;
 
             xyz.acproject.danmuji.service.StrangerViewerService.addRecord(
                     vmid, cardResult.name, cardResult.face, totalScore, cardResult.sign);
@@ -866,10 +925,9 @@ public class HttpRoomData {
             // Phase 3: 仅当综合分在 -1, 0 时才触发动态API
             if ((-1 <= totalScore && totalScore <= 0) && !schedulerDynamicColdWait.get()) {
                 // logSb.append("[动态|请求中]");
-                int finalTotalScore = totalScore;
                 return asyncHttpGetUserDynamic(vmid).thenApply(dynData -> {
                     Pair<Integer, String> dynResult = computeDynamicScore(dynData, logSb);
-                    int finalScore = finalTotalScore + dynResult.getLeft();
+                    int finalScore = totalScore + dynResult.getLeft();
                     appendType(combinedType, dynResult.getRight());
                     return finalize(logSb, finalScore, combinedType.toString());
                 });
@@ -997,6 +1055,71 @@ public class HttpRoomData {
     private static Pair<Integer, String> processHiddenFollowingsSync(long vmid, StringBuilder logSb) {
         logSb.append("  [关注:隐藏-1]");
         return Pair.of(-1, "[关注隐藏-1]");
+    }
+
+    /**
+     * 共同关注列表评分 — 当目标用户关注数 >1000 时使用。
+     * 逐用户匹配 pnScoreMap 计算共同关注黑白分。
+     */
+    private static Pair<Integer, String> processSameFollowingsSync(long vmid, StringBuilder logSb, JSONObject sameFollowJson) {
+        if (sameFollowJson == null) {
+            logSb.append("  [共同关注:null:0]");
+            return Pair.of(0, "");
+        }
+        short code = sameFollowJson.getShort("code");
+        if (code != 0) {
+            logSb.append("  [共同关注:API异常:").append(code).append(":0]");
+            return Pair.of(0, "");
+        }
+        JSONObject data = sameFollowJson.getJSONObject("data");
+        if (data == null) {
+            logSb.append("  [共同关注:无数据:0]");
+            return Pair.of(0, "");
+        }
+        JSONArray list = data.getJSONArray("list");
+        int total = data.getIntValue("total");
+        if (list == null || list.isEmpty()) {
+            logSb.append("  [共同关注:total=").append(total).append(",空:0]");
+            return Pair.of(0, "");
+        }
+
+        int blackWhiteScore = 0;
+        StringBuilder blackWhiteType = new StringBuilder(60);
+        int blackCount = 0, whiteCount = 0;
+        JSONArray matchedList = new JSONArray();
+
+        logSb.append("  [共同关注:total=").append(total).append(" ");
+        for (Object obj : list) {
+            JSONObject user = (JSONObject) obj;
+            long mid = user.getLong("mid");
+            String uname = user.getString("uname");
+
+            FollowingCountTools.recordFollowing(mid, uname);
+            Integer score = pnScoreMap.get(mid);
+            if (score != null) {
+                blackWhiteScore += score;
+                matchedList.add(uname + ":" + score);
+                MatchCountTools.recordMatch(mid, uname, score);
+                if (score < 0) blackCount++;
+                else whiteCount++;
+            }
+        }
+
+        if (!matchedList.isEmpty()) {
+            logSb.append("匹配:").append(matchedList.size())
+                    .append(" 分裂度:").append(blackCount * whiteCount)
+                    .append(" 列表:").append(matchedList).append(" ");
+        }
+
+        if (blackWhiteScore != 0) {
+            blackWhiteType.append("[共同关注分:").append(blackWhiteScore).append("]");
+        } else {
+            blackWhiteScore = 1;
+            blackWhiteType.append("[共同关注分:").append(blackWhiteScore).append("]");
+        }
+        logSb.append("共同关注分:").append(blackWhiteScore).append("]");
+
+        return Pair.of(blackWhiteScore, blackWhiteType.toString());
     }
 
     /**

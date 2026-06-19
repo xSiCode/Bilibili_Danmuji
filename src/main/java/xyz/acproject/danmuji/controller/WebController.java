@@ -4991,6 +4991,50 @@ public class WebController {
     }
 
     /**
+     * 启用/禁用子账号的共同关注API参与
+     */
+    @ResponseBody
+    @PostMapping(value = "/api/accountPool/toggleSameFollow")
+    public Response<?> accountPoolToggleSameFollow(@RequestParam("uid") String uid,
+                                                    @RequestParam("enabled") boolean enabled,
+                                                    HttpServletRequest req) {
+        try {
+            if (StringUtils.isBlank(uid)) {
+                return Response.success(false, req);
+            }
+            xyz.acproject.danmuji.http.CookiePoolManager pool = xyz.acproject.danmuji.http.CookiePoolManager.getInstance();
+            boolean ok = pool.setAccountSameFollowEnabled(uid, enabled);
+            if (ok) {
+                xyz.acproject.danmuji.http.HttpRoomData.syncRateLimiterConfig(pool.getPoolConf());
+            }
+            return Response.success(ok, req);
+        } catch (Exception e) {
+            LOGGER.error("accountPoolToggleSameFollow error", e);
+            return Response.success(false, req);
+        }
+    }
+
+    /**
+     * 启用/禁用主账号的共同关注API参与
+     */
+    @ResponseBody
+    @PostMapping(value = "/api/accountPool/toggleMainSameFollow")
+    public Response<?> accountPoolToggleMainSameFollow(@RequestParam("enabled") boolean enabled,
+                                                       HttpServletRequest req) {
+        try {
+            xyz.acproject.danmuji.http.CookiePoolManager pool = xyz.acproject.danmuji.http.CookiePoolManager.getInstance();
+            boolean ok = pool.setMainSameFollowEnabled(enabled);
+            if (ok) {
+                xyz.acproject.danmuji.http.HttpRoomData.syncRateLimiterConfig(pool.getPoolConf());
+            }
+            return Response.success(ok, req);
+        } catch (Exception e) {
+            LOGGER.error("accountPoolToggleMainSameFollow error", e);
+            return Response.success(false, req);
+        }
+    }
+
+    /**
      * 手动清除冷却状态
      */
     @ResponseBody

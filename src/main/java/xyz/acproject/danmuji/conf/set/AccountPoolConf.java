@@ -57,6 +57,10 @@ public class AccountPoolConf implements Serializable {
     @JSONField(name = "main_cooldown_until")
     private long mainCooldownUntil = 0L;
 
+    /** 主账号是否参与共同关注API轮询，默认 true */
+    @JSONField(name = "main_same_follow_enabled")
+    private boolean mainSameFollowEnabled = true;
+
     public AccountPoolConf() {
         this.accounts = new CopyOnWriteArrayList<>();
     }
@@ -125,6 +129,14 @@ public class AccountPoolConf implements Serializable {
 
     public void setMainPollingEnabled(boolean mainPollingEnabled) {
         this.mainPollingEnabled = mainPollingEnabled;
+    }
+
+    public boolean isMainSameFollowEnabled() {
+        return mainSameFollowEnabled;
+    }
+
+    public void setMainSameFollowEnabled(boolean mainSameFollowEnabled) {
+        this.mainSameFollowEnabled = mainSameFollowEnabled;
     }
 
     public long getMainCooldownUntil() {
@@ -276,6 +288,7 @@ public class AccountPoolConf implements Serializable {
             mainRow.put("useCount", pool.getMainUseCount());
             mainRow.put("rateLimitedCount", pool.getMainRateLimitedCount());
             mainRow.put("lastUsedTime", 0L);
+            mainRow.put("sameFollowEnabled", mainSameFollowEnabled);
             arr.add(mainRow);
         }
 
@@ -305,6 +318,7 @@ public class AccountPoolConf implements Serializable {
             accJson.put("useCount", acc.getUseCount());
             accJson.put("rateLimitedCount", acc.getRateLimitedCount());
             accJson.put("validated", acc.isValidated());
+            accJson.put("sameFollowEnabled", acc.isSameFollowEnabled());
             arr.add(accJson);
         }
         json.put("accounts", arr);

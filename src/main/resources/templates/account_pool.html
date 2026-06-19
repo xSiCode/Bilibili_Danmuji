@@ -201,13 +201,14 @@
                                 <th>LV</th>
                                 <th>Cookie</th>
                                 <th>状态</th>
+                                <th>共同关注</th>
                                 <th>使用/限流</th>
                                 <th>操作</th>
                             </tr>
                         </thead>
                         <tbody id="accountTableBody">
                             <tr id="noAccountRow">
-                                <td colspan="9" class="text-center text-muted py-4">未登录主账号，请先在主页登录</td>
+                                <td colspan="10" class="text-center text-muted py-4">未登录主账号，请先在主页登录</td>
                             </tr>
                         </tbody>
                     </table>
@@ -353,7 +354,7 @@
                 var tbody = $('#accountTableBody');
                 tbody.empty();
                 if (currentAccounts.length === 0) {
-                    tbody.append('<tr id="noAccountRow"><td colspan="9" class="text-center text-muted py-4">未登录主账号，请先在主页登录</td></tr>');
+                    tbody.append('<tr id="noAccountRow"><td colspan="10" class="text-center text-muted py-4">未登录主账号，请先在主页登录</td></tr>');
                 } else {
                     currentAccounts.forEach(function(acc) {
                         var isMain = acc.isMain === true;
@@ -403,6 +404,9 @@
                             '<td><span class="cookie-preview truncate-expandable inline-expand" title="' + escAttr(acc.cookiePreview || '') + '">' + escHtml(acc.cookiePreview || '-') + '</span></td>' +
                             '<td><span class="' + statusClass + ' status-badge">' + acc.status + '</span>' +
                                 (acc.cooldownRemaining > 0 ? ' <small class="text-muted">' + formatCooldown(acc.cooldownRemaining) + '</small>' : '') + '</td>' +
+                            '<td class="text-center"><input type="checkbox" class="form-check-input same-follow-toggle" '
+                                + (isMain ? 'data-main="true" ' : 'data-uid="' + escAttr(acc.uid) + '" ')
+                                + (acc.sameFollowEnabled !== false ? 'checked' : '') + '></td>' +
                             '<td><small>' + (acc.useCount || 0) + ' / ' + (acc.rateLimitedCount || 0) + '</small></td>' +
                             '<td class="actions-cell">' + actions + '</td>' +
                             '</tr>';
@@ -850,6 +854,25 @@
             }
         });
     }
+
+    // ====== 共同关注开关事件 ======
+    $('#accountTableBody').on('change', '.same-follow-toggle', function() {
+        var $this = $(this);
+        var isMain = $this.data('main') === true;
+        var enabled = $this.is(':checked');
+        var url = isMain ? '../api/accountPool/toggleMainSameFollow' : '../api/accountPool/toggleSameFollow';
+        var data = isMain ? { enabled: enabled } : { uid: $this.data('uid'), enabled: enabled };
+        $.ajax({
+            url: url,
+            async: true, cache: false, type: 'POST',
+            data: data,
+            dataType: 'json',
+            success: function(data) {
+                if (data && data.result) { loadAccountList(); loadStats(); }
+                else showToast('操作失败', 'danger');
+            }
+        });
+    });
 
     function resetForm() {
         $('#editingUid').val('');

@@ -47,6 +47,9 @@ public class SubAccount implements Serializable {
     /** Cookie 是否验证通过 */
     private boolean validated = false;
 
+    /** 是否参与共同关注API轮询 (默认 true，兼容旧配置) */
+    private boolean sameFollowEnabled = true;
+
     public SubAccount() {
     }
 
@@ -153,6 +156,14 @@ public class SubAccount implements Serializable {
 
     public void setValidated(boolean validated) {
         this.validated = validated;
+    }
+
+    public boolean isSameFollowEnabled() {
+        return sameFollowEnabled;
+    }
+
+    public void setSameFollowEnabled(boolean sameFollowEnabled) {
+        this.sameFollowEnabled = sameFollowEnabled;
     }
 
     /**

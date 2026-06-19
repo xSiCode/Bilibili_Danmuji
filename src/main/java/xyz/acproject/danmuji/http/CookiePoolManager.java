@@ -14,6 +14,7 @@ import xyz.acproject.danmuji.tools.file.ProFileTools;
 import xyz.acproject.danmuji.utils.OkHttp3Utils;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -146,6 +147,56 @@ public class CookiePoolManager {
 
         // 全部禁用 — 回退到主账号兜底
         LOGGER.warn("CookiePool: 无可用账号，回退到主账号");
+        mainUseCount.incrementAndGet();
+        return PublicDataConf.USERCOOKIE;
+    }
+
+    /**
+     * 获取下一个可用于共同关注API的Cookie。
+     * 主账号始终参与；子账号仅在 sameFollowEnabled=true 时参与。
+     *
+     * @return Cookie 字符串，可能为 null
+     */
+    public String getNextCookieForSameFollow() {
+        long now = System.currentTimeMillis();
+
+        // 如果池未启用，直接用主账号
+        if (poolConf == null || !poolConf.isEnabled()) {
+            return PublicDataConf.USERCOOKIE;
+        }
+
+        List<SubAccount> accounts = poolConf.getAccounts();
+        List<SubAccount> availableForSameFollow = new ArrayList<>();
+        for (SubAccount acc : accounts) {
+            if (acc.isEnabled() && acc.isSameFollowEnabled()
+                    && !acc.isCoolingDown() && acc.isValidated()) {
+                availableForSameFollow.add(acc);
+            }
+        }
+
+        // 主账号需勾选共同关注复选框才能参与
+        boolean mainAvailable = isMainAccountAvailable() && !isMainCoolingDown()
+                && poolConf.isMainSameFollowEnabled();
+        int totalAvailable = availableForSameFollow.size() + (mainAvailable ? 1 : 0);
+
+        if (totalAvailable > 0) {
+            int index = Math.abs(roundRobinIndex.getAndIncrement() % totalAvailable);
+            if (index < availableForSameFollow.size()) {
+                SubAccount selected = availableForSameFollow.get(index);
+                selected.setLastUsedTime(now);
+                selected.setUseCount(selected.getUseCount() + 1);
+                LOGGER.debug("CookiePool: 共同关注-使用子账号 [{}] uid={}",
+                        selected.getName(), selected.getUid());
+                return selected.getCookie();
+            } else {
+                mainUseCount.incrementAndGet();
+                LOGGER.debug("CookiePool: 共同关注-使用主账号（轮询命中）");
+                return PublicDataConf.USERCOOKIE;
+            }
+        }
+
+        // 全部不可用 — 回退到主账号兜底
+        LOGGER.debug("CookiePool: 共同关注-无可用账号，回退主账号");
         mainUseCount.incrementAndGet();
         return PublicDataConf.USERCOOKIE;
     }
@@ -313,6 +364,34 @@ public class CookiePoolManager {
             }
         }
         return false;
+    }
+
+    /**
+     * 启用/禁用子账号的共同关注API参与
+     */
+    public boolean setAccountSameFollowEnabled(String uid, boolean enabled) {
+        if (uid == null) return false;
+        for (SubAccount acc : poolConf.getAccounts()) {
+            if (uid.equals(acc.getUid())) {
+                acc.setSameFollowEnabled(enabled);
+                saveToFile();
+                LOGGER.info("CookiePool: 账号 [{}] 共同关注{}",
+                        acc.getName(), enabled ? "已启用" : "已停用");
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 启用/禁用主账号的共同关注API参与
+     */
+    public boolean setMainSameFollowEnabled(boolean enabled) {
+        if (poolConf == null) return false;
+        poolConf.setMainSameFollowEnabled(enabled);
+        saveToFile();
+        LOGGER.info("CookiePool: 主账号 共同关注{}", enabled ? "已启用" : "已停用");
+        return true;
     }
 
     /**
