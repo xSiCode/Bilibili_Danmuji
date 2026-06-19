@@ -51,7 +51,7 @@ public class LogFileTools {
 	}
 
 	// 日志批量写入队列 + 后台写入线程
-	private static final LinkedBlockingQueue<LogEntry> batchQueue = new LinkedBlockingQueue<>(20000);
+	private static final LinkedBlockingQueue<LogEntry> batchQueue = new LinkedBlockingQueue<>(2000);
 
 	static {
 		Thread writer = new Thread(() -> {

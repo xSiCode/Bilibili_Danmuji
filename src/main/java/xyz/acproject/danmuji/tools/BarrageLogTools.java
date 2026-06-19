@@ -15,10 +15,10 @@ import java.util.concurrent.TimeUnit;
 public class BarrageLogTools {
     private static final Logger LOGGER = LogManager.getLogger(BarrageLogTools.class);
 
-    private static final LinkedBlockingQueue<String> batchQueue = new LinkedBlockingQueue<>(20000);
+    private static final LinkedBlockingQueue<String> batchQueue = new LinkedBlockingQueue<>(2000);
     // 内存环形缓冲区：保留最近 N 条弹幕供实时查询，避免每次读 CSV 的延迟
     private static final java.util.concurrent.ConcurrentLinkedDeque<String> recentBarrages = new java.util.concurrent.ConcurrentLinkedDeque<>();
-    private static final int MAX_RECENT_BARRAGES = 5000;
+    private static final int MAX_RECENT_BARRAGES = 500;
 
     private static volatile String lastRoomId;
     private static volatile String lastAnchorName;

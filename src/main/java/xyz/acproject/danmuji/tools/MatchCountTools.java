@@ -25,6 +25,7 @@ public class MatchCountTools {
     private static final Logger LOGGER = LogManager.getLogger(MatchCountTools.class);
 
     private static final ConcurrentHashMap<Long, MatchRecord> matchMap = new ConcurrentHashMap<>();
+    private static final int MAX_MAP_SIZE = 5000;
     // 脏 UID 集合：仅当有变更时才在定时刷盘中写出
     private static final Set<Long> dirtyUids = ConcurrentHashMap.newKeySet();
     private static final ScheduledExecutorService flushScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
@@ -74,6 +75,10 @@ public class MatchCountTools {
             return v;
         });
         dirtyUids.add(matchedUid);
+        // 内存淘汰：超过上限时移除最旧的条目（数据已持久化到 SQLite）
+        if (matchMap.size() > MAX_MAP_SIZE + 500) {
+            evictOldestMatches();
+        }
         long now = System.currentTimeMillis();
         if (now - lastMatchNotify > 1000) {
             lastMatchNotify = now;
@@ -81,6 +86,19 @@ public class MatchCountTools {
         }
     }
     private static volatile long lastMatchNotify = 0;
+
+    /** 淘汰最旧的条目，使 map 大小降至 MAX_MAP_SIZE */
+    private static synchronized void evictOldestMatches() {
+        int excess = matchMap.size() - MAX_MAP_SIZE;
+        if (excess <= 0) return;
+        matchMap.entrySet().stream()
+            .sorted((a, b) -> Long.compare(a.getValue().latestMatchTime, b.getValue().latestMatchTime))
+            .limit(excess)
+            .forEach(e -> {
+                matchMap.remove(e.getKey());
+                dirtyUids.remove(e.getKey());
+            });
+    }
 
     public static List<MatchRecord> getMatchList() {
         return new ArrayList<>(matchMap.values());
@@ -120,7 +138,7 @@ public class MatchCountTools {
         try { roomId = Long.parseLong(info[0]); } catch (NumberFormatException e) { return false; }
         String anchorName = info[1];
 
-        String sql = "SELECT matched_uid, matched_name, score, count, latest_match_time FROM match_summary WHERE room_id = ? AND anchor_name = ?";
+        String sql = "SELECT matched_uid, matched_name, score, count, latest_match_time FROM match_summary WHERE room_id = ? AND anchor_name = ? ORDER BY latest_match_time DESC LIMIT 5000";
         try (Connection c = DanmujiDatabase.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setLong(1, roomId);

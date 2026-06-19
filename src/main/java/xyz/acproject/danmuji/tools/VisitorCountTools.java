@@ -27,6 +27,7 @@ public class VisitorCountTools {
     private static final Logger LOGGER = LogManager.getLogger(VisitorCountTools.class);
 
     private static final ConcurrentHashMap<Long, VisitorRecord> visitorMap = new ConcurrentHashMap<>();
+    private static final int MAX_MAP_SIZE = 5000;
     private static final Set<Long> dirtyUids = ConcurrentHashMap.newKeySet();
     private static final ScheduledExecutorService flushScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread t = new Thread(r, "visitor-csv-flush");
@@ -83,6 +84,10 @@ public class VisitorCountTools {
             dirtyUids.add(uid);
             return v;
         });
+        // 内存淘汰：超过上限时移除最旧的条目（数据已持久化到 SQLite）
+        if (visitorMap.size() > MAX_MAP_SIZE + 500) {
+            evictOldestVisitors();
+        }
         // 通知 WebSocket 客户端数据已更新（节流：每秒最多一次）
         long now = System.currentTimeMillis();
         if (now - lastVisitorNotify > 1000) {
@@ -120,7 +125,7 @@ public class VisitorCountTools {
         try { roomId = Long.parseLong(info[0]); } catch (NumberFormatException e) { return false; }
         String anchorName = info[1];
 
-        String sql = "SELECT uid, uname, score, score_type, count, in_pn_table, session, latest_entry_time FROM visitor_summary WHERE room_id = ? AND anchor_name = ?";
+        String sql = "SELECT uid, uname, score, score_type, count, in_pn_table, session, latest_entry_time FROM visitor_summary WHERE room_id = ? AND anchor_name = ? ORDER BY latest_entry_time DESC LIMIT 5000";
         try (Connection c = DanmujiDatabase.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setLong(1, roomId);
@@ -350,6 +355,20 @@ public class VisitorCountTools {
             return "\"" + s.replace("\"", "\"\"") + "\"";
         }
         return s;
+    }
+
+    /** 淘汰最旧的条目，使 map 大小降至 MAX_MAP_SIZE */
+    private static synchronized void evictOldestVisitors() {
+        int excess = visitorMap.size() - MAX_MAP_SIZE;
+        if (excess <= 0) return;
+        // 按 latestEntryTime 升序排列，移除最旧的 excess 条
+        visitorMap.entrySet().stream()
+            .sorted((a, b) -> Long.compare(a.getValue().latestEntryTime, b.getValue().latestEntryTime))
+            .limit(excess)
+            .forEach(e -> {
+                visitorMap.remove(e.getKey());
+                dirtyUids.remove(e.getKey());
+            });
     }
 
     /** 返回内存中的观众数据（实时，无 CSV 读取延迟） */

@@ -23,6 +23,7 @@ public class GiftLogTools {
     private static final Logger LOGGER = LogManager.getLogger(GiftLogTools.class);
 
     private static final ConcurrentHashMap<String, GiftRecord> giftMap = new ConcurrentHashMap<>();
+    private static final int MAX_MAP_SIZE = 5000;
     private static final ScheduledExecutorService flushScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread t = new Thread(r, "gift-csv-flush");
         t.setDaemon(true);
@@ -77,6 +78,10 @@ public class GiftLogTools {
             v.latestTime = timestampMillis;
             return v;
         });
+        // 内存淘汰：超过上限时移除最旧的条目（数据已持久化到 SQLite）
+        if (giftMap.size() > MAX_MAP_SIZE + 500) {
+            evictOldestGifts();
+        }
         // 通知 WebSocket 客户端数据已更新（节流：每秒最多一次）
         long now = System.currentTimeMillis();
         if (now - lastGiftNotify > 1000) {
@@ -110,7 +115,7 @@ public class GiftLogTools {
         try { roomId = Long.parseLong(info[0]); } catch (NumberFormatException e) { return false; }
         String anchorName = info[1];
 
-        String sql = "SELECT uid, uname, gift_name, total_price, count, latest_time FROM gift_summary WHERE room_id = ? AND anchor_name = ?";
+        String sql = "SELECT uid, uname, gift_name, total_price, count, latest_time FROM gift_summary WHERE room_id = ? AND anchor_name = ? ORDER BY latest_time DESC LIMIT 5000";
         try (Connection c = DanmujiDatabase.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setLong(1, roomId);
@@ -289,6 +294,16 @@ public class GiftLogTools {
             return "\"" + s.replace("\"", "\"\"") + "\"";
         }
         return s;
+    }
+
+    /** 淘汰最旧的条目，使 map 大小降至 MAX_MAP_SIZE */
+    private static synchronized void evictOldestGifts() {
+        int excess = giftMap.size() - MAX_MAP_SIZE;
+        if (excess <= 0) return;
+        giftMap.entrySet().stream()
+            .sorted((a, b) -> Long.compare(a.getValue().latestTime, b.getValue().latestTime))
+            .limit(excess)
+            .forEach(e -> giftMap.remove(e.getKey()));
     }
 
     /** 返回内存中的礼物聚合数据（实时，无 CSV 读取延迟） */

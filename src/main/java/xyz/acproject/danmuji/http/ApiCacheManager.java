@@ -22,7 +22,7 @@ public class ApiCacheManager {
     private static volatile ApiCacheManager instance;
 
     /** 最大缓存条目数 */
-    private static final int MAX_CACHE_SIZE = 10000;
+    private static final int MAX_CACHE_SIZE = 2000;
 
     /** 清理间隔（毫秒），每 60 秒清理一次过期条目 */
     private static final long PRUNE_INTERVAL_MS = 60_000;

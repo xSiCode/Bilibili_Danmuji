@@ -105,19 +105,19 @@ public class PublicDataConf {
 	//处理信息分类线程
 	public static volatile ParseMessageThread parseMessageThread;
 	//处理弹幕包集合
-	public final static LinkedBlockingQueue<String> resultStrs = new LinkedBlockingQueue<String>(5000);
+	public final static LinkedBlockingQueue<String> resultStrs = new LinkedBlockingQueue<String>(500);
 	//礼物感谢集
 	public final static Map<String,Vector<Gift>> thankGiftConcurrentHashMap = new ConcurrentHashMap<String,Vector<Gift>>(3000);
 	//待发弹幕集
-	public final static LinkedBlockingQueue<String> barrageString = new LinkedBlockingQueue<String>(500);
+	public final static LinkedBlockingQueue<String> barrageString = new LinkedBlockingQueue<String>(200);
 	//log日志待写入集合
-	public final static LinkedBlockingQueue<String> logString = new LinkedBlockingQueue<String>(500);
+	public final static LinkedBlockingQueue<String> logString = new LinkedBlockingQueue<String>(200);
 	//待发送感谢关注集合
-	public final static LinkedBlockingQueue<Interact> interacts = new LinkedBlockingQueue<Interact>(500);
+	public final static LinkedBlockingQueue<Interact> interacts = new LinkedBlockingQueue<Interact>(200);
 	//待发送欢迎进入直播间集合
-	public final static LinkedBlockingQueue<Interact> interactWelcome = new LinkedBlockingQueue<Interact>(500);
+	public final static LinkedBlockingQueue<Interact> interactWelcome = new LinkedBlockingQueue<Interact>(200);
 	//自动回复处理弹幕
-	public final static LinkedBlockingQueue<AutoReply> replys = new LinkedBlockingQueue<AutoReply>(200);
+	public final static LinkedBlockingQueue<AutoReply> replys = new LinkedBlockingQueue<AutoReply>(100);
 	
 	//日志线程
 	public static volatile LogThread logThread;

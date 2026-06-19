@@ -6,7 +6,7 @@ spring:
   thymeleaf:
   prefix : classpath:/templates/
   suffix : .html
-  cache: false
+  cache: true
   encoding: UTF-8
   mode: HTML5
   mvc:
@@ -21,6 +21,13 @@ spring:
 server:
 #  port: ${PORT:5000}
   port: 0   # 0=自动选择可用端口，固定端口如: 21212
+  tomcat:
+    threads:
+      max: 20
+      min-spare: 2
+    max-connections: 50
+    accept-count: 10
+    connection-timeout: 5000ms
   servlet:
     encoding:
       force: true

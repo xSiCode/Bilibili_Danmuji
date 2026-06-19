@@ -19,7 +19,8 @@
 
         <RollingFile name="RollingFileInfo" fileName="log/${displayName}_info.log"
 
-                     filePattern="log/${displayName}.log.%d{yyyy-MM-dd}">
+                     filePattern="log/${displayName}.log.%d{yyyy-MM-dd}"
+                     bufferSize="4096" immediateFlush="false">
 
             <!--控制台只输出level及以上级别的信息（onMatch），其他的直接拒绝（onMismatch）-->
 
@@ -30,15 +31,18 @@
             <Policies>
                 <TimeBasedTriggeringPolicy interval="1"/>
 
-                <SizeBasedTriggeringPolicy size="1000 MB"/>
+                <SizeBasedTriggeringPolicy size="10 MB"/>
             </Policies>
+
+            <DefaultRolloverStrategy max="5"/>
 
         </RollingFile>
 
 
         <RollingFile name="ErrorRollingFileInfo" fileName="log/${displayName}_error.log"
 
-                     filePattern="log/${displayName}_error.log.%d{yyyy-MM-dd}">
+                     filePattern="log/${displayName}_error.log.%d{yyyy-MM-dd}"
+                     bufferSize="4096" immediateFlush="false">
 
             <!--控制台只输出level及以上级别的信息（onMatch），其他的直接拒绝（onMismatch）-->
 
@@ -49,8 +53,10 @@
             <Policies>
                 <TimeBasedTriggeringPolicy interval="1"/>
 
-                <SizeBasedTriggeringPolicy size="1000 MB"/>
+                <SizeBasedTriggeringPolicy size="10 MB"/>
             </Policies>
+
+            <DefaultRolloverStrategy max="5"/>
 
         </RollingFile>
 

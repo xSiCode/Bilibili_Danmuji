@@ -4,5 +4,5 @@
 if [ -e /opt/store ]; then
   ln -s /opt/store/profile /workspace/${PROFILE_NAME}
 fi
-JAVA_OPS=${JAVA_OPS:-"-Xms256m -Xmx1024m"}
+JAVA_OPS=${JAVA_OPS:-"-Xms64m -Xmx192m -Xss256k -XX:MaxMetaspaceSize=48m -XX:+UseSerialGC -XX:+UseCompressedOops -Djava.awt.headless=true"}
 java $JAVA_OPS -jar app.jar

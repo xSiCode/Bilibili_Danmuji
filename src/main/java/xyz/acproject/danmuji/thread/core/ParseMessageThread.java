@@ -80,15 +80,15 @@ public class ParseMessageThread extends Thread {
 
     // 观众详情异步处理线程池（访客卡片信息 + 关注列表分析）
     private static final ExecutorService WATCHER_EXECUTOR = new ThreadPoolExecutor(
-            4, 8, 60L, TimeUnit.SECONDS,
-            new LinkedBlockingQueue<>(500),
+            2, 4, 60L, TimeUnit.SECONDS,
+            new LinkedBlockingQueue<>(200),
             new ThreadPoolExecutor.CallerRunsPolicy()
     );
 
     // 消息处理线程池（弹幕/礼物/上舰等高频消息的格式化+推送）
     private static final ExecutorService MESSAGE_EXECUTOR = new ThreadPoolExecutor(
-            4, 8, 60L, TimeUnit.SECONDS,
-            new LinkedBlockingQueue<>(1000),
+            2, 4, 60L, TimeUnit.SECONDS,
+            new LinkedBlockingQueue<>(300),
             new ThreadPoolExecutor.CallerRunsPolicy()
     );
 

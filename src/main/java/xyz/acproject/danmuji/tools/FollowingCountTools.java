@@ -25,6 +25,7 @@ public class FollowingCountTools {
     private static final Logger LOGGER = LogManager.getLogger(FollowingCountTools.class);
 
     private static final ConcurrentHashMap<Long, FollowingRecord> followingMap = new ConcurrentHashMap<>();
+    private static final int MAX_MAP_SIZE = 5000;
     // 脏 UID 集合：仅当有变更时才在定时刷盘中写出
     private static final Set<Long> dirtyUids = ConcurrentHashMap.newKeySet();
     private static final ScheduledExecutorService flushScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
@@ -73,6 +74,10 @@ public class FollowingCountTools {
             return v;
         });
         dirtyUids.add(followedUid);
+        // 内存淘汰：超过上限时移除最旧的条目（数据已持久化到 SQLite）
+        if (followingMap.size() > MAX_MAP_SIZE + 500) {
+            evictOldestFollowings();
+        }
         // 通知 WebSocket 客户端（节流）
         long now = System.currentTimeMillis();
         if (now - lastFollowNotify > 1000) {
@@ -81,6 +86,19 @@ public class FollowingCountTools {
         }
     }
     private static volatile long lastFollowNotify = 0;
+
+    /** 淘汰最旧的条目，使 map 大小降至 MAX_MAP_SIZE */
+    private static synchronized void evictOldestFollowings() {
+        int excess = followingMap.size() - MAX_MAP_SIZE;
+        if (excess <= 0) return;
+        followingMap.entrySet().stream()
+            .sorted((a, b) -> Long.compare(a.getValue().latestTime, b.getValue().latestTime))
+            .limit(excess)
+            .forEach(e -> {
+                followingMap.remove(e.getKey());
+                dirtyUids.remove(e.getKey());
+            });
+    }
 
     public static List<FollowingRecord> getFollowingList() {
         return new ArrayList<>(followingMap.values());
@@ -112,7 +130,7 @@ public class FollowingCountTools {
         try { roomId = Long.parseLong(info[0]); } catch (NumberFormatException e) { return false; }
         String anchorName = info[1];
 
-        String sql = "SELECT uid, uname, count, latest_time FROM follow_summary WHERE room_id = ? AND anchor_name = ?";
+        String sql = "SELECT uid, uname, count, latest_time FROM follow_summary WHERE room_id = ? AND anchor_name = ? ORDER BY latest_time DESC LIMIT 5000";
         try (Connection c = DanmujiDatabase.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setLong(1, roomId);
