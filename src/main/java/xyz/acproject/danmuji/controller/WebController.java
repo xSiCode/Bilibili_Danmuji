@@ -1653,6 +1653,237 @@ public class WebController {
         return Response.success(fileList, req);
     }
 
+    // ======================== SQLite 查询通用框架 ========================
+
+    /** 列定义 */
+    private static class ColDef {
+        final String sqlCol;
+        final String header;
+        final String sortType; // "time"|"number"|"text"
+        final String sqlExpr;  // 可选：SQL 表达式（用于显示值转换，如 CASE WHEN）
+        ColDef(String sqlCol, String header, String sortType) { this(sqlCol, header, sortType, null); }
+        ColDef(String sqlCol, String header, String sortType, String sqlExpr) {
+            this.sqlCol = sqlCol; this.header = header; this.sortType = sortType; this.sqlExpr = sqlExpr;
+        }
+    }
+
+    /** 将 "yyyy-MM-dd HH:mm:ss" 字符串转为 Unix 毫秒时间戳 */
+    private Long parseTimeToMillis(String timeStr) {
+        if (timeStr == null || timeStr.isEmpty()) return null;
+        try {
+            return new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").parse(timeStr).getTime();
+        } catch (Exception e) { return null; }
+    }
+
+    /** 将 Unix 毫秒时间戳转为 "yyyy-MM-dd HH:mm:ss" 字符串 */
+    private String millisToTimeStr(long millis) {
+        return new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new java.util.Date(millis));
+    }
+
+    /**
+     * 通用 SQLite 分页查询 — 用于聚合表（visitor/match/follow/gift/stranger_viewer/danmaku）
+     * @return {headers, rows (含 _id), total, totalPages, currentPage, firstTime, lastTime}
+     */
+    private Map<String, Object> queryTablePage(
+            String filePath, String tableName,
+            List<ColDef> columns, List<String> searchCols,
+            int page, int pageSize,
+            String startTime, String endTime, String search,
+            String sortField, String sortOrder) {
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        List<String> headers = columns.stream().map(c -> c.header).collect(java.util.stream.Collectors.toList());
+        result.put("headers", headers);
+        result.put("rows", Collections.emptyList());
+        result.put("total", 0);
+        result.put("totalPages", 0);
+        result.put("currentPage", page);
+
+        // 解析 room_id 和 anchor_name
+        long roomId = parseRoomIdFromPath(filePath);
+        String anchorName = parseAnchorFromPath(filePath);
+        if (roomId == 0) return result;
+
+        try (java.sql.Connection c = getDbConnection()) {
+            // 构建 SELECT 列
+            StringBuilder sel = new StringBuilder();
+            for (int i = 0; i < columns.size(); i++) {
+                if (i > 0) sel.append(", ");
+                ColDef col = columns.get(i);
+                if (col.sqlExpr != null) {
+                    sel.append(col.sqlExpr).append(" AS \"").append(col.header).append("\"");
+                } else {
+                    sel.append(col.sqlCol).append(" AS \"").append(col.header).append("\"");
+                }
+            }
+            // 始终查询 id 列用于删除操作
+            String idCol = tableName.equals("danmaku") ? "danmaku.id" : tableName + ".id";
+            sel.append(", ").append(idCol).append(" AS _id");
+
+            // 构建 WHERE
+            StringBuilder where = new StringBuilder("WHERE room_id = ? AND anchor_name = ?");
+            List<Object> params = new ArrayList<>();
+            params.add(roomId);
+            params.add(anchorName);
+
+            // 时间过滤（使用时间列的第一列作为默认时间列）
+            String timeCol = columns.get(0).sqlCol;
+            Long startMillis = parseTimeToMillis(startTime);
+            Long endMillis = parseTimeToMillis(endTime);
+            if (startMillis != null) {
+                where.append(" AND ").append(timeCol).append(" >= ?");
+                params.add(startMillis);
+            }
+            if (endMillis != null) {
+                where.append(" AND ").append(timeCol).append(" <= ?");
+                params.add(endMillis);
+            }
+
+            // 搜索过滤
+            if (search != null && !search.isEmpty() && !searchCols.isEmpty()) {
+                where.append(" AND (");
+                for (int i = 0; i < searchCols.size(); i++) {
+                    if (i > 0) where.append(" OR ");
+                    where.append(searchCols.get(i)).append(" LIKE ?");
+                    params.add("%" + search + "%");
+                }
+                where.append(")");
+            }
+
+            // 排序
+            String orderCol = timeCol;
+            boolean asc = false; // 默认时间降序
+            if (sortField != null && !sortField.isEmpty()) {
+                for (ColDef col : columns) {
+                    if (col.header.equals(sortField)) {
+                        orderCol = col.sqlExpr != null ? col.sqlExpr : col.sqlCol;
+                        break;
+                    }
+                }
+                asc = "asc".equalsIgnoreCase(sortOrder);
+            }
+            String dir = asc ? "ASC" : "DESC";
+
+            // 查询总数
+            String countSql = "SELECT COUNT(*) FROM " + tableName + " " + where;
+            int total = 0;
+            try (java.sql.PreparedStatement ps = c.prepareStatement(countSql)) {
+                for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
+                try (java.sql.ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) total = rs.getInt(1);
+                }
+            }
+
+            int totalPages = (int) Math.ceil((double) total / pageSize);
+            if (page < 1) page = 1;
+            if (page > totalPages && totalPages > 0) page = totalPages;
+            int offset = (page - 1) * pageSize;
+
+            // 查询数据
+            String dataSql = "SELECT " + sel + " FROM " + tableName + " " + where
+                    + " ORDER BY " + orderCol + " " + dir + " LIMIT ? OFFSET ?";
+            params.add(pageSize);
+            params.add(offset);
+
+            List<Map<String, String>> rows = new ArrayList<>();
+            String firstTime = null, lastTime = null;
+            try (java.sql.PreparedStatement ps = c.prepareStatement(dataSql)) {
+                for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
+                try (java.sql.ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        Map<String, String> row = new LinkedHashMap<>();
+                        for (ColDef col : columns) {
+                            String val = rs.getString(col.header);
+                            // 时间列转换：BIGINT millis → "yyyy-MM-dd HH:mm:ss"
+                            if ("time".equals(col.sortType) && val != null) {
+                                try { val = millisToTimeStr(Long.parseLong(val)); } catch (NumberFormatException e) {}
+                            }
+                            row.put(col.header, val != null ? val : "");
+                        }
+                        row.put("_id", rs.getString("_id"));
+                        rows.add(row);
+                        String timeVal = row.get(headers.get(0));
+                        if (firstTime == null) firstTime = timeVal;
+                        lastTime = timeVal;
+                    }
+                }
+            }
+
+            result.put("rows", rows);
+            result.put("total", total);
+            result.put("totalPages", totalPages);
+            result.put("currentPage", page);
+            result.put("firstTime", firstTime != null ? firstTime : "");
+            result.put("lastTime", lastTime != null ? lastTime : "");
+        } catch (Exception e) {
+            LOGGER.error("queryTablePage({}) error", tableName, e);
+        }
+        return result;
+    }
+
+    /**
+     * 通用 SQLite 行删除
+     * @return 是否删除成功
+     */
+    private boolean deleteTableRow(String tableName, long id) {
+        try (java.sql.Connection c = getDbConnection();
+             java.sql.PreparedStatement ps = c.prepareStatement("DELETE FROM " + tableName + " WHERE id = ?")) {
+            ps.setLong(1, id);
+            return ps.executeUpdate() > 0;
+        } catch (Exception e) {
+            LOGGER.error("deleteTableRow({}, {}) error", tableName, id, e);
+            return false;
+        }
+    }
+
+    /**
+     * 通用 SQLite 统计查询（聚合表）
+     * @return {totalRows, firstTime, lastTime, sumCount, ...} 由调用方自定义
+     */
+    private Map<String, Object> getTableStats(
+            String filePath, String tableName,
+            String timeCol, String countCol,
+            String startTime, String endTime) {
+        Map<String, Object> stats = new LinkedHashMap<>();
+        long roomId = parseRoomIdFromPath(filePath);
+        String anchorName = parseAnchorFromPath(filePath);
+        if (roomId == 0) {
+            stats.put("totalRows", 0); stats.put("sumCount", 0L);
+            return stats;
+        }
+
+        try (java.sql.Connection c = getDbConnection()) {
+            StringBuilder where = new StringBuilder("WHERE room_id = ? AND anchor_name = ?");
+            List<Object> params = new ArrayList<>();
+            params.add(roomId);
+            params.add(anchorName);
+
+            Long startMillis = parseTimeToMillis(startTime);
+            Long endMillis = parseTimeToMillis(endTime);
+            if (startMillis != null) { where.append(" AND ").append(timeCol).append(" >= ?"); params.add(startMillis); }
+            if (endMillis != null) { where.append(" AND ").append(timeCol).append(" <= ?"); params.add(endMillis); }
+
+            String sql = "SELECT COUNT(*), COALESCE(SUM(" + countCol + "),0), COALESCE(MIN(" + timeCol + "),0), COALESCE(MAX(" + timeCol + "),0)"
+                    + " FROM " + tableName + " " + where;
+            try (java.sql.PreparedStatement ps = c.prepareStatement(sql)) {
+                for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
+                try (java.sql.ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        stats.put("totalRows", rs.getInt(1));
+                        stats.put("sumCount", rs.getLong(2));
+                        stats.put("firstTimeMillis", rs.getLong(3));
+                        stats.put("lastTimeMillis", rs.getLong(4));
+                    }
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.error("getTableStats({}) error", tableName, e);
+        }
+        return stats;
+    }
+
+    // ======================== 原有方法结束 ========================
+
     private void validateFilePath(String filePath) {
         File danmujiLogDir = getDanmujiLogDir();
         File resolved = new File(filePath);
@@ -2399,83 +2630,16 @@ public class WebController {
             }
             Map<String, Object> result = new LinkedHashMap<>();
             List<Map<String, String>> allRows = new ArrayList<>();
-            String[] headers = {"发送时间", "id", "名字", "弹幕"};
-            String firstTime = null;
-            String lastTime = null;
+            List<ColDef> columns = java.util.Arrays.asList(
+                new ColDef("timestamp", "发送时间", "time"),
+                new ColDef("uid", "id", "number"),
+                new ColDef("uname", "名字", "text"),
+                new ColDef("content", "弹幕", "text")
+            );
+            List<String> searchCols = java.util.Arrays.asList("uname", "content");
+            result = queryTablePage(filePath, "danmaku", columns, searchCols,
+                    page, pageSize, startTime, endTime, search, sortField, sortOrder);
 
-            if (!file.exists()) {
-                result.put("headers", headers);
-                result.put("rows", Collections.emptyList());
-                result.put("total", 0);
-                result.put("totalPages", 0);
-                result.put("currentPage", page);
-                result.put("firstTime", "");
-                result.put("lastTime", "");
-                return Response.success(result, req);
-            }
-
-            String searchLower = (search != null && !search.isEmpty()) ? search.toLowerCase() : null;
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
-                String line = reader.readLine(); // skip header + BOM
-                while ((line = reader.readLine()) != null) {
-                    List<String> fields = parseCsvLine(line);
-                    if (fields.size() < 4) continue;
-                    String time = fields.get(0);
-                    if (firstTime == null) firstTime = time;
-                    lastTime = time;
-                    if (startTime != null && !startTime.isEmpty() && time.compareTo(startTime) < 0) continue;
-                    if (endTime != null && !endTime.isEmpty() && time.compareTo(endTime) > 0) continue;
-                    if (searchLower != null) {
-                        boolean match = false;
-                        for (String f : fields) {
-                            if (f.toLowerCase().contains(searchLower)) { match = true; break; }
-                        }
-                        if (!match) continue;
-                    }
-                    Map<String, String> row = new LinkedHashMap<>();
-                    row.put("发送时间", time);
-                    row.put("id", fields.get(1));
-                    row.put("名字", fields.get(2));
-                    row.put("弹幕", fields.get(3));
-                    allRows.add(row);
-                }
-            }
-
-            String sf = (sortField != null && !sortField.isEmpty()) ? sortField : "发送时间";
-            boolean asc = (sortField != null && !sortField.isEmpty()) ? "asc".equalsIgnoreCase(sortOrder) : false;
-            boolean isDefSort = sortField == null || sortField.isEmpty();
-            allRows.sort((a, b) -> {
-                int cmp;
-                switch (sf) {
-                    case "id":
-                        cmp = compareField(a.get(sf), b.get(sf), true);
-                        break;
-                    case "名字": case "弹幕":
-                        cmp = compareField(a.get(sf), b.get(sf), false);
-                        break;
-                    default:
-                        cmp = compareField(a.get("发送时间"), b.get("发送时间"), false);
-                        break;
-                }
-                if (cmp == 0 && isDefSort) cmp = compareField(a.get("id"), b.get("id"), true);
-                return asc ? cmp : -cmp;
-            });
-
-            int total = allRows.size();
-            int totalPages = (int) Math.ceil((double) total / pageSize);
-            if (page < 1) page = 1;
-            if (page > totalPages && totalPages > 0) page = totalPages;
-            int fromIndex = (page - 1) * pageSize;
-            int toIndex = Math.min(fromIndex + pageSize, total);
-            List<Map<String, String>> pageRows = total > 0 ? allRows.subList(fromIndex, toIndex) : Collections.emptyList();
-
-            result.put("headers", headers);
-            result.put("rows", pageRows);
-            result.put("total", total);
-            result.put("totalPages", totalPages);
-            result.put("currentPage", page);
-            result.put("firstTime", firstTime != null ? firstTime : "");
-            result.put("lastTime", lastTime != null ? lastTime : "");
             String liveStartTime = "";
             if (PublicDataConf.ROOM_INFO != null && PublicDataConf.ROOM_INFO.getLive_start_time() != null
                     && PublicDataConf.ROOM_INFO.getLive_start_time() > 0) {
@@ -2492,47 +2656,29 @@ public class WebController {
     @ResponseBody
     @PostMapping(value = "/deleteBarrageCsvRow")
     public Response<?> deleteBarrageCsvRow(@RequestParam("filePath") String filePath,
-                                           @RequestParam("timeKey") String timeKey,
-                                           @RequestParam("uidKey") String uidKey,
-                                           @RequestParam("msgKey") String msgKey,
+                                           @RequestParam(value = "id", required = false) Long id,
+                                           @RequestParam(value = "timeKey", required = false) String timeKey,
+                                           @RequestParam(value = "uidKey", required = false) String uidKey,
+                                           @RequestParam(value = "msgKey", required = false) String msgKey,
                                            HttpServletRequest req) {
         try {
             validateFilePath(filePath);
-            File file = new File(filePath);
-            if (!file.isAbsolute()) {
-                file = new File(getDanmujiLogDir(), filePath);
-            }
-            if (!file.exists()) {
-                return Response.success(false, req);
-            }
-
-            List<String> lines = new ArrayList<>();
-            String headerLine = null;
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
-                headerLine = reader.readLine();
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    List<String> fields = parseCsvLine(line);
-                    if (fields.size() >= 4 && fields.get(0).equals(timeKey)
-                            && fields.get(1).equals(uidKey) && fields.get(3).equals(msgKey)) {
-                        continue;
-                    }
-                    lines.add(line);
+            if (id != null && id > 0) {
+                deleteTableRow("danmaku", id);
+            } else if (timeKey != null && uidKey != null) {
+                long roomId = parseRoomIdFromPath(filePath);
+                String anchorName = parseAnchorFromPath(filePath);
+                Long ts = parseTimeToMillis(timeKey);
+                try (java.sql.Connection c = getDbConnection();
+                     java.sql.PreparedStatement ps = c.prepareStatement(
+                         "DELETE FROM danmaku WHERE room_id=? AND anchor_name=? AND uid=? AND timestamp=?")) {
+                    ps.setLong(1, roomId);
+                    ps.setString(2, anchorName);
+                    ps.setLong(3, Long.parseLong(uidKey));
+                    ps.setLong(4, ts != null ? ts : 0);
+                    ps.executeUpdate();
                 }
             }
-
-            File tmpFile = new File(filePath + ".tmp");
-            try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tmpFile), "UTF-8"))) {
-                if (headerLine != null) {
-                    writer.write(headerLine);
-                    writer.newLine();
-                }
-                for (String l : lines) {
-                    writer.write(l);
-                    writer.newLine();
-                }
-            }
-            Files.move(tmpFile.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
             return Response.success(true, req);
         } catch (Exception e) {
             LOGGER.error("deleteBarrageCsvRow error", e);
@@ -2913,108 +3059,22 @@ public class WebController {
                                           HttpServletRequest req) {
         try {
             validateFilePath(filePath);
-            File file = new File(filePath);
-            if (!file.isAbsolute()) {
-                file = new File(getDanmujiLogDir(), filePath);
-            }
-            Map<String, Object> result = new LinkedHashMap<>();
-            List<Map<String, String>> allRows = new ArrayList<>();
-            String[] headers = {"最近", "id", "观众", "打分", "打分类型", "次数", "判定表", "场次"};
-            String firstTime = null;
-            String lastTime = null;
-            String filteredFirstTime = null;
-            String filteredLastTime = null;
+            List<ColDef> columns = java.util.Arrays.asList(
+                new ColDef("latest_entry_time", "最近", "time"),
+                new ColDef("uid", "id", "number"),
+                new ColDef("uname", "观众", "text"),
+                new ColDef("score", "打分", "number"),
+                new ColDef("score_type", "打分类型", "text"),
+                new ColDef("count", "次数", "number"),
+                new ColDef("in_pn_table", "判定表", "text", "CASE WHEN in_pn_table=1 THEN '是' ELSE '否' END"),
+                new ColDef("session", "场次", "number")
+            );
+            List<String> searchCols = java.util.Arrays.asList("uname");
+            Map<String, Object> result = queryTablePage(filePath, "visitor_summary", columns, searchCols,
+                    page, pageSize, startTime, endTime, search, sortField, sortOrder);
 
-            if (!file.exists()) {
-                result.put("headers", headers);
-                result.put("rows", Collections.emptyList());
-                result.put("total", 0);
-                result.put("totalPages", 0);
-                result.put("currentPage", page);
-                result.put("firstTime", "");
-                result.put("lastTime", "");
-                result.put("filteredFirstTime", "");
-                result.put("filteredLastTime", "");
-                return Response.success(result, req);
-            }
-
-            String searchLower = (search != null && !search.isEmpty()) ? search.toLowerCase() : null;
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
-                String line = reader.readLine(); // skip header + BOM
-                while ((line = reader.readLine()) != null) {
-                    List<String> fields = parseCsvLine(line);
-                    if (fields.size() < 7) continue;
-                    String time = fields.get(0);
-                    if (firstTime == null) firstTime = time;
-                    lastTime = time;
-                    if (startTime != null && !startTime.isEmpty() && time.compareTo(startTime) < 0) continue;
-                    if (endTime != null && !endTime.isEmpty() && time.compareTo(endTime) > 0) continue;
-                    if (searchLower != null) {
-                        boolean match = false;
-                        for (String f : fields) {
-                            if (f.toLowerCase().contains(searchLower)) { match = true; break; }
-                        }
-                        if (!match) continue;
-                    }
-                    Map<String, String> row = new LinkedHashMap<>();
-                    row.put("最近", time);
-                    row.put("id", fields.get(1));
-                    row.put("观众", fields.get(2));
-                    row.put("打分", fields.get(3));
-                    row.put("打分类型", fields.get(4));
-                    row.put("次数", fields.get(5));
-                    row.put("判定表", fields.get(6));
-                    row.put("场次", fields.size() >= 8 ? fields.get(7) : "1");
-                    allRows.add(row);
-                    if (filteredFirstTime == null) filteredFirstTime = time;
-                    filteredLastTime = time;
-                }
-            }
-
-            // sort: default = 最近 asc, id asc
-            String sf = (sortField != null && !sortField.isEmpty()) ? sortField : "最近";
-            boolean asc = (sortField != null && !sortField.isEmpty()) ? "asc".equalsIgnoreCase(sortOrder) : false;
-            boolean isDefSort = sortField == null || sortField.isEmpty();
-            allRows.sort((a, b) -> {
-                int cmp;
-                switch (sf) {
-                    case "id": case "打分": case "次数": case "场次":
-                        cmp = compareField(a.get(sf), b.get(sf), true);
-                        break;
-                    case "打分类型": case "判定表":
-                        cmp = compareField(a.get(sf), b.get(sf), false);
-                        break;
-                    case "观众":
-                        cmp = compareField(b.get(sf), a.get(sf), false);
-                        break;
-                    default: // 最近 (time)
-                        cmp = compareField(a.get("最近"), b.get("最近"), false);
-                        break;
-                }
-                if (cmp == 0 && isDefSort) {
-                    cmp = compareField(a.get("id"), b.get("id"), true);
-                }
-                return asc ? cmp : -cmp;
-            });
-
-            int total = allRows.size();
-            int totalPages = (int) Math.ceil((double) total / pageSize);
-            if (page < 1) page = 1;
-            if (page > totalPages && totalPages > 0) page = totalPages;
-            int fromIndex = (page - 1) * pageSize;
-            int toIndex = Math.min(fromIndex + pageSize, total);
-            List<Map<String, String>> pageRows = total > 0 ? allRows.subList(fromIndex, toIndex) : Collections.emptyList();
-
-            result.put("headers", headers);
-            result.put("rows", pageRows);
-            result.put("total", total);
-            result.put("totalPages", totalPages);
-            result.put("currentPage", page);
-            result.put("firstTime", firstTime != null ? firstTime : "");
-            result.put("lastTime", lastTime != null ? lastTime : "");
-            result.put("filteredFirstTime", filteredFirstTime != null ? filteredFirstTime : "");
-            result.put("filteredLastTime", filteredLastTime != null ? filteredLastTime : "");
-            // live start time for default filter
+            result.put("filteredFirstTime", result.getOrDefault("firstTime", ""));
+            result.put("filteredLastTime", result.getOrDefault("lastTime", ""));
             String liveStartTime = "";
             if (PublicDataConf.ROOM_INFO != null && PublicDataConf.ROOM_INFO.getLive_start_time() != null
                     && PublicDataConf.ROOM_INFO.getLive_start_time() > 0) {
@@ -3031,34 +3091,31 @@ public class WebController {
     @ResponseBody
     @PostMapping(value = "/deleteVisitorCsvRow")
     public Response<?> deleteVisitorCsvRow(@RequestParam("filePath") String filePath,
-                                           @RequestParam("timeKey") String timeKey,
-                                           @RequestParam("uidKey") String uidKey,
+                                           @RequestParam(value = "id", required = false) Long id,
+                                           @RequestParam(value = "uidKey", required = false) String uidKey,
+                                           @RequestParam(value = "timeKey", required = false) String timeKey,
                                            HttpServletRequest req) {
         try {
             validateFilePath(filePath);
-            // 先移除内存缓存中的记录
-            try { VisitorCountTools.removeByUid(Long.parseLong(uidKey)); } catch (NumberFormatException ignored) {}
-            // 直接修改 CSV 文件（保留对任意文件路径的支持）
-            File file = new File(filePath);
-            if (!file.isAbsolute()) file = new File(getDanmujiLogDir(), filePath);
-            if (!file.exists()) return Response.success(false, req);
-
-            List<String> keepLines = new ArrayList<>();
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
-                String line;
-                boolean isFirst = true;
-                while ((line = reader.readLine()) != null) {
-                    if (isFirst) { isFirst = false; keepLines.add(line); continue; }
-                    List<String> fields = parseCsvLine(line);
-                    if (fields.size() >= 7 && fields.get(0).equals(timeKey) && fields.get(1).equals(uidKey)) continue;
-                    keepLines.add(line);
+            // 移除内存缓存中的记录
+            if (uidKey != null) {
+                try { VisitorCountTools.removeByUid(Long.parseLong(uidKey)); } catch (NumberFormatException ignored) {}
+            }
+            // SQLite 删除（优先用 id 主键，回退到 room_id+anchor_name+uid）
+            if (id != null && id > 0) {
+                deleteTableRow("visitor_summary", id);
+            } else if (uidKey != null) {
+                long roomId = parseRoomIdFromPath(filePath);
+                String anchorName = parseAnchorFromPath(filePath);
+                try (java.sql.Connection c = getDbConnection();
+                     java.sql.PreparedStatement ps = c.prepareStatement(
+                         "DELETE FROM visitor_summary WHERE room_id=? AND anchor_name=? AND uid=?")) {
+                    ps.setLong(1, roomId);
+                    ps.setString(2, anchorName);
+                    ps.setLong(3, Long.parseLong(uidKey));
+                    ps.executeUpdate();
                 }
             }
-            File tmpFile = new File(filePath + ".tmp");
-            try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tmpFile), "UTF-8"))) {
-                for (String l : keepLines) { writer.write(l); writer.newLine(); }
-            }
-            Files.move(tmpFile.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
             return Response.success(true, req);
         } catch (Exception e) {
             LOGGER.error("deleteVisitorCsvRow error", e);
@@ -3460,95 +3517,18 @@ public class WebController {
             }
             Map<String, Object> result = new LinkedHashMap<>();
             List<Map<String, String>> allRows = new ArrayList<>();
-            String[] headers = {"最近匹配", "匹配id", "匹配名", "匹配分", "匹配次数"};
-            String firstTime = null;
-            String lastTime = null;
-            String filteredFirstTime = null;
-            String filteredLastTime = null;
-
-            if (!file.exists()) {
-                result.put("headers", headers);
-                result.put("rows", Collections.emptyList());
-                result.put("total", 0);
-                result.put("totalPages", 0);
-                result.put("currentPage", page);
-                result.put("firstTime", "");
-                result.put("lastTime", "");
-                result.put("filteredFirstTime", "");
-                result.put("filteredLastTime", "");
-                return Response.success(result, req);
-            }
-
-            String searchLower = (search != null && !search.isEmpty()) ? search.toLowerCase() : null;
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
-                String line = reader.readLine(); // skip header + BOM
-                while ((line = reader.readLine()) != null) {
-                    List<String> fields = parseCsvLine(line);
-                    if (fields.size() < 5) continue;
-                    String time = fields.get(0);
-                    if (firstTime == null) firstTime = time;
-                    lastTime = time;
-                    if (startTime != null && !startTime.isEmpty() && time.compareTo(startTime) < 0) continue;
-                    if (endTime != null && !endTime.isEmpty() && time.compareTo(endTime) > 0) continue;
-                    if (searchLower != null) {
-                        boolean match = false;
-                        for (String f : fields) {
-                            if (f.toLowerCase().contains(searchLower)) { match = true; break; }
-                        }
-                        if (!match) continue;
-                    }
-                    Map<String, String> row = new LinkedHashMap<>();
-                    row.put("最近匹配", time);
-                    row.put("匹配id", fields.get(1));
-                    row.put("匹配名", fields.get(2));
-                    row.put("匹配分", fields.get(3));
-                    row.put("匹配次数", fields.get(4));
-                    allRows.add(row);
-                    if (filteredFirstTime == null) filteredFirstTime = time;
-                    filteredLastTime = time;
-                }
-            }
-
-            // sort: default = 最近匹配 asc, 匹配id asc
-            String sf = (sortField != null && !sortField.isEmpty()) ? sortField : "最近匹配";
-            boolean asc = (sortField != null && !sortField.isEmpty()) ? "asc".equalsIgnoreCase(sortOrder) : false;
-            boolean isDefSort = sortField == null || sortField.isEmpty();
-            allRows.sort((a, b) -> {
-                int cmp;
-                switch (sf) {
-                    case "匹配id": case "匹配分": case "匹配次数":
-                        cmp = compareField(a.get(sf), b.get(sf), true);
-                        break;
-                    case "匹配名":
-                        cmp = compareField(b.get(sf), a.get(sf), false);
-                        break;
-                    default: // 最近匹配 (time)
-                        cmp = compareField(a.get("最近匹配"), b.get("最近匹配"), false);
-                        break;
-                }
-                if (cmp == 0 && isDefSort) {
-                    cmp = compareField(a.get("匹配id"), b.get("匹配id"), true);
-                }
-                return asc ? cmp : -cmp;
-            });
-
-            int total = allRows.size();
-            int totalPages = (int) Math.ceil((double) total / pageSize);
-            if (page < 1) page = 1;
-            if (page > totalPages && totalPages > 0) page = totalPages;
-            int fromIndex = (page - 1) * pageSize;
-            int toIndex = Math.min(fromIndex + pageSize, total);
-            List<Map<String, String>> pageRows = total > 0 ? allRows.subList(fromIndex, toIndex) : Collections.emptyList();
-
-            result.put("headers", headers);
-            result.put("rows", pageRows);
-            result.put("total", total);
-            result.put("totalPages", totalPages);
-            result.put("currentPage", page);
-            result.put("firstTime", firstTime != null ? firstTime : "");
-            result.put("lastTime", lastTime != null ? lastTime : "");
-            result.put("filteredFirstTime", filteredFirstTime != null ? filteredFirstTime : "");
-            result.put("filteredLastTime", filteredLastTime != null ? filteredLastTime : "");
+            List<ColDef> columns = java.util.Arrays.asList(
+                new ColDef("latest_match_time", "最近匹配", "time"),
+                new ColDef("matched_uid", "匹配id", "number"),
+                new ColDef("matched_name", "匹配名", "text"),
+                new ColDef("score", "匹配分", "number"),
+                new ColDef("count", "匹配次数", "number")
+            );
+            List<String> searchCols = java.util.Arrays.asList("matched_name");
+            result = queryTablePage(filePath, "match_summary", columns, searchCols,
+                    page, pageSize, startTime, endTime, search, sortField, sortOrder);
+            result.put("filteredFirstTime", result.getOrDefault("firstTime", ""));
+            result.put("filteredLastTime", result.getOrDefault("lastTime", ""));
             String liveStartTime = "";
             if (PublicDataConf.ROOM_INFO != null && PublicDataConf.ROOM_INFO.getLive_start_time() != null
                     && PublicDataConf.ROOM_INFO.getLive_start_time() > 0) {
@@ -3572,7 +3552,19 @@ public class WebController {
             validateFilePath(filePath);
             // 先移除内存缓存中的记录
             try { MatchCountTools.removeByUid(Long.parseLong(uidKey)); } catch (NumberFormatException ignored) {}
-            // 直接修改 CSV 文件（保留对任意文件路径的支持）
+            // SQLite 删除 + 向后兼容 CSV
+            if (uidKey != null) {
+                long roomId = parseRoomIdFromPath(filePath);
+                String anchorName = parseAnchorFromPath(filePath);
+                try (java.sql.Connection c = getDbConnection();
+                     java.sql.PreparedStatement ps = c.prepareStatement(
+                         "DELETE FROM match_summary WHERE room_id=? AND anchor_name=? AND matched_uid=?")) {
+                    ps.setLong(1, roomId);
+                    ps.setString(2, anchorName);
+                    ps.setLong(3, Long.parseLong(uidKey));
+                    ps.executeUpdate();
+                }
+            }
             File file = new File(filePath);
             if (!file.isAbsolute()) file = new File(getDanmujiLogDir(), filePath);
             if (!file.exists()) return Response.success(0, req);
@@ -3894,93 +3886,17 @@ public class WebController {
             }
             Map<String, Object> result = new LinkedHashMap<>();
             List<Map<String, String>> allRows = new ArrayList<>();
-            String[] headers = {"最新时间", "id", "名字", "次数"};
-            String firstTime = null;
-            String lastTime = null;
-            String filteredFirstTime = null;
-            String filteredLastTime = null;
-
-            if (!file.exists()) {
-                result.put("headers", headers);
-                result.put("rows", Collections.emptyList());
-                result.put("total", 0);
-                result.put("totalPages", 0);
-                result.put("currentPage", page);
-                result.put("firstTime", "");
-                result.put("lastTime", "");
-                result.put("filteredFirstTime", "");
-                result.put("filteredLastTime", "");
-                return Response.success(result, req);
-            }
-
-            String searchLower = (search != null && !search.isEmpty()) ? search.toLowerCase() : null;
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
-                String line = reader.readLine(); // skip header + BOM
-                while ((line = reader.readLine()) != null) {
-                    List<String> fields = parseCsvLine(line);
-                    if (fields.size() < 4) continue;
-                    String time = fields.get(0);
-                    if (firstTime == null) firstTime = time;
-                    lastTime = time;
-                    if (startTime != null && !startTime.isEmpty() && time.compareTo(startTime) < 0) continue;
-                    if (endTime != null && !endTime.isEmpty() && time.compareTo(endTime) > 0) continue;
-                    if (searchLower != null) {
-                        boolean match = false;
-                        for (String f : fields) {
-                            if (f.toLowerCase().contains(searchLower)) { match = true; break; }
-                        }
-                        if (!match) continue;
-                    }
-                    Map<String, String> row = new LinkedHashMap<>();
-                    row.put("最新时间", time);
-                    row.put("id", fields.get(1));
-                    row.put("名字", fields.get(2));
-                    row.put("次数", fields.get(3));
-                    allRows.add(row);
-                    if (filteredFirstTime == null) filteredFirstTime = time;
-                    filteredLastTime = time;
-                }
-            }
-
-            String sf = (sortField != null && !sortField.isEmpty()) ? sortField : "最新时间";
-            boolean asc = (sortField != null && !sortField.isEmpty()) ? "asc".equalsIgnoreCase(sortOrder) : false;
-            boolean isDefSort = sortField == null || sortField.isEmpty();
-            allRows.sort((a, b) -> {
-                int cmp;
-                switch (sf) {
-                    case "id": case "次数":
-                        cmp = compareField(a.get(sf), b.get(sf), true);
-                        break;
-                    case "名字":
-                        cmp = compareField(b.get(sf), a.get(sf), false);
-                        break;
-                    default: // 最新时间
-                        cmp = compareField(a.get("最新时间"), b.get("最新时间"), false);
-                        break;
-                }
-                if (cmp == 0 && isDefSort) {
-                    cmp = compareField(a.get("id"), b.get("id"), true);
-                }
-                return asc ? cmp : -cmp;
-            });
-
-            int total = allRows.size();
-            int totalPages = (int) Math.ceil((double) total / pageSize);
-            if (page < 1) page = 1;
-            if (page > totalPages && totalPages > 0) page = totalPages;
-            int fromIndex = (page - 1) * pageSize;
-            int toIndex = Math.min(fromIndex + pageSize, total);
-            List<Map<String, String>> pageRows = total > 0 ? allRows.subList(fromIndex, toIndex) : Collections.emptyList();
-
-            result.put("headers", headers);
-            result.put("rows", pageRows);
-            result.put("total", total);
-            result.put("totalPages", totalPages);
-            result.put("currentPage", page);
-            result.put("firstTime", firstTime != null ? firstTime : "");
-            result.put("lastTime", lastTime != null ? lastTime : "");
-            result.put("filteredFirstTime", filteredFirstTime != null ? filteredFirstTime : "");
-            result.put("filteredLastTime", filteredLastTime != null ? filteredLastTime : "");
+            List<ColDef> columns = java.util.Arrays.asList(
+                new ColDef("latest_time", "最新时间", "time"),
+                new ColDef("uid", "id", "number"),
+                new ColDef("uname", "名字", "text"),
+                new ColDef("count", "次数", "number")
+            );
+            List<String> searchCols = java.util.Arrays.asList("uname");
+            result = queryTablePage(filePath, "follow_summary", columns, searchCols,
+                    page, pageSize, startTime, endTime, search, sortField, sortOrder);
+            result.put("filteredFirstTime", result.getOrDefault("firstTime", ""));
+            result.put("filteredLastTime", result.getOrDefault("lastTime", ""));
             String liveStartTime = "";
             if (PublicDataConf.ROOM_INFO != null && PublicDataConf.ROOM_INFO.getLive_start_time() != null
                     && PublicDataConf.ROOM_INFO.getLive_start_time() > 0) {
@@ -4258,94 +4174,19 @@ public class WebController {
             if (!file.isAbsolute()) file = new File(getDanmujiLogDir(), filePath);
             Map<String, Object> result = new LinkedHashMap<>();
             List<Map<String, String>> allRows = new ArrayList<>();
-            String[] headers = {"最新时间", "id", "名字", "赠送礼物名字", "电池", "赠礼次数"};
-            String firstTime = null, lastTime = null;
-            String filteredFirstTime = null, filteredLastTime = null;
-
-            if (!file.exists()) {
-                result.put("headers", headers);
-                result.put("rows", Collections.emptyList());
-                result.put("total", 0);
-                result.put("totalPages", 0);
-                result.put("currentPage", page);
-                result.put("firstTime", "");
-                result.put("lastTime", "");
-                result.put("filteredFirstTime", "");
-                result.put("filteredLastTime", "");
-                return Response.success(result, req);
-            }
-
-            String searchLower = (search != null && !search.isEmpty()) ? search.toLowerCase() : null;
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
-                String line = reader.readLine();
-                while ((line = reader.readLine()) != null) {
-                    List<String> fields = parseCsvLine(line);
-                    if (fields.size() < 6) continue;
-                    String time = fields.get(0);
-                    if (firstTime == null) firstTime = time;
-                    lastTime = time;
-                    if (startTime != null && !startTime.isEmpty() && time.compareTo(startTime) < 0) continue;
-                    if (endTime != null && !endTime.isEmpty() && time.compareTo(endTime) > 0) continue;
-                    if (searchLower != null) {
-                        boolean match = false;
-                        for (String f : fields) { if (f.toLowerCase().contains(searchLower)) { match = true; break; } }
-                        if (!match) continue;
-                    }
-                    Map<String, String> row = new LinkedHashMap<>();
-                    row.put("最新时间", time);
-                    row.put("id", fields.get(1));
-                    row.put("名字", fields.get(2));
-                    row.put("赠送礼物名字", fields.get(3));
-                    try {
-                        long rawAmount = Long.parseLong(fields.get(4));
-                        row.put("电池", String.valueOf(rawAmount / 100));
-                    } catch (NumberFormatException e) {
-                        row.put("电池", fields.get(4));
-                    }
-                    row.put("赠礼次数", fields.get(5));
-                    allRows.add(row);
-                    if (filteredFirstTime == null) filteredFirstTime = time;
-                    filteredLastTime = time;
-                }
-            }
-
-            String sf = (sortField != null && !sortField.isEmpty()) ? sortField : "最新时间";
-            boolean asc = (sortField != null && !sortField.isEmpty()) ? "asc".equalsIgnoreCase(sortOrder) : false;
-            boolean isDefSort = sortField == null || sortField.isEmpty();
-            allRows.sort((a, b) -> {
-                int cmp;
-                switch (sf) {
-                    case "id": case "电池": case "赠礼次数":
-                        cmp = compareField(a.get(sf), b.get(sf), true);
-                        break;
-                    case "名字": case "赠送礼物名字":
-                        cmp = compareField(a.get(sf), b.get(sf), false);
-                        break;
-                    default:
-                        cmp = compareField(a.get("最新时间"), b.get("最新时间"), false);
-                        break;
-                }
-                if (cmp == 0 && isDefSort) cmp = compareField(a.get("id"), b.get("id"), true);
-                return asc ? cmp : -cmp;
-            });
-
-            int total = allRows.size();
-            int totalPages = (int) Math.ceil((double) total / pageSize);
-            if (page < 1) page = 1;
-            if (page > totalPages && totalPages > 0) page = totalPages;
-            int fromIndex = (page - 1) * pageSize;
-            int toIndex = Math.min(fromIndex + pageSize, total);
-            List<Map<String, String>> pageRows = total > 0 ? allRows.subList(fromIndex, toIndex) : Collections.emptyList();
-
-            result.put("headers", headers);
-            result.put("rows", pageRows);
-            result.put("total", total);
-            result.put("totalPages", totalPages);
-            result.put("currentPage", page);
-            result.put("firstTime", firstTime != null ? firstTime : "");
-            result.put("lastTime", lastTime != null ? lastTime : "");
-            result.put("filteredFirstTime", filteredFirstTime != null ? filteredFirstTime : "");
-            result.put("filteredLastTime", filteredLastTime != null ? filteredLastTime : "");
+            List<ColDef> columns = java.util.Arrays.asList(
+                new ColDef("latest_time", "最新时间", "time"),
+                new ColDef("uid", "id", "number"),
+                new ColDef("uname", "名字", "text"),
+                new ColDef("gift_name", "赠送礼物名字", "text"),
+                new ColDef("total_price", "电池", "number"),
+                new ColDef("count", "赠礼次数", "number")
+            );
+            List<String> searchCols = java.util.Arrays.asList("uname", "gift_name");
+            result = queryTablePage(filePath, "gift_summary", columns, searchCols,
+                    page, pageSize, startTime, endTime, search, sortField, sortOrder);
+            result.put("filteredFirstTime", result.getOrDefault("firstTime", ""));
+            result.put("filteredLastTime", result.getOrDefault("lastTime", ""));
             String liveStartTime = "";
             if (PublicDataConf.ROOM_INFO != null && PublicDataConf.ROOM_INFO.getLive_start_time() != null
                     && PublicDataConf.ROOM_INFO.getLive_start_time() > 0) {
