@@ -55,10 +55,6 @@ public class SqliteApiCacheManager {
         return "dynamic:" + vmid;
     }
 
-    public static String sameFollowingsKey(long vmid) {
-        return "same_followings:" + vmid;
-    }
-
     /**
      * 根据 cacheKey 反推 api_type。
      */

@@ -47,8 +47,14 @@ public class SubAccount implements Serializable {
     /** Cookie 是否验证通过 */
     private boolean validated = false;
 
-    /** 是否参与共同关注API轮询 (默认 true，兼容旧配置) */
-    private boolean sameFollowEnabled = true;
+    /** 是否参与共同关注API轮询 (默认 false，需手动勾选) */
+    private boolean sameFollowEnabled = false;
+
+    /** 共同关注API专用冷却结束时间戳（毫秒），0 表示未在冷却中 */
+    private long sameFollowCooldownUntil = 0L;
+
+    /** 共同关注API被限流次数统计 */
+    private long sameFollowRateLimitedCount = 0L;
 
     public SubAccount() {
     }
@@ -164,6 +170,27 @@ public class SubAccount implements Serializable {
 
     public void setSameFollowEnabled(boolean sameFollowEnabled) {
         this.sameFollowEnabled = sameFollowEnabled;
+    }
+
+    public long getSameFollowCooldownUntil() {
+        return sameFollowCooldownUntil;
+    }
+
+    public void setSameFollowCooldownUntil(long sameFollowCooldownUntil) {
+        this.sameFollowCooldownUntil = sameFollowCooldownUntil;
+    }
+
+    public long getSameFollowRateLimitedCount() {
+        return sameFollowRateLimitedCount;
+    }
+
+    public void setSameFollowRateLimitedCount(long sameFollowRateLimitedCount) {
+        this.sameFollowRateLimitedCount = sameFollowRateLimitedCount;
+    }
+
+    /** 共同关注API是否正在冷却中 */
+    public boolean isSameFollowCoolingDown() {
+        return sameFollowCooldownUntil > 0 && System.currentTimeMillis() < sameFollowCooldownUntil;
     }
 
     /**

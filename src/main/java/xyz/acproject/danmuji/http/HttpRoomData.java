@@ -641,18 +641,8 @@ public class HttpRoomData {
      * 对应API: x/relation/same/followings
      */
     private static CompletableFuture<JSONObject> asyncHttpGetSameFollowings(long vmid) {
-        // 1. 检查 SQLite 缓存
-        String cacheKey = SqliteApiCacheManager.sameFollowingsKey(vmid);
-        String cached = SqliteApiCacheManager.get(cacheKey);
-        if (cached != null) {
-            try {
-                JSONObject jo = JSONObject.parseObject(cached);
-                if (jo != null) return CompletableFuture.completedFuture(jo);
-            } catch (Exception e) {
-                LOGGER.debug("共同关注缓存JSON解析失败 vmid={}", vmid, e);
-            }
-        }
-
+        // 不使用缓存：共同关注API结果取决于发起请求的账号（不同账号关注不同），
+        // 缓存会导致切换账号后返回旧账号的缓存结果。
         String poolCookie = cookiePool.getNextCookieForSameFollow();
         if (poolCookie == null && StringUtils.isBlank(PublicDataConf.USERCOOKIE)) {
             poolCookie = PublicDataConf.USERCOOKIE;
@@ -674,11 +664,7 @@ public class HttpRoomData {
                         if (json != null) {
                             int code = json.getIntValue("code");
                             if (code != 0) {
-                                cookiePool.markRateLimited(usedCookie);
-                            }
-                            // 缓存成功和普通错误响应，但不缓存限流响应（-412/-509 为临时性错误）
-                            if (code != -412 && code != -509) {
-                                SqliteApiCacheManager.put(cacheKey, body);
+                                cookiePool.markSameFollowRateLimited(usedCookie);
                             }
                         }
                         return json;
@@ -877,21 +863,7 @@ public class HttpRoomData {
             logSb.append(" [total:").append(total).append("]");
             if (follJson1 == null || follCode != 0 || follData == null || total == 0) {
                 follResult = processHiddenFollowingsSync(vmid, logSb);
-            } else if(total > 100){
-                // 共同关注: 当用户关注数超过100时，B站常规API只返回前1000条，
-                // 通过 same/followings API 获取与主播共同关注的用户列表进行评分
-                logSb.append(" [关注>100:共同关注请求中]");
-                try {
-                    JSONObject sameFollowJson = asyncHttpGetSameFollowings(vmid).get(10, TimeUnit.SECONDS);
-                    follResult = processSameFollowingsSync(vmid, logSb, sameFollowJson);
-                } catch (Exception e) {
-                    LOGGER.warn("共同关注API超时 vmid={}", vmid, e);
-                    logSb.append(" [共同关注:异常:").append(e.getMessage()).append("]");
-                    follResult = Pair.of(0, "");
-                }
-
-
-            }else {
+            } else {
                 // 合并两页的 list
                 JSONArray mergedList = follData.getJSONArray("list");
                 if (mergedList == null) mergedList = new JSONArray();
@@ -910,14 +882,31 @@ public class HttpRoomData {
                 follResult = processVisibleFollowingsSync(vmid, logSb, mergedData);
             }
 
-            // Phase 2d: 合并
+            // Phase 2c+: 当关注数>100且有账号勾选时，独立请求共同关注API
+            int sameFollowScore = 0;
+            String sameFollowType = "";
+            if (total > 100 && cookiePool.hasAnySameFollowAccount()) {
+                logSb.append(" [关注>100:共同关注请求中]");
+                try {
+                    JSONObject sameFollowJson = asyncHttpGetSameFollowings(vmid).get(10, TimeUnit.SECONDS);
+                    Pair<Integer, String> sameResult = processSameFollowingsSync(vmid, logSb, sameFollowJson);
+                    sameFollowScore = sameResult.getLeft();
+                    sameFollowType = sameResult.getRight();
+                } catch (Exception e) {
+                    LOGGER.warn("共同关注API超时 vmid={}", vmid, e);
+                    logSb.append(" [共同关注:异常:").append(e.getMessage()).append("]");
+                }
+            }
+
+            // Phase 2d: 合并（共同关注作为独立维度，不与关注列表强绑定）
             StringBuilder combinedType = new StringBuilder(60);
             appendType(combinedType, cardResult.type);
             appendType(combinedType, medalResult.getRight());
             appendType(combinedType, follResult.getRight());
+            appendType(combinedType, sameFollowType);
 
-            //三者的总分合计
-            int totalScore =  medalResult.getLeft() + follResult.getLeft() + cardResult.score;
+            // 黑白名单处理，pnScoreMap 直接命中（跳过所有维度打分）
+            int totalScore = medalResult.getLeft() + follResult.getLeft() + cardResult.score + sameFollowScore;
 
             xyz.acproject.danmuji.service.StrangerViewerService.addRecord(
                     vmid, cardResult.name, cardResult.face, totalScore, cardResult.sign);
@@ -1112,9 +1101,6 @@ public class HttpRoomData {
         }
 
         if (blackWhiteScore != 0) {
-            blackWhiteType.append("[共同关注分:").append(blackWhiteScore).append("]");
-        } else {
-            blackWhiteScore = 1;
             blackWhiteType.append("[共同关注分:").append(blackWhiteScore).append("]");
         }
         logSb.append("共同关注分:").append(blackWhiteScore).append("]");

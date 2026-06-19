@@ -406,7 +406,7 @@
                                 (acc.cooldownRemaining > 0 ? ' <small class="text-muted">' + formatCooldown(acc.cooldownRemaining) + '</small>' : '') + '</td>' +
                             '<td class="text-center"><input type="checkbox" class="form-check-input same-follow-toggle" '
                                 + (isMain ? 'data-main="true" ' : 'data-uid="' + escAttr(acc.uid) + '" ')
-                                + (acc.sameFollowEnabled !== false ? 'checked' : '') + '></td>' +
+                                + (acc.sameFollowEnabled ? 'checked' : '') + '></td>' +
                             '<td><small>' + (acc.useCount || 0) + ' / ' + (acc.rateLimitedCount || 0) + '</small></td>' +
                             '<td class="actions-cell">' + actions + '</td>' +
                             '</tr>';

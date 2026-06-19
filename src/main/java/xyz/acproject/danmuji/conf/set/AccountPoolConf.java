@@ -23,7 +23,7 @@ public class AccountPoolConf implements Serializable {
 
     /** 配置版本 */
     @JSONField(name = "version")
-    private int version = 1;
+    private int version = 2;
 
     /** 子账号列表 */
     @JSONField(name = "accounts")
@@ -57,9 +57,17 @@ public class AccountPoolConf implements Serializable {
     @JSONField(name = "main_cooldown_until")
     private long mainCooldownUntil = 0L;
 
-    /** 主账号是否参与共同关注API轮询，默认 true */
+    /** 主账号是否参与共同关注API轮询，默认 false（需手动勾选） */
     @JSONField(name = "main_same_follow_enabled")
-    private boolean mainSameFollowEnabled = true;
+    private boolean mainSameFollowEnabled = false;
+
+    /** 主账号共同关注API冷却结束时间戳（毫秒），0 表示未在冷却中 */
+    @JSONField(name = "main_same_follow_cooldown_until")
+    private long mainSameFollowCooldownUntil = 0L;
+
+    /** 共同关注API冷却时间（秒），默认 60 秒（~60次/分钟限制） */
+    @JSONField(name = "same_follow_cooldown_seconds")
+    private int sameFollowCooldownSeconds = 60;
 
     public AccountPoolConf() {
         this.accounts = new CopyOnWriteArrayList<>();
@@ -137,6 +145,22 @@ public class AccountPoolConf implements Serializable {
 
     public void setMainSameFollowEnabled(boolean mainSameFollowEnabled) {
         this.mainSameFollowEnabled = mainSameFollowEnabled;
+    }
+
+    public long getMainSameFollowCooldownUntil() {
+        return mainSameFollowCooldownUntil;
+    }
+
+    public void setMainSameFollowCooldownUntil(long mainSameFollowCooldownUntil) {
+        this.mainSameFollowCooldownUntil = mainSameFollowCooldownUntil;
+    }
+
+    public int getSameFollowCooldownSeconds() {
+        return sameFollowCooldownSeconds;
+    }
+
+    public void setSameFollowCooldownSeconds(int sameFollowCooldownSeconds) {
+        this.sameFollowCooldownSeconds = sameFollowCooldownSeconds;
     }
 
     public long getMainCooldownUntil() {

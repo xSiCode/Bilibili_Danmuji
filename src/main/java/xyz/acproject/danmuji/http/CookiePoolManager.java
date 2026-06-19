@@ -43,6 +43,9 @@ public class CookiePoolManager {
     /** 轮询索引（用于 Round-Robin） */
     private final AtomicInteger roundRobinIndex = new AtomicInteger(0);
 
+    /** 共同关注API专用轮询索引 */
+    private final AtomicInteger sameFollowRoundRobinIndex = new AtomicInteger(0);
+
     /** 主账号使用次数 */
     private final AtomicLong mainUseCount = new AtomicLong(0);
 
@@ -162,6 +165,7 @@ public class CookiePoolManager {
 
         // 如果池未启用，直接用主账号
         if (poolConf == null || !poolConf.isEnabled()) {
+            LOGGER.info("CookiePool: 共同关注-池未启用，使用主账号");
             return PublicDataConf.USERCOOKIE;
         }
 
@@ -169,36 +173,97 @@ public class CookiePoolManager {
         List<SubAccount> availableForSameFollow = new ArrayList<>();
         for (SubAccount acc : accounts) {
             if (acc.isEnabled() && acc.isSameFollowEnabled()
-                    && !acc.isCoolingDown() && acc.isValidated()) {
+                    && !acc.isSameFollowCoolingDown() && acc.isValidated()) {
                 availableForSameFollow.add(acc);
             }
         }
 
-        // 主账号需勾选共同关注复选框才能参与
-        boolean mainAvailable = isMainAccountAvailable() && !isMainCoolingDown()
+        // 主账号需勾选共同关注，且未在共同关注冷却中
+        boolean mainSameFollowCooling = poolConf.getMainSameFollowCooldownUntil() > 0
+                && System.currentTimeMillis() < poolConf.getMainSameFollowCooldownUntil();
+        boolean mainAvailable = isMainAccountAvailable() && !mainSameFollowCooling
                 && poolConf.isMainSameFollowEnabled();
         int totalAvailable = availableForSameFollow.size() + (mainAvailable ? 1 : 0);
 
         if (totalAvailable > 0) {
-            int index = Math.abs(roundRobinIndex.getAndIncrement() % totalAvailable);
+            int index = Math.abs(sameFollowRoundRobinIndex.getAndIncrement() % totalAvailable);
+            LOGGER.info("CookiePool: 共同关注-可用子账号={} 主可用={} total={} pickIndex={}",
+                    availableForSameFollow.size(), mainAvailable, totalAvailable, index);
             if (index < availableForSameFollow.size()) {
                 SubAccount selected = availableForSameFollow.get(index);
                 selected.setLastUsedTime(now);
                 selected.setUseCount(selected.getUseCount() + 1);
-                LOGGER.debug("CookiePool: 共同关注-使用子账号 [{}] uid={}",
-                        selected.getName(), selected.getUid());
+                LOGGER.info("CookiePool: 共同关注-选中子账号 [{}] uid={}", selected.getName(), selected.getUid());
                 return selected.getCookie();
             } else {
                 mainUseCount.incrementAndGet();
-                LOGGER.debug("CookiePool: 共同关注-使用主账号（轮询命中）");
+                LOGGER.info("CookiePool: 共同关注-选中主账号");
                 return PublicDataConf.USERCOOKIE;
             }
         }
 
         // 全部不可用 — 回退到主账号兜底
-        LOGGER.debug("CookiePool: 共同关注-无可用账号，回退主账号");
+        LOGGER.info("CookiePool: 共同关注-无可用账号(子={} 主可用={})，回退主账号",
+                availableForSameFollow.size(), mainAvailable);
         mainUseCount.incrementAndGet();
         return PublicDataConf.USERCOOKIE;
+    }
+
+    /**
+     * 是否有任何账号勾选了共同关注（主账号或子账号），且未在共同关注冷却中。
+     */
+    public boolean hasAnySameFollowAccount() {
+        if (poolConf == null) {
+            LOGGER.info("CookiePool: 共同关注-hasAny → poolConf为null");
+            return false;
+        }
+        boolean mainSameFollowCooling = poolConf.getMainSameFollowCooldownUntil() > 0
+                && System.currentTimeMillis() < poolConf.getMainSameFollowCooldownUntil();
+        if (poolConf.isMainSameFollowEnabled()
+                && isMainAccountAvailable() && !mainSameFollowCooling) {
+            LOGGER.info("CookiePool: 共同关注-hasAny → 主账号可用");
+            return true;
+        }
+        int enabledCount = 0, checkedCount = 0, coolingCount = 0, validCount = 0;
+        for (SubAccount acc : poolConf.getAccounts()) {
+            if (!acc.isEnabled()) continue;
+            enabledCount++;
+            if (!acc.isSameFollowEnabled()) continue;
+            checkedCount++;
+            if (acc.isSameFollowCoolingDown()) { coolingCount++; continue; }
+            if (!acc.isValidated()) continue;
+            validCount++;
+        }
+        int total = poolConf.getAccounts().size();
+        boolean result = validCount > 0;
+        LOGGER.info("CookiePool: 共同关注-hasAny={} 总子账号={} 启用={} 勾选={} 冷却中={} 已验证可用={} 主勾选={} 主冷却={}",
+                result, total, enabledCount, checkedCount, coolingCount, validCount,
+                poolConf.isMainSameFollowEnabled(), mainSameFollowCooling);
+        return result;
+    }
+
+    /**
+     * 标记共同关注API限流，使用独立的冷却时间。
+     */
+    public void markSameFollowRateLimited(String cookie) {
+        if (cookie == null || poolConf == null) return;
+        long cooldownMs = poolConf.getSameFollowCooldownSeconds() * 1000L;
+        for (SubAccount acc : poolConf.getAccounts()) {
+            if (cookie.equals(acc.getCookie())) {
+                acc.setSameFollowCooldownUntil(System.currentTimeMillis() + cooldownMs);
+                acc.setSameFollowRateLimitedCount(acc.getSameFollowRateLimitedCount() + 1);
+                LOGGER.warn("CookiePool: 共同关注-账号 [{}] uid={} 触发限流，冷却{}秒",
+                        acc.getName(), acc.getUid(), poolConf.getSameFollowCooldownSeconds());
+                saveToFile();
+                return;
+            }
+        }
+        // 主账号被限流
+        if (cookie.equals(PublicDataConf.USERCOOKIE)) {
+            poolConf.setMainSameFollowCooldownUntil(System.currentTimeMillis() + cooldownMs);
+            LOGGER.warn("CookiePool: 共同关注-主账号触发限流！冷却{}秒", poolConf.getSameFollowCooldownSeconds());
+            saveToFile();
+        }
     }
 
     // ==================== 限流处理 ====================
