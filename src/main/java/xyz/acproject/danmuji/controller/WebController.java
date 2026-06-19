@@ -1610,7 +1610,7 @@ public class WebController {
                     item.put("filePath", new File(getDanmujiLogDir(), fileName).getAbsolutePath());
                     item.put("roomId", rid);
                     item.put("anchorName", anchor);
-                    item.put("isCurrent", rid.equals(currentRoomId) && anchor.equals(currentAnchor) ? "true" : "false");
+                    item.put("isCurrent", rid.equals(currentRoomId) && anchor.equals(currentAnchor) ? "1" : "0");
                     fileList.add(item);
                 }
             } catch (Exception e) {
@@ -1635,7 +1635,7 @@ public class WebController {
                                 item.put("roomId", f.getName().substring(0, idx1));
                                 item.put("anchorName", f.getName().substring(idx1 + 1, idx2));
                             }
-                            item.put("isCurrent", f.getName().equals(currentPattern) ? "true" : "false");
+                            item.put("isCurrent", f.getName().equals(currentPattern) ? "1" : "0");
                             fileList.add(item);
                         }
                     }
@@ -1924,7 +1924,7 @@ public class WebController {
                     item.put("filePath", new File(getDanmujiLogDir(), fileName).getAbsolutePath());
                     item.put("roomId", rid);
                     item.put("anchorName", anchor);
-                    item.put("isCurrent", rid.equals(currentRoomId) && anchor.equals(currentAnchor) ? "true" : "false");
+                    item.put("isCurrent", rid.equals(currentRoomId) && anchor.equals(currentAnchor) ? "1" : "0");
                     fileList.add(item);
                 }
             } catch (Exception e) {
@@ -1948,7 +1948,7 @@ public class WebController {
                                 item.put("roomId", f.getName().substring(0, idx1));
                                 item.put("anchorName", f.getName().substring(idx1 + 1, idx2));
                             }
-                            item.put("isCurrent", f.getName().equals(currentPattern) ? "true" : "false");
+                            item.put("isCurrent", f.getName().equals(currentPattern) ? "1" : "0");
                             fileList.add(item);
                         }
                     }
@@ -2110,98 +2110,93 @@ public class WebController {
                                    HttpServletRequest req) {
         try {
             validateFilePath(filePath);
-            File file = new File(filePath);
-            if (!file.isAbsolute()) {
-                file = new File(getDanmujiLogDir(), filePath);
-            }
             Map<String, Object> result = new LinkedHashMap<>();
-            List<Map<String, String>> allRows = new ArrayList<>();
-            String[] headers = {"时间", "观看数", "在线数", "点赞数"};
-            String firstTime = null;
-            String lastTime = null;
-            String filteredFirstTime = null;
-            String filteredLastTime = null;
+            List<String> headers = java.util.Arrays.asList("时间", "观看数", "在线数", "点赞数");
+            result.put("headers", headers);
+            result.put("rows", Collections.emptyList());
+            result.put("total", 0);
+            result.put("totalPages", 0);
+            result.put("currentPage", page);
 
-            if (!file.exists()) {
-                result.put("headers", headers);
-                result.put("rows", Collections.emptyList());
-                result.put("total", 0);
-                result.put("totalPages", 0);
-                result.put("currentPage", page);
-                result.put("firstTime", "");
-                result.put("lastTime", "");
-                result.put("filteredFirstTime", "");
-                result.put("filteredLastTime", "");
-                String liveStartTime = "";
-                if (PublicDataConf.ROOM_INFO != null && PublicDataConf.ROOM_INFO.getLive_start_time() != null
-                        && PublicDataConf.ROOM_INFO.getLive_start_time() > 0) {
-                    liveStartTime = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(new java.util.Date(PublicDataConf.ROOM_INFO.getLive_start_time() * 1000L));
-                }
-                result.put("liveStartTime", liveStartTime);
+            long roomId = parseRoomIdFromPath(filePath);
+            String anchorName = parseAnchorFromPath(filePath);
+            if (roomId == 0) {
+                result.put("firstTime", ""); result.put("lastTime", "");
+                result.put("filteredFirstTime", ""); result.put("filteredLastTime", "");
                 return Response.success(result, req);
             }
 
-            String searchLower = (search != null && !search.isEmpty()) ? search.toLowerCase() : null;
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
-                String line = reader.readLine(); // skip header + BOM
-                while ((line = reader.readLine()) != null) {
-                    String[] parts = line.split(",", 4);
-                    if (parts.length >= 4) {
-                        String time = parts[0];
-                        if (firstTime == null) firstTime = time;
-                        lastTime = time;
-                        if (startTime != null && !startTime.isEmpty() && time.compareTo(startTime) < 0) continue;
-                        if (endTime != null && !endTime.isEmpty() && time.compareTo(endTime) > 0) continue;
-                        if (searchLower != null && !parts[0].toLowerCase().contains(searchLower)
-                                && !parts[1].toLowerCase().contains(searchLower)
-                                && !parts[2].toLowerCase().contains(searchLower)
-                                && !parts[3].toLowerCase().contains(searchLower)) continue;
-                        Map<String, String> row = new LinkedHashMap<>();
-                        row.put("时间", time);
-                        row.put("观看数", parts[1]);
-                        row.put("在线数", parts[2]);
-                        row.put("点赞数", parts[3]);
-                        allRows.add(row);
-                        if (filteredFirstTime == null) filteredFirstTime = time;
-                        filteredLastTime = time;
+            try (java.sql.Connection c = getDbConnection()) {
+                // 构建 WHERE（time_key 为 TEXT，可直接字符串比较）
+                StringBuilder where = new StringBuilder("WHERE room_id = ? AND anchor_name = ?");
+                List<Object> params = new ArrayList<>();
+                params.add(roomId);
+                params.add(anchorName);
+                if (startTime != null && !startTime.isEmpty()) { where.append(" AND time_key >= ?"); params.add(startTime); }
+                if (endTime != null && !endTime.isEmpty()) { where.append(" AND time_key <= ?"); params.add(endTime); }
+                if (search != null && !search.isEmpty()) {
+                    where.append(" AND (time_key LIKE ? OR CAST(watch_count AS TEXT) LIKE ? OR CAST(online_count AS TEXT) LIKE ? OR CAST(like_count AS TEXT) LIKE ?)");
+                    String q = "%" + search + "%";
+                    params.add(q); params.add(q); params.add(q); params.add(q);
+                }
+
+                // 排序（默认时间升序）
+                String sortCol = "time_key";
+                boolean asc = true;
+                if (sortField != null && !sortField.isEmpty()) {
+                    switch (sortField) {
+                        case "观看数": sortCol = "watch_count"; break;
+                        case "在线数": sortCol = "online_count"; break;
+                        case "点赞数": sortCol = "like_count"; break;
+                        default: sortCol = "time_key"; break;
+                    }
+                    asc = "asc".equalsIgnoreCase(sortOrder);
+                }
+
+                // 总数
+                String countSql = "SELECT COUNT(*) FROM room_info_series " + where;
+                int total = 0;
+                try (java.sql.PreparedStatement ps = c.prepareStatement(countSql)) {
+                    for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
+                    try (java.sql.ResultSet rs = ps.executeQuery()) { if (rs.next()) total = rs.getInt(1); }
+                }
+                int totalPages = (int) Math.ceil((double) total / pageSize);
+                if (page < 1) page = 1;
+                if (page > totalPages && totalPages > 0) page = totalPages;
+
+                // 数据查询
+                String dataSql = "SELECT time_key, watch_count, online_count, like_count FROM room_info_series " + where
+                        + " ORDER BY " + sortCol + (asc ? " ASC" : " DESC") + " LIMIT ? OFFSET ?";
+                params.add(pageSize);
+                params.add((page - 1) * pageSize);
+                List<Map<String, String>> rows = new ArrayList<>();
+                String firstTime = null, lastTime = null;
+                try (java.sql.PreparedStatement ps = c.prepareStatement(dataSql)) {
+                    for (int i = 0; i < params.size(); i++) ps.setObject(i + 1, params.get(i));
+                    try (java.sql.ResultSet rs = ps.executeQuery()) {
+                        while (rs.next()) {
+                            Map<String, String> row = new LinkedHashMap<>();
+                            String tk = rs.getString("time_key");
+                            row.put("时间", tk != null ? tk : "");
+                            row.put("观看数", String.valueOf(rs.getLong("watch_count")));
+                            row.put("在线数", String.valueOf(rs.getLong("online_count")));
+                            row.put("点赞数", String.valueOf(rs.getLong("like_count")));
+                            rows.add(row);
+                            if (firstTime == null) firstTime = tk;
+                            lastTime = tk;
+                        }
                     }
                 }
+
+                result.put("rows", rows);
+                result.put("total", total);
+                result.put("totalPages", totalPages);
+                result.put("currentPage", page);
+                result.put("firstTime", firstTime != null ? firstTime : "");
+                result.put("lastTime", lastTime != null ? lastTime : "");
+                result.put("filteredFirstTime", firstTime != null ? firstTime : "");
+                result.put("filteredLastTime", lastTime != null ? lastTime : "");
             }
-
-            String sf = (sortField != null && !sortField.isEmpty()) ? sortField : "时间";
-            boolean asc = (sortField != null && !sortField.isEmpty()) ? "asc".equalsIgnoreCase(sortOrder) : true;
-            boolean isDefSort = sortField == null || sortField.isEmpty();
-            allRows.sort((a, b) -> {
-                int cmp;
-                switch (sf) {
-                    case "观看数": case "在线数": case "点赞数":
-                        cmp = compareField(a.get(sf), b.get(sf), true);
-                        break;
-                    default:
-                        cmp = compareField(a.get("时间"), b.get("时间"), false);
-                        break;
-                }
-                if (cmp == 0 && isDefSort) cmp = compareField(a.get("时间"), b.get("时间"), false);
-                return asc ? cmp : -cmp;
-            });
-
-            int total = allRows.size();
-            int totalPages = (int) Math.ceil((double) total / pageSize);
-            if (page < 1) page = 1;
-            if (page > totalPages && totalPages > 0) page = totalPages;
-            int fromIndex = (page - 1) * pageSize;
-            int toIndex = Math.min(fromIndex + pageSize, total);
-            List<Map<String, String>> pageRows = total > 0 ? allRows.subList(fromIndex, toIndex) : Collections.emptyList();
-
-            result.put("headers", headers);
-            result.put("rows", pageRows);
-            result.put("total", total);
-            result.put("totalPages", totalPages);
-            result.put("currentPage", page);
-            result.put("firstTime", firstTime != null ? firstTime : "");
-            result.put("lastTime", lastTime != null ? lastTime : "");
-            result.put("filteredFirstTime", filteredFirstTime != null ? filteredFirstTime : "");
-            result.put("filteredLastTime", filteredLastTime != null ? filteredLastTime : "");
             String liveStartTime = "";
             if (PublicDataConf.ROOM_INFO != null && PublicDataConf.ROOM_INFO.getLive_start_time() != null
                     && PublicDataConf.ROOM_INFO.getLive_start_time() > 0) {
@@ -2770,16 +2765,28 @@ public class WebController {
             }
 
             List<String[]> filteredRows = new ArrayList<>();
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
-                reader.readLine(); // skip header
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    List<String> fields = parseCsvLine(line);
-                    if (fields.size() < 4) continue;
-                    String time = fields.get(0);
-                    if (startTime != null && !startTime.isEmpty() && time.compareTo(startTime) < 0) continue;
-                    if (endTime != null && !endTime.isEmpty() && time.compareTo(endTime) > 0) continue;
-                    filteredRows.add(new String[]{time, fields.get(1), fields.get(2), fields.get(3)});
+            long roomId = parseRoomIdFromPath(filePath);
+            String anchorName = parseAnchorFromPath(filePath);
+            if (roomId != 0) {
+                try (java.sql.Connection c = getDbConnection()) {
+                    StringBuilder w = new StringBuilder("WHERE room_id=? AND anchor_name=?");
+                    List<Object> p = new ArrayList<>(); p.add(roomId); p.add(anchorName);
+                    Long sm = parseTimeToMillis(startTime); Long em = parseTimeToMillis(endTime);
+                    if (sm != null) { w.append(" AND timestamp >= ?"); p.add(sm); }
+                    if (em != null) { w.append(" AND timestamp <= ?"); p.add(em); }
+                    String sql = "SELECT timestamp,uid,uname,content FROM danmaku " + w + " ORDER BY timestamp";
+                    try (java.sql.PreparedStatement ps = c.prepareStatement(sql)) {
+                        for (int i = 0; i < p.size(); i++) ps.setObject(i + 1, p.get(i));
+                        try (java.sql.ResultSet rs = ps.executeQuery()) {
+                            while (rs.next()) {
+                                String time = millisToTimeStr(rs.getLong("timestamp"));
+                                filteredRows.add(new String[]{time,
+                                    String.valueOf(rs.getLong("uid")),
+                                    rs.getString("uname"),
+                                    rs.getString("content")});
+                            }
+                        }
+                    }
                 }
             }
 
@@ -3198,16 +3205,32 @@ public class WebController {
             }
 
             List<String[]> rows = new ArrayList<>();
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF-8"))) {
-                reader.readLine();
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    List<String> fields = parseCsvLine(line);
-                    if (fields.size() < 7) continue;
-                    String time = fields.get(0);
-                    if (startTime != null && !startTime.isEmpty() && time.compareTo(startTime) < 0) continue;
-                    if (endTime != null && !endTime.isEmpty() && time.compareTo(endTime) > 0) continue;
-                    rows.add(new String[]{time, fields.get(1), fields.get(2), fields.get(3), fields.get(4), fields.get(5), fields.get(6), fields.size() >= 8 ? fields.get(7) : "1"});
+            long roomId = parseRoomIdFromPath(filePath);
+            String anchorName = parseAnchorFromPath(filePath);
+            if (roomId != 0) {
+                try (java.sql.Connection c = getDbConnection()) {
+                    StringBuilder w = new StringBuilder("WHERE room_id=? AND anchor_name=?");
+                    List<Object> p = new ArrayList<>(); p.add(roomId); p.add(anchorName);
+                    Long sm = parseTimeToMillis(startTime); Long em = parseTimeToMillis(endTime);
+                    if (sm != null) { w.append(" AND latest_entry_time >= ?"); p.add(sm); }
+                    if (em != null) { w.append(" AND latest_entry_time <= ?"); p.add(em); }
+                    String sql = "SELECT latest_entry_time,uid,uname,score,score_type,count,in_pn_table,session FROM visitor_summary " + w + " ORDER BY latest_entry_time";
+                    try (java.sql.PreparedStatement ps = c.prepareStatement(sql)) {
+                        for (int i = 0; i < p.size(); i++) ps.setObject(i + 1, p.get(i));
+                        try (java.sql.ResultSet rs = ps.executeQuery()) {
+                            while (rs.next()) {
+                                String time = millisToTimeStr(rs.getLong("latest_entry_time"));
+                                rows.add(new String[]{time,
+                                    String.valueOf(rs.getLong("uid")),
+                                    rs.getString("uname"),
+                                    String.valueOf(rs.getInt("score")),
+                                    rs.getString("score_type"),
+                                    String.valueOf(rs.getInt("count")),
+                                    rs.getInt("in_pn_table") == 1 ? "是" : "否",
+                                    String.valueOf(rs.getInt("session"))});
+                            }
+                        }
+                    }
                 }
             }
 

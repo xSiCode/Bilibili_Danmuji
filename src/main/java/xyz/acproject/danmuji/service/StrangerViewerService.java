@@ -22,6 +22,7 @@ public class StrangerViewerService {
     private static final Logger LOGGER = LogManager.getLogger(StrangerViewerService.class);
 
     private static final ConcurrentHashMap<Long, StrangerRecord> recordMap = new ConcurrentHashMap<>();
+    private static final int MAX_MAP_SIZE = 5000;
     private static final Set<Long> blockedUids = ConcurrentHashMap.newKeySet();
     private static final Set<Long> dirtyUids = ConcurrentHashMap.newKeySet();
     private static final ScheduledExecutorService mdScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
@@ -98,6 +99,10 @@ public class StrangerViewerService {
         StrangerRecord record = new StrangerRecord(uid, name, face, score, scoreTypes, count, session);
         recordMap.put(uid, record);
         dirtyUids.add(uid);
+        // 内存淘汰：超过上限时移除最旧的条目
+        if (recordMap.size() > MAX_MAP_SIZE + 500) {
+            evictOldest();
+        }
 
         // Push to frontend via WebSocket
         pushToFrontend(record);
@@ -302,7 +307,7 @@ public class StrangerViewerService {
         try { roomId = Long.parseLong(info[0]); } catch (NumberFormatException e) { return false; }
         String anchorName = info[1];
 
-        String sql = "SELECT uid, name, face, score, score_types, count, session, blocked, time FROM stranger_viewer WHERE room_id = ? AND anchor_name = ?";
+        String sql = "SELECT uid, name, face, score, score_types, count, session, blocked, time FROM stranger_viewer WHERE room_id = ? AND anchor_name = ? ORDER BY time DESC LIMIT 5000";
         try (java.sql.Connection c = xyz.acproject.danmuji.tools.db.DanmujiDatabase.getConnection();
              java.sql.PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setLong(1, roomId);
@@ -634,6 +639,19 @@ public class StrangerViewerService {
         } catch (Exception e) {
             LOGGER.debug("pushBlockUpdate error: {}", e.getMessage());
         }
+    }
+
+    /** 淘汰最旧的条目，使 map 大小降至 MAX_MAP_SIZE */
+    private static synchronized void evictOldest() {
+        int excess = recordMap.size() - MAX_MAP_SIZE;
+        if (excess <= 0) return;
+        recordMap.entrySet().stream()
+            .sorted((a, b) -> Long.compare(a.getValue().time, b.getValue().time))
+            .limit(excess)
+            .forEach(e -> {
+                recordMap.remove(e.getKey());
+                dirtyUids.remove(e.getKey());
+            });
     }
 
     public static boolean isBlocked(long uid) {

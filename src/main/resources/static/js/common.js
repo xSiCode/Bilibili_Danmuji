@@ -3006,17 +3006,25 @@ const method = {
                 if (data.code == "200" && data.result) {
                     var $select = $('#lrm-csv-select');
                     $select.find('option[value!=""]').remove();
+                    var firstOpt = null;
                     $.each(data.result, function (i, item) {
                         var label = item.fileName;
                         if (item.anchorName) label = item.anchorName + ' - ' + item.fileName;
-                        $select.append('<option value="' + item.filePath + '">' + label + '</option>');
+                        var opt = $('<option>').val(item.filePath).text(label);
+                        if (item.isCurrent === '1') { firstOpt = opt; opt.text(opt.text() + ' *'); }
+                        $select.append(opt);
                     });
-                    var firstOpt = $select.find('option[value!=""]').first();
-                    if (firstOpt.length) {
+                    if (firstOpt) {
                         $select.val(firstOpt.val());
                         lrmState.currentFile = firstOpt.val();
-                        method.loadCsvData();
+                    } else {
+                        var fallback = $select.find('option[value!=""]').first();
+                        if (fallback.length) {
+                            $select.val(fallback.val());
+                            lrmState.currentFile = fallback.val();
+                        }
                     }
+                    if (lrmState.currentFile) method.loadCsvData();
                 }
             }
         });
@@ -3357,17 +3365,25 @@ const method = {
                 if (data.code == "200" && data.result) {
                     var $select = $('#dmgr-csv-select');
                     $select.find('option[value!=""]').remove();
+                    var firstOpt = null;
                     $.each(data.result, function (i, item) {
                         var label = item.fileName;
                         if (item.anchorName) label = item.anchorName + ' - ' + item.fileName;
-                        $select.append('<option value="' + item.filePath + '">' + label + '</option>');
+                        var opt = $('<option>').val(item.filePath).text(label);
+                        if (item.isCurrent === '1') { firstOpt = opt; opt.text(opt.text() + ' *'); }
+                        $select.append(opt);
                     });
-                    var firstOpt = $select.find('option[value!=""]').first();
-                    if (firstOpt.length) {
+                    if (firstOpt) {
                         $select.val(firstOpt.val());
                         dmgrState.currentFile = firstOpt.val();
-                        method.loadDmgrData();
+                    } else {
+                        var fallback = $select.find('option[value!=""]').first();
+                        if (fallback.length) {
+                            $select.val(fallback.val());
+                            dmgrState.currentFile = fallback.val();
+                        }
                     }
+                    if (dmgrState.currentFile) method.loadDmgrData();
                 }
             }
         });
@@ -3777,17 +3793,25 @@ const method = {
                 if (data.code == "200" && data.result) {
                     var $select = $('#vst-csv-select');
                     $select.find('option[value!=""]').remove();
+                    var firstOpt = null;
                     $.each(data.result, function (i, item) {
                         var label = item.fileName;
                         if (item.anchorName) label = item.anchorName + ' - ' + item.fileName;
-                        $select.append('<option value="' + item.filePath + '">' + label + '</option>');
+                        var opt = $('<option>').val(item.filePath).text(label);
+                        if (item.isCurrent === '1') { firstOpt = opt; opt.text(opt.text() + ' *'); }
+                        $select.append(opt);
                     });
-                    var firstOpt = $select.find('option[value!=""]').first();
-                    if (firstOpt.length) {
+                    if (firstOpt) {
                         $select.val(firstOpt.val());
                         vstState.currentFile = firstOpt.val();
-                        method.loadVstData();
+                    } else {
+                        var fallback = $select.find('option[value!=""]').first();
+                        if (fallback.length) {
+                            $select.val(fallback.val());
+                            vstState.currentFile = fallback.val();
+                        }
                     }
+                    if (vstState.currentFile) method.loadVstData();
                 }
             }
         });
@@ -4127,6 +4151,13 @@ const method = {
                     if (firstOpt) {
                         $select.val(firstOpt.val());
                         mtchState.currentFile = firstOpt.val();
+                    } else {
+                        // 降级：没有当前房间时选第一个
+                        var fallback = $select.find('option[value!=""]').first();
+                        if (fallback.length) {
+                            $select.val(fallback.val());
+                            mtchState.currentFile = fallback.val();
+                        }
                     }
                     if (mtchState.currentFile) method.loadMtchData();
                 }
@@ -4358,6 +4389,13 @@ const method = {
                     if (firstOpt) {
                         $select.val(firstOpt.val());
                         flwState.currentFile = firstOpt.val();
+                    } else {
+                        // 降级：没有当前房间时选第一个
+                        var fallback = $select.find('option[value!=""]').first();
+                        if (fallback.length) {
+                            $select.val(fallback.val());
+                            flwState.currentFile = fallback.val();
+                        }
                     }
                     if (flwState.currentFile) method.loadFlwData();
                 }
@@ -4570,6 +4608,10 @@ const method = {
                         $select.append(opt);
                     });
                     if (firstOpt) { $select.val(firstOpt.val()); gftState.currentFile = firstOpt.val(); }
+                    else {
+                        var fallback = $select.find('option[value!=""]').first();
+                        if (fallback.length) { $select.val(fallback.val()); gftState.currentFile = fallback.val(); }
+                    }
                     if (gftState.currentFile) method.loadGftData();
                 }
             }
@@ -4861,15 +4903,25 @@ const method = {
                 var $sel = $('#sv-csv-select');
                 $sel.find('option[value!=""]').remove();
                 var files = resp.result;
+                var firstOpt = null;
                 for (var i = 0; i < files.length; i++) {
                     var f = files[i];
                     var label = (f.anchorName || '?') + ' - ' + f.fileName;
-                    $sel.append('<option value="' + f.filePath + '">' + label + '</option>');
+                    var opt = $('<option>').val(f.filePath).text(label);
+                    if (f.isCurrent === '1') { firstOpt = opt; opt.text(opt.text() + ' *'); }
+                    $sel.append(opt);
                 }
-                var firstOpt = $sel.find('option[value!=""]').first();
-                if (firstOpt.length) {
+                if (firstOpt) {
                     $sel.val(firstOpt.val());
                     svState.currentFile = firstOpt.val();
+                } else {
+                    var fallback = $sel.find('option[value!=""]').first();
+                    if (fallback.length) {
+                        $sel.val(fallback.val());
+                        svState.currentFile = fallback.val();
+                    }
+                }
+                if (svState.currentFile) {
                     svState.defaultToLast = true;
                     method.loadSvData();
                 }
