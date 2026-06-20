@@ -1192,24 +1192,24 @@ public class HttpRoomData {
 
                     // 我关注了此人
                     if (following) {
-                        r.score = 5; // 需求如此
+                        r.score += 5; // 需求如此
                         r.type += "[已关注+5]";
                         cardLog.append(" 已关注+5");
                     } else {
                         // 人机
                         if ((fans < 50 && attention > 4500) || attention > 4990 || (attention == 0 && fans == 0)) {
-                            r.score--;
-                            r.type += "[人机关注-1]";
-                            cardLog.append(" 人机关注-1");
+                            r.score-=5;
+                            r.type += "[人机关注-5]";
+                            cardLog.append(" 人机关注-5");
                         }
                         if (r.name.startsWith("bili_")) {
                             r.score--;
-                            r.type += "[人机名字-1]";
+                        //    r.type += "[人机名字-1]";
                             cardLog.append(" 人机名字-1");
                         }
                         if ("https://i0.hdslb.com/bfs/face/member/noface.jpg".equals(r.face)) {
                             r.score--;
-                            r.type += "[人机头像-1]";
+                          //  r.type += "[人机头像-1]";
                             cardLog.append(" 人机头像-1");
                         }
 
@@ -1218,16 +1218,16 @@ public class HttpRoomData {
                         int lv = levelInfo != null ? levelInfo.getIntValue("current_level") : -1;
                         cardLog.append(" Lv").append(lv);
                         if (lv == 0) {
-                            r.score -= 5;
-                            r.type += "[Lv0:-5]";
-                            cardLog.append("[Lv0:-2]");
+                            r.score = -999; // 需求如此，不接受lv0的人 。 存在lv0,但关注的全是自己人的情况，不接受这样的观众
+                            r.type += "[Lv0:-999]";
+                            cardLog.append("[Lv0:-999]");
                         } else if (lv <= 2) {
                             r.score--;
-                            r.type += "[Lv" + lv + " -1]";
+                           // r.type += "[Lv" + lv + " -1]";
                             cardLog.append(" Lv").append(lv).append(":-1");
                         } else if (lv >= 5) {
                             r.score++;
-                            r.type += "[Lv" + lv + " +1]";
+                          //  r.type += "[Lv" + lv + " +1]";
                             cardLog.append(" Lv").append(lv).append("+1");
                         }
 
@@ -1235,7 +1235,7 @@ public class HttpRoomData {
                         JSONObject official = cardJO.getJSONObject("Official");
                         if (official != null && StringUtils.isNotEmpty(official.getString("title"))) {
                             r.score++;
-                            r.type += "[认证+1]";
+                          //  r.type += "[认证+1]";
                             cardLog.append(" 认证+1 ");
                         }
 
@@ -1245,17 +1245,17 @@ public class HttpRoomData {
                             JSONObject label = vip.getJSONObject("label");
                             if (label != null && StringUtils.contains(label.getString("text"), "大会员")) {
                                 r.score++;
-                                r.type += "[大会员+1]";
+                            //    r.type += "[大会员+1]";
                                 cardLog.append(" 大会员+1");
                             }
                         }
 
                         // KOL
-                        long kolLv = fans / 1000 + archiveCount / 100 + articleCount / 50 + likeNum / 10_0000;
+                        long kolLv = fans / 10000 + archiveCount / 100 + articleCount / 100 + likeNum / 10_0000;
                         if (kolLv != 0) {
-                            r.score++;
-                            r.type += "[KOL+1]";
-                            cardLog.append(" KOL+1");
+                            r.score+= (int) kolLv;
+                            r.type += "[KOL+1"+kolLv+"]";
+                            cardLog.append("[KOL+1").append(kolLv).append("]");
                         }
                     }
 
