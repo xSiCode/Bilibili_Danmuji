@@ -385,9 +385,9 @@ public class ParseMessageThread extends Thread {
                                     BarrageLogTools.logBarrage(barrage.getUid(), barrage.getUname(), barrage.getMsg(), barrage.getTimestamp());
                                     DanmakuRecorder.record(barrage);
                                     //控制台打印
-                                    if (getCenterSetConf().is_cmd()) {
-                                        LOGGER.info(stringBuilder.toString());
-                                    }
+//                                    if (getCenterSetConf().is_cmd()) {
+//                                        LOGGER.info(stringBuilder.toString());
+//                                    }
                                     //高级显示处理
                                     try {
                                         danmuWebsocket.sendMessage(WsPackage.toJson("danmu", (short) 0, hbarrage));
@@ -395,10 +395,10 @@ public class ParseMessageThread extends Thread {
                                         // TODO 自动生成的 catch 块
                                         LOGGER.error(e);
                                     }
-                                    //日志处理
-                                    if (PublicDataConf.logThread != null && !PublicDataConf.logThread.FLAG) {
-                                        PublicDataConf.logString.offer(stringBuilder.toString());
-                                    }
+//                                    //日志处理
+//                                    if (PublicDataConf.logThread != null && !PublicDataConf.logThread.FLAG) {
+//                                        PublicDataConf.logString.offer(stringBuilder.toString());
+//                                    }
                                 } else {
                                     //弹幕关闭
                                 }
