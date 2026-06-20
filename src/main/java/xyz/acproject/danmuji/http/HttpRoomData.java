@@ -546,10 +546,7 @@ public class HttpRoomData {
                         JSONObject json = JSONObject.parseObject(body);
                         if (json != null) {
                             int code = json.getIntValue("code");
-                            if (code != 0) {
-                                cookiePool.markRateLimited(usedCookie);
-                            }
-                            // 缓存成功和普通错误响应，但不缓存限流响应（-412/-509 为临时性错误）
+                            // 关注列表无需冷却
                             if (code != -412 && code != -509) {
                                 SqliteApiCacheManager.put(cacheKey, body);
                             }
@@ -594,7 +591,7 @@ public class HttpRoomData {
         }
 
         // 3. 从Cookie池获取可用Cookie
-        String poolCookie = cookiePool.getNextCookie();
+        String poolCookie = cookiePool.getNextCookieForDynamic();
         // 如果池返回null且主账号也没有cookie，使用空字符串（匿名请求可能受限）
         if (poolCookie == null && StringUtils.isBlank(PublicDataConf.USERCOOKIE)) {
             poolCookie = PublicDataConf.USERCOOKIE;
@@ -621,8 +618,8 @@ public class HttpRoomData {
                                 // 正常响应，存入 L1 内存缓存
                                 apiCache.put(memCacheKey, result);
                             } else {
-                                // 异常响应，标记该Cookie被限流
-                                cookiePool.markRateLimited(usedCookie);
+                                // 异常响应，标记该Cookie被限流（动态独立冷却）
+                                cookiePool.markDynamicRateLimited(usedCookie);
                                 LOGGER.warn("动态API异常响应 mid={}，code={}，已标记Cookie冷却", mid, code);
                             }
                             // 缓存成功和普通错误响应到 L2，但不缓存限流响应（-412/-509 为临时性错误）
@@ -631,7 +628,7 @@ public class HttpRoomData {
                             }
                         } catch (Exception e) {
                             // JSON 解析失败，视为异常响应（非限流，仍缓存避免重复请求）
-                            cookiePool.markRateLimited(usedCookie);
+                            cookiePool.markDynamicRateLimited(usedCookie);
                             SqliteApiCacheManager.put(sqliteCacheKey, result);
                             LOGGER.warn("动态API JSON解析失败 mid={}，已标记Cookie冷却", mid);
                         }
@@ -714,9 +711,7 @@ public class HttpRoomData {
                         JSONObject json = JSONObject.parseObject(body);
                         if (json != null) {
                             int code = json.getIntValue("code");
-                            if (code != 0) {
-                                cookiePool.markRateLimited(usedCookie);
-                            }
+                            // 勋章墙无需冷却
                             // 缓存成功和普通错误响应，但不缓存限流响应（-412/-509 为临时性错误）
                             if (code != -412 && code != -509) {
                                 SqliteApiCacheManager.put(cacheKey, body);
@@ -773,8 +768,8 @@ public class HttpRoomData {
             return CompletableFuture.completedFuture(null);
         }
 
-        // 3. 从Cookie池获取可用Cookie
-        String poolCookie = cookiePool.getNextCookie();
+        // 3. 从Cookie池获取可用Cookie（卡片独立冷却）
+        String poolCookie = cookiePool.getNextCookieForCard();
         if (poolCookie == null && StringUtils.isBlank(PublicDataConf.USERCOOKIE)) {
             poolCookie = PublicDataConf.USERCOOKIE;
         }
@@ -801,8 +796,8 @@ public class HttpRoomData {
                                 // 正常响应，存入 L1 内存缓存
                                 apiCache.put(memCacheKey, body);
                             } else {
-                                // 异常响应，标记该Cookie被限流
-                                cookiePool.markRateLimited(usedCookie);
+                                // 异常响应，标记该Cookie被限流（卡片独立冷却）
+                                cookiePool.markCardRateLimited(usedCookie);
                                 LOGGER.warn("卡片API异常响应 mid={} code={}，已标记Cookie冷却", mid, code);
                             }
                             // 缓存成功和普通错误响应到 L2，但不缓存限流响应（-412/-509 为临时性错误）
@@ -864,7 +859,7 @@ public class HttpRoomData {
             short follCode = follJson1 != null ? follJson1.getShort("code") : -1;
             JSONObject follData = follJson1 != null && follCode == 0 ? follJson1.getJSONObject("data") : null;
             long total = follData != null ? follData.getLongValue("total") : 0;
-            logSb.append(" [total:").append(total).append("]");
+
             if (follJson1 == null || follCode != 0 || follData == null || total == 0) {
                 follResult = processHiddenFollowingsSync(vmid, logSb);
             } else {

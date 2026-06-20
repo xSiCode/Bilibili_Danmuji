@@ -65,9 +65,25 @@ public class AccountPoolConf implements Serializable {
     @JSONField(name = "main_same_follow_cooldown_until")
     private long mainSameFollowCooldownUntil = 0L;
 
-    /** 共同关注API冷却时间（秒），默认 60 秒（~60次/分钟限制） */
+    /** 共同关注API冷却时间（秒），默认 600 秒（10分钟） */
     @JSONField(name = "same_follow_cooldown_seconds")
-    private int sameFollowCooldownSeconds = 60;
+    private int sameFollowCooldownSeconds = 600;
+
+    /** 卡片API冷却时间（秒），默认 300 秒（5分钟，~100次/分钟限制） */
+    @JSONField(name = "card_cooldown_seconds")
+    private int cardCooldownSeconds = 300;
+
+    /** 动态API冷却时间（秒），默认 900 秒（15分钟，~20次/分钟限制） */
+    @JSONField(name = "dynamic_cooldown_seconds")
+    private int dynamicCooldownSeconds = 900;
+
+    /** 主账号卡片API冷却结束时间戳 */
+    @JSONField(name = "main_card_cooldown_until")
+    private long mainCardCooldownUntil = 0L;
+
+    /** 主账号动态API冷却结束时间戳 */
+    @JSONField(name = "main_dynamic_cooldown_until")
+    private long mainDynamicCooldownUntil = 0L;
 
     public AccountPoolConf() {
         this.accounts = new CopyOnWriteArrayList<>();
@@ -162,6 +178,15 @@ public class AccountPoolConf implements Serializable {
     public void setSameFollowCooldownSeconds(int sameFollowCooldownSeconds) {
         this.sameFollowCooldownSeconds = sameFollowCooldownSeconds;
     }
+
+    public int getCardCooldownSeconds() { return cardCooldownSeconds; }
+    public void setCardCooldownSeconds(int v) { this.cardCooldownSeconds = v; }
+    public int getDynamicCooldownSeconds() { return dynamicCooldownSeconds; }
+    public void setDynamicCooldownSeconds(int v) { this.dynamicCooldownSeconds = v; }
+    public long getMainCardCooldownUntil() { return mainCardCooldownUntil; }
+    public void setMainCardCooldownUntil(long v) { this.mainCardCooldownUntil = v; }
+    public long getMainDynamicCooldownUntil() { return mainDynamicCooldownUntil; }
+    public void setMainDynamicCooldownUntil(long v) { this.mainDynamicCooldownUntil = v; }
 
     public long getMainCooldownUntil() {
         return mainCooldownUntil;

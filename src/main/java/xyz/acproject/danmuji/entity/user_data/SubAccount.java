@@ -56,6 +56,18 @@ public class SubAccount implements Serializable {
     /** 共同关注API被限流次数统计 */
     private long sameFollowRateLimitedCount = 0L;
 
+    /** 卡片API专用冷却结束时间戳（毫秒），0 表示未在冷却中 */
+    private long cardCooldownUntil = 0L;
+
+    /** 卡片API被限流次数统计 */
+    private long cardRateLimitedCount = 0L;
+
+    /** 动态API专用冷却结束时间戳（毫秒），0 表示未在冷却中 */
+    private long dynamicCooldownUntil = 0L;
+
+    /** 动态API被限流次数统计 */
+    private long dynamicRateLimitedCount = 0L;
+
     public SubAccount() {
     }
 
@@ -191,6 +203,24 @@ public class SubAccount implements Serializable {
     /** 共同关注API是否正在冷却中 */
     public boolean isSameFollowCoolingDown() {
         return sameFollowCooldownUntil > 0 && System.currentTimeMillis() < sameFollowCooldownUntil;
+    }
+
+    // ---- 卡片API冷却 ----
+    public long getCardCooldownUntil() { return cardCooldownUntil; }
+    public void setCardCooldownUntil(long v) { this.cardCooldownUntil = v; }
+    public long getCardRateLimitedCount() { return cardRateLimitedCount; }
+    public void setCardRateLimitedCount(long v) { this.cardRateLimitedCount = v; }
+    public boolean isCardCoolingDown() {
+        return cardCooldownUntil > 0 && System.currentTimeMillis() < cardCooldownUntil;
+    }
+
+    // ---- 动态API冷却 ----
+    public long getDynamicCooldownUntil() { return dynamicCooldownUntil; }
+    public void setDynamicCooldownUntil(long v) { this.dynamicCooldownUntil = v; }
+    public long getDynamicRateLimitedCount() { return dynamicRateLimitedCount; }
+    public void setDynamicRateLimitedCount(long v) { this.dynamicRateLimitedCount = v; }
+    public boolean isDynamicCoolingDown() {
+        return dynamicCooldownUntil > 0 && System.currentTimeMillis() < dynamicCooldownUntil;
     }
 
     /**
