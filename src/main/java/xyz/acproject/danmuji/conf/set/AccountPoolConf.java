@@ -258,6 +258,16 @@ public class AccountPoolConf implements Serializable {
         if (conf.getCacheTtlSeconds() <= 0) {
             conf.setCacheTtlSeconds(300);
         }
+        // 新增独立冷却时长字段，旧配置缺失时为 0，需纠正为默认值
+        if (conf.getSameFollowCooldownSeconds() <= 0) {
+            conf.setSameFollowCooldownSeconds(600);
+        }
+        if (conf.getCardCooldownSeconds() <= 0) {
+            conf.setCardCooldownSeconds(300);
+        }
+        if (conf.getDynamicCooldownSeconds() <= 0) {
+            conf.setDynamicCooldownSeconds(900);
+        }
         return conf;
     }
 
@@ -268,6 +278,9 @@ public class AccountPoolConf implements Serializable {
         JSONObject json = new JSONObject();
         json.put("enabled", enabled);
         json.put("cooldownSeconds", cooldownSeconds);
+        json.put("sameFollowCooldownSeconds", sameFollowCooldownSeconds);
+        json.put("cardCooldownSeconds", cardCooldownSeconds);
+        json.put("dynamicCooldownSeconds", dynamicCooldownSeconds);
         json.put("dynamicRate", dynamicRate);
         json.put("cardRate", cardRate);
         json.put("cacheTtlSeconds", cacheTtlSeconds);
