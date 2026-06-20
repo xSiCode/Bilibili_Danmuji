@@ -659,7 +659,14 @@ public class HttpRoomData {
         datas.put("vmid", String.valueOf(vmid));
         final String usedCookie = poolCookie;
         return asyncHttpGetBody("https://api.bilibili.com/x/relation/same/followings", headers, datas)
-                .thenApply(body -> {
+                .orTimeout(8, TimeUnit.SECONDS)
+                .handle((body, throwable) -> {
+                    if (throwable != null) {
+                        // 超时或OkHttp层异常：标记cookie限流，避免重复使用问题cookie
+                        cookiePool.markSameFollowRateLimited(usedCookie);
+                        LOGGER.warn("共同关注API请求失败 vmid={}", vmid, throwable);
+                        return null;
+                    }
                     if (body != null) {
                         JSONObject json = JSONObject.parseObject(body);
                         if (json != null) {
@@ -882,13 +889,14 @@ public class HttpRoomData {
             }
 
             // Phase 2c+: 当关注数>100且有账号勾选时，独立请求共同关注API
-            Pair<Integer, String> sameResult = Pair.of(0, "");;
+            // asyncHttpGetSameFollowings 内部已处理超时(8s)+cookie限流标记，此处兜底
+            Pair<Integer, String> sameResult = Pair.of(0, "");
             if (total > 100 && cookiePool.hasAnySameFollowAccount()) {
                 try {
-                    JSONObject sameFollowJson = asyncHttpGetSameFollowings(vmid).get(10, TimeUnit.SECONDS);
-                     sameResult = processSameFollowingsSync(vmid, logSb, sameFollowJson);
+                    JSONObject sameFollowJson = asyncHttpGetSameFollowings(vmid).get(9, TimeUnit.SECONDS);
+                    sameResult = processSameFollowingsSync(vmid, logSb, sameFollowJson);
                 } catch (Exception e) {
-                    LOGGER.warn("共同关注API超时 vmid={}", vmid, e);
+                    LOGGER.warn("共同关注API异常 vmid={}", vmid, e);
                     logSb.append(" [共同关注:异常:").append(e.getMessage()).append("]");
                 }
             }
@@ -1218,9 +1226,9 @@ public class HttpRoomData {
                         int lv = levelInfo != null ? levelInfo.getIntValue("current_level") : -1;
                         cardLog.append(" Lv").append(lv);
                         if (lv == 0) {
-                            r.score = -999; // 需求如此，不接受lv0的人 。 存在lv0,但关注的全是自己人的情况，不接受这样的观众
-                            r.type += "[Lv0:-999]";
-                            cardLog.append("[Lv0:-999]");
+                            r.score = -500; // 需求如此，不接受lv0的人 。 存在lv0,但关注的全是自己人的情况，不接受这样的观众
+                            r.type += "[Lv0:-500]";
+                            cardLog.append("[Lv0:-500]");
                         } else if (lv <= 2) {
                             r.score--;
                            // r.type += "[Lv" + lv + " -1]";

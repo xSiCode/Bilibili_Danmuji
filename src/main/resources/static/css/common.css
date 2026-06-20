@@ -1603,15 +1603,15 @@ div .link-popup-panel .popup-content-ctnr p {
 #sv-data-table tr { height: 42px; }
 #sv-data-table .sv-td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #sv-data-table .sv-td a { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
-/* 列：1时间180 / 2头像42 / 3观众名180 / 4签名auto / 5打分50 / 6次数42 / 7场次42 / 8拉黑90 */
-#sv-data-table th:nth-child(1), #sv-data-table td:nth-child(1) { width: 180px; }
-#sv-data-table th:nth-child(2), #sv-data-table td:nth-child(2) { width: 42px; }
-#sv-data-table th:nth-child(3), #sv-data-table td:nth-child(3) { width: 180px; text-align: left; }
-#sv-data-table th:nth-child(4), #sv-data-table td:nth-child(4) { text-align: left; }
-#sv-data-table th:nth-child(5), #sv-data-table td:nth-child(5) { width: 50px; }
-#sv-data-table th:nth-child(6), #sv-data-table td:nth-child(6) { width: 42px; }
-#sv-data-table th:nth-child(7), #sv-data-table td:nth-child(7) { width: 42px; }
-#sv-data-table th:nth-child(8), #sv-data-table td:nth-child(8) { width: 90px; }
+/* 列宽跟随列属性class，不再依赖位置nth-child */
+#sv-data-table .sv-col-time, #sv-data-table th.sv-col-time, #sv-data-table td.sv-col-time { width: 180px; }
+#sv-data-table .sv-col-avatar, #sv-data-table th.sv-col-avatar, #sv-data-table td.sv-col-avatar { width: 42px; }
+#sv-data-table .sv-col-name, #sv-data-table th.sv-col-name, #sv-data-table td.sv-col-name { width: 180px; text-align: left; }
+#sv-data-table .sv-col-session, #sv-data-table th.sv-col-session, #sv-data-table td.sv-col-session { width: 42px; }
+#sv-data-table .sv-col-count, #sv-data-table th.sv-col-count, #sv-data-table td.sv-col-count { width: 42px; }
+#sv-data-table .sv-col-score, #sv-data-table th.sv-col-score, #sv-data-table td.sv-col-score { width: 50px; }
+#sv-data-table .sv-col-scoreTypes, #sv-data-table th.sv-col-scoreTypes, #sv-data-table td.sv-col-scoreTypes { text-align: left; }
+#sv-data-table .sv-col-block, #sv-data-table th.sv-col-block, #sv-data-table td.sv-col-block { width: 90px; }
 #sv-data-table th.sv-sort { cursor: pointer; user-select: none; }
 #sv-data-table th.sv-sort:hover { color: #0d6efd; }
 

@@ -4858,9 +4858,9 @@ const method = {
             if (i < records.length) {
                 let r = records[i];
                 // 时间
-                $tr.append($('<td class="sv-td truncate-expandable"></td>').text(r.time || ''));
+                $tr.append($('<td class="sv-td sv-col-time truncate-expandable"></td>').text(r.time || ''));
                 // 头像 - hover 显示原图，点击跳转主页
-                var $avatarTd = $('<td class="sv-td truncate-expandable"></td>');
+                var $avatarTd = $('<td class="sv-td sv-col-avatar truncate-expandable"></td>');
                 // 优先加载本地头像，失败时回退 Bilibili CDN
                 var $avatar = $('<img src="' + (r.face || '') + '" style="width:32px;height:32px;border-radius:50%;cursor:pointer;" data-full-src="' + (r.face || '') + '">');
                 $avatar.on('mouseenter', function () {
@@ -4881,17 +4881,17 @@ const method = {
                 $avatarTd.append($avatar);
                 $tr.append($avatarTd);
                 // 观众名
-                $tr.append($('<td class="sv-td truncate-expandable"></td>').text(r.name || ''));
-                // 签名
-                $tr.append($('<td class="sv-td truncate-expandable"></td>').text(r.scoreTypes || '').attr('title', r.scoreTypes || ''));
-                // 打分
-                $tr.append($('<td class="sv-td truncate-expandable"></td>').text(r.score != null ? r.score : ''));
-                // 次数
-                $tr.append($('<td class="sv-td truncate-expandable"></td>').text(r.count || 0));
+                $tr.append($('<td class="sv-td sv-col-name truncate-expandable"></td>').text(r.name || ''));
                 // 场次
-                $tr.append($('<td class="sv-td truncate-expandable"></td>').text(r.session || 0));
+                $tr.append($('<td class="sv-td sv-col-session truncate-expandable"></td>').text(r.session || 0));
+                // 次数
+                $tr.append($('<td class="sv-td sv-col-count truncate-expandable"></td>').text(r.count || 0));
+                // 打分
+                $tr.append($('<td class="sv-td sv-col-score truncate-expandable"></td>').text(r.score != null ? r.score : ''));
+                // 签名
+                $tr.append($('<td class="sv-td sv-col-scoreTypes truncate-expandable"></td>').text(r.scoreTypes || '').attr('title', r.scoreTypes || ''));
                 // 拉黑
-                var $blockTd = $('<td class="sv-td truncate-expandable"></td>');
+                var $blockTd = $('<td class="sv-td sv-col-block truncate-expandable"></td>');
                 var isBlocked = r.blocked === true || r.blocked === 'true' || r.blocked === 1 || r.blocked === '1';
                 var blockLabel = isBlocked ? '解除拉黑' : '拉黑';
                 var $blockBtn = $('<button class="btn btn-sm ' + (isBlocked ? 'btn-warning' : 'btn-danger') + '"></button>')

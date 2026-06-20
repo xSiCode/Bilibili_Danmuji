@@ -67,7 +67,8 @@
       "Bash(java -version)",
       "Bash(awk '/id=\"tab-/{print NR\": \"$0}' E:/claudeCode/Bilibili_Danmuji/src/main/resources/templates/index.html)",
       "Bash(./gradlew compileJava --stacktrace)",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "Bash(xxd)"
     ]
   }
 }
