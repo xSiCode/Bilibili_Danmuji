@@ -1272,7 +1272,7 @@ public class HttpRoomData {
                     int kw = getKeyWordsScore((r.name != null ? r.name : "") + (r.sign != null ? r.sign : ""), cardLog);
                     r.score += kw;
                     //  if (kw != 0) cardLog.append(" 签名关键词:").append(kw);
-
+                    r.type += "[卡片黑白分:"+r.score+"]";
                     cardLog.append(" 卡片黑白分:").append(r.score).append("]");
                     logSb.append(cardLog);
                     return r;
