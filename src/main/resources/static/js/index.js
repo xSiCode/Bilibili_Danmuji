@@ -4857,8 +4857,10 @@ const method = {
             var $tr = $('<tr></tr>');
             if (i < records.length) {
                 let r = records[i];
-                // 时间
-                $tr.append($('<td class="sv-td sv-col-time truncate-expandable"></td>').text(r.time || ''));
+                // 时间 — 显示 HH:mm:ss，hover 完整时间
+                var timeFull = r.time || '';
+                var timeShort = timeFull.indexOf(' ') >= 0 ? timeFull.substring(timeFull.lastIndexOf(' ') + 1) : timeFull;
+                $tr.append($('<td class="sv-td sv-col-time truncate-expandable"></td>').text(timeShort).attr('title', timeFull));
                 // 头像 - hover 显示原图，点击跳转主页
                 var $avatarTd = $('<td class="sv-td sv-col-avatar truncate-expandable"></td>');
                 // 优先加载本地头像，失败时回退 Bilibili CDN
@@ -4881,7 +4883,7 @@ const method = {
                 $avatarTd.append($avatar);
                 $tr.append($avatarTd);
                 // 观众名
-                $tr.append($('<td class="sv-td sv-col-name truncate-expandable"></td>').text(r.name || ''));
+                $tr.append($('<td class="sv-td sv-col-name truncate-expandable"></td>').text(r.name || '').attr('title', r.name || ''));
                 // 场次
                 $tr.append($('<td class="sv-td sv-col-session truncate-expandable"></td>').text(r.session || 0));
                 // 次数

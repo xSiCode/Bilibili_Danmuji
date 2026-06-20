@@ -1604,9 +1604,9 @@ div .link-popup-panel .popup-content-ctnr p {
 #sv-data-table .sv-td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #sv-data-table .sv-td a { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
 /* 列宽跟随列属性class，不再依赖位置nth-child */
-#sv-data-table .sv-col-time, #sv-data-table th.sv-col-time, #sv-data-table td.sv-col-time { width: 180px; }
+#sv-data-table .sv-col-time, #sv-data-table th.sv-col-time, #sv-data-table td.sv-col-time { width: 80px; }
 #sv-data-table .sv-col-avatar, #sv-data-table th.sv-col-avatar, #sv-data-table td.sv-col-avatar { width: 42px; }
-#sv-data-table .sv-col-name, #sv-data-table th.sv-col-name, #sv-data-table td.sv-col-name { width: 180px; text-align: left; }
+#sv-data-table .sv-col-name, #sv-data-table th.sv-col-name, #sv-data-table td.sv-col-name { width: 150px; text-align: left; }
 #sv-data-table .sv-col-session, #sv-data-table th.sv-col-session, #sv-data-table td.sv-col-session { width: 42px; }
 #sv-data-table .sv-col-count, #sv-data-table th.sv-col-count, #sv-data-table td.sv-col-count { width: 42px; }
 #sv-data-table .sv-col-score, #sv-data-table th.sv-col-score, #sv-data-table td.sv-col-score { width: 50px; }
