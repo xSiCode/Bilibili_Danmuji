@@ -10,10 +10,14 @@ import org.apache.logging.log4j.Logger;
 import org.springframework.util.CollectionUtils;
 import xyz.acproject.danmuji.conf.CenterSetConf;
 import xyz.acproject.danmuji.conf.PublicDataConf;
+import xyz.acproject.danmuji.conf.set.AccountPoolConf;
+import xyz.acproject.danmuji.conf.set.KeyWordEntry;
+import xyz.acproject.danmuji.conf.set.KeyWordSetConf;
 import xyz.acproject.danmuji.entity.room_data.*;
 import xyz.acproject.danmuji.entity.server_data.Conf;
 import xyz.acproject.danmuji.entity.user_data.MedalWallItem;
 import xyz.acproject.danmuji.entity.user_data.UserNav;
+import xyz.acproject.danmuji.service.StrangerViewerService;
 import xyz.acproject.danmuji.tools.CurrencyTools;
 import xyz.acproject.danmuji.tools.file.FileTools;
 import xyz.acproject.danmuji.tools.file.ProFileTools;
@@ -883,15 +887,11 @@ public class HttpRoomData {
             }
 
             // Phase 2c+: 当关注数>100且有账号勾选时，独立请求共同关注API
-            int sameFollowScore = 0;
-            String sameFollowType = "";
+            Pair<Integer, String> sameResult = Pair.of(0, "");;
             if (total > 100 && cookiePool.hasAnySameFollowAccount()) {
-                logSb.append(" [关注>100:共同关注请求中]");
                 try {
                     JSONObject sameFollowJson = asyncHttpGetSameFollowings(vmid).get(10, TimeUnit.SECONDS);
-                    Pair<Integer, String> sameResult = processSameFollowingsSync(vmid, logSb, sameFollowJson);
-                    sameFollowScore = sameResult.getLeft();
-                    sameFollowType = sameResult.getRight();
+                     sameResult = processSameFollowingsSync(vmid, logSb, sameFollowJson);
                 } catch (Exception e) {
                     LOGGER.warn("共同关注API超时 vmid={}", vmid, e);
                     logSb.append(" [共同关注:异常:").append(e.getMessage()).append("]");
@@ -903,12 +903,12 @@ public class HttpRoomData {
             appendType(combinedType, cardResult.type);
             appendType(combinedType, medalResult.getRight());
             appendType(combinedType, follResult.getRight());
-            appendType(combinedType, sameFollowType);
+            appendType(combinedType, sameResult.getRight());
 
             // 黑白名单处理，pnScoreMap 直接命中（跳过所有维度打分）
-            int totalScore = medalResult.getLeft() + follResult.getLeft() + cardResult.score + sameFollowScore;
+            int totalScore = medalResult.getLeft() + follResult.getLeft() + cardResult.score + sameResult.getLeft();
 
-            xyz.acproject.danmuji.service.StrangerViewerService.addRecord(
+            StrangerViewerService.addRecord(
                     vmid, cardResult.name, cardResult.face, totalScore, cardResult.sign);
 
             // Phase 3: 仅当综合分在 -1, 0 时才触发动态API
@@ -1295,9 +1295,9 @@ public class HttpRoomData {
     private static int getKeyWordsScore(String dataStr, StringBuilder sb) {
         int totalScore = 0;
 
-        xyz.acproject.danmuji.conf.set.KeyWordSetConf kwConf = PublicDataConf.centerSetConf.getKey_word();
+        KeyWordSetConf kwConf = PublicDataConf.centerSetConf.getKey_word();
         if (kwConf != null && kwConf.getKeywords() != null) {
-            for (xyz.acproject.danmuji.conf.set.KeyWordEntry entry : kwConf.getKeywords()) {
+            for (KeyWordEntry entry : kwConf.getKeywords()) {
                 if (StringUtils.isBlank(entry.getKeyword())) continue;
                 if (matchKeyword(dataStr, entry.getKeyword())) {
                     int score = entry.getScore() != null ? entry.getScore() : 0;
@@ -1594,7 +1594,7 @@ public class HttpRoomData {
      * 速率 = 基础速率 × 可用Cookie数量（含主账号），账号越多总吞吐越高。
      * 当用户在UI中修改账号池配置时调用。
      */
-    public static void syncRateLimiterConfig(xyz.acproject.danmuji.conf.set.AccountPoolConf conf) {
+    public static void syncRateLimiterConfig(AccountPoolConf conf) {
         if (conf == null) return;
 
         // 可用账号数 = 主账号(1) + 健康的子账号数
@@ -1619,24 +1619,24 @@ public class HttpRoomData {
     /**
      * 获取限流器和缓存的状态信息（用于 UI 展示）。
      */
-    public static com.alibaba.fastjson.JSONObject getRateLimiterStats() {
-        com.alibaba.fastjson.JSONObject json = new com.alibaba.fastjson.JSONObject();
+    public static JSONObject getRateLimiterStats() {
+        JSONObject json = new JSONObject();
 
-        com.alibaba.fastjson.JSONObject dynamic = new com.alibaba.fastjson.JSONObject();
+        JSONObject dynamic = new JSONObject();
         dynamic.put("rate", dynamicRateLimiter.getPermitsPerSecond());
         dynamic.put("availableTokens", Math.round(dynamicRateLimiter.getAvailableTokens() * 100.0) / 100.0);
         dynamic.put("totalRequests", dynamicRateLimiter.getTotalRequests());
         dynamic.put("throttledRequests", dynamicRateLimiter.getThrottledRequests());
         json.put("dynamic", dynamic);
 
-        com.alibaba.fastjson.JSONObject card = new com.alibaba.fastjson.JSONObject();
+        JSONObject card = new JSONObject();
         card.put("rate", cardRateLimiter.getPermitsPerSecond());
         card.put("availableTokens", Math.round(cardRateLimiter.getAvailableTokens() * 100.0) / 100.0);
         card.put("totalRequests", cardRateLimiter.getTotalRequests());
         card.put("throttledRequests", cardRateLimiter.getThrottledRequests());
         json.put("card", card);
 
-        com.alibaba.fastjson.JSONObject cache = new com.alibaba.fastjson.JSONObject();
+        JSONObject cache = new JSONObject();
         cache.put("size", apiCache.getSize());
         cache.put("hitCount", apiCache.getHitCount());
         cache.put("missCount", apiCache.getMissCount());
