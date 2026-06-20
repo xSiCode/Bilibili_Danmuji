@@ -250,10 +250,10 @@ public class AccountPoolConf implements Serializable {
             conf.setCooldownSeconds(300);
         }
         if (conf.getDynamicRate() <= 0) {
-            conf.setDynamicRate(0.5);
+            conf.setDynamicRate(0.3);
         }
         if (conf.getCardRate() <= 0) {
-            conf.setCardRate(1.0);
+            conf.setCardRate(1.5);
         }
         if (conf.getCacheTtlSeconds() <= 0) {
             conf.setCacheTtlSeconds(300);

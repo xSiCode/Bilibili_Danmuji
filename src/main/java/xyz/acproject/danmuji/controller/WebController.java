@@ -5004,9 +5004,6 @@ public class WebController {
             }
             xyz.acproject.danmuji.http.CookiePoolManager pool = xyz.acproject.danmuji.http.CookiePoolManager.getInstance();
             boolean ok = pool.setAccountSameFollowEnabled(uid, enabled);
-            if (ok) {
-                xyz.acproject.danmuji.http.HttpRoomData.syncRateLimiterConfig(pool.getPoolConf());
-            }
             return Response.success(ok, req);
         } catch (Exception e) {
             LOGGER.error("accountPoolToggleSameFollow error", e);
@@ -5024,9 +5021,6 @@ public class WebController {
         try {
             xyz.acproject.danmuji.http.CookiePoolManager pool = xyz.acproject.danmuji.http.CookiePoolManager.getInstance();
             boolean ok = pool.setMainSameFollowEnabled(enabled);
-            if (ok) {
-                xyz.acproject.danmuji.http.HttpRoomData.syncRateLimiterConfig(pool.getPoolConf());
-            }
             return Response.success(ok, req);
         } catch (Exception e) {
             LOGGER.error("accountPoolToggleMainSameFollow error", e);
