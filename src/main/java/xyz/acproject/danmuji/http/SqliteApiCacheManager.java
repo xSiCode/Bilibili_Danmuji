@@ -24,8 +24,8 @@ public class SqliteApiCacheManager {
 
     private static final Logger LOGGER = LogManager.getLogger(SqliteApiCacheManager.class);
 
-    /** 缓存条目上限，超过则淘汰 hit_count=1 的低频记录 */
-    private static final int MAX_CACHE_ENTRIES = 1_000_000;
+    /** 缓存条目上限，超过则淘汰 hit_count=1 的低频记录  改为10万条 */
+    private static final int MAX_CACHE_ENTRIES = 10_0000;
 
     /** 缓存命中统计 */
     private static final AtomicLong hitCount = new AtomicLong(0);
