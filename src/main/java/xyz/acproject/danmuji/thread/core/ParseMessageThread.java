@@ -923,11 +923,6 @@ public class ParseMessageThread extends Thread {
                         case "WATCHED_CHANGE":
                             //{"cmd":"WATCHED_CHANGE","data":{"num":184547,"text_small":"18.4万","text_large":"18.4万人看过"}}
                             PublicDataConf.ROOM_WATCHER = JSONObject.parseObject(jsonObject.getString("data")).getLong("num");
-                            // 人气值 = 点赞  * 在线  / 看过
-                            long product = (long) (PublicDataConf.ROOM_WATCHER * PublicDataConf.ROOM_ONLINE__RANK_COUNT * 1.0 / PublicDataConf.ROOM_LIKE);
-                            if (product > 0) {
-                                PublicDataConf.ROOM_POPULARITY = product ;
-                            }
                           //  LOGGER.info("多少人观看过:::" + message);
                             break;
 
@@ -1001,6 +996,12 @@ public class ParseMessageThread extends Thread {
                            // LOGGER.info("点赞信息v3推送:UPDATE::" + message);
                             //{"cmd":"LIKE_INFO_V3_UPDATE","data":{"click_count":371578}}
                             PublicDataConf.ROOM_LIKE = JSONObject.parseObject(jsonObject.getString("data")).getLong("click_count");
+
+                            // 人气值 = 点赞  * 在线  / 看过
+                            long product = (long) ( PublicDataConf.ROOM_ONLINE__RANK_COUNT / ( 1.0 + PublicDataConf.ROOM_WATCHER ) * PublicDataConf.ROOM_LIKE);
+                            if (product > 0) {
+                                PublicDataConf.ROOM_POPULARITY = product ;
+                            }
                             break;
                         case "LIKE_INFO_V3_CLICK":
                             // LOGGER.info("点赞信息v3推送:CLICK::" + message);
