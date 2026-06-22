@@ -1188,7 +1188,7 @@ public class HttpRoomData {
         }
 
         int totalScore = 0;
-        int blackScore = 0, whiteScore = 0; 
+        int blackScore = 0, whiteScore = 0;
         StringBuilder blackWhiteType = new StringBuilder(60);
         JSONArray matchedList = new JSONArray();
 
@@ -1219,19 +1219,20 @@ public class HttpRoomData {
             int scValue = item.getIntValue("sc_value");
             int sessions = item.getIntValue("sessions");
 
-            int itemScore = entry + danmaku + gift + giftValue + guard + guardValue + sc + scValue ;
+            int itemScore = entry + danmaku + gift + giftValue + guard + guardValue + sc + scValue;
+            itemScore = Math.max(itemScore - 3, 0);// 事不过三 则忽略
 
             if (anchorScore < 0) {
                 itemScore = anchorScore - itemScore;
                 blackScore += itemScore;
-            } else if(anchorScore > 0){
+            } else if (anchorScore > 0) {
                 itemScore = anchorScore + itemScore;
                 whiteScore += itemScore;
             }
-            totalScore += itemScore ;
+            totalScore += itemScore;
 
-            matchedList.add(anchorName + ":" + itemScore + " 场次:" + sessions );
-            MatchCountTools.recordMatch(anchorUid, anchorName , anchorScore);
+            matchedList.add(anchorName + ":" + itemScore + " 场次:" + sessions);
+            MatchCountTools.recordMatch(anchorUid, anchorName, anchorScore);
         }
 
         int splitDegree = blackScore * whiteScore;
@@ -1245,7 +1246,7 @@ public class HttpRoomData {
                     .append(" AICU分:").append(totalScore).append("]");
         }
 
-        if (totalScore != 0 ||  splitDegree != 0) {
+        if (totalScore != 0 || splitDegree != 0) {
             blackWhiteType.append("[AICU黑白分:").append(totalScore).append(" 黑:").append(blackScore).append(" 白:").append(whiteScore).append("]");
         }
 
@@ -1292,18 +1293,18 @@ public class HttpRoomData {
                     } else {
                         // 人机
                         if ((fans < 50 && attention > 4500) || attention > 4990 || (attention == 0 && fans == 0)) {
-                            r.score-=5;
+                            r.score -= 5;
                             r.type += "[人机关注-5]";
                             cardLog.append(" 人机关注-5");
                         }
                         if (r.name.startsWith("bili_")) {
                             r.score--;
-                        //    r.type += "[人机名字-1]";
+                            //    r.type += "[人机名字-1]";
                             cardLog.append(" 人机名字-1");
                         }
                         if ("https://i0.hdslb.com/bfs/face/member/noface.jpg".equals(r.face)) {
                             r.score--;
-                          //  r.type += "[人机头像-1]";
+                            //  r.type += "[人机头像-1]";
                             cardLog.append(" 人机头像-1");
                         }
 
@@ -1317,11 +1318,11 @@ public class HttpRoomData {
                             cardLog.append("[Lv0:-500]");
                         } else if (lv <= 2) {
                             r.score--;
-                           // r.type += "[Lv" + lv + " -1]";
+                            // r.type += "[Lv" + lv + " -1]";
                             cardLog.append(" Lv").append(lv).append(":-1");
                         } else if (lv >= 5) {
                             r.score++;
-                          //  r.type += "[Lv" + lv + " +1]";
+                            //  r.type += "[Lv" + lv + " +1]";
                             cardLog.append(" Lv").append(lv).append("+1");
                         }
 
@@ -1329,7 +1330,7 @@ public class HttpRoomData {
                         JSONObject official = cardJO.getJSONObject("Official");
                         if (official != null && StringUtils.isNotEmpty(official.getString("title"))) {
                             r.score++;
-                          //  r.type += "[认证+1]";
+                            //  r.type += "[认证+1]";
                             cardLog.append(" 认证+1 ");
                         }
 
@@ -1339,7 +1340,7 @@ public class HttpRoomData {
                             JSONObject label = vip.getJSONObject("label");
                             if (label != null && StringUtils.contains(label.getString("text"), "大会员")) {
                                 r.score++;
-                            //    r.type += "[大会员+1]";
+                                //    r.type += "[大会员+1]";
                                 cardLog.append(" 大会员+1");
                             }
                         }
@@ -1347,8 +1348,8 @@ public class HttpRoomData {
                         // KOL
                         long kolLv = fans / 10000 + archiveCount / 100 + articleCount / 100 + likeNum / 10_0000;
                         if (kolLv != 0) {
-                            r.score+= (int) kolLv;
-                            r.type += "[KOL+1"+kolLv+"]";
+                            r.score += (int) kolLv;
+                            r.type += "[KOL+1" + kolLv + "]";
                             cardLog.append("[KOL+1").append(kolLv).append("]");
                         }
                     }
@@ -1358,7 +1359,7 @@ public class HttpRoomData {
                     int kw = getKeyWordsScore((r.name != null ? r.name : "") + (r.sign != null ? r.sign : ""), cardLog);
                     r.score += kw;
                     //  if (kw != 0) cardLog.append(" 签名关键词:").append(kw);
-                    r.type += "[卡片黑白分:"+r.score+"]";
+                    r.type += "[卡片黑白分:" + r.score + "]";
                     cardLog.append(" 卡片黑白分:").append(r.score).append("]");
                     logSb.append(cardLog);
                     return r;
