@@ -904,18 +904,22 @@ public class HttpRoomData {
                 }
             }
 
-            // Phase 2d: 合并（共同关注作为独立维度，不与关注列表强绑定）
+            // Phase 2c++: 本地录制分析 — 调用本地 LiveRecordApi 获取用户在各主播房间的行为统计
+            Pair<Integer, String> localResult = processLocalSummarySync(vmid, logSb);
+
+            // Phase 2d: 合并（共同关注 + 本地分析作为独立维度，不与关注列表强绑定）
             StringBuilder combinedType = new StringBuilder(60);
+            appendType(combinedType, localResult.getRight());
             appendType(combinedType, cardResult.type);
             appendType(combinedType, medalResult.getRight());
             appendType(combinedType, follResult.getRight());
             appendType(combinedType, sameResult.getRight());
 
             // 黑白名单处理，pnScoreMap 直接命中（跳过所有维度打分）
-            int totalScore = medalResult.getLeft() + follResult.getLeft() + cardResult.score + sameResult.getLeft();
+            int totalScore = medalResult.getLeft() + follResult.getLeft() + cardResult.score + sameResult.getLeft() + localResult.getLeft();
 
             StrangerViewerService.addRecord(
-                    vmid, cardResult.name, cardResult.face, totalScore, cardResult.sign);
+                    vmid, cardResult.name, cardResult.face, totalScore,combinedType + cardResult.sign);
 
             // Phase 3: 仅当综合分在 -1, 0 时才触发动态API
             if ((-1 <= totalScore && totalScore <= 0) && !schedulerDynamicColdWait.get()) {
@@ -1220,7 +1224,10 @@ public class HttpRoomData {
             int sessions = item.getIntValue("sessions");
 
             int itemScore = entry + danmaku + gift + giftValue + guard + guardValue + sc + scValue;
-            itemScore = Math.max(itemScore - 3, 0);// 事不过三 则忽略
+            if(itemScore <= 3){
+                logSb.append(" [AICU:").append(itemScore);
+                continue;
+            }
 
             if (anchorScore < 0) {
                 itemScore = anchorScore - itemScore;
