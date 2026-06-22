@@ -843,6 +843,9 @@ public class HttpRoomData {
                 .append(" ").append(uname).append(" ");
         SelfTools.appendAt(logSb, 90, "");
 
+        // todo  getUserSummary http://127.0.0.1:21213/api/user/<uid>/summary  , 测试uid:1150287568, 351913921
+        processLocalSummarySync(vmid, logSb);
+
         // Phase 1: 四路并发（关注列表双页同步请求）
         CompletableFuture<JSONObject> medalF = asyncHttpGetMedalWall(vmid);
         CompletableFuture<JSONObject> cardF = asyncHttpGetUserCard(vmid);
@@ -1167,6 +1170,89 @@ public class HttpRoomData {
         // LogFileTools.getlogFileTools().logTestFile(name_sign_followingUser_str);
 
         return Pair.of(blackWhiteScore, blackWhiteType.toString());
+    }
+
+    /**
+     * 本地录制数据分析 — 调用 LiveRecordApi 获取用户在各主播房间的行为统计，
+     * 结合 pnScoreMap 判断主播黑白属性，计算综合得分与分裂度。
+     * <p>
+     * 暂不参与运行时评分，结果写入 testLog 供分析。
+     */
+    private static Pair<Integer, String> processLocalSummarySync(long uid, StringBuilder logSb) {
+        LiveRecordApiClient client = new LiveRecordApiClient();
+        JSONArray summaryArr = client.getUserSummary(uid);
+
+        if (summaryArr == null || summaryArr.isEmpty()) {
+            logSb.append("  [本地分析:无数据:0]");
+            return Pair.of(0, "");
+        }
+
+        int totalScore = 0;
+        int blackScore = 0, whiteScore = 0; 
+        StringBuilder blackWhiteType = new StringBuilder(60);
+        JSONArray matchedList = new JSONArray();
+
+        for (Object obj : summaryArr) {
+            JSONObject item = (JSONObject) obj;
+            Long anchorUidObj = item.getLong("anchor_uid");
+            String anchorName = item.getString("anchor_name");
+
+            // 跳过汇总行（anchor_uid 为 null）
+            if (anchorUidObj == null) {
+                continue;
+            }
+            long anchorUid = anchorUidObj;
+
+            Integer anchorScore = pnScoreMap.get(anchorUid);
+            if (anchorScore == null) {
+                // 不在黑白名单中，跳过该条目
+                continue;
+            }
+
+            int entry = item.getIntValue("entry");
+            int danmaku = item.getIntValue("danmaku");
+            int gift = item.getIntValue("gift");
+            int giftValue = item.getIntValue("gift_value");
+            int guard = item.getIntValue("guard");
+            int guardValue = item.getIntValue("guard_value");
+            int sc = item.getIntValue("sc");
+            int scValue = item.getIntValue("sc_value");
+            int sessions = item.getIntValue("sessions");
+
+            int itemScore = entry + danmaku + gift + giftValue + guard + guardValue + sc + scValue ;
+
+            if (anchorScore < 0) {
+                itemScore = anchorScore - itemScore;
+                blackScore += itemScore;
+            } else if(anchorScore > 0){
+                itemScore = anchorScore + itemScore;
+                whiteScore += itemScore;
+            }
+            totalScore += itemScore ;
+
+            matchedList.add(anchorName + ":" + itemScore + " 场次:" + sessions );
+            MatchCountTools.recordMatch(anchorUid, anchorName , anchorScore);
+        }
+
+        int splitDegree = blackScore * whiteScore;
+
+        if (!matchedList.isEmpty()) {
+            logSb.append(" [AICU匹配:").append(matchedList.size())
+                    .append(" 分裂度:").append(splitDegree)
+                    .append(" 黑:").append(blackScore)
+                    .append(" 白:").append(whiteScore)
+                    .append(" 列表:").append(matchedList).append(" ")
+                    .append(" AICU分:").append(totalScore).append("]");
+        }
+
+        if (totalScore != 0 ||  splitDegree != 0) {
+            blackWhiteType.append("[AICU黑白分:").append(totalScore).append(" 黑:").append(blackScore).append(" 白:").append(whiteScore).append("]");
+        }
+
+        // 输出到 testLog
+        LogFileTools.getlogFileTools().logTestFile(logSb.toString());
+
+        return Pair.of(totalScore, blackWhiteType.toString());
     }
 
     /**
