@@ -1193,7 +1193,7 @@ public class HttpRoomData {
      * <p>
      * 暂不参与运行时评分，结果写入 testLog 供分析。
      */
-    private static Pair<Integer, String> processLocalSummarySync(long uid, StringBuilder logSb) {
+    public static Pair<Integer, String> processLocalSummarySync(long uid, StringBuilder logSb) {
         try {
             return CompletableFuture
                     .supplyAsync(() -> doLocalSummary(uid, logSb))
@@ -1201,7 +1201,7 @@ public class HttpRoomData {
         } catch (Exception e) {
             LOGGER.warn("本地分析API异常 uid={}", uid, e);
             logSb.append(" [本地分析:异常:").append(e.getMessage()).append("]");
-            return Pair.of(0, "");
+            return Pair.of(0, "[AICU异常]");
         }
     }
 
@@ -1211,11 +1211,12 @@ public class HttpRoomData {
 
         if (summaryArr == null || summaryArr.isEmpty()) {
             logSb.append("  [本地分析:无数据:0]");
-            return Pair.of(0, "");
+            return Pair.of(0, "[AICU无数据:0]");
         }
 
         int totalScore = 0;
         int blackScore = 0, whiteScore = 0;
+        int total_events = 0;
         StringBuilder blackWhiteType = new StringBuilder(60);
         JSONArray matchedList = new JSONArray();
 
@@ -1226,6 +1227,9 @@ public class HttpRoomData {
 
             // 跳过汇总行（anchor_uid 为 null）
             if (anchorUidObj == null) {
+                if("【合计】".equals(anchorName)){
+                    total_events = item.getIntValue("total_events");
+                }
                 continue;
             }
             long anchorUid = anchorUidObj;
@@ -1246,10 +1250,6 @@ public class HttpRoomData {
             int scValue = item.getIntValue("sc_value");
             int sessions = item.getIntValue("sessions");
             int itemScore = entry + danmaku + gift + giftValue + guard + guardValue + sc + scValue;
-
-            if(itemScore <= 3){
-                break;
-            }
 
             if (anchorScore < 0) {
                 itemScore = anchorScore - itemScore;
@@ -1272,8 +1272,24 @@ public class HttpRoomData {
                     .append("]");
         }
 
-        if (totalScore != 0 || splitDegree != 0) {
+        if(total_events == 0){
+            return  Pair.of(1,"[AICU路人:1]");
+        }
+
+        if(total_events <= 3 ){
+            if(splitDegree < 0){
+                return  Pair.of(0,"[AICU事不过三:0]");
+            }else if(blackScore < 0){
+                return  Pair.of(-1,"[AICU:-1]");
+            } else if(whiteScore > 0) {
+                return Pair.of(1,"[AICU:1]" );
+            }
+        }
+
+        if (totalScore != 0) {
             blackWhiteType.append("[AICU黑白分:").append(totalScore).append("]");
+        } else {
+            blackWhiteType.append("[AICU成份复杂，建议复查]");
         }
 
         // 输出到 testLog

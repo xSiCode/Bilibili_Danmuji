@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -969,9 +970,18 @@ public class WebController {
             row.put("name", e.name);
             row.put("createTime", e.createTime);
             row.put("updateTime", e.updateTime);
-            row.put("score", e.score);
+            Pair<Integer, String> localResult = HttpRoomData.processLocalSummarySync(e.uid, new StringBuilder());
+
             String summary = ViewerActivitySummary.buildSummary(e.uid);
-            row.put("scoreType",  (summary.isEmpty() ? "" : " " + summary) + (e.scoreType != null ? e.scoreType : "") );
+
+            if(e.count > 1){ // 老观众当时没经过 陌生观众打分处理，因此缺少 AICU打分，这里在显示的时候补上
+                summary = localResult.getRight() + summary;
+                row.put("score", localResult.getLeft() + e.count);
+            } else {
+                row.put("score", e.score);
+            }
+
+            row.put("scoreType", summary + (e.scoreType != null ? e.scoreType : "") );
             row.put("roomId", e.roomId);
             row.put("count", e.count);
             rows.add(row);
