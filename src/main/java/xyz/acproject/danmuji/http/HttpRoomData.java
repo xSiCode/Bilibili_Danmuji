@@ -896,7 +896,7 @@ public class HttpRoomData {
             int totalScore = medalResult.getLeft() + follResult.getLeft() + cardResult.score + sameResult.getLeft() + localResult.getLeft();
 
             StrangerViewerService.addRecord(
-                    vmid, cardResult.name, cardResult.face, totalScore,combinedType + cardResult.sign);
+                    vmid, cardResult.name, cardResult.face, totalScore,localResult.getRight() + cardResult.sign);
 
             // Phase 4: 仅当综合分在 -1, 0 时才触发动态API
             if ((-1 <= totalScore && totalScore <= 0) && !schedulerDynamicColdWait.get()) {
@@ -1247,6 +1247,10 @@ public class HttpRoomData {
             int sessions = item.getIntValue("sessions");
             int itemScore = entry + danmaku + gift + giftValue + guard + guardValue + sc + scValue;
 
+            if(itemScore <= 3){
+                break;
+            }
+
             if (anchorScore < 0) {
                 itemScore = anchorScore - itemScore;
                 blackScore += itemScore;
@@ -1259,24 +1263,23 @@ public class HttpRoomData {
         }
 
         int splitDegree = blackScore * whiteScore;
-        int calTotalScore = totalScore / 5;
         if (!matchedList.isEmpty()) {
-            logSb.append(" [AICU匹配:").append(matchedList.size())
+            logSb.append(" [AICU黑白分:").append(totalScore)
                     .append(" 分裂度:").append(splitDegree)
                     .append(" 黑:").append(blackScore)
                     .append(" 白:").append(whiteScore)
                     .append(" 列表:").append(matchedList).append(" ")
-                    .append(" AICU分:").append(calTotalScore).append("]");
+                    .append("]");
         }
 
-        if (calTotalScore != 0 || splitDegree != 0) {
-            blackWhiteType.append("[AICU黑白分:").append(calTotalScore).append(" 黑:").append(blackScore).append(" 白:").append(whiteScore).append("]");
+        if (totalScore != 0 || splitDegree != 0) {
+            blackWhiteType.append("[AICU黑白分:").append(totalScore).append("]");
         }
 
         // 输出到 testLog
        // LogFileTools.getlogFileTools().logTestFile(logSb.toString());
 
-        return Pair.of(calTotalScore, blackWhiteType.toString());
+        return Pair.of(totalScore, blackWhiteType.toString());
     }
 
     /**
