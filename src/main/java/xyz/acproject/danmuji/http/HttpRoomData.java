@@ -843,9 +843,6 @@ public class HttpRoomData {
                 .append(" ").append(uname).append(" ");
         SelfTools.appendAt(logSb, 90, "");
 
-        // todo  getUserSummary http://127.0.0.1:21213/api/user/<uid>/summary  , 测试uid:1150287568, 351913921
-        processLocalSummarySync(vmid, logSb);
-
         // Phase 1: 四路并发（关注列表双页同步请求）
         CompletableFuture<JSONObject> medalF = asyncHttpGetMedalWall(vmid);
         CompletableFuture<JSONObject> cardF = asyncHttpGetUserCard(vmid);
@@ -1236,24 +1233,24 @@ public class HttpRoomData {
         }
 
         int splitDegree = blackScore * whiteScore;
-
+        int calTotalScore = totalScore / 5;
         if (!matchedList.isEmpty()) {
             logSb.append(" [AICU匹配:").append(matchedList.size())
                     .append(" 分裂度:").append(splitDegree)
                     .append(" 黑:").append(blackScore)
                     .append(" 白:").append(whiteScore)
                     .append(" 列表:").append(matchedList).append(" ")
-                    .append(" AICU分:").append(totalScore).append("]");
+                    .append(" AICU分:").append(calTotalScore).append("]");
         }
 
-        if (totalScore != 0 || splitDegree != 0) {
-            blackWhiteType.append("[AICU黑白分:").append(totalScore).append(" 黑:").append(blackScore).append(" 白:").append(whiteScore).append("]");
+        if (calTotalScore != 0 || splitDegree != 0) {
+            blackWhiteType.append("[AICU黑白分:").append(calTotalScore).append(" 黑:").append(blackScore).append(" 白:").append(whiteScore).append("]");
         }
 
         // 输出到 testLog
        // LogFileTools.getlogFileTools().logTestFile(logSb.toString());
 
-        return Pair.of(totalScore, blackWhiteType.toString());
+        return Pair.of(calTotalScore, blackWhiteType.toString());
     }
 
     /**
