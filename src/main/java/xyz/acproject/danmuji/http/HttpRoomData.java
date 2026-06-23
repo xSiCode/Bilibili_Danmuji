@@ -681,6 +681,20 @@ public class HttpRoomData {
                 });
     }
 
+    private static Pair<Integer, String> processSameFollowings(long vmid, StringBuilder logSb, JSONObject follJson1) {
+        if (!cookiePool.hasAnySameFollowAccount() || getFollowingsTotal(follJson1) <= 100) {
+            return Pair.of(0, "");
+        }
+        try {
+            JSONObject sameFollowJson = asyncHttpGetSameFollowings(vmid).get(9, TimeUnit.SECONDS);
+            return processSameFollowingsSync(vmid, logSb, sameFollowJson);
+        } catch (Exception e) {
+            LOGGER.warn("共同关注API异常 vmid={}", vmid, e);
+            logSb.append(" [共同关注:异常:").append(e.getMessage()).append("]");
+            return Pair.of(0, "");
+        }
+    }
+
     /**
      * 异步获取粉丝勋章墙 — 集成SQLite缓存 + Cookie池轮换。
      * 缓存命中直接返回；未命中则使用Cookie池中的可用Cookie发起请求。
@@ -862,49 +876,15 @@ public class HttpRoomData {
             Pair<Integer, String> medalResult = processMedalWallSync(medalJson, logSb);
 
             // Phase 2c: 关注列表（双页合并）
-            Pair<Integer, String> follResult;
-            short follCode = follJson1 != null ? follJson1.getShort("code") : -1;
-            JSONObject follData = follJson1 != null && follCode == 0 ? follJson1.getJSONObject("data") : null;
-            long total = follData != null ? follData.getLongValue("total") : 0;
+            Pair<Integer, String> follResult = processFollowingsPages(vmid, logSb, follJson1, follJson2);
 
-            if (follJson1 == null || follCode != 0 || follData == null || total == 0) {
-                follResult = processHiddenFollowingsSync(vmid, logSb);
-            } else {
-                // 合并两页的 list
-                JSONArray mergedList = follData.getJSONArray("list");
-                if (mergedList == null) mergedList = new JSONArray();
-                if (follJson2 != null && follJson2.getShort("code") == 0) {
-                    JSONObject follData2 = follJson2.getJSONObject("data");
-                    if (follData2 != null) {
-                        JSONArray list2 = follData2.getJSONArray("list");
-                        if (list2 != null && !list2.isEmpty()) {
-                            mergedList.addAll(list2);
-                        }
-                    }
-                }
-                JSONObject mergedData = new JSONObject();
-                mergedData.put("list", mergedList);
-                mergedData.put("total", total);
-                follResult = processVisibleFollowingsSync(vmid, logSb, mergedData);
-            }
+            // Phase 2d: 共同关注
+            Pair<Integer, String> sameResult = processSameFollowings(vmid, logSb, follJson1);
 
-            // Phase 2c+: 当关注数>100且有账号勾选时，独立请求共同关注API
-            // asyncHttpGetSameFollowings 内部已处理超时(8s)+cookie限流标记，此处兜底
-            Pair<Integer, String> sameResult = Pair.of(0, "");
-            if (total > 100 && cookiePool.hasAnySameFollowAccount()) {
-                try {
-                    JSONObject sameFollowJson = asyncHttpGetSameFollowings(vmid).get(9, TimeUnit.SECONDS);
-                    sameResult = processSameFollowingsSync(vmid, logSb, sameFollowJson);
-                } catch (Exception e) {
-                    LOGGER.warn("共同关注API异常 vmid={}", vmid, e);
-                    logSb.append(" [共同关注:异常:").append(e.getMessage()).append("]");
-                }
-            }
-
-            // Phase 2c++: 本地录制分析 — 调用本地 LiveRecordApi 获取用户在各主播房间的行为统计
+            // Phase 2e: 本地录制分析
             Pair<Integer, String> localResult = processLocalSummarySync(vmid, logSb);
 
-            // Phase 2d: 合并（共同关注 + 本地分析作为独立维度，不与关注列表强绑定）
+            // Phase 3: 合并（共同关注 + 本地分析作为独立维度，不与关注列表强绑定）
             StringBuilder combinedType = new StringBuilder(60);
             appendType(combinedType, localResult.getRight());
             appendType(combinedType, cardResult.type);
@@ -918,7 +898,7 @@ public class HttpRoomData {
             StrangerViewerService.addRecord(
                     vmid, cardResult.name, cardResult.face, totalScore,combinedType + cardResult.sign);
 
-            // Phase 3: 仅当综合分在 -1, 0 时才触发动态API
+            // Phase 4: 仅当综合分在 -1, 0 时才触发动态API
             if ((-1 <= totalScore && totalScore <= 0) && !schedulerDynamicColdWait.get()) {
                 // logSb.append("[动态|请求中]");
                 return asyncHttpGetUserDynamic(vmid).thenApply(dynData -> {
@@ -1048,6 +1028,40 @@ public class HttpRoomData {
      * 关注列表不可见 — pnScoreMap检查 + 关注隐藏基线分。
      * 不再包含动态API调用（由主编排器在 Phase 3 按需触发）。
      */
+    // ---- 关注列表 & 共同关注处理 ----
+
+    private static long getFollowingsTotal(JSONObject follJson1) {
+        if (follJson1 != null && follJson1.getShort("code") == 0) {
+            JSONObject data = follJson1.getJSONObject("data");
+            if (data != null) return data.getLongValue("total");
+        }
+        return 0;
+    }
+
+    private static Pair<Integer, String> processFollowingsPages(long vmid, StringBuilder logSb,
+                                                                JSONObject follJson1, JSONObject follJson2) {
+        long total = getFollowingsTotal(follJson1);
+        if (total == 0) {
+            return processHiddenFollowingsSync(vmid, logSb);
+        }
+        JSONObject follData = follJson1.getJSONObject("data");
+        JSONArray mergedList = follData.getJSONArray("list");
+        if (mergedList == null) mergedList = new JSONArray();
+        if (follJson2 != null && follJson2.getShort("code") == 0) {
+            JSONObject follData2 = follJson2.getJSONObject("data");
+            if (follData2 != null) {
+                JSONArray list2 = follData2.getJSONArray("list");
+                if (list2 != null && !list2.isEmpty()) {
+                    mergedList.addAll(list2);
+                }
+            }
+        }
+        JSONObject mergedData = new JSONObject();
+        mergedData.put("list", mergedList);
+        mergedData.put("total", total);
+        return processVisibleFollowingsSync(vmid, logSb, mergedData);
+    }
+
     private static Pair<Integer, String> processHiddenFollowingsSync(long vmid, StringBuilder logSb) {
         logSb.append("  [关注:隐藏-1]");
         return Pair.of(-1, "[关注隐藏-1]");
@@ -1180,6 +1194,18 @@ public class HttpRoomData {
      * 暂不参与运行时评分，结果写入 testLog 供分析。
      */
     private static Pair<Integer, String> processLocalSummarySync(long uid, StringBuilder logSb) {
+        try {
+            return CompletableFuture
+                    .supplyAsync(() -> doLocalSummary(uid, logSb))
+                    .get(8, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            LOGGER.warn("本地分析API异常 uid={}", uid, e);
+            logSb.append(" [本地分析:异常:").append(e.getMessage()).append("]");
+            return Pair.of(0, "");
+        }
+    }
+
+    private static Pair<Integer, String> doLocalSummary(long uid, StringBuilder logSb) {
         LiveRecordApiClient client = new LiveRecordApiClient();
         JSONArray summaryArr = client.getUserSummary(uid);
 

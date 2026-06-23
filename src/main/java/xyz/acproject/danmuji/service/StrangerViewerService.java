@@ -91,9 +91,14 @@ public class StrangerViewerService {
         int count = cv[0];
         int session = cv[1];
 
-        // Auto-blocked users (score < 0) are tracked as blocked initially
-        if (score < 0) {
+        // Auto-block threshold from config (default -1)
+        int blockThreshold = (PublicDataConf.centerSetConf != null
+                && PublicDataConf.centerSetConf.getAuto_block() != null)
+                ? PublicDataConf.centerSetConf.getAuto_block().getBlock_score() : -1;
+        if (score <= blockThreshold) {
             blockedUids.add(uid);
+        } else{
+            blockedUids.remove(uid);
         }
 
         StrangerRecord record = new StrangerRecord(uid, name, face, score, scoreTypes, count, session);
@@ -763,6 +768,7 @@ public class StrangerViewerService {
                 HttpUserData.httpPostDeleteBadList(uid);
                 blockedUids.remove(uid);
                 dirtyUids.add(uid);
+                updateBlockedInSqlite(uid, false);
                 pushBlockUpdate(uid, false);
                 return false;
             } catch (Exception e) {
@@ -775,12 +781,31 @@ public class StrangerViewerService {
                 HttpUserData.httpPostAddBadList(uid);
                 blockedUids.add(uid);
                 dirtyUids.add(uid);
+                updateBlockedInSqlite(uid, true);
                 pushBlockUpdate(uid, true);
                 return true;
             } catch (Exception e) {
                 LOGGER.error("block error uid={}", uid, e);
                 return false; // still not blocked
             }
+        }
+    }
+
+    /** 立即更新 SQLite 中单条记录的 blocked 字段，避免 loadSvData 读到旧值 */
+    private static void updateBlockedInSqlite(long uid, boolean blocked) {
+        try {
+            Long rid = PublicDataConf.ROOMID;
+            if (rid == null) return;
+            String sql = "UPDATE stranger_viewer SET blocked = ? WHERE room_id = ? AND uid = ?";
+            try (java.sql.Connection c = xyz.acproject.danmuji.tools.db.DanmujiDatabase.getConnection();
+                 java.sql.PreparedStatement ps = c.prepareStatement(sql)) {
+                ps.setInt(1, blocked ? 1 : 0);
+                ps.setLong(2, rid);
+                ps.setLong(3, uid);
+                ps.executeUpdate();
+            }
+        } catch (Exception e) {
+            LOGGER.debug("updateBlockedInSqlite error: {}", e.getMessage());
         }
     }
 
