@@ -1222,12 +1222,7 @@ public class HttpRoomData {
             int sc = item.getIntValue("sc");
             int scValue = item.getIntValue("sc_value");
             int sessions = item.getIntValue("sessions");
-
             int itemScore = entry + danmaku + gift + giftValue + guard + guardValue + sc + scValue;
-            if(itemScore <= 3){
-                logSb.append(" [AICU:").append(itemScore);
-                continue;
-            }
 
             if (anchorScore < 0) {
                 itemScore = anchorScore - itemScore;
@@ -1237,9 +1232,7 @@ public class HttpRoomData {
                 whiteScore += itemScore;
             }
             totalScore += itemScore;
-
             matchedList.add(anchorName + ":" + itemScore + " 场次:" + sessions);
-            MatchCountTools.recordMatch(anchorUid, anchorName, anchorScore);
         }
 
         int splitDegree = blackScore * whiteScore;
@@ -1258,7 +1251,7 @@ public class HttpRoomData {
         }
 
         // 输出到 testLog
-        LogFileTools.getlogFileTools().logTestFile(logSb.toString());
+       // LogFileTools.getlogFileTools().logTestFile(logSb.toString());
 
         return Pair.of(totalScore, blackWhiteType.toString());
     }
