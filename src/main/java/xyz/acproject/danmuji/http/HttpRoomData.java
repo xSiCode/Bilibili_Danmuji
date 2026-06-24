@@ -1252,10 +1252,10 @@ public class HttpRoomData {
             int itemScore = entry + danmaku + gift + giftValue + guard + guardValue + sc + scValue;
 
             if (anchorScore < 0) {
-                itemScore = anchorScore - itemScore;
+                itemScore-- ;
                 blackScore += itemScore;
             } else if (anchorScore > 0) {
-                itemScore = anchorScore + itemScore;
+                itemScore++ ;
                 whiteScore += itemScore;
             }
             totalScore += itemScore;
