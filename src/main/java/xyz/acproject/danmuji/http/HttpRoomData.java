@@ -1252,10 +1252,10 @@ public class HttpRoomData {
             int itemScore = entry + danmaku + gift + giftValue + guard + guardValue + sc + scValue;
 
             if (anchorScore < 0) {
-                itemScore-- ;
+                itemScore = anchorScore - itemScore ;
                 blackScore += itemScore;
             } else if (anchorScore > 0) {
-                itemScore++ ;
+                itemScore = anchorScore + itemScore ;
                 whiteScore += itemScore;
             }
             totalScore += itemScore;
@@ -1289,7 +1289,7 @@ public class HttpRoomData {
         if (totalScore != 0) {
             blackWhiteType.append("[AICU黑白分:").append(totalScore).append("]");
         } else {
-            blackWhiteType.append("[AICU成份复杂，建议复查]");
+            blackWhiteType.append("[AICU建议复查:").append(splitDegree).append("]");
         }
 
         // 输出到 testLog
