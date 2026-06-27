@@ -1294,15 +1294,10 @@ public class HttpRoomData {
         }
 
         if (total_events <= 3) {
-            int 路人打分 = splitDegree > 0 ? total_events : -total_events;
-            return Pair.of(total_events, "[LR路人:"+路人打分+"]");
+            totalScore = splitDegree > 0 ? total_events : -total_events;
         }
 
-        if (totalScore != 0) {
-            blackWhiteType.append("[LR黑白分:").append(totalScore).append("]");
-        } else {
-            blackWhiteType.append("[LR建议复查:").append(splitDegree).append("]");
-        }
+        blackWhiteType.append("[LR:").append(total_events).append(" 黑白分:").append(totalScore).append("]");
 
         // 输出到 testLog
         // LogFileTools.getlogFileTools().logTestFile(logSb.toString());
