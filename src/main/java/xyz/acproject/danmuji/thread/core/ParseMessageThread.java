@@ -29,6 +29,7 @@ import xyz.acproject.danmuji.enums.ListPeopleShieldStatus;
 import xyz.acproject.danmuji.enums.ShieldGift;
 import xyz.acproject.danmuji.http.HttpRoomData;
 import xyz.acproject.danmuji.http.HttpUserData;
+import xyz.acproject.danmuji.http.LiveRecordApiClient;
 import xyz.acproject.danmuji.service.LocalBlackWhiteListService;
 import xyz.acproject.danmuji.service.SetService;
 import xyz.acproject.danmuji.tools.CurrencyTools;
@@ -1502,13 +1503,25 @@ public class ParseMessageThread extends Thread {
                 LOGGER.info("LIKE_INFO_V3_NOTICE:::" + message);
                 break;
             case "GOTO_BUY_FLOW":
-                // {"data":{"text":"林**正在去买"},"cmd":"GOTO_BUY_FLOW"}
+                // {"data":{"text":"林**正在去买"},"cmd":"GOTO_BUY_FLOW"}   看了小黄车
                 LOGGER.info("GOTO_BUY_FLOW:::" + message);
+                break;
+            case "RANK_REM":
+                // {"cmd":"RANK_REM","data":{"name":"online_gold","room_id":5899547,"ruid":87107837,"time":1782566320,"uid":1039563262}}
+                // {"cmd":"RANK_REM","data":{"name":"daily_rank","room_id":5899547,"ruid":87107837,"time":1782566320,"uid":1039563262}}
+                // {"cmd":"RANK_REM","data":{"name":"weekly_rank","room_id":5899547,"ruid":87107837,"time":1782566320,"uid":1039563262}}
+                // {"cmd":"RANK_REM","data":{"name":"monthly_rank","room_id":5899547,"ruid":87107837,"time":1782566320,"uid":1039563262}}
+                LOGGER.info("RANK_REM:::" + message);
+                break;
+
+            case "ROOM_LIVE_FORBID":
+                // {"cmd":"ROOM_LIVE_FORBID","data":{"business":2,"forbid_text":"您已被关进小黑屋","operator":2,"operator_uname":"明香菱","room_id":5899547,"ruid":87107837,"uid":1039563262,"uname":"hanfu地下城"}}
+                // LOGGER.info("ROOM_LIVE_FORBID:::" + message);
                 break;
             default:
 
                 // LOGGER.info("其他未处理消息:" + message);
-                LogFileTools.getlogFileTools().logTestFile("其他未处理消息:" + message);
+               // LogFileTools.getlogFileTools().logTestFile("其他未处理消息:" + message);
                 LOGGER.info("not compare success cmd is:::" + cmd);
                 break;
         }

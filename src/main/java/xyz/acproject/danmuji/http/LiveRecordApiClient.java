@@ -5,6 +5,7 @@ import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import xyz.acproject.danmuji.tools.file.LogFileTools;
 import xyz.acproject.danmuji.utils.OkHttp3Utils;
 import okhttp3.Response;
 
@@ -51,6 +52,16 @@ public class LiveRecordApiClient {
     public JSONArray getUserSummary(long uid) {
         String json = get("/api/user/" + uid + "/summary");
         return extractDataArray(json);
+    }
+
+    /**
+     * 查询用户阵营判定（五级梯次：判定表→行为分→关注图分→DB→API）。
+     * @param uid 用户 UID
+     * @return 包含 score/camp/source/contradiction 等字段的对象
+     */
+    public JSONObject getUserCascade(long uid) {
+        String json = get("/api/audience/" + uid + "/cascade");
+        return extractDataObject(json);
     }
 
     /**

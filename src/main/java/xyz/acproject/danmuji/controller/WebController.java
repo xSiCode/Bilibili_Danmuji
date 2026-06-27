@@ -5688,92 +5688,127 @@ public class WebController {
     }
 
     /**
-     * 查阅用户 — 按 uid 或用户名搜索，返回统一时间线（9 表 UNION ALL）
+     * 查阅用户 — 按 uid 或用户名搜索，返回统一时间线（9 表 UNION ALL）。
+     * 支持事件类型过滤、详情搜索、分页、2 小时时间窗口。
      */
     @ResponseBody
     @GetMapping(value = "/queryUserTimeline")
     public Response<?> queryUserTimeline(
             @RequestParam String keyword,
-            @RequestParam(defaultValue = "500") int limit,
+            @RequestParam(required = false) String eventType,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int pageSize,
+            @RequestParam(defaultValue = "2") double timeRange,
+            @RequestParam(defaultValue = "true") boolean scopeUid,
+            @RequestParam(defaultValue = "true") boolean scopeUname,
+            @RequestParam(defaultValue = "true") boolean scopeAnchor,
+            @RequestParam(defaultValue = "true") boolean scopeDetail,
+            @RequestParam(required = false) String roomIds,
             HttpServletRequest req) {
         if (StringUtils.isBlank(keyword)) {
-            return Response.success(new JSONArray(), req);
+            return Response.success(new JSONObject(), req);
         }
         keyword = keyword.trim();
         boolean isNumeric = keyword.matches("\\d+");
 
-        // 纯数字 → 按 uid 精确搜索；否则 → 按 uname 模糊搜索，弹幕表同时搜索内容
-        // 使用字符串拼接（本地应用无注入风险），避免 PreparedStatement 参数数量不匹配
+        // 直播间过滤
+        String roomFilter = "";
+        if (StringUtils.isNotBlank(roomIds)) {
+            roomFilter = " AND room_id IN (" + roomIds.replaceAll("[^0-9,]", "") + ")";
+        }
+
+        // 时间窗口：秒级表用秒，毫秒级表用毫秒
+        long rangeS = (long) (timeRange * 3600);
+        long rangeMs = rangeS * 1000;
+        long nowS = System.currentTimeMillis() / 1000;
+        long nowMs = System.currentTimeMillis();
+        String timeFilterS = " AND timestamp >= " + (nowS - rangeS);
+        String timeFilterMs = " AND start_time >= " + (nowMs - rangeMs);
+
+        // 按范围拼 WHERE：纯数字且 scopeUid 开 → uid 精确；否则拼 LIKE 子句
         String whereClause;
-        String danmakuWhere; // 弹幕表额外搜索 content 字段
-        if (isNumeric) {
+        String danmakuWhere;
+        if (isNumeric && scopeUid) {
             whereClause = "uid = " + Long.parseLong(keyword);
             danmakuWhere = whereClause;
         } else {
             String escaped = keyword.replace("'", "''");
-            whereClause = "uname LIKE '%" + escaped + "%'";
-            danmakuWhere = "uname LIKE '%" + escaped + "%' OR content LIKE '%" + escaped + "%'";
+            java.util.List<String> parts = new java.util.ArrayList<>();
+            if (scopeUname) parts.add("uname LIKE '%" + escaped + "%'");
+            if (scopeAnchor) parts.add("anchor_name LIKE '%" + escaped + "%'");
+            // 弹幕表额外支持 content 搜索
+            java.util.List<String> dmParts = new java.util.ArrayList<>(parts);
+            dmParts.add("content LIKE '%" + escaped + "%'");
+            whereClause = parts.isEmpty() ? "1=0" : "(" + String.join(" OR ", parts) + ")";
+            danmakuWhere = dmParts.isEmpty() ? "1=0" : "(" + String.join(" OR ", dmParts) + ")";
         }
-        String limitStr = String.valueOf(limit);
 
-        // 带 anchor_name 的表（所有事件表都有该字段）
-        String sql =
-            "SELECT event_type, room_id, anchor_name, uid, uname, detail, event_time FROM (" +
-            // 弹幕
+        // 事件类型过滤（外层 WHERE）
+        String typeClause = "";
+        if (StringUtils.isNotBlank(eventType)) {
+            typeClause = " AND event_type = '" + eventType.replace("'", "''") + "'";
+        }
+        // 详情搜索：文本关键字 + scopeDetail 开启时，外层 WHERE 匹配 detail 列
+        String detailClause = "";
+        if (!isNumeric && scopeDetail) {
+            String escaped = keyword.replace("'", "''");
+            detailClause = " AND detail LIKE '%" + escaped + "%'";
+        }
+
+        // 9 表 UNION ALL 内层
+        String inner =
             "SELECT '弹幕' AS event_type, room_id, anchor_name, uid, uname," +
             "  content AS detail, timestamp AS event_time" +
-            "  FROM danmaku WHERE " + danmakuWhere +
-            " UNION ALL " +
-            // 进入
-            "SELECT '进入', room_id, anchor_name, uid, uname," +
+            "  FROM danmaku WHERE " + danmakuWhere + timeFilterS + roomFilter +
+            " UNION ALL SELECT '进入', room_id, anchor_name, uid, uname," +
             "  '勋章: ' || COALESCE(medal_name,'无') || ' Lv.' || COALESCE(medal_level,0) ||" +
             "  CASE WHEN guard_level > 0 THEN ' 舰队:' || CASE guard_level WHEN 1 THEN '总督' WHEN 2 THEN '提督' ELSE '舰长' END ELSE '' END," +
-            "  timestamp FROM enter_events WHERE " + whereClause +
-            " UNION ALL " +
-            // 关注
-            "SELECT '关注', room_id, anchor_name, uid, uname," +
+            "  timestamp FROM enter_events WHERE " + whereClause + timeFilterS + roomFilter +
+            " UNION ALL SELECT '关注', room_id, anchor_name, uid, uname," +
             "  '勋章: ' || COALESCE(medal_name,'无') || ' Lv.' || COALESCE(medal_level,0) ||" +
             "  CASE WHEN guard_level > 0 THEN ' 舰队:' || CASE guard_level WHEN 1 THEN '总督' WHEN 2 THEN '提督' ELSE '舰长' END ELSE '' END," +
-            "  timestamp FROM follow_events WHERE " + whereClause +
-            " UNION ALL " +
-            // 礼物
-            "SELECT '礼物', room_id, anchor_name, uid, uname," +
+            "  timestamp FROM follow_events WHERE " + whereClause + timeFilterS + roomFilter +
+            " UNION ALL SELECT '礼物', room_id, anchor_name, uid, uname," +
             "  gift_name || ' x' || num || ' ' || total_coin || CASE coin_type WHEN 1 THEN '金瓜子' ELSE '银瓜子' END," +
-            "  timestamp FROM gift_detail WHERE " + whereClause +
-            " UNION ALL " +
-            // 上舰
-            "SELECT '上舰', room_id, anchor_name, uid, uname," +
+            "  timestamp FROM gift_detail WHERE " + whereClause + timeFilterS + roomFilter +
+            " UNION ALL SELECT '上舰', room_id, anchor_name, uid, uname," +
             "  CASE guard_level WHEN 1 THEN '总督' WHEN 2 THEN '提督' ELSE '舰长' END || ' ' || COALESCE(num,0) || '个月 ' || COALESCE(price,0) || '分'," +
-            "  start_time FROM guard_buy WHERE " + whereClause +
-            " UNION ALL " +
-            // 醒目留言
-            "SELECT '醒目留言', room_id, anchor_name, uid, uname," +
-            "  COALESCE(message,''), start_time FROM super_chat WHERE " + whereClause +
-            " UNION ALL " +
-            // 老爷进入
-            "SELECT '老爷进入', room_id, anchor_name, uid, uname," +
+            "  start_time FROM guard_buy WHERE " + whereClause + timeFilterMs + roomFilter +
+            " UNION ALL SELECT '醒目留言', room_id, anchor_name, uid, uname," +
+            "  COALESCE(message,''), start_time FROM super_chat WHERE " + whereClause + timeFilterMs + roomFilter +
+            " UNION ALL SELECT '老爷进入', room_id, anchor_name, uid, uname," +
             "  CASE WHEN svip=1 THEN '年费老爷' WHEN vip=1 THEN '月费老爷' ELSE '老爷' END, timestamp" +
-            "  FROM welcome_vip WHERE " + whereClause +
-            " UNION ALL " +
-            // 舰长进入
-            "SELECT '舰长进入', room_id, anchor_name, uid, uname," +
+            "  FROM welcome_vip WHERE " + whereClause + timeFilterS + roomFilter +
+            " UNION ALL SELECT '舰长进入', room_id, anchor_name, uid, uname," +
             "  CASE guard_level WHEN 1 THEN '总督' WHEN 2 THEN '提督' ELSE '舰长' END, timestamp" +
-            "  FROM welcome_guard WHERE " + whereClause +
-            " UNION ALL " +
-            // 禁言
-            "SELECT '禁言', room_id, anchor_name, uid, uname," +
+            "  FROM welcome_guard WHERE " + whereClause + timeFilterS + roomFilter +
+            " UNION ALL SELECT '禁言', room_id, anchor_name, uid, uname," +
             "  CASE operator WHEN 1 THEN '被房管禁言' ELSE '被主播禁言' END, timestamp" +
-            "  FROM block_msg WHERE " + whereClause +
-            ") ORDER BY event_time DESC LIMIT " + limitStr;
+            "  FROM block_msg WHERE " + whereClause + timeFilterS + roomFilter;
 
-        LOGGER.info("queryUserTimeline: keyword={}, isNumeric={}, whereClause={}, db={}",
-                keyword, isNumeric, whereClause, xyz.acproject.danmuji.tools.db.DanmujiDatabase.getDbPath());
+        String outerWhere = " WHERE 1=1" + typeClause + detailClause;
+        int offset = (page - 1) * pageSize;
+
+        String countSql = "SELECT COUNT(*) FROM (" + inner + ")" + outerWhere;
+        String dataSql = "SELECT * FROM (" + inner + ")" + outerWhere +
+                " ORDER BY event_time DESC LIMIT " + pageSize + " OFFSET " + offset;
+
+        LOGGER.info("queryUserTimeline: keyword={} eventType={} page={} pageSize={}",
+                keyword, eventType, page, pageSize);
 
         try (java.sql.Connection conn = xyz.acproject.danmuji.tools.db.DanmujiDatabase.getConnection();
-             java.sql.Statement stmt = conn.createStatement();
-             java.sql.ResultSet rs = stmt.executeQuery(sql)) {
-                JSONArray results = new JSONArray();
-                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+             java.sql.Statement stmt = conn.createStatement()) {
+
+            // 总数
+            int total = 0;
+            try (java.sql.ResultSet rs = stmt.executeQuery(countSql)) {
+                if (rs.next()) total = rs.getInt(1);
+            }
+
+            // 分页数据
+            JSONArray rows = new JSONArray();
+            java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            try (java.sql.ResultSet rs = stmt.executeQuery(dataSql)) {
                 while (rs.next()) {
                     JSONObject row = new JSONObject();
                     row.put("eventType", rs.getString("event_type"));
@@ -5783,21 +5818,61 @@ public class WebController {
                     row.put("uname", rs.getString("uname"));
                     row.put("detail", rs.getString("detail"));
                     long ts = rs.getLong("event_time");
-                    // 安全转换：如果时间戳是秒级（< 100000000000），转为毫秒
                     if (ts > 0 && ts < 100000000000L) ts = ts * 1000;
                     row.put("eventTime", sdf.format(new java.util.Date(ts)));
-                    results.add(row);
+                    rows.add(row);
                 }
-                LOGGER.info("queryUserTimeline: found {} results for keyword={}", results.size(), keyword);
-                return Response.success(results, req);
+            }
+
+            int totalPages = total == 0 ? 0 : (int) Math.ceil((double) total / pageSize);
+            JSONObject result = new JSONObject();
+            result.put("rows", rows);
+            result.put("total", total);
+            result.put("totalPages", totalPages);
+            result.put("currentPage", totalPages > 0 ? page : 0);
+            LOGGER.info("queryUserTimeline: total={} pages={}", total, totalPages);
+            return Response.success(result, req);
         } catch (Exception e) {
             LOGGER.error("queryUserTimeline error for keyword={}: {}", keyword, e.getMessage(), e);
-            return Response.success(new JSONArray(), req);
+            return Response.success(new JSONObject(), req);
         }
     }
 
     /**
-     * 最新事件 — 返回最近 N 条事件（不受用户筛选限制），供实时展示
+     * 查阅用户 — 直播间列表（去重），供前端多选过滤。
+     */
+    @ResponseBody
+    @GetMapping(value = "/roomList")
+    public Response<?> roomList(HttpServletRequest req) {
+        String sql = "SELECT DISTINCT room_id, anchor_name FROM (" +
+            "SELECT room_id, anchor_name FROM danmaku UNION " +
+            "SELECT room_id, anchor_name FROM enter_events UNION " +
+            "SELECT room_id, anchor_name FROM follow_events UNION " +
+            "SELECT room_id, anchor_name FROM gift_detail UNION " +
+            "SELECT room_id, anchor_name FROM guard_buy UNION " +
+            "SELECT room_id, anchor_name FROM super_chat UNION " +
+            "SELECT room_id, anchor_name FROM welcome_vip UNION " +
+            "SELECT room_id, anchor_name FROM welcome_guard UNION " +
+            "SELECT room_id, anchor_name FROM block_msg" +
+            ") ORDER BY anchor_name";
+        JSONArray rooms = new JSONArray();
+        try (java.sql.Connection conn = xyz.acproject.danmuji.tools.db.DanmujiDatabase.getConnection();
+             java.sql.Statement stmt = conn.createStatement();
+             java.sql.ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                JSONObject r = new JSONObject();
+                r.put("roomId", rs.getLong("room_id"));
+                r.put("anchorName", rs.getString("anchor_name"));
+                rooms.add(r);
+            }
+        } catch (Exception e) {
+            LOGGER.error("roomList error", e);
+        }
+        return Response.success(rooms, req);
+    }
+
+    /**
+     * 最新事件 — 返回最近 N 条事件（2h 窗口），供实时展示 / 事件类型过滤 / 上下文点击。
      */
     @ResponseBody
     @GetMapping(value = "/latestEvents")
@@ -5805,47 +5880,59 @@ public class WebController {
             @RequestParam(defaultValue = "10") int limit,
             @RequestParam(required = false) String type,
             @RequestParam(required = false) Long contextTs,
+            @RequestParam(defaultValue = "2") double timeRange,
+            @RequestParam(required = false) String roomIds,
             HttpServletRequest req) {
-        String limitStr = String.valueOf(limit);
-        String orderClause;
-        // 类型筛选
-        String typeFilter = "";
-        if (org.apache.commons.lang3.StringUtils.isNotBlank(type)) {
-            typeFilter = " WHERE event_type = '" + type.replace("'", "''") + "'";
+        long rangeS = (long) (timeRange * 3600);
+        long rangeMs = rangeS * 1000;
+        String roomFilter = "";
+        if (StringUtils.isNotBlank(roomIds)) {
+            roomFilter = " AND room_id IN (" + roomIds.replaceAll("[^0-9,]", "") + ")";
         }
-        // 如果传了 contextTs，按时间距离排序（上下文模式），否则按时间倒序
-        if (contextTs != null && contextTs > 0 && org.apache.commons.lang3.StringUtils.isNotBlank(type)) {
+        long nowS = System.currentTimeMillis() / 1000;
+        long nowMs = System.currentTimeMillis();
+        String timeFilterS = " WHERE timestamp >= " + (nowS - rangeS) + roomFilter;
+        String timeFilterMs = " WHERE start_time >= " + (nowMs - rangeMs) + roomFilter;
+
+        boolean hasType = org.apache.commons.lang3.StringUtils.isNotBlank(type);
+        boolean contextMode = contextTs != null && contextTs > 0 && hasType;
+        String orderClause;
+        if (contextMode) {
             orderClause = " ORDER BY ABS(event_time - " + contextTs + ") ASC";
         } else {
             orderClause = " ORDER BY event_time DESC";
         }
-        String sql =
-            "SELECT event_type, room_id, anchor_name, uid, uname, detail, event_time FROM (" +
+
+        String inner =
             "SELECT '弹幕' AS event_type, room_id, anchor_name, uid, uname," +
-            "  content AS detail, timestamp AS event_time FROM danmaku" +
+            "  content AS detail, timestamp AS event_time FROM danmaku" + timeFilterS +
             " UNION ALL SELECT '进入', room_id, anchor_name, uid, uname," +
             "  '勋章: ' || COALESCE(medal_name,'无') || ' Lv.' || COALESCE(medal_level,0) ||" +
             "  CASE WHEN guard_level > 0 THEN ' 舰队:' || CASE guard_level WHEN 1 THEN '总督' WHEN 2 THEN '提督' ELSE '舰长' END ELSE '' END," +
-            "  timestamp FROM enter_events" +
+            "  timestamp FROM enter_events" + timeFilterS +
             " UNION ALL SELECT '关注', room_id, anchor_name, uid, uname," +
             "  '勋章: ' || COALESCE(medal_name,'无') || ' Lv.' || COALESCE(medal_level,0) ||" +
             "  CASE WHEN guard_level > 0 THEN ' 舰队:' || CASE guard_level WHEN 1 THEN '总督' WHEN 2 THEN '提督' ELSE '舰长' END ELSE '' END," +
-            "  timestamp FROM follow_events" +
+            "  timestamp FROM follow_events" + timeFilterS +
             " UNION ALL SELECT '礼物', room_id, anchor_name, uid, uname," +
             "  gift_name || ' x' || num || ' ' || total_coin || CASE coin_type WHEN 1 THEN '金瓜子' ELSE '银瓜子' END," +
-            "  timestamp FROM gift_detail" +
+            "  timestamp FROM gift_detail" + timeFilterS +
             " UNION ALL SELECT '上舰', room_id, anchor_name, uid, uname," +
             "  CASE guard_level WHEN 1 THEN '总督' WHEN 2 THEN '提督' ELSE '舰长' END || ' ' || COALESCE(num,0) || '个月 ' || COALESCE(price,0) || '分'," +
-            "  start_time FROM guard_buy" +
+            "  start_time FROM guard_buy" + timeFilterMs +
             " UNION ALL SELECT '醒目留言', room_id, anchor_name, uid, uname," +
-            "  COALESCE(message,''), start_time FROM super_chat" +
+            "  COALESCE(message,''), start_time FROM super_chat" + timeFilterMs +
             " UNION ALL SELECT '老爷进入', room_id, anchor_name, uid, uname," +
-            "  CASE WHEN svip=1 THEN '年费老爷' WHEN vip=1 THEN '月费老爷' ELSE '老爷' END, timestamp FROM welcome_vip" +
+            "  CASE WHEN svip=1 THEN '年费老爷' WHEN vip=1 THEN '月费老爷' ELSE '老爷' END, timestamp FROM welcome_vip" + timeFilterS +
             " UNION ALL SELECT '舰长进入', room_id, anchor_name, uid, uname," +
-            "  CASE guard_level WHEN 1 THEN '总督' WHEN 2 THEN '提督' ELSE '舰长' END, timestamp FROM welcome_guard" +
+            "  CASE guard_level WHEN 1 THEN '总督' WHEN 2 THEN '提督' ELSE '舰长' END, timestamp FROM welcome_guard" + timeFilterS +
             " UNION ALL SELECT '禁言', room_id, anchor_name, uid, uname," +
-            "  CASE operator WHEN 1 THEN '被房管禁言' ELSE '被主播禁言' END, timestamp FROM block_msg" +
-            ") " + typeFilter + orderClause + " LIMIT " + limitStr;
+            "  CASE operator WHEN 1 THEN '被房管禁言' ELSE '被主播禁言' END, timestamp FROM block_msg" + timeFilterS;
+
+        String typeFilter = hasType
+                ? " WHERE event_type = '" + type.replace("'", "''") + "'"
+                : "";
+        String sql = "SELECT * FROM (" + inner + ")" + typeFilter + orderClause + " LIMIT " + limit;
 
         try (java.sql.Connection conn = xyz.acproject.danmuji.tools.db.DanmujiDatabase.getConnection();
              java.sql.Statement stmt = conn.createStatement();

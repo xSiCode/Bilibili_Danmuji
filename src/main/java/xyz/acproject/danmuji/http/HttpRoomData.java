@@ -881,10 +881,10 @@ public class HttpRoomData {
             // Phase 2d: 共同关注
             Pair<Integer, String> sameResult = processSameFollowings(vmid, logSb, follJson1);
 
-            // Phase 2e: 本地录制分析
+            // Phase 2e: LR录制分析
             Pair<Integer, String> localResult = processLocalSummarySync(vmid, logSb);
 
-            // Phase 3: 合并（共同关注 + 本地分析作为独立维度，不与关注列表强绑定）
+            // Phase 3: 合并（共同关注 + LR作为独立维度，不与关注列表强绑定）
             StringBuilder combinedType = new StringBuilder(60);
             appendType(combinedType, localResult.getRight());
             appendType(combinedType, cardResult.type);
@@ -892,11 +892,32 @@ public class HttpRoomData {
             appendType(combinedType, follResult.getRight());
             appendType(combinedType, sameResult.getRight());
 
-            // 黑白名单处理，pnScoreMap 直接命中（跳过所有维度打分）
+            //  最终评分
             int totalScore = medalResult.getLeft() + follResult.getLeft() + cardResult.score + sameResult.getLeft() + localResult.getLeft();
 
+            Double LR_score = 0.0;
+            // 本地录制分析 — 阵营判定
+            try {
+                LiveRecordApiClient lrClient = new LiveRecordApiClient();
+                JSONObject cascade = lrClient.getUserCascade(vmid);
+                if (cascade != null && !cascade.isEmpty()) {
+                    String campLabel = cascade.getString("camp");
+                    String campSource = cascade.getString("source");
+                    Double campScore = cascade.getDouble("score");
+                    String contradiction = cascade.getString("contradiction");
+
+                    LogFileTools.getlogFileTools().logTestFile(
+                            String.format("cascade uid=%d name=%s camp=%s source=%s LR score=%.1f contradiction=%s    dmj score=%d  ",
+                                    vmid, uname, campLabel, campSource, campScore, contradiction, totalScore));
+                    LR_score = campScore;
+                }
+            } catch (Exception e) {
+                LOGGER.debug("getUserCascade failed for uid={}: {}", vmid, e.getMessage());
+            }
+
+
             StrangerViewerService.addRecord(
-                    vmid, cardResult.name, cardResult.face, totalScore,localResult.getRight() + cardResult.sign);
+                    vmid, cardResult.name, cardResult.face, totalScore, "[LrApi:" + LR_score + "]" + localResult.getRight() + cardResult.sign);
 
             // Phase 4: 仅当综合分在 -1, 0 时才触发动态API
             if ((-1 <= totalScore && totalScore <= 0) && !schedulerDynamicColdWait.get()) {
@@ -1029,7 +1050,6 @@ public class HttpRoomData {
      * 不再包含动态API调用（由主编排器在 Phase 3 按需触发）。
      */
     // ---- 关注列表 & 共同关注处理 ----
-
     private static long getFollowingsTotal(JSONObject follJson1) {
         if (follJson1 != null && follJson1.getShort("code") == 0) {
             JSONObject data = follJson1.getJSONObject("data");
@@ -1188,7 +1208,7 @@ public class HttpRoomData {
     }
 
     /**
-     * 本地录制数据分析 — 调用 LiveRecordApi 获取用户在各主播房间的行为统计，
+     * LR录制数据分析 — 调用 LiveRecordApi 获取用户在各主播房间的行为统计，
      * 结合 pnScoreMap 判断主播黑白属性，计算综合得分与分裂度。
      * <p>
      * 暂不参与运行时评分，结果写入 testLog 供分析。
@@ -1199,9 +1219,9 @@ public class HttpRoomData {
                     .supplyAsync(() -> doLocalSummary(uid, logSb))
                     .get(8, TimeUnit.SECONDS);
         } catch (Exception e) {
-            LOGGER.warn("本地分析API异常 uid={}", uid, e);
-            logSb.append(" [本地分析:异常:").append(e.getMessage()).append("]");
-            return Pair.of(0, "[AICU异常]");
+            LOGGER.warn("LRAPI异常 uid={}", uid, e);
+            logSb.append(" [LR:异常:").append(e.getMessage()).append("]");
+            return Pair.of(0, "[LR异常]");
         }
     }
 
@@ -1210,8 +1230,8 @@ public class HttpRoomData {
         JSONArray summaryArr = client.getUserSummary(uid);
 
         if (summaryArr == null || summaryArr.isEmpty()) {
-            logSb.append("  [本地分析:无数据:0]");
-            return Pair.of(0, "[AICU无数据:0]");
+            logSb.append("  [LR:无数据:0]");
+            return Pair.of(0, "[LR无数据:0]");
         }
 
         int totalScore = 0;
@@ -1219,7 +1239,7 @@ public class HttpRoomData {
         int total_events = 0;
         StringBuilder blackWhiteType = new StringBuilder(60);
         JSONArray matchedList = new JSONArray();
-
+        logSb.append(" [LR ");
         for (Object obj : summaryArr) {
             JSONObject item = (JSONObject) obj;
             Long anchorUidObj = item.getLong("anchor_uid");
@@ -1227,7 +1247,7 @@ public class HttpRoomData {
 
             // 跳过汇总行（anchor_uid 为 null）
             if (anchorUidObj == null) {
-                if("【合计】".equals(anchorName)){
+                if ("【合计】".equals(anchorName)) {
                     total_events = item.getIntValue("total_events");
                 }
                 continue;
@@ -1252,19 +1272,20 @@ public class HttpRoomData {
             int itemScore = entry + danmaku + gift + giftValue + guard + guardValue + sc + scValue;
 
             if (anchorScore < 0) {
-                itemScore = anchorScore - itemScore ;
+                itemScore = anchorScore - itemScore;
                 blackScore += itemScore;
             } else if (anchorScore > 0) {
-                itemScore = anchorScore + itemScore ;
+                itemScore = anchorScore + itemScore;
                 whiteScore += itemScore;
             }
             totalScore += itemScore;
             matchedList.add(anchorName + ":" + itemScore + " 场次:" + sessions);
+            logSb.append(matchedList.toJSONString());
         }
 
         int splitDegree = blackScore * whiteScore;
         if (!matchedList.isEmpty()) {
-            logSb.append(" [AICU黑白分:").append(totalScore)
+            logSb.append(" LR黑白分:").append(totalScore)
                     .append(" 分裂度:").append(splitDegree)
                     .append(" 黑:").append(blackScore)
                     .append(" 白:").append(whiteScore)
@@ -1272,28 +1293,19 @@ public class HttpRoomData {
                     .append("]");
         }
 
-        if(total_events == 0){
-            return  Pair.of(1,"[AICU路人:1]");
-        }
-
-        if(total_events <= 3 ){
-            if(splitDegree < 0){
-                return  Pair.of(0,"[AICU事不过三:0]");
-            }else if(blackScore < 0){
-                return  Pair.of(-1,"[AICU:-1]");
-            } else if(whiteScore > 0) {
-                return Pair.of(1,"[AICU:1]" );
-            }
+        if (total_events <= 3) {
+            int 路人打分 = splitDegree > 0 ? total_events : -total_events;
+            return Pair.of(total_events, "[LR路人:"+路人打分+"]");
         }
 
         if (totalScore != 0) {
-            blackWhiteType.append("[AICU黑白分:").append(totalScore).append("]");
+            blackWhiteType.append("[LR黑白分:").append(totalScore).append("]");
         } else {
-            blackWhiteType.append("[AICU建议复查:").append(splitDegree).append("]");
+            blackWhiteType.append("[LR建议复查:").append(splitDegree).append("]");
         }
 
         // 输出到 testLog
-       // LogFileTools.getlogFileTools().logTestFile(logSb.toString());
+        // LogFileTools.getlogFileTools().logTestFile(logSb.toString());
 
         return Pair.of(totalScore, blackWhiteType.toString());
     }
@@ -1355,9 +1367,9 @@ public class HttpRoomData {
                         int lv = levelInfo != null ? levelInfo.getIntValue("current_level") : -1;
                         cardLog.append(" Lv").append(lv);
                         if (lv == 0) {
-                            r.score = -500; // 需求如此，不接受lv0的人 。 存在lv0,但关注的全是自己人的情况，不接受这样的观众
-                            r.type += "[Lv0:-500]";
-                            cardLog.append("[Lv0:-500]");
+                            r.score = -50; // 需求如此，不接受lv0的人 。 存在lv0,但关注的全是自己人的情况，不接受这样的观众
+                            r.type += "[Lv0:-50]";
+                            cardLog.append("[Lv0:-50]");
                         } else if (lv <= 2) {
                             r.score--;
                             // r.type += "[Lv" + lv + " -1]";

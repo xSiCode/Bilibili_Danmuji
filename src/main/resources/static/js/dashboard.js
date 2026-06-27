@@ -423,51 +423,75 @@ var displayQueue = [];
 var displayTimer = null;
 var lastMaxTs = 0;       // 上次拉取到的最大时间戳（毫秒），用于增量拉取
 var liveMode = true;     // true=实时模式(默认), false=搜索模式
+var uqPage = 1;          // 搜索模式当前页
+var uqTotalPages = 0;    // 搜索模式总页数
+var uqSearchKeyword = '';// 当前搜索关键字（翻页复用）
 
 $(function() {
     // 搜索按钮
     $('#uq-btn-search').on('click', function() {
         var keyword = $('#uq-search-input').val().trim();
         if (!keyword) {
-            showMessage('请输入UID、用户名或弹幕关键词', 'warning');
+            showMessage('请输入UID、用户名或详情关键字', 'warning');
             return;
         }
         stopLiveFeed();
         liveMode = false;
-        $.ajax({
-            url: '../queryUserTimeline',
-            type: 'GET',
-            data: { keyword: keyword, limit: 500 },
-            dataType: 'json',
-            success: function(data) {
-                if (data.code == '200' && data.result && data.result.length > 0) {
-                    timelineData = data.result;
-                    sortColumn = 'eventTime';
-                    sortAsc = false;
-                    sortAndRender();
-                } else {
-                    timelineData = [];
-                    $('#uq-result-area').hide();
-                    $('#uq-empty-msg').show();
-                    $('#uq-result-info').text('未找到相关记录');
-                }
-            },
-            error: function() {
-                showMessage('查询失败', 'danger');
-            }
-        });
+        uqSearchKeyword = keyword;
+        uqPage = 1;
+        doSearch();
+    });
+
+    // 事件类型下拉 — 实时模式更新过滤; 搜索模式重新搜索
+    $('#uq-event-type').on('change', function() {
+        if (liveMode) {
+            lastMaxTs = 0; timelineData = []; displayQueue = [];
+            loadLatestAndPoll();
+        } else if (uqSearchKeyword) {
+            uqPage = 1; doSearch();
+        }
+    });
+
+    // 时间段下拉 — 同上
+    $('#uq-time-range').on('change', function() {
+        if (liveMode) {
+            lastMaxTs = 0; timelineData = []; displayQueue = [];
+            loadLatestAndPoll();
+        } else if (uqSearchKeyword) {
+            uqPage = 1; doSearch();
+        }
     });
 
     // 重置按钮 — 清空搜索，切回实时模式
     $('#uq-btn-reset').on('click', function() {
         $('#uq-search-input').val('');
+        $('#uq-event-type').val('');
+        $('#uq-room-select option').prop('selected', true);
         $('#uq-empty-msg').hide();
         timelineData = [];
         displayQueue = [];
         lastMaxTs = 0;
+        uqSearchKeyword = '';
+        uqPage = 1;
         liveMode = true;
         loadLatestAndPoll();
     });
+
+    // 搜索范围切换按钮
+    $('#uq-search-scope .btn').on('click', function() {
+        $(this).toggleClass('active');
+        if (uqSearchKeyword) { uqPage = 1; doSearch(); }
+    });
+
+    // 直播间下拉 — 加载列表 + 全选/取消
+    loadRoomList();
+    $('#uq-room-toggle-all').on('click', function() {
+        var $sel = $('#uq-room-select');
+        var allSelected = $sel.find('option:not(:selected)').length === 0;
+        $sel.find('option').prop('selected', !allSelected);
+        onRoomFilterChange();
+    });
+    $('#uq-room-select').on('change', onRoomFilterChange);
 
     // 回车搜索
     $('#uq-search-input').on('keypress', function(e) {
@@ -488,6 +512,14 @@ $(function() {
         sortAndRender();
     });
 
+    // 分页按钮
+    $('#uq-page-prev').on('click', function() {
+        if (uqPage > 1) { uqPage--; doSearch(); }
+    });
+    $('#uq-page-next').on('click', function() {
+        if (uqPage < uqTotalPages) { uqPage++; doSearch(); }
+    });
+
     // 切换到查阅用户标签页时，自动开始实时模式
     $('#tab-btn-user-query').on('shown.bs.tab', function() {
         if (liveMode && timelineData.length === 0) {
@@ -496,18 +528,102 @@ $(function() {
     });
 });
 
+// ----- 共享 helper -----
+function loadRoomList() {
+    $.ajax({
+        url: '../roomList',
+        type: 'GET',
+        dataType: 'json',
+        success: function(data) {
+            if (data.code == '200' && data.result) {
+                var $sel = $('#uq-room-select').empty();
+                data.result.forEach(function(r) {
+                    $sel.append('<option value="' + r.roomId + '" selected>' + (r.anchorName || '') + '</option>');
+                });
+            }
+        }
+    });
+}
+function onRoomFilterChange() {
+    if (liveMode) { lastMaxTs = 0; timelineData = []; displayQueue = []; loadLatestAndPoll(); }
+    else if (uqSearchKeyword) { uqPage = 1; doSearch(); }
+}
+function getSelectedRoomIds() {
+    var ids = [];
+    $('#uq-room-select option:selected').each(function() { ids.push($(this).val()); });
+    return ids.join(',');
+}
+
+// ----- 搜索（分页） -----
+function doSearch() {
+    var eventType = $('#uq-event-type').val();
+    var timeRange = $('#uq-time-range').val();
+    var scopeUid = $('#uq-search-scope .btn[data-scope="uid"]').hasClass('active');
+    var scopeUname = $('#uq-search-scope .btn[data-scope="uname"]').hasClass('active');
+    var scopeAnchor = $('#uq-search-scope .btn[data-scope="anchor"]').hasClass('active');
+    var scopeDetail = $('#uq-search-scope .btn[data-scope="detail"]').hasClass('active');
+    $.ajax({
+        url: '../queryUserTimeline',
+        type: 'GET',
+        data: {
+            keyword: uqSearchKeyword, eventType: eventType,
+            page: uqPage, pageSize: 20, timeRange: timeRange,
+            scopeUid: scopeUid, scopeUname: scopeUname,
+            scopeAnchor: scopeAnchor, scopeDetail: scopeDetail,
+            roomIds: getSelectedRoomIds()
+        },
+        dataType: 'json',
+        success: function(data) {
+            if (data.code == '200' && data.result && data.result.rows && data.result.rows.length > 0) {
+                timelineData = data.result.rows;
+                uqTotalPages = data.result.totalPages || 0;
+                uqPage = data.result.currentPage || 1;
+                sortColumn = 'eventTime';
+                sortAsc = false;
+                sortAndRender();
+                updatePagination(data.result.total);
+            } else {
+                timelineData = [];
+                uqTotalPages = 0;
+                $('#uq-result-area').hide();
+                $('#uq-pagination').hide();
+                $('#uq-empty-msg').show();
+                $('#uq-result-info').text('未找到相关记录');
+            }
+        },
+        error: function() {
+            showMessage('查询失败', 'danger');
+        }
+    });
+}
+
+function updatePagination(total) {
+    if (uqTotalPages <= 1) {
+        $('#uq-pagination').hide();
+    } else {
+        $('#uq-pagination').show();
+        $('#uq-page-info').text('第 ' + uqPage + ' / ' + uqTotalPages + ' 页 (共 ' + total + ' 条)');
+        $('#uq-page-prev').prop('disabled', uqPage <= 1);
+        $('#uq-page-next').prop('disabled', uqPage >= uqTotalPages);
+    }
+    $('#uq-result-info').text('共 ' + total + ' 条记录');
+}
+
 // ----- 实时模式：拉取最新 + 轮询 -----
 function loadLatestAndPoll() {
     stopLiveFeed();
+    var eventType = $('#uq-event-type').val();
+    var timeRange = $('#uq-time-range').val();
+    var params = { limit: 20, timeRange: timeRange, roomIds: getSelectedRoomIds() };
+    if (eventType) params.type = eventType;
     $.ajax({
         url: '../latestEvents',
         type: 'GET',
-        data: { limit: 10 },
+        data: params,
         dataType: 'json',
         success: function(data) {
             if (data.code == '200' && data.result && data.result.length > 0) {
                 timelineData = data.result;
-                // 记录最大时间戳用于增量拉取
                 for (var i = 0; i < timelineData.length; i++) {
                     var t = parseTimestamp(timelineData[i].eventTime);
                     if (t > lastMaxTs) lastMaxTs = t;
@@ -515,11 +631,11 @@ function loadLatestAndPoll() {
                 sortColumn = 'eventTime';
                 sortAsc = false;
                 sortAndRender();
+                $('#uq-pagination').hide();
                 startLivePolling();
             } else {
                 $('#uq-empty-msg').show();
                 $('#uq-result-info').text('暂无事件');
-                // 无数据也继续轮询
                 startLivePolling();
             }
         }
@@ -528,11 +644,15 @@ function loadLatestAndPoll() {
 
 function startLivePolling() {
     stopLivePolling();
+    var eventType = $('#uq-event-type').val();
     livePollTimer = setInterval(function() {
+        var timeRange = $('#uq-time-range').val();
+        var params = { limit: 20, timeRange: timeRange, roomIds: getSelectedRoomIds() };
+        if (eventType) params.type = eventType;
         $.ajax({
             url: '../latestEvents',
             type: 'GET',
-            data: { limit: 30 },
+            data: params,
             dataType: 'json',
             success: function(data) {
                 if (data.code == '200' && data.result && data.result.length > 0) {
@@ -544,7 +664,6 @@ function startLivePolling() {
                             if (t > lastMaxTs) lastMaxTs = t;
                         }
                     }
-                    // 新事件加入展示队列
                     if (newEvents.length > 0) {
                         for (var j = newEvents.length - 1; j >= 0; j--) {
                             displayQueue.push(newEvents[j]);
@@ -565,13 +684,12 @@ function startDisplayTimer() {
             return;
         }
         var evt = displayQueue.shift();
-        // 插入到列表顶部
         timelineData.unshift(evt);
-        // 保持最多 50 条（列表固定 20 行高度）
         if (timelineData.length > 50) timelineData = timelineData.slice(0, 50);
         sortAndRender();
         $('#uq-empty-msg').hide();
-    }, 500);  // 每 0.5 秒 1 条
+        $('#uq-pagination').hide();
+    }, 500);
 }
 
 function stopDisplayTimer() {
@@ -592,11 +710,13 @@ function stopLiveFeed() {
 function filterByEventType(type, ts) {
     stopLiveFeed();
     liveMode = false;
+    uqSearchKeyword = '';
     $('#uq-search-input').val('');
+    $('#uq-event-type').val(type);
     $.ajax({
         url: '../latestEvents',
         type: 'GET',
-        data: { limit: 20, type: type, ts: ts },
+        data: { limit: 20, type: type, contextTs: ts, timeRange: $('#uq-time-range').val(), roomIds: getSelectedRoomIds() },
         dataType: 'json',
         success: function(data) {
             if (data.code == '200' && data.result && data.result.length > 0) {
@@ -604,6 +724,7 @@ function filterByEventType(type, ts) {
                 sortColumn = 'eventTime';
                 sortAsc = false;
                 sortAndRender();
+                $('#uq-pagination').hide();
                 $('#uq-result-info').text('事件类型: ' + type + ' — 时间前后最近 20 条上下文');
             } else {
                 timelineData = [];
@@ -669,8 +790,8 @@ function renderUserTimeline(events) {
         tbody.append(
             '<tr>' +
             '<td class="truncate-expandable" style="width:180px;min-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + e.eventTime + '">' + e.eventTime + '</td>' +
-            '<td class="truncate-expandable" style="width:180px;min-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + e.uname + '"><a href="https://space.bilibili.com/' + e.uid + '" target="_blank" class="uq-link">' + e.uname + '</a></td>' +
-            '<td class="truncate-expandable" style="width:189px;min-width:189px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + roomDisplay + '"><a href="https://live.bilibili.com/' + e.roomId + '" target="_blank" class="uq-link">' + roomDisplay + '</a></td>' +
+            '<td class="truncate-expandable" style="width:100px;min-width:100px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + roomDisplay + '"><a href="https://live.bilibili.com/' + e.roomId + '" target="_blank" class="uq-link">' + roomDisplay + '</a></td>' +
+            '<td class="truncate-expandable" style="width:150px;min-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + e.uname + '"><a href="https://space.bilibili.com/' + e.uid + '" target="_blank" class="uq-link">' + e.uname + '</a></td>' +
             '<td class="truncate-expandable" style="width:80px;min-width:80px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="查看该时间前后同类事件上下文"><a href="javascript:;" class="uq-type-link" data-type="' + e.eventType + '" data-ts="' + parseTimestamp(e.eventTime) + '">' + (iconMap[e.eventType] || '') + ' ' + e.eventType + '</a></td>' +
             '<td class="truncate-expandable" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + e.detail + '">' + e.detail + '</td>' +
             '</tr>');
@@ -683,5 +804,4 @@ function renderUserTimeline(events) {
     });
     $('#uq-result-area').show();
     $('#uq-empty-msg').hide();
-    $('#uq-result-info').text('共 ' + events.length + ' 条记录');
 }

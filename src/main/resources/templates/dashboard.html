@@ -213,12 +213,55 @@
                             </div>
 
                             <!-- 查阅用户 -->
+                            <style>
+                                #uq-room-select option:checked { background: #0d6efd; color: #fff; }
+                            </style>
                             <div class="tab-pane fade" id="tab-user-query" role="tabpanel">
-                                <div class="input-group mb-1"><h5>查阅用户 - 输入UID或用户名搜索</h5></div>
+                                <div class="input-group mb-1"><h5>查阅用户 - 输入UID或用户名搜索，时间范围2小时内</h5></div>
                                 <div class="row g-2 mb-2 align-items-end">
                                     <div class="col-auto">
                                         <label class="form-label mb-0" style="font-size:12px;">搜索</label>
-                                        <input type="text" id="uq-search-input" class="form-control form-control-sm" style="width:250px;" placeholder="输入UID或用户名...">
+                                        <input type="text" id="uq-search-input" class="form-control form-control-sm" style="width:250px;" placeholder="UID / 名字 / 直播间 / 详情...">
+                                    </div>
+                                    <div class="col-auto">
+                                        <label class="form-label mb-0" style="font-size:12px;">范围</label>
+                                        <div class="btn-group btn-group-sm" id="uq-search-scope">
+                                            <button class="btn btn-outline-primary" data-scope="uid">UID</button>
+                                            <button class="btn btn-outline-primary" data-scope="uname">名字</button>
+                                            <button class="btn btn-outline-primary" data-scope="anchor">直播间</button>
+                                            <button class="btn btn-outline-primary active" data-scope="detail">详情</button>
+                                        </div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <label class="form-label mb-0" style="font-size:12px;">事件类型</label>
+                                        <select id="uq-event-type" class="form-select form-select-sm" style="width:110px;">
+                                            <option value="">全部</option>
+                                            <option value="弹幕">弹幕</option>
+                                            <option value="进入">进入</option>
+                                            <option value="关注">关注</option>
+                                            <option value="礼物">礼物</option>
+                                            <option value="上舰">上舰</option>
+                                            <option value="醒目留言">醒目留言</option>
+                                            <option value="老爷进入">老爷进入</option>
+                                            <option value="舰长进入">舰长进入</option>
+                                            <option value="禁言">禁言</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-auto">
+                                        <label class="form-label mb-0" style="font-size:12px;">时间段</label>
+                                        <select id="uq-time-range" class="form-select form-select-sm" style="width:100px;">
+                                            <option value="0.5">30分钟</option>
+                                            <option value="1">1小时</option>
+                                            <option value="2" selected>2小时</option>
+                                            <option value="6">6小时</option>
+                                            <option value="12">12小时</option>
+                                            <option value="24">24小时</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-auto">
+                                        <label class="form-label mb-0" style="font-size:12px;">直播间 <a href="javascript:;" id="uq-room-toggle-all" style="font-size:11px;">全选</a></label>
+                                        <select id="uq-room-select" class="form-select form-select-sm" multiple style="width:160px;height:100px;" title="按住Ctrl多选">
+                                        </select>
                                     </div>
                                     <div class="col-auto">
                                         <button id="uq-btn-search" class="btn btn-sm btn-primary">搜索</button>
@@ -231,22 +274,25 @@
                                     </div>
                                 </div>
                                 <div id="uq-result-area" style="display:none;">
-                                    <div class="table-responsive" style="max-height:800px;overflow-y:auto;">
-                                        <table class="table table-sm table-striped" id="uq-timeline-table">
-                                            <thead>
-                                                <tr>
-                                                    <th class="uq-sortable" data-sort="eventTime" style="width:180px;min-width:180px;cursor:pointer;">时间 ▼</th>
-                                                    <th class="uq-sortable" data-sort="uname" style="width:180px;min-width:180px;cursor:pointer;">观众名字</th>
-                                                    <th class="uq-sortable" data-sort="anchorName" style="width:189px;min-width:189px;cursor:pointer;">直播间</th>
-                                                    <th class="uq-sortable" data-sort="eventType" style="width:80px;min-width:80px;cursor:pointer;">事件类型</th>
-                                                    <th class="uq-sortable" data-sort="detail" style="cursor:pointer;">详情</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody id="uq-timeline-body"></tbody>
-                                        </table>
+                                    <table class="table table-sm table-striped" id="uq-timeline-table">
+                                        <thead>
+                                            <tr>
+                                                <th class="uq-sortable" data-sort="eventTime" style="width:180px;min-width:180px;cursor:pointer;">时间 ▼</th>
+                                                <th class="uq-sortable" data-sort="anchorName" style="width:100px;min-width:100px;cursor:pointer;">直播间</th>
+                                                <th class="uq-sortable" data-sort="uname" style="width:150px;min-width:150px;cursor:pointer;">观众名字</th>
+                                                <th class="uq-sortable" data-sort="eventType" style="width:80px;min-width:80px;cursor:pointer;">事件类型</th>
+                                                <th class="uq-sortable" data-sort="detail" style="cursor:pointer;">详情</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="uq-timeline-body"></tbody>
+                                    </table>
+                                    <div id="uq-pagination" class="d-flex justify-content-center align-items-center gap-2 mt-2" style="display:none;">
+                                        <button id="uq-page-prev" class="btn btn-sm btn-outline-secondary">上一页</button>
+                                        <span id="uq-page-info" class="text-muted" style="font-size:12px;"></span>
+                                        <button id="uq-page-next" class="btn btn-sm btn-outline-secondary">下一页</button>
                                     </div>
                                 </div>
-                                <div id="uq-empty-msg" class="text-muted text-center py-3" style="display:none;">未找到该用户的相关记录</div>
+                                <div id="uq-empty-msg" class="text-muted text-center py-3" style="display:none;">未找到相关记录</div>
                             </div>
                         </div>
                     </div>
