@@ -68,7 +68,10 @@
       "Bash(awk '/id=\"tab-/{print NR\": \"$0}' E:/claudeCode/Bilibili_Danmuji/src/main/resources/templates/index.html)",
       "Bash(./gradlew compileJava --stacktrace)",
       "Bash(git stash *)",
-      "Bash(xxd)"
+      "Bash(xxd)",
+      "Read(//c/Users/xSiCo/AppData/Local/Programs/Python/**)",
+      "Read(//c/Program Files/**)",
+      "Bash(/c/Python314/python *)"
     ]
   }
 }
