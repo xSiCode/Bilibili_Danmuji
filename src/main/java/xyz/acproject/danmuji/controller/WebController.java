@@ -5704,12 +5704,23 @@ public class WebController {
             @RequestParam(defaultValue = "true") boolean scopeAnchor,
             @RequestParam(defaultValue = "true") boolean scopeDetail,
             @RequestParam(required = false) String roomIds,
+            @RequestParam(defaultValue = "false") boolean regex,
             HttpServletRequest req) {
         if (StringUtils.isBlank(keyword)) {
             return Response.success(new JSONObject(), req);
         }
         keyword = keyword.trim();
         boolean isNumeric = keyword.matches("\\d+");
+
+        // 正则模式：预先编译验证
+        java.util.regex.Pattern regexPattern = null;
+        if (regex && !isNumeric) {
+            try { regexPattern = java.util.regex.Pattern.compile(keyword); } catch (Exception e) {
+                JSONObject err = new JSONObject();
+                err.put("error", "正则表达式无效: " + e.getMessage());
+                return Response.success(err, req);
+            }
+        }
 
         // 直播间过滤
         String roomFilter = "";
@@ -5725,18 +5736,24 @@ public class WebController {
         String timeFilterS = " AND timestamp >= " + (nowS - rangeS);
         String timeFilterMs = " AND start_time >= " + (nowMs - rangeMs);
 
-        // 按范围拼 WHERE：纯数字且 scopeUid 开 → uid 精确；否则拼 LIKE 子句
+        // 按范围拼 WHERE：正则模式全表扫描后 Java 过滤；普通模式 SQL LIKE
         String whereClause;
         String danmakuWhere;
-        if (isNumeric && scopeUid) {
+        if (regexPattern != null) {
+            // 正则模式：SQL 不做关键字过滤，全量取回后 Java 后置匹配
+            whereClause = "1=1";
+            danmakuWhere = "1=1";
+        } else if (isNumeric && scopeUid) {
             whereClause = "uid = " + Long.parseLong(keyword);
             danmakuWhere = whereClause;
         } else {
             String escaped = keyword.replace("'", "''");
+            // 指定了事件类型时，忽略名字/直播间范围，只搜内容（detail）
+            boolean byUname = scopeUname && StringUtils.isBlank(eventType);
+            boolean byAnchor = scopeAnchor && StringUtils.isBlank(eventType);
             java.util.List<String> parts = new java.util.ArrayList<>();
-            if (scopeUname) parts.add("uname LIKE '%" + escaped + "%'");
-            if (scopeAnchor) parts.add("anchor_name LIKE '%" + escaped + "%'");
-            // 弹幕表额外支持 content 搜索
+            if (byUname) parts.add("uname LIKE '%" + escaped + "%'");
+            if (byAnchor) parts.add("anchor_name LIKE '%" + escaped + "%'");
             java.util.List<String> dmParts = new java.util.ArrayList<>(parts);
             dmParts.add("content LIKE '%" + escaped + "%'");
             whereClause = parts.isEmpty() ? "1=0" : "(" + String.join(" OR ", parts) + ")";
@@ -5748,9 +5765,10 @@ public class WebController {
         if (StringUtils.isNotBlank(eventType)) {
             typeClause = " AND event_type = '" + eventType.replace("'", "''") + "'";
         }
-        // 详情搜索：文本关键字 + scopeDetail 开启时，外层 WHERE 匹配 detail 列
+        // 详情搜索：选事件类型时始终匹配 detail；未选时由 scopeDetail 控制（正则模式跳过）
         String detailClause = "";
-        if (!isNumeric && scopeDetail) {
+        boolean useDetail = (StringUtils.isNotBlank(eventType)) || (scopeDetail && StringUtils.isBlank(eventType));
+        if (regexPattern == null && !isNumeric && useDetail) {
             String escaped = keyword.replace("'", "''");
             detailClause = " AND detail LIKE '%" + escaped + "%'";
         }
@@ -5793,21 +5811,66 @@ public class WebController {
         String dataSql = "SELECT * FROM (" + inner + ")" + outerWhere +
                 " ORDER BY event_time DESC LIMIT " + pageSize + " OFFSET " + offset;
 
-        LOGGER.info("queryUserTimeline: keyword={} eventType={} page={} pageSize={}",
-                keyword, eventType, page, pageSize);
+        LOGGER.info("queryUserTimeline: keyword={} eventType={} page={} pageSize={} regex={}",
+                keyword, eventType, page, pageSize, regex);
 
         try (java.sql.Connection conn = xyz.acproject.danmuji.tools.db.DanmujiDatabase.getConnection();
              java.sql.Statement stmt = conn.createStatement()) {
 
-            // 总数
+            java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+
+            // 正则模式：取全部预过滤结果，Java 侧过滤后分页
+            if (regexPattern != null) {
+                String allSql = "SELECT * FROM (" + inner + ")" + outerWhere +
+                        " ORDER BY event_time DESC LIMIT 5000";
+                java.util.List<JSONObject> allRows = new java.util.ArrayList<>();
+                try (java.sql.ResultSet rs = stmt.executeQuery(allSql)) {
+                    while (rs.next()) {
+                        String detail = rs.getString("detail");
+                        String uname = rs.getString("uname");
+                        String anchorName = rs.getString("anchor_name");
+                        boolean match = StringUtils.isNotBlank(eventType)
+                            ? regexPattern.matcher(detail != null ? detail : "").find()
+                            : (regexPattern.matcher(detail != null ? detail : "").find() ||
+                               regexPattern.matcher(uname != null ? uname : "").find() ||
+                               regexPattern.matcher(anchorName != null ? anchorName : "").find());
+                        if (match) {
+                            JSONObject row = new JSONObject();
+                            row.put("eventType", rs.getString("event_type"));
+                            row.put("roomId", rs.getLong("room_id"));
+                            row.put("anchorName", anchorName);
+                            row.put("uid", rs.getLong("uid"));
+                            row.put("uname", uname);
+                            row.put("detail", detail);
+                            long ts = rs.getLong("event_time");
+                            if (ts > 0 && ts < 100000000000L) ts = ts * 1000;
+                            row.put("eventTime", sdf.format(new java.util.Date(ts)));
+                            allRows.add(row);
+                        }
+                    }
+                }
+                int total = allRows.size();
+                int totalPages = total == 0 ? 0 : (int) Math.ceil((double) total / pageSize);
+                int from = (page - 1) * pageSize;
+                int to = Math.min(from + pageSize, total);
+                JSONArray pageRows = new JSONArray();
+                for (int i = from; i < to; i++) pageRows.add(allRows.get(i));
+                JSONObject result = new JSONObject();
+                result.put("rows", pageRows);
+                result.put("total", total);
+                result.put("totalPages", totalPages);
+                result.put("currentPage", totalPages > 0 ? page : 0);
+                LOGGER.info("queryUserTimeline(regex): total={} pages={}", total, totalPages);
+                return Response.success(result, req);
+            }
+
+            // 普通模式：SQL 直接分页
             int total = 0;
             try (java.sql.ResultSet rs = stmt.executeQuery(countSql)) {
                 if (rs.next()) total = rs.getInt(1);
             }
 
-            // 分页数据
             JSONArray rows = new JSONArray();
-            java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
             try (java.sql.ResultSet rs = stmt.executeQuery(dataSql)) {
                 while (rs.next()) {
                     JSONObject row = new JSONObject();

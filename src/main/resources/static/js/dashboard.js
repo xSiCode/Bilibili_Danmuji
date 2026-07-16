@@ -477,7 +477,7 @@ $(function() {
         loadLatestAndPoll();
     });
 
-    // 搜索范围切换按钮
+    // 搜索范围 / 正则切换
     $('#uq-search-scope .btn').on('click', function() {
         $(this).toggleClass('active');
         if (uqSearchKeyword) { uqPage = 1; doSearch(); }
@@ -570,7 +570,8 @@ function doSearch() {
             page: uqPage, pageSize: 20, timeRange: timeRange,
             scopeUid: scopeUid, scopeUname: scopeUname,
             scopeAnchor: scopeAnchor, scopeDetail: scopeDetail,
-            roomIds: getSelectedRoomIds()
+            roomIds: getSelectedRoomIds(),
+            regex: $('#uq-btn-regex').hasClass('active')
         },
         dataType: 'json',
         success: function(data) {

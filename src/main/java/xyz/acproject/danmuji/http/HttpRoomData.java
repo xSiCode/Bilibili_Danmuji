@@ -884,6 +884,8 @@ public class HttpRoomData {
             // Phase 2e: LR录制分析
             Pair<Integer, String> localResult = processLocalSummarySync(vmid, logSb);
 
+            // todo aicu
+
             // Phase 3: 合并（共同关注 + LR作为独立维度，不与关注列表强绑定）
             StringBuilder combinedType = new StringBuilder(60);
             appendType(combinedType, localResult.getRight());
