@@ -1362,9 +1362,9 @@ public class HttpRoomData {
                         int lv = levelInfo != null ? levelInfo.getIntValue("current_level") : -1;
                         cardLog.append(" Lv").append(lv);
                         if (lv == 0) {
-                            r.score = -50; // 需求如此，不接受lv0的人 。 存在lv0,但关注的全是自己人的情况，不接受这样的观众
-                            r.type += "[Lv0:-50]";
-                            cardLog.append("[Lv0:-50]");
+                            r.score = -10; // 需求如此，不接受lv0的人 。 存在lv0,但关注的全是自己人的情况，不接受这样的观众
+                            r.type += "[Lv0:-10]";
+                            cardLog.append("[Lv0:-10]");
                         } else if (lv <= 2) {
                             r.score--;
                             // r.type += "[Lv" + lv + " -1]";
