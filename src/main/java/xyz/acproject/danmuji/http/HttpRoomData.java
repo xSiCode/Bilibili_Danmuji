@@ -696,7 +696,7 @@ public class HttpRoomData {
     }
 
     /**
-     * 异步获取粉丝勋章墙 — 集成SQLite缓存 + Cookie池轮换。
+     * 异步获取粉丝灯牌墙 — 集成SQLite缓存 + Cookie池轮换。
      * 缓存命中直接返回；未命中则使用Cookie池中的可用Cookie发起请求。
      */
     private static CompletableFuture<JSONObject> asyncHttpGetMedalWall(long targetId) {
@@ -708,7 +708,7 @@ public class HttpRoomData {
                 JSONObject jo = JSONObject.parseObject(cached);
                 if (jo != null) return CompletableFuture.completedFuture(jo);
             } catch (Exception e) {
-                LOGGER.debug("勋章墙缓存JSON解析失败 vmid={}", targetId, e);
+                LOGGER.debug("灯牌墙缓存JSON解析失败 vmid={}", targetId, e);
             }
         }
 
@@ -732,7 +732,7 @@ public class HttpRoomData {
                         JSONObject json = JSONObject.parseObject(body);
                         if (json != null) {
                             int code = json.getIntValue("code");
-                            // 勋章墙无需冷却
+                            // 灯牌墙无需冷却
                             // 缓存成功和普通错误响应，但不缓存限流响应（-412/-509 为临时性错误）
                             if (code != -412 && code != -509) {
                                 SqliteApiCacheManager.put(cacheKey, body);
@@ -832,7 +832,7 @@ public class HttpRoomData {
                 });
     }
 
-    // ==================== 评分流水线：勋章墙 + 关注列表 + 卡片 → 综合打分 ====================
+    // ==================== 评分流水线：灯牌墙 + 关注列表 + 卡片 → 综合打分 ====================
 
     /**
      * 卡片处理结果
@@ -847,7 +847,7 @@ public class HttpRoomData {
 
     /**
      * 主编排器：三路并发 → 顺序聚合 → 动态API收尾。
-     * 勋章墙、关注列表、卡片信息三个HTTP请求并行发出，全部返回后顺序处理，
+     * 灯牌墙、关注列表、卡片信息三个HTTP请求并行发出，全部返回后顺序处理，
      * 仅当综合分为0时才触发限制最严的动态API。
      */
     public static CompletableFuture<Pair<Integer, String>> processFollowings(long vmid, String uname) {
@@ -872,7 +872,7 @@ public class HttpRoomData {
             // Phase 2a: 卡片
             CardProcessResult cardResult = processCardDataSync(cardJson, logSb);
 
-            // Phase 2b: 勋章墙
+            // Phase 2b: 灯牌墙
             Pair<Integer, String> medalResult = processMedalWallSync(medalJson, logSb);
 
             // Phase 2c: 关注列表（双页合并）
@@ -881,45 +881,27 @@ public class HttpRoomData {
             // Phase 2d: 共同关注
             Pair<Integer, String> sameResult = processSameFollowings(vmid, logSb, follJson1);
 
-            // Phase 2e: LR录制分析
-            Pair<Integer, String> localResult = processLocalSummarySync(vmid, logSb);
+            // Phase 2e: LR录制分析  不再使用，被 Phase 2f 替代
+          //  Pair<Integer, String> localResult = processLocalSummarySync(vmid, logSb);
 
-            // todo aicu
+            // Phase 2f: 流媒体观众分析
+            Pair<Integer, String> viewerResult = processStreamerViewersSync(vmid, logSb);
 
-            // Phase 3: 合并（共同关注 + LR作为独立维度，不与关注列表强绑定）
+            // Phase 3: 合并
             StringBuilder combinedType = new StringBuilder(60);
-            appendType(combinedType, localResult.getRight());
+            appendType(combinedType, "🍉");
+            appendType(combinedType, viewerResult.getRight());
             appendType(combinedType, cardResult.type);
             appendType(combinedType, medalResult.getRight());
             appendType(combinedType, follResult.getRight());
             appendType(combinedType, sameResult.getRight());
 
             //  最终评分
-            int totalScore = medalResult.getLeft() + follResult.getLeft() + cardResult.score + sameResult.getLeft() + localResult.getLeft();
-
-            Double LR_score = 0.0;
-            // 本地录制分析 — 阵营判定
-            try {
-                LiveRecordApiClient lrClient = new LiveRecordApiClient();
-                JSONObject cascade = lrClient.getUserCascade(vmid);
-                if (cascade != null && !cascade.isEmpty()) {
-                    String campLabel = cascade.getString("camp");
-                    String campSource = cascade.getString("source");
-                    Double campScore = cascade.getDouble("score");
-                    String contradiction = cascade.getString("contradiction");
-
-                    LogFileTools.getlogFileTools().logTestFile(
-                            String.format("cascade uid=%d name=%s camp=%s source=%s LR score=%.1f contradiction=%s    dmj score=%d  ",
-                                    vmid, uname, campLabel, campSource, campScore, contradiction, totalScore));
-                    LR_score = campScore;
-                }
-            } catch (Exception e) {
-                LOGGER.debug("getUserCascade failed for uid={}: {}", vmid, e.getMessage());
-            }
+            int totalScore = medalResult.getLeft() + follResult.getLeft() + cardResult.score + sameResult.getLeft() + viewerResult.getLeft();
 
 
             StrangerViewerService.addRecord(
-                    vmid, cardResult.name, cardResult.face, totalScore, "[LrApi:" + LR_score + "]" + localResult.getRight() + cardResult.sign);
+                    vmid, cardResult.name, cardResult.face, totalScore,  combinedType + cardResult.sign);
 
             // Phase 4: 仅当综合分在 -1, 0 时才触发动态API
             if ((-1 <= totalScore && totalScore <= 0) && !schedulerDynamicColdWait.get()) {
@@ -961,29 +943,29 @@ public class HttpRoomData {
     // ---- 同步处理方法 ----
 
     /**
-     * 勋章墙同步处理。匹配 pnScoreMap 计算勋章黑白分。
+     * 灯牌墙同步处理。匹配 pnScoreMap 计算灯牌黑白分。
      */
     private static Pair<Integer, String> processMedalWallSync(JSONObject medalData, StringBuilder logSb) {
         if (medalData == null || medalData.getIntValue("code") != 0) {
-            logSb.append("  [勋章:API异常:0]");
+            logSb.append("  [灯牌:API异常:0]");
             return Pair.of(0, "");
         }
         JSONObject data = medalData.getJSONObject("data");
         if (data == null || data.getIntValue("close_space_medal") == 1) {
-            logSb.append("  [勋章:隐藏-1]");
+            logSb.append("  [灯牌:隐藏-1]");
             return Pair.of(-1, "[灯牌隐藏-1]");
         }
         int count = data.getIntValue("count");
         JSONArray list = data.getJSONArray("list");
         if (count <= 0 || list == null || list.isEmpty()) {
-            logSb.append("  [无勋章:0]");
+            logSb.append("  [无灯牌:0]");
             return Pair.of(0, "");
         }
 
         int totalMedalScore = 0;
         int totalLifeMedalScore = 0;
 
-        logSb.append("  [勋章数:").append(count);
+        logSb.append("  [灯牌数:").append(count);
         for (int i = 0; i < list.size(); i++) {
             JSONObject item = list.getJSONObject(i);
             JSONObject medalInfo = item.getJSONObject("medal_info");
@@ -1039,11 +1021,11 @@ public class HttpRoomData {
         }
 
         if (totalMedalScore != 0) {
-            logSb.append(" 勋章黑白分:").append(totalMedalScore).append("]");
-            return Pair.of(totalMedalScore, "[勋章黑白分:" + totalMedalScore + "]");
+            logSb.append(" 灯牌黑白分:").append(totalMedalScore).append("]");
+            return Pair.of(totalMedalScore, "[灯牌分:" + totalMedalScore + "]");
         } else {
-            logSb.append(" 勋章生活分").append(totalLifeMedalScore).append(" +1]");//需求如此
-            return Pair.of(1, "[勋章生活+1]");
+            logSb.append(" 灯牌生活分").append(totalLifeMedalScore).append(" +1]");//需求如此
+            return Pair.of(1, "[灯牌生活+1]");
         }
     }
 
@@ -1144,7 +1126,7 @@ public class HttpRoomData {
         }
 
         if (blackWhiteScore != 0) {
-            blackWhiteType.append("[共同关注分:").append(blackWhiteScore).append("]");
+            blackWhiteType.append("[共关分:").append(blackWhiteScore).append("]");
         }
         logSb.append("共同关注分:").append(blackWhiteScore).append("]");
 
@@ -1196,12 +1178,8 @@ public class HttpRoomData {
                     .append(" 列表:").append(matchedList).append(" ");
         }
 
-        if (blackWhiteScore != 0) {
-            blackWhiteType.append("[关注黑白分:").append(blackWhiteScore).append("]");
-        } else {
-            blackWhiteScore = 1;
-            blackWhiteType.append("[关注生活分:").append(blackWhiteScore).append("]");
-        }
+
+        blackWhiteType.append("[关注分:").append(blackWhiteScore).append("]");
         logSb.append("关注黑白分:").append(blackWhiteScore).append("]");
 
         // LogFileTools.getlogFileTools().logTestFile(name_sign_followingUser_str);
@@ -1308,6 +1286,97 @@ public class HttpRoomData {
     }
 
     /**
+     * 流媒体观众分析 — 调用 streamer API 获取某主播的观众互动统计，
+     * 结合 pnScoreMap 判断观众黑白属性，计算综合得分与分裂度。
+     */
+    public static Pair<Integer, String> processStreamerViewersSync(long streamerUid, StringBuilder logSb) {
+        try {
+            return CompletableFuture
+                    .supplyAsync(() -> doStreamerViewers(streamerUid, logSb))
+                    .get(8, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            LOGGER.warn("StreamerAPI异常 uid={}", streamerUid, e);
+            logSb.append(" [观众分析:异常:").append(e.getMessage()).append("]");
+            return Pair.of(0, "");
+        }
+    }
+
+    private static Pair<Integer, String> doStreamerViewers(long streamerUid, StringBuilder logSb) {
+        String url = "http://localhost:5000/api/user/streamer/" + streamerUid;
+        String body = null;
+        try {
+            okhttp3.Response resp = OkHttp3Utils.getHttp3Utils().httpGet(url, null, null);
+            if (resp != null && resp.isSuccessful() && resp.body() != null) {
+                body = resp.body().string();
+                resp.close();
+            } else if (resp != null) {
+                resp.close();
+            }
+        } catch (Exception e) {
+            LOGGER.warn("StreamerAPI GET failed: {}", e.getMessage());
+        }
+        if (body == null || body.isEmpty()) {
+            logSb.append("  [观众分析:无数据:0]");
+            return Pair.of(0, "");
+        }
+
+        JSONArray viewers;
+        try {
+            viewers = JSON.parseArray(body);
+        } catch (Exception e) {
+            logSb.append("  [观众分析:解析失败:0]");
+            return Pair.of(0, "");
+        }
+        if (viewers == null || viewers.isEmpty()) {
+            logSb.append("  [观众分析:空:0]");
+            return Pair.of(0, "");
+        }
+
+        int totalScore = 0;
+        int blackScore = 0, whiteScore = 0;
+        int totalViewers = viewers.size();
+        StringBuilder blackWhiteType = new StringBuilder(60);
+        JSONArray matchedList = new JSONArray();
+        logSb.append(" [观众分析 ");
+
+        for (Object obj : viewers) {
+            JSONObject item = (JSONObject) obj;
+            long anchorId = item.getLongValue("u_id");
+            Integer pnScore = pnScoreMap.get(anchorId);
+            if (pnScore == null) continue;
+
+            int total = item.getIntValue("total");
+//            int msg = item.getIntValue("msg");
+//            int enter = item.getIntValue("enter");
+//            int gift = item.getIntValue("gift");
+            double giftAmount = item.getDoubleValue("gift_amount");
+            int itemScore = (int) ( total + giftAmount);
+
+            if (pnScore < 0) {
+                itemScore = pnScore - itemScore;
+                blackScore += itemScore;
+            } else if (pnScore > 0) {
+                itemScore = pnScore + itemScore;
+                whiteScore += itemScore;
+            }
+            totalScore += itemScore;
+            matchedList.add(item.getString("name") + ":" + itemScore);
+        }
+
+        int splitDegree = blackScore * whiteScore;
+        if (!matchedList.isEmpty()) {
+            logSb.append("观众黑白分:").append(totalScore)
+                    .append(" 分裂度:").append(splitDegree)
+                    .append(" 黑:").append(blackScore)
+                    .append(" 白:").append(whiteScore)
+                    .append(" 列表:").append(matchedList).append(" ")
+                    .append("]");
+        }
+        blackWhiteType.append("[观看:").append(totalViewers).append(" 打分:").append(totalScore).append("]");
+        return Pair.of(totalScore, blackWhiteType.toString());
+    }
+
+    /**
      * 卡片信息同步处理 — KOL/等级/认证/大会员/关键词 综合评分。
      */
     private static CardProcessResult processCardDataSync(JSONObject cardJson, StringBuilder logSb) {
@@ -1410,7 +1479,7 @@ public class HttpRoomData {
                     int kw = getKeyWordsScore((r.name != null ? r.name : "") + (r.sign != null ? r.sign : ""), cardLog);
                     r.score += kw;
                     //  if (kw != 0) cardLog.append(" 签名关键词:").append(kw);
-                    r.type += "[卡片黑白分:" + r.score + "]";
+                    r.type = "[卡片分:" + r.score + "]";
                     cardLog.append(" 卡片黑白分:").append(r.score).append("]");
                     logSb.append(cardLog);
                     return r;

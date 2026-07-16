@@ -71,7 +71,8 @@
       "Bash(xxd)",
       "Read(//c/Users/xSiCo/AppData/Local/Programs/Python/**)",
       "Read(//c/Program Files/**)",
-      "Bash(/c/Python314/python *)"
+      "Bash(/c/Python314/python *)",
+      "Bash(curl -s \"http://localhost:5000/api/user/streamer/87107837\")"
     ]
   }
 }

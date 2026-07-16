@@ -970,7 +970,7 @@ public class WebController {
             row.put("name", e.name);
             row.put("createTime", e.createTime);
             row.put("updateTime", e.updateTime);
-            Pair<Integer, String> localResult = HttpRoomData.processLocalSummarySync(e.uid, new StringBuilder());
+            Pair<Integer, String> localResult = HttpRoomData.processStreamerViewersSync(e.uid, new StringBuilder());
 
             String summary = ViewerActivitySummary.buildSummary(e.uid);
 
