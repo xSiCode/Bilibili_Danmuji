@@ -55,6 +55,7 @@ public class ViewerActivitySummary {
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     String anchor = rs.getString("anchor_name");
+                    long roomId = rs.getLong("room_id");
                     int d  = rs.getInt("danmaku");
                     int en = rs.getInt("enter_events");
                     int g  = rs.getInt("gift");
@@ -64,8 +65,8 @@ public class ViewerActivitySummary {
                     int sc = rs.getInt("sc");
                     int fp = rs.getInt("footprint");
                     int total = d + en + g + l + f + gb + sc + fp;
-                    if (total > 0) {
-                        rooms.add(new RoomSummary(anchor, d, en, g, l, f, gb, sc, fp, total));
+                    if (total > 1) {
+                        rooms.add(new RoomSummary(roomId, anchor, d, en, g, l, f, gb, sc, fp, total));
                     }
                 }
             }
@@ -85,7 +86,7 @@ public class ViewerActivitySummary {
     // ---- SQL ----
 
     private static String buildSql() {
-        return "SELECT anchor_name," +
+        return "SELECT anchor_name, room_id," +
             " SUM(CASE WHEN src='danmaku' THEN cnt ELSE 0 END) AS danmaku," +
             " SUM(CASE WHEN src='enter'   THEN cnt ELSE 0 END) AS enter_events," +
             " SUM(CASE WHEN src='gift'    THEN cnt ELSE 0 END) AS gift," +
@@ -95,30 +96,30 @@ public class ViewerActivitySummary {
             " SUM(CASE WHEN src='sc'      THEN cnt ELSE 0 END) AS sc," +
             " SUM(CASE WHEN src='footprint' THEN cnt ELSE 0 END) AS footprint" +
             " FROM (" +
-            "  SELECT COALESCE(NULLIF(anchor_name,''),'未知') AS anchor_name, 'danmaku' AS src, COUNT(*) AS cnt" +
-            "    FROM danmaku WHERE uid=? GROUP BY anchor_name" +
+            "  SELECT COALESCE(NULLIF(anchor_name,''),'未知') AS anchor_name, room_id, 'danmaku' AS src, COUNT(*) AS cnt" +
+            "    FROM danmaku WHERE uid=? GROUP BY anchor_name, room_id" +
             "  UNION ALL" +
-            "  SELECT COALESCE(NULLIF(anchor_name,''),'未知'), 'enter', COUNT(*)" +
-            "    FROM enter_events WHERE uid=? GROUP BY anchor_name" +
+            "  SELECT COALESCE(NULLIF(anchor_name,''),'未知'), room_id, 'enter', COUNT(*)" +
+            "    FROM enter_events WHERE uid=? GROUP BY anchor_name, room_id" +
             "  UNION ALL" +
-            "  SELECT COALESCE(NULLIF(anchor_name,''),'未知'), 'gift', COUNT(*)" +
-            "    FROM gift_detail WHERE uid=? GROUP BY anchor_name" +
+            "  SELECT COALESCE(NULLIF(anchor_name,''),'未知'), room_id, 'gift', COUNT(*)" +
+            "    FROM gift_detail WHERE uid=? GROUP BY anchor_name, room_id" +
             "  UNION ALL" +
-            "  SELECT COALESCE(NULLIF(anchor_name,''),COALESCE(NULLIF(room_name,''),'未知')), 'like', COUNT(*)" +
-            "    FROM like_record WHERE uid=? GROUP BY anchor_name, room_name" +
+            "  SELECT COALESCE(NULLIF(anchor_name,''),COALESCE(NULLIF(room_name,''),'未知')), room_id, 'like', COUNT(*)" +
+            "    FROM like_record WHERE uid=? GROUP BY anchor_name, room_id, room_name" +
             "  UNION ALL" +
-            "  SELECT COALESCE(NULLIF(anchor_name,''),'未知'), 'follow', COUNT(*)" +
-            "    FROM follow_events WHERE uid=? GROUP BY anchor_name" +
+            "  SELECT COALESCE(NULLIF(anchor_name,''),'未知'), room_id, 'follow', COUNT(*)" +
+            "    FROM follow_events WHERE uid=? GROUP BY anchor_name, room_id" +
             "  UNION ALL" +
-            "  SELECT COALESCE(NULLIF(anchor_name,''),'未知'), 'guard', COUNT(*)" +
-            "    FROM guard_buy WHERE uid=? GROUP BY anchor_name" +
+            "  SELECT COALESCE(NULLIF(anchor_name,''),'未知'), room_id, 'guard', COUNT(*)" +
+            "    FROM guard_buy WHERE uid=? GROUP BY anchor_name, room_id" +
             "  UNION ALL" +
-            "  SELECT COALESCE(NULLIF(anchor_name,''),'未知'), 'sc', COUNT(*)" +
-            "    FROM super_chat WHERE uid=? GROUP BY anchor_name" +
+            "  SELECT COALESCE(NULLIF(anchor_name,''),'未知'), room_id, 'sc', COUNT(*)" +
+            "    FROM super_chat WHERE uid=? GROUP BY anchor_name, room_id" +
             "  UNION ALL" +
-            "  SELECT COALESCE(NULLIF(anchor_name,''),'未知'), 'footprint', COUNT(*)" +
-            "    FROM footprint WHERE uid=? GROUP BY anchor_name" +
-            " ) GROUP BY anchor_name" +
+            "  SELECT COALESCE(NULLIF(anchor_name,''),'未知'), room_id, 'footprint', COUNT(*)" +
+            "    FROM footprint WHERE uid=? GROUP BY anchor_name, room_id" +
+            " ) GROUP BY anchor_name, room_id" +
             " ORDER BY (" +
             "  SUM(CASE WHEN src='danmaku' THEN cnt ELSE 0 END)+" +
             "  SUM(CASE WHEN src='enter'   THEN cnt ELSE 0 END)+" +
@@ -163,12 +164,51 @@ public class ViewerActivitySummary {
 
     // ---- 数据类 ----
 
-    private static class RoomSummary {
-        final String anchorName;
-        final int danmaku, enterEvents, gift, likes, follow, guard, sc, footprint, total;
+    // ---- 公开的结构化数据获取 ----
 
-        RoomSummary(String anchorName, int danmaku, int enterEvents, int gift, int likes,
+    /**
+     * 返回用户在各直播间的活动明细（含 room_id），供打分管道使用。
+     */
+    public static List<RoomSummary> getRoomActivityData(long uid) {
+        if (uid <= 0) return new ArrayList<>();
+        List<RoomSummary> rooms = new ArrayList<>();
+        try (Connection c = DanmujiDatabase.getConnection();
+             PreparedStatement ps = c.prepareStatement(buildSql())) {
+            for (int i = 1; i <= 8; i++) ps.setLong(i, uid);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String anchor = rs.getString("anchor_name");
+                    long roomId = rs.getLong("room_id");
+                    int d  = rs.getInt("danmaku");
+                    int en = rs.getInt("enter_events");
+                    int g  = rs.getInt("gift");
+                    int l  = rs.getInt("likes");
+                    int f  = rs.getInt("follow");
+                    int gb = rs.getInt("guard");
+                    int sc = rs.getInt("sc");
+                    int fp = rs.getInt("footprint");
+                    int total = d + en + g + l + f + gb + sc + fp;
+                    if (total > 1) { // 这个1很关键，如果该用户只进入过 0,1 次，则忽略打分。
+                        rooms.add(new RoomSummary(roomId, anchor, d, en, g, l, f, gb, sc, fp, total));
+                    }
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.debug("getRoomActivityData error for uid={}: {}", uid, e.getMessage());
+        }
+        return rooms;
+    }
+
+    // ---- 数据类 ----
+
+    public static class RoomSummary {
+        public final long roomId;
+        public final String anchorName;
+        public final int danmaku, enterEvents, gift, likes, follow, guard, sc, footprint, total;
+
+        RoomSummary(long roomId, String anchorName, int danmaku, int enterEvents, int gift, int likes,
                     int follow, int guard, int sc, int footprint, int total) {
+            this.roomId = roomId;
             this.anchorName = anchorName;
             this.danmaku = danmaku;
             this.enterEvents = enterEvents;

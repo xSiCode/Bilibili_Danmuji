@@ -887,6 +887,9 @@ public class HttpRoomData {
             // Phase 2f: 流媒体观众分析
             Pair<Integer, String> viewerResult = processStreamerViewersSync(vmid, logSb);
 
+            // Phase 2g: 用户本地记录分析
+            Pair<Integer, String> localActResult = processLocalActivitySync(vmid, logSb);
+
             // Phase 3: 合并
             StringBuilder combinedType = new StringBuilder(60);
             appendType(combinedType, "🍉");
@@ -895,9 +898,10 @@ public class HttpRoomData {
             appendType(combinedType, medalResult.getRight());
             appendType(combinedType, follResult.getRight());
             appendType(combinedType, sameResult.getRight());
+            appendType(combinedType, localActResult.getRight());
 
             //  最终评分
-            int totalScore = medalResult.getLeft() + follResult.getLeft() + cardResult.score + sameResult.getLeft() + viewerResult.getLeft();
+            int totalScore = medalResult.getLeft() + follResult.getLeft() + cardResult.score + sameResult.getLeft() + viewerResult.getLeft() + localActResult.getLeft();
 
 
             StrangerViewerService.addRecord(
@@ -1372,8 +1376,86 @@ public class HttpRoomData {
                     .append(" 列表:").append(matchedList).append(" ")
                     .append("]");
         }
-        blackWhiteType.append("[观看:").append(totalViewers).append(" 打分:").append(totalScore).append("]");
+        blackWhiteType.append("[Aicu观看:").append(totalViewers).append(" 打分:").append(totalScore).append("]");
         return Pair.of(totalScore, blackWhiteType.toString());
+    }
+
+    // ---- room_id → anchor_uid 映射（SQLite缓存 + B站API回退） ----
+
+    private static long getAnchorUidByRoomId(long roomId) {
+        if (roomId <= 0) return 0;
+        // 1. 查 SQLite 缓存
+        try (java.sql.Connection c = xyz.acproject.danmuji.tools.db.DanmujiDatabase.getConnection();
+             java.sql.PreparedStatement ps = c.prepareStatement("SELECT anchor_uid FROM room_anchor_map WHERE room_id=?")) {
+            ps.setLong(1, roomId);
+            try (java.sql.ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getLong(1);
+            }
+        } catch (Exception ignored) {}
+        // 2. 调B站API
+        try {
+            RoomInit roomInit = httpGetRoomInit(roomId);
+            if (roomInit != null && roomInit.getUid() != null && roomInit.getUid() > 0) {
+                long anchorUid = roomInit.getUid();
+                // 存入SQLite
+                try (java.sql.Connection c = xyz.acproject.danmuji.tools.db.DanmujiDatabase.getConnection();
+                     java.sql.PreparedStatement ps = c.prepareStatement(
+                         "INSERT OR REPLACE INTO room_anchor_map(room_id,anchor_uid) VALUES(?,?)")) {
+                    ps.setLong(1, roomId);
+                    ps.setLong(2, anchorUid);
+                    ps.executeUpdate();
+                } catch (Exception ignored) {}
+                return anchorUid;
+            }
+        } catch (Exception e) {
+            LOGGER.warn("getAnchorUidByRoomId: API failed for roomId={}: {}", roomId, e.getMessage());
+        }
+        return 0;
+    }
+
+    // ---- 用户本地记录分析 ----
+
+    public static Pair<Integer, String> processLocalActivitySync(long uid, StringBuilder logSb) {
+        java.util.List<xyz.acproject.danmuji.service.ViewerActivitySummary.RoomSummary> rooms =
+                xyz.acproject.danmuji.service.ViewerActivitySummary.getRoomActivityData(uid);
+        if (rooms.isEmpty()) {
+            logSb.append("  [本地记录:无数据]");
+            return Pair.of(0, "");
+        }
+        int totalScore = 0, blackScore = 0, whiteScore = 0;
+        int matchedCount = 0;
+        StringBuilder sb = new StringBuilder(60);
+        JSONArray matchedList = new JSONArray();
+        logSb.append("  [本地记录 ");
+        for (xyz.acproject.danmuji.service.ViewerActivitySummary.RoomSummary r : rooms) {
+            if (r.roomId <= 0) continue;
+            long anchorUid = getAnchorUidByRoomId(r.roomId);
+            if (anchorUid <= 0) continue;
+            Integer pnScore = pnScoreMap.get(anchorUid);
+            if (pnScore == null) continue;
+            int itemScore = r.total;
+            if (pnScore < 0) {
+                itemScore = pnScore - itemScore;
+                blackScore += itemScore;
+            } else if (pnScore > 0) {
+                itemScore = pnScore + itemScore;
+                whiteScore += itemScore;
+            }
+            totalScore += itemScore;
+            matchedCount++;
+            matchedList.add(r.anchorName + ":" + itemScore);
+        }
+        int splitDegree = blackScore * whiteScore;
+        if (matchedCount > 0) {
+            logSb.append("匹配:").append(matchedCount)
+                    .append(" 分裂度:").append(splitDegree)
+                    .append(" 黑:").append(blackScore)
+                    .append(" 白:").append(whiteScore)
+                    .append(" 列表:").append(matchedList)
+                    .append(" 本地记录分:").append(totalScore).append("]");
+        }
+        sb.append("[dmj打分:").append(totalScore).append("]");
+        return Pair.of(totalScore, sb.toString());
     }
 
     /**

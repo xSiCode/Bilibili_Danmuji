@@ -425,7 +425,18 @@ public class DanmujiDatabase {
                 stmt.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_stranger_viewer ON stranger_viewer(room_id, anchor_name, uid)");
 
                 // ========================
-                // 表20：足迹留印（对应 _11_足迹留印.csv）
+                // 表20：直播间-主播UID映射（减少B站API调用）
+                // ========================
+                stmt.execute(
+                    "CREATE TABLE IF NOT EXISTS room_anchor_map (" +
+                    "  room_id    BIGINT PRIMARY KEY," +
+                    "  anchor_uid BIGINT NOT NULL," +
+                    "  anchor_name TEXT" +
+                    ")"
+                );
+
+                // ========================
+                // 表21：足迹留印（对应 _11_足迹留印.csv）
                 // ========================
                 stmt.execute(
                     "CREATE TABLE IF NOT EXISTS footprint (" +
