@@ -998,6 +998,32 @@ $(document).on('click', '.bili-badlist-prev', function () {
 $(document).on('click', '.bili-badlist-next', function () {
     method.loadBiliBadList(biliBadListState.page + 1);
 });
+$(document).on('click', '.bili-badlist-export', function () {
+    var $btn = $(this);
+    $btn.prop('disabled', true).text('导出中...');
+    $.ajax({
+        url: '../exportBiliBadList',
+        type: 'GET',
+        dataType: 'json',
+        success: function (data) {
+            $btn.prop('disabled', false).text('导出CSV');
+            if (data.code == '200' && data.result) {
+                showMessage(data.result.message || '导出成功', 'success');
+            } else {
+                showMessage(data.result && data.result.error || '导出失败', 'danger');
+            }
+        },
+        error: function () {
+            $btn.prop('disabled', false).text('导出CSV');
+            showMessage('导出请求失败', 'danger');
+        }
+    });
+});
+$(document).on('click', '.bili-badlist-rescore', function () {
+    if (!confirm('确定要重新打分并解黑吗？\n\n对黑名单中所有用户逐一重新打分，分数>0的自动从B站黑名单移除。\n每人约2~3秒，处理过程不可中断。')) return;
+    showMessage('已发起重新打分任务，请等待处理完成...', 'info', 3000);
+    window.open('../rescoringBiliBadList', '_blank');
+});
 $(document).on('click', '.bili-avatar-click', function () {
     var faceUrl = $(this).data('face');
     $('#avatar-modal-img').attr('src', faceUrl);

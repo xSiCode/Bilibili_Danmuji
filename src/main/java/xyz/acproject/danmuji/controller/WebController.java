@@ -1087,6 +1087,182 @@ public class WebController {
         }
     }
 
+    // ======================== Bili小黑屋 CSV 导出 & 重新打分解黑 ========================
+
+    private static String err(String msg) {
+        JSONObject e = new JSONObject();
+        e.put("error", msg);
+        return e.toJSONString();
+    }
+
+    @ResponseBody
+    @GetMapping(value = "/exportBiliBadList")
+    public Response<?> exportBiliBadList(HttpServletRequest req) {
+        java.util.Random random = new java.util.Random();
+        java.util.List<JSONObject> allUsers = new java.util.ArrayList<>();
+        int page = 1;
+        int pageSize = 50;
+        JSONObject firstPage = HttpUserData.httpGetBiliBadList(page, pageSize);
+        if (firstPage.containsKey("error")) {
+            return Response.success(JSON.parseObject(err(firstPage.getString("error"))), req);
+        }
+        int total = firstPage.getIntValue("total");
+        JSONArray list = firstPage.getJSONArray("list");
+        if (list != null) {
+            for (int i = 0; i < list.size(); i++) allUsers.add(list.getJSONObject(i));
+        }
+        LOGGER.info("exportBiliBadList: page 1 got {} users, total={}", allUsers.size(), total);
+
+        int totalPages = (int) Math.ceil(total / (double) pageSize);
+        for (page = 2; page <= totalPages; page++) {
+            try { Thread.sleep(2000 + random.nextInt(1000)); } catch (InterruptedException e) { break; }
+            JSONObject pageData = HttpUserData.httpGetBiliBadList(page, pageSize);
+            if (pageData.containsKey("error")) {
+                LOGGER.warn("exportBiliBadList: page {} failed, stopping", page);
+                break;
+            }
+            JSONArray pageList = pageData.getJSONArray("list");
+            if (pageList != null) {
+                for (int i = 0; i < pageList.size(); i++) allUsers.add(pageList.getJSONObject(i));
+            }
+            LOGGER.info("exportBiliBadList: page {}/{} done, collected {}", page, totalPages, allUsers.size());
+        }
+
+        try {
+            java.io.File logDir = xyz.acproject.danmuji.conf.LogPathConf.getLogDirAsFile();
+            String fileName = new java.text.SimpleDateFormat("yyyyMMdd_HHmmss").format(new java.util.Date()) + "_bilibili_blacklist.csv";
+            java.io.File csvFile = new java.io.File(logDir, fileName);
+            try (java.io.FileOutputStream fos = new java.io.FileOutputStream(csvFile);
+                 java.io.OutputStreamWriter osw = new java.io.OutputStreamWriter(fos, "UTF-8")) {
+                osw.write('﻿'); // BOM for Excel
+                osw.write("uid,uname,face,sign,mtime,exportTime\n");
+                String exportTime = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new java.util.Date());
+                for (JSONObject user : allUsers) {
+                    String line = user.getLong("mid") + "," +
+                            csvEscape(user.getString("uname")) + "," +
+                            csvEscape(user.getString("face")) + "," +
+                            csvEscape(user.getString("sign")) + "," +
+                            user.getLong("mtime") + "," +
+                            exportTime + "\n";
+                    osw.write(line);
+                }
+            }
+            JSONObject result = new JSONObject();
+            result.put("total", allUsers.size());
+            result.put("filePath", csvFile.getAbsolutePath());
+            result.put("fileName", fileName);
+            result.put("message", "导出成功: " + allUsers.size() + " 条 → " + fileName);
+            LOGGER.info("exportBiliBadList: done, path={}", csvFile.getAbsolutePath());
+            return Response.success(result, req);
+        } catch (Exception e) {
+            LOGGER.error("exportBiliBadList: write CSV failed", e);
+            return Response.success(JSON.parseObject(err("写入CSV失败: " + e.getMessage())), req);
+        }
+    }
+
+    @ResponseBody
+    @GetMapping(value = "/rescoringBiliBadList")
+    public Response<?> rescoringBiliBadList(@RequestParam(defaultValue = "") String filePath,
+                                            HttpServletRequest req) {
+        java.io.File csvFile;
+        if (filePath.isEmpty()) {
+            java.io.File logDir = xyz.acproject.danmuji.conf.LogPathConf.getLogDirAsFile();
+            java.io.File[] files = logDir.listFiles((dir, name) -> name.endsWith("_bilibili_blacklist.csv"));
+            if (files == null || files.length == 0) {
+                return Response.success(JSON.parseObject(err("未找到黑名单CSV文件，请先导出")), req);
+            }
+            java.util.Arrays.sort(files, (a, b) -> Long.compare(b.lastModified(), a.lastModified()));
+            csvFile = files[0];
+        } else {
+            csvFile = new java.io.File(filePath);
+            if (!csvFile.exists()) {
+                return Response.success(JSON.parseObject(err("文件不存在: " + filePath)), req);
+            }
+        }
+
+        java.util.List<long[]> uidList = new java.util.ArrayList<>();
+        try (java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(new java.io.FileInputStream(csvFile), "UTF-8"))) {
+            br.readLine(); // skip header
+            String line;
+            while ((line = br.readLine()) != null) {
+                if (line.trim().isEmpty()) continue;
+                // 提取行中第一段纯数字作为uid
+                String uidStr = line.replaceAll("[^0-9].*", "").trim();
+                if (!uidStr.isEmpty()) uidList.add(new long[]{Long.parseLong(uidStr)});
+            }
+        } catch (Exception e) {
+            LOGGER.error("rescoringBiliBadList: read CSV failed", e);
+            return Response.success(JSON.parseObject(err("读取CSV失败: " + e.getMessage())), req);
+        }
+        LOGGER.info("rescoringBiliBadList: loaded {} uids, starting background task", uidList.size());
+
+        final java.util.List<long[]> fList = uidList;
+        new Thread(() -> doRescoring(fList), "rescoring-task").start();
+
+        JSONObject result = new JSONObject();
+        result.put("total", uidList.size());
+        result.put("message", "已启动后台处理（" + uidList.size() + " 人），查看服务端日志了解进度。结果文件将保存到 Danmuji_log/。");
+        return Response.success(result, req);
+    }
+
+    private void doRescoring(java.util.List<long[]> uidList) {
+        java.io.File logDir = xyz.acproject.danmuji.conf.LogPathConf.getLogDirAsFile();
+        String resultFileName = new java.text.SimpleDateFormat("yyyyMMdd_HHmmss").format(new java.util.Date()) + "_rescoring_result.csv";
+        java.io.File resultFile = new java.io.File(logDir, resultFileName);
+        int unblocked = 0;
+        try (java.io.FileOutputStream fos = new java.io.FileOutputStream(resultFile);
+             java.io.OutputStreamWriter osw = new java.io.OutputStreamWriter(fos, "UTF-8")) {
+            osw.write('﻿');
+            osw.write("uid,score,scoreType,unblockCode,status,reason,processTime\n");
+            for (int i = 0; i < uidList.size(); i++) {
+                long uid = uidList.get(i)[0];
+                String status = "";
+                String reason = "";
+                String scoreType = "";
+                int score = 0;
+                int unblockCode = -1;
+                try {
+                    if (i > 0) Thread.sleep(1000);
+                    org.apache.commons.lang3.tuple.Pair<Integer, String> pair =
+                            xyz.acproject.danmuji.http.HttpRoomData.processFollowings(uid, "uid" + uid)
+                                    .get(30, java.util.concurrent.TimeUnit.SECONDS);
+                    if (pair != null) {
+                        score = pair.getLeft();
+                        scoreType = pair.getRight();
+                        if (score > 0) {
+                            Thread.sleep(1000);
+                            Short code = xyz.acproject.danmuji.http.HttpUserData.httpPostDeleteBadList(uid);
+                            unblockCode = code != null ? code : -1;
+                            if (code != null && code == 0) {
+                                status = "unblocked";
+                                unblocked++;
+                            } else {
+                                status = "unblock_failed";
+                                reason = "code=" + code;
+                                if (code != null && code == 412) { Thread.sleep(60000); }
+                            }
+                        } else { status = "keep_blocked"; }
+                    } else { status = "skipped"; reason = "null"; }
+                } catch (Exception e) {
+                    status = "error";
+                    reason = e.getMessage();
+                }
+                String now = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new java.util.Date());
+                osw.write(uid + "," + score + ",\"" + csvEscape(scoreType) + "\"," + unblockCode + "," + status + ",\"" + csvEscape(reason) + "\"," + now + "\n");
+                osw.flush();
+                LOGGER.info("rescoring: {}/{} uid={} score={} status={}", i + 1, uidList.size(), uid, score, status);
+            }
+        } catch (Exception e) {
+            LOGGER.error("rescoring: fatal error", e);
+        }
+        LOGGER.info("rescoring: DONE. {} uids, {} unblocked. result: {}", uidList.size(), unblocked, resultFile.getAbsolutePath());
+    }
+
+    private String csvEscape(String val) {
+        if (val == null) return "";
+        return "\"" + val.replace("\"", "\"\"") + "\"";
+    }
+
     @ResponseBody
     @GetMapping(value = "/getNegativeBlackPositiveWhite")
     public Response<?> getNegativeBlackPositiveWhite(HttpServletRequest req) {
