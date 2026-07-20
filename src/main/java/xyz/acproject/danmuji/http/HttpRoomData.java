@@ -1416,6 +1416,18 @@ public class HttpRoomData {
     // ---- 用户本地记录分析 ----
 
     public static Pair<Integer, String> processLocalActivitySync(long uid, StringBuilder logSb) {
+        try {
+            return CompletableFuture
+                    .supplyAsync(() -> doLocalActivity(uid, logSb))
+                    .get(10, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            LOGGER.warn("本地记录分析异常 uid={}", uid, e);
+            logSb.append(" [本地记录:异常:").append(e.getMessage()).append("]");
+            return Pair.of(0, "");
+        }
+    }
+
+    private static Pair<Integer, String> doLocalActivity(long uid, StringBuilder logSb) {
         java.util.List<xyz.acproject.danmuji.service.ViewerActivitySummary.RoomSummary> rooms =
                 xyz.acproject.danmuji.service.ViewerActivitySummary.getRoomActivityData(uid);
         if (rooms.isEmpty()) {
