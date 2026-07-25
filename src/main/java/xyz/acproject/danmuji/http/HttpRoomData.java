@@ -884,7 +884,7 @@ public class HttpRoomData {
             // Phase 2e: LR录制分析  不再使用，被 Phase 2f 替代
           //  Pair<Integer, String> localResult = processLocalSummarySync(vmid, logSb);
 
-            // Phase 2f: 流媒体观众分析
+            // Phase 2f: 流媒体(也是LR)Aicu观众分析
             Pair<Integer, String> viewerResult = processStreamerViewersSync(vmid, logSb);
 
             // Phase 2g: 用户本地记录分析
@@ -893,12 +893,12 @@ public class HttpRoomData {
             // Phase 3: 合并
             StringBuilder combinedType = new StringBuilder(60);
             appendType(combinedType, "🍉");
-            appendType(combinedType, viewerResult.getRight());
             appendType(combinedType, cardResult.type);
             appendType(combinedType, medalResult.getRight());
             appendType(combinedType, follResult.getRight());
             appendType(combinedType, sameResult.getRight());
             appendType(combinedType, localActResult.getRight());
+            appendType(combinedType, viewerResult.getRight());
 
             //  最终评分
             int totalScore = medalResult.getLeft() + follResult.getLeft() + cardResult.score + sameResult.getLeft() + viewerResult.getLeft() + localActResult.getLeft();
@@ -940,7 +940,7 @@ public class HttpRoomData {
      */
     private static void appendType(StringBuilder sb, String type) {
         if (type != null && !type.isEmpty()) {
-            sb.append(type);
+            sb.append(type).append(" ");
         }
     }
 
@@ -1118,7 +1118,7 @@ public class HttpRoomData {
                 blackWhiteScore += score;
                 matchedList.add(uname + ":" + score);
                 MatchCountTools.recordMatch(mid, uname, score);
-                if (score < 0) blackCount++;
+                if (score < 0) blackCount--;
                 else whiteCount++;
             }
         }
@@ -1129,9 +1129,7 @@ public class HttpRoomData {
                     .append(" 列表:").append(matchedList).append(" ");
         }
 
-        if (blackWhiteScore != 0) {
-            blackWhiteType.append("[共关分:").append(blackWhiteScore).append("]");
-        }
+        blackWhiteType.append("[共关分:").append(blackWhiteScore) .append(" ").append(whiteCount).append(" ").append(blackCount).append("]");
         logSb.append("共同关注分:").append(blackWhiteScore).append("]");
 
         return Pair.of(blackWhiteScore, blackWhiteType.toString());
@@ -1168,7 +1166,7 @@ public class HttpRoomData {
                 blackWhiteScore += score;
                 matchedList.add(followedName + ":" + score);
                 MatchCountTools.recordMatch(mid, followedName, score);
-                if (score < 0) blackCount++;
+                if (score < 0) blackCount--;
                 else whiteCount++;
             }
         }
@@ -1176,14 +1174,16 @@ public class HttpRoomData {
         followersNameSignScore = getKeyWordsScore(name_sign_followingUser_str, logSb);
         blackWhiteScore += followersNameSignScore;
 
+        int splitCount = blackCount * whiteCount;
         if (!matchedList.isEmpty()) {
             logSb.append("匹配:").append(matchedList.size())
-                    .append(" 分裂度:").append(blackCount * whiteCount)
+                    .append(" 分裂度:").append(splitCount)
                     .append(" 列表:").append(matchedList).append(" ");
         }
 
-
-        blackWhiteType.append("[关注分:").append(blackWhiteScore).append("]");
+        if(splitCount != 0 || blackWhiteScore!=0){
+            blackWhiteType.append("[关注分:").append(blackWhiteScore) .append(" ").append(whiteCount).append(" ").append(blackCount).append("]");
+        }
         logSb.append("关注黑白分:").append(blackWhiteScore).append("]");
 
         // LogFileTools.getlogFileTools().logTestFile(name_sign_followingUser_str);
@@ -1376,7 +1376,9 @@ public class HttpRoomData {
                     .append(" 列表:").append(matchedList).append(" ")
                     .append("]");
         }
-        blackWhiteType.append("[Aicu观看:").append(totalViewers).append(" 打分:").append(totalScore).append("]");
+        if(splitDegree != 0 || totalScore!=0){
+            blackWhiteType.append("[dmk ").append(whiteScore).append(" ").append(blackScore).append("]");
+        }
         return Pair.of(totalScore, blackWhiteType.toString());
     }
 
@@ -1466,7 +1468,11 @@ public class HttpRoomData {
                     .append(" 列表:").append(matchedList)
                     .append(" 本地记录分:").append(totalScore).append("]");
         }
-        sb.append("[dmj打分:").append(totalScore).append("]");
+
+        if(splitDegree != 0 || totalScore!=0){
+            sb.append("[dmj ").append(whiteScore).append(" ").append(blackScore).append("]");
+        }
+
         return Pair.of(totalScore, sb.toString());
     }
 
