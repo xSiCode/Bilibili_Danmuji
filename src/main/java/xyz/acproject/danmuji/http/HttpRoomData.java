@@ -875,24 +875,26 @@ public class HttpRoomData {
             // Phase 2b: 灯牌墙
             Pair<Integer, String> medalResult = processMedalWallSync(medalJson, logSb);
 
+
             // Phase 2c: 关注列表（双页合并）
             Pair<Integer, String> follResult = processFollowingsPages(vmid, logSb, follJson1, follJson2);
 
             // Phase 2d: 共同关注
             Pair<Integer, String> sameResult = processSameFollowings(vmid, logSb, follJson1);
 
+
             // Phase 2e: LR录制分析  不再使用，被 Phase 2f 替代
           //  Pair<Integer, String> localResult = processLocalSummarySync(vmid, logSb);
 
-            // Phase 2f: 流媒体(也是LR)Aicu观众分析
-            Pair<Integer, String> viewerResult = processStreamerViewersSync(vmid, logSb);
-
-            // Phase 2g: 用户本地记录分析
+            // Phase 2f: 用户本地记录分析
             Pair<Integer, String> localActResult = processLocalActivitySync(vmid, logSb);
 
+            // Phase 2g: 流媒体(也是LR)Aicu观众分析
+            Pair<Integer, String> viewerResult = processStreamerViewersSync(vmid, logSb);
+
             // Phase 3: 合并
-            StringBuilder combinedType = new StringBuilder(60);
-            appendType(combinedType, "🍉");
+            StringBuilder combinedType = new StringBuilder(160);
+          //  appendType(combinedType, "🍉");
             appendType(combinedType, cardResult.type);
             appendType(combinedType, medalResult.getRight());
             appendType(combinedType, follResult.getRight());

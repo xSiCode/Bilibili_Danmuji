@@ -4776,9 +4776,10 @@ public class WebController {
                             row.put("name", rs.getString("name"));
                             row.put("face", rs.getString("face"));
                             row.put("score", rs.getInt("score"));
-                            String svSummary = xyz.acproject.danmuji.service.ViewerActivitySummary.buildSummary(rs.getLong("uid"));
-                            row.put("scoreTypes", (svSummary.isEmpty() ? "" : " " + svSummary)
-                                    + (rs.getString("score_types") != null ? rs.getString("score_types") : ""));
+//                            String svSummary = xyz.acproject.danmuji.service.ViewerActivitySummary.buildSummary(rs.getLong("uid"));
+//                            row.put("scoreTypes", (svSummary.isEmpty() ? "" : " " + svSummary)
+//                                    + (rs.getString("score_types") != null ? rs.getString("score_types") : ""));
+                            row.put("scoreTypes", rs.getString("score_types"));
                             row.put("count", rs.getInt("count"));
                             row.put("session", rs.getInt("session"));
                             row.put("blocked", rs.getInt("blocked") == 1);
