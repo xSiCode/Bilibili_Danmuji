@@ -1592,12 +1592,14 @@ public class ParseMessageThread extends Thread {
             if (LocalBlackWhiteListService.isInWhitelist(_follow_uid)) {
                 LocalBlackWhiteListService.incrementWhiteCount(_follow_uid);
                 pushBwlistUpdate("white", _follow_uid);
+                VisitorCountTools.recordVisitor(_follow_uid, _follow_uname, 0, null);
                 return;
             }
             if (LocalBlackWhiteListService.isInBlacklist(_follow_uid)) {
                 LocalBlackWhiteListService.incrementBlackCount(_follow_uid);
                 pushBwlistUpdate("black", _follow_uid);
                 HttpUserData.httpPostAddBadList(_follow_uid);
+                VisitorCountTools.recordVisitor(_follow_uid, _follow_uname,0, null);
                 return;
             }
         }

@@ -72,8 +72,12 @@ public class VisitorCountTools {
                         HttpRoomData.isUidInPnScoreMap(uid), 1);
             }
             v.uname = uname;
-            v.score = score;
-            v.scoreType = scoreType;
+
+            if (score != 0 && scoreType != null){
+                v.score = score;
+                v.scoreType = scoreType;
+            }
+
             v.count++;
             long now = System.currentTimeMillis();
             if (now - v.latestEntryTime >= 3 * 60 * 60 * 1000L) {
