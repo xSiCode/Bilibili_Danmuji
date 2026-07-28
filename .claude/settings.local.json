@@ -72,7 +72,8 @@
       "Read(//c/Users/xSiCo/AppData/Local/Programs/Python/**)",
       "Read(//c/Program Files/**)",
       "Bash(/c/Python314/python *)",
-      "Bash(curl -s \"http://localhost:5000/api/user/streamer/87107837\")"
+      "Bash(curl -s \"http://localhost:5000/api/user/streamer/87107837\")",
+      "Bash(curl -s \"http://127.0.0.1:5001/api/events?user_id=3706982280203065\")"
     ]
   }
 }

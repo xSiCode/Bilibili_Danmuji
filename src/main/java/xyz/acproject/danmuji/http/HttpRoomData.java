@@ -892,18 +892,22 @@ public class HttpRoomData {
             // Phase 2g: 流媒体(也是LR)Aicu观众分析
             Pair<Integer, String> viewerResult = processStreamerViewersSync(vmid, logSb);
 
+            // Phase 2h: 事件API分析 (127.0.0.1:5001) 本地的danmakus-client 记录的最近7天的数据，相比processStreamerViewersSync 多了点赞计数，少了金额计数。
+            Pair<Integer, String> eventsApiResult = processEventsApiSync(vmid, logSb);
+
             // Phase 3: 合并
             StringBuilder combinedType = new StringBuilder(160);
-          //  appendType(combinedType, "🍉");
-            appendType(combinedType, cardResult.type);
-            appendType(combinedType, medalResult.getRight());
-            appendType(combinedType, follResult.getRight());
+           // appendType(combinedType, cardResult.type);
+          //  appendType(combinedType, medalResult.getRight());
+           // appendType(combinedType, follResult.getRight());
             appendType(combinedType, sameResult.getRight());
-            appendType(combinedType, localActResult.getRight());
+
+         //   appendType(combinedType, localActResult.getRight());
             appendType(combinedType, viewerResult.getRight());
+         //   appendType(combinedType, eventsApiResult.getRight());
 
             //  最终评分
-            int totalScore = medalResult.getLeft() + follResult.getLeft() + cardResult.score + sameResult.getLeft() + viewerResult.getLeft() + localActResult.getLeft();
+            int totalScore = medalResult.getLeft() + follResult.getLeft() + cardResult.score + sameResult.getLeft() + viewerResult.getLeft() + localActResult.getLeft() + eventsApiResult.getLeft();
 
 
             StrangerViewerService.addRecord(
@@ -1308,7 +1312,7 @@ public class HttpRoomData {
     }
 
     private static Pair<Integer, String> doStreamerViewers(long streamerUid, StringBuilder logSb) {
-        String url = "http://localhost:5000/api/user/streamer/" + streamerUid;
+        String url = "http://127.0.0.1:5000/api/user/streamer/" + streamerUid;
         String body = null;
         try {
             okhttp3.Response resp = OkHttp3Utils.getHttp3Utils().httpGet(url, null, null);
@@ -1340,6 +1344,7 @@ public class HttpRoomData {
 
         int totalScore = 0;
         int blackScore = 0, whiteScore = 0;
+        int msgBlackScore =0, msgWhiteScore = 0;
         int totalViewers = viewers.size();
         StringBuilder blackWhiteType = new StringBuilder(60);
         JSONArray matchedList = new JSONArray();
@@ -1352,7 +1357,7 @@ public class HttpRoomData {
             if (pnScore == null) continue;
 
             int total = item.getIntValue("total");
-//            int msg = item.getIntValue("msg");
+            int msg = item.getIntValue("msg");
 //            int enter = item.getIntValue("enter");
 //            int gift = item.getIntValue("gift");
             double giftAmount = item.getDoubleValue("gift_amount");
@@ -1361,9 +1366,11 @@ public class HttpRoomData {
             if (pnScore < 0) {
                 itemScore = pnScore - itemScore;
                 blackScore += itemScore;
+                msgBlackScore -= msg;
             } else if (pnScore > 0) {
                 itemScore = pnScore + itemScore;
                 whiteScore += itemScore;
+                msgWhiteScore += msg;
             }
             totalScore += itemScore;
             matchedList.add(item.getString("name") + ":" + itemScore);
@@ -1379,8 +1386,80 @@ public class HttpRoomData {
                     .append("]");
         }
         if(splitDegree != 0 || totalScore!=0){
-            blackWhiteType.append("[dmk ").append(whiteScore).append(" ").append(blackScore).append("]");
+            blackWhiteType.append("[dmk ").append(whiteScore).append(" ").append(blackScore).append("] [弹幕数: ").append(msgWhiteScore).append(" ").append(msgBlackScore).append("]");
         }
+        return Pair.of(totalScore, blackWhiteType.toString());
+    }
+
+    // ---- 事件API分析 (127.0.0.1:5001) ----
+
+    public static Pair<Integer, String> processEventsApiSync(long uid, StringBuilder logSb) {
+        try {
+            return CompletableFuture
+                    .supplyAsync(() -> doEventsApi(uid, logSb))
+                    .get(8, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            LOGGER.warn("EventsAPI异常 uid={}", uid, e);
+            logSb.append(" [事件分析:异常:").append(e.getMessage()).append("]");
+            return Pair.of(0, "");
+        }
+    }
+
+    private static Pair<Integer, String> doEventsApi(long uid, StringBuilder logSb) {
+        String url = "http://127.0.0.1:5001/api/events?user_id=" + uid;
+        String body = null;
+        try {
+            okhttp3.Response resp = OkHttp3Utils.getHttp3Utils().httpGet(url, null, null);
+            if (resp != null && resp.isSuccessful() && resp.body() != null) {
+                body = resp.body().string();
+                resp.close();
+            } else if (resp != null) { resp.close(); }
+        } catch (Exception e) {
+            LOGGER.warn("EventsAPI GET failed: {}", e.getMessage());
+        }
+        if (body == null || body.isEmpty()) {
+            logSb.append("  [事件分析:无数据]");
+            return Pair.of(0, "");
+        }
+        JSONArray events;
+        try { events = JSON.parseArray(body); } catch (Exception e) {
+            logSb.append("  [事件分析:解析失败]");
+            return Pair.of(0, "");
+        }
+        if (events == null || events.isEmpty()) {
+            logSb.append("  [事件分析:空]");
+            return Pair.of(0, "");
+        }
+
+        int totalScore = 0, blackScore = 0, whiteScore = 0;
+        StringBuilder blackWhiteType = new StringBuilder(60);
+        logSb.append(" [事件分析 ");
+        for (Object obj : events) {
+            JSONObject item = (JSONObject) obj;
+            long anchorId = item.getLongValue("anchor_id");
+            if (anchorId <= 0) continue;
+            Integer pnScore = pnScoreMap.get(anchorId);
+            if (pnScore == null) continue;
+            int totalEvents = item.getIntValue("total_events");
+            int itemScore = totalEvents;
+            if (pnScore < 0) {
+                itemScore = pnScore - itemScore;
+                blackScore += itemScore;
+            } else if (pnScore > 0) {
+                itemScore = pnScore + itemScore;
+                whiteScore += itemScore;
+            }
+            totalScore += itemScore;
+        }
+        int splitDegree = blackScore * whiteScore;
+        if (totalScore != 0) {
+            logSb.append("事件黑白分:").append(totalScore)
+                    .append(" 分裂度:").append(splitDegree)
+                    .append(" 黑:").append(blackScore)
+                    .append(" 白:").append(whiteScore)
+                    .append("]");
+        }
+        blackWhiteType.append("[dmkc: ").append(totalScore).append("]");
         return Pair.of(totalScore, blackWhiteType.toString());
     }
 
