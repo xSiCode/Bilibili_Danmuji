@@ -18,6 +18,8 @@ import java.util.concurrent.TimeUnit;
 public class GuardBuyRecorder {
     private static final Logger LOGGER = LogManager.getLogger(GuardBuyRecorder.class);
     private static final LinkedBlockingQueue<Guard> queue = new LinkedBlockingQueue<>(5000);
+    private static final int MAX_RETRIES = 3;
+    private static final long RETRY_DELAY_MS = 500;
 
     static {
         Thread writer = new Thread(() -> {
@@ -28,7 +30,7 @@ public class GuardBuyRecorder {
                     if (first != null) {
                         batch.add(first);
                         queue.drainTo(batch, 200);
-                        flushBatch(batch);
+                        flushBatchWithRetry(batch);
                         batch.clear();
                     }
                 } catch (InterruptedException e) {
@@ -43,12 +45,30 @@ public class GuardBuyRecorder {
     private GuardBuyRecorder() {}
 
     public static void record(Guard guard) {
-        if (guard == null || guard.getUid() == null) return;
-        queue.offer(guard);
+        if (guard == null || guard.getUid() == null) {
+            LOGGER.warn("GuardBuyRecorder: dropped null uid");
+            return;
+        }
+        if (!queue.offer(guard)) {
+            LOGGER.warn("GuardBuyRecorder: queue full, dropping guard from={}", guard.getUsername());
+        }
     }
 
-    private static void flushBatch(List<Guard> batch) {
-        if (batch.isEmpty()) return;
+    private static void flushBatchWithRetry(List<Guard> batch) {
+        for (int attempt = 0; attempt < MAX_RETRIES; attempt++) {
+            if (flushBatch(batch)) return;
+            LOGGER.warn("GuardBuyRecorder: flush failed (attempt {}), retrying", attempt + 1);
+            try { Thread.sleep(RETRY_DELAY_MS); } catch (InterruptedException e) { break; }
+        }
+        int requeued = 0;
+        for (Guard g : batch) {
+            if (queue.offer(g)) requeued++;
+        }
+        LOGGER.warn("GuardBuyRecorder: requeued {}/{} after all retries", requeued, batch.size());
+    }
+
+    private static boolean flushBatch(List<Guard> batch) {
+        if (batch.isEmpty()) return true;
         String sql =
             "INSERT INTO guard_buy(room_id,anchor_name,uid,uname,guard_level,num,price,gift_name,start_time,end_time) " +
             "VALUES (?,?,?,?,?,?,?,?,?,?)";
@@ -74,8 +94,10 @@ public class GuardBuyRecorder {
                 ps.addBatch();
             }
             ps.executeBatch();
+            return true;
         } catch (Exception e) {
             LOGGER.error("GuardBuyRecorder flush error", e);
+            return false;
         }
     }
 }

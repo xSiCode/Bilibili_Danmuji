@@ -18,6 +18,8 @@ import java.util.concurrent.TimeUnit;
 public class SuperChatRecorder {
     private static final Logger LOGGER = LogManager.getLogger(SuperChatRecorder.class);
     private static final LinkedBlockingQueue<SuperChat> queue = new LinkedBlockingQueue<>(5000);
+    private static final int MAX_RETRIES = 3;
+    private static final long RETRY_DELAY_MS = 500;
 
     static {
         Thread writer = new Thread(() -> {
@@ -28,7 +30,7 @@ public class SuperChatRecorder {
                     if (first != null) {
                         batch.add(first);
                         queue.drainTo(batch, 200);
-                        flushBatch(batch);
+                        flushBatchWithRetry(batch);
                         batch.clear();
                     }
                 } catch (InterruptedException e) {
@@ -43,12 +45,31 @@ public class SuperChatRecorder {
     private SuperChatRecorder() {}
 
     public static void record(SuperChat sc) {
-        if (sc == null || sc.getUid() == null) return;
-        queue.offer(sc);
+        if (sc == null || sc.getUid() == null) {
+            LOGGER.warn("SuperChatRecorder: dropped null uid");
+            return;
+        }
+        if (!queue.offer(sc)) {
+            LOGGER.warn("SuperChatRecorder: queue full, dropping SC from={}",
+                    sc.getUser_info() != null ? sc.getUser_info().getUname() : "?");
+        }
     }
 
-    private static void flushBatch(List<SuperChat> batch) {
-        if (batch.isEmpty()) return;
+    private static void flushBatchWithRetry(List<SuperChat> batch) {
+        for (int attempt = 0; attempt < MAX_RETRIES; attempt++) {
+            if (flushBatch(batch)) return;
+            LOGGER.warn("SuperChatRecorder: flush failed (attempt {}), retrying", attempt + 1);
+            try { Thread.sleep(RETRY_DELAY_MS); } catch (InterruptedException e) { break; }
+        }
+        int requeued = 0;
+        for (SuperChat sc : batch) {
+            if (queue.offer(sc)) requeued++;
+        }
+        LOGGER.warn("SuperChatRecorder: requeued {}/{} after all retries", requeued, batch.size());
+    }
+
+    private static boolean flushBatch(List<SuperChat> batch) {
+        if (batch.isEmpty()) return true;
         String sql =
             "INSERT INTO super_chat(room_id,anchor_name,uid,uname,message,price,keep_time," +
             "start_time,end_time,gift_name,medal_level,medal_name,medal_color,background_color) " +
@@ -86,8 +107,10 @@ public class SuperChatRecorder {
                 ps.addBatch();
             }
             ps.executeBatch();
+            return true;
         } catch (Exception e) {
             LOGGER.error("SuperChatRecorder flush error", e);
+            return false;
         }
     }
 }

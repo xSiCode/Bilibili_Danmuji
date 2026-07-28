@@ -20,6 +20,8 @@ import java.util.concurrent.TimeUnit;
 public class EnterRecorder {
     private static final Logger LOGGER = LogManager.getLogger(EnterRecorder.class);
     private static final LinkedBlockingQueue<Interact> queue = new LinkedBlockingQueue<>(20000);
+    private static final int MAX_RETRIES = 3;
+    private static final long RETRY_DELAY_MS = 500;
 
     static {
         Thread writer = new Thread(() -> {
@@ -30,7 +32,7 @@ public class EnterRecorder {
                     if (first != null) {
                         batch.add(first);
                         queue.drainTo(batch, 500);
-                        flushBatch(batch);
+                        flushBatchWithRetry(batch);
                         batch.clear();
                     }
                 } catch (InterruptedException e) {
@@ -45,12 +47,30 @@ public class EnterRecorder {
     private EnterRecorder() {}
 
     public static void record(Interact interact) {
-        if (interact == null || interact.getUid() == null) return;
-        queue.offer(interact);
+        if (interact == null || interact.getUid() == null) {
+            LOGGER.warn("EnterRecorder: dropped null uid");
+            return;
+        }
+        if (!queue.offer(interact)) {
+            LOGGER.warn("EnterRecorder: queue full, dropping enter from={}", interact.getUname());
+        }
     }
 
-    private static void flushBatch(List<Interact> batch) {
-        if (batch.isEmpty()) return;
+    private static void flushBatchWithRetry(List<Interact> batch) {
+        for (int attempt = 0; attempt < MAX_RETRIES; attempt++) {
+            if (flushBatch(batch)) return;
+            LOGGER.warn("EnterRecorder: flush failed (attempt {}), retrying", attempt + 1);
+            try { Thread.sleep(RETRY_DELAY_MS); } catch (InterruptedException e) { break; }
+        }
+        int requeued = 0;
+        for (Interact it : batch) {
+            if (queue.offer(it)) requeued++;
+        }
+        LOGGER.warn("EnterRecorder: requeued {}/{} after all retries", requeued, batch.size());
+    }
+
+    private static boolean flushBatch(List<Interact> batch) {
+        if (batch.isEmpty()) return true;
         String sql =
             "INSERT INTO enter_events(room_id,anchor_name,uid,uname,uname_color,timestamp," +
             "score,medal_level,medal_name,medal_anchor,medal_room,medal_color,guard_level,is_lighted,identities) " +
@@ -65,7 +85,6 @@ public class EnterRecorder {
                 ps.setLong(i++, it.getUid());
                 ps.setString(i++, it.getUname());
                 ps.setString(i++, it.getUname_color());
-                // INTERACT_WORD_V2 时间戳是秒，转为毫秒存储
                 Long ts = it.getTimestamp();
                 if (ts == null) ts = System.currentTimeMillis();
                 else if (ts < 100000000000L) ts = ts * 1000;
@@ -82,8 +101,10 @@ public class EnterRecorder {
                 ps.addBatch();
             }
             ps.executeBatch();
+            return true;
         } catch (Exception e) {
             LOGGER.error("EnterRecorder flush error", e);
+            return false;
         }
     }
 

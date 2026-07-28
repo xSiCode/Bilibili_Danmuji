@@ -19,6 +19,8 @@ import java.util.concurrent.TimeUnit;
 public class DanmakuRecorder {
     private static final Logger LOGGER = LogManager.getLogger(DanmakuRecorder.class);
     private static final LinkedBlockingQueue<Barrage> queue = new LinkedBlockingQueue<>(20000);
+    private static final int MAX_RETRIES = 3;
+    private static final long RETRY_DELAY_MS = 500;
 
     static {
         Thread writer = new Thread(() -> {
@@ -29,7 +31,7 @@ public class DanmakuRecorder {
                     if (first != null) {
                         batch.add(first);
                         queue.drainTo(batch, 500);
-                        flushBatch(batch);
+                        flushBatchWithRetry(batch);
                         batch.clear();
                     }
                 } catch (InterruptedException e) {
@@ -44,12 +46,30 @@ public class DanmakuRecorder {
     private DanmakuRecorder() {}
 
     public static void record(Barrage barrage) {
-        if (barrage == null || barrage.getUid() == null) return;
-        queue.offer(barrage);
+        if (barrage == null || barrage.getUid() == null) {
+            LOGGER.warn("DanmakuRecorder: dropped null uid");
+            return;
+        }
+        if (!queue.offer(barrage)) {
+            LOGGER.warn("DanmakuRecorder: queue full, dropping danmaku from={}", barrage.getUname());
+        }
     }
 
-    private static void flushBatch(List<Barrage> batch) {
-        if (batch.isEmpty()) return;
+    private static void flushBatchWithRetry(List<Barrage> batch) {
+        for (int attempt = 0; attempt < MAX_RETRIES; attempt++) {
+            if (flushBatch(batch)) return;
+            LOGGER.warn("DanmakuRecorder: flush failed (attempt {}), retrying", attempt + 1);
+            try { Thread.sleep(RETRY_DELAY_MS); } catch (InterruptedException e) { break; }
+        }
+        int requeued = 0;
+        for (Barrage b : batch) {
+            if (queue.offer(b)) requeued++;
+        }
+        LOGGER.warn("DanmakuRecorder: requeued {}/{} after all retries", requeued, batch.size());
+    }
+
+    private static boolean flushBatch(List<Barrage> batch) {
+        if (batch.isEmpty()) return true;
         String sql =
             "INSERT INTO danmaku(room_id,anchor_name,uid,uname,content,msg_type,is_emoticon," +
             "emoticon_name,emoticon_url,vip,svip,manager,uidentity,iphone,guard_level," +
@@ -86,8 +106,10 @@ public class DanmakuRecorder {
                 ps.addBatch();
             }
             ps.executeBatch();
+            return true;
         } catch (Exception e) {
             LOGGER.error("DanmakuRecorder flush error", e);
+            return false;
         }
     }
 }

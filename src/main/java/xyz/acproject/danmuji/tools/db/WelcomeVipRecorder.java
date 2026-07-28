@@ -18,6 +18,8 @@ import java.util.concurrent.TimeUnit;
 public class WelcomeVipRecorder {
     private static final Logger LOGGER = LogManager.getLogger(WelcomeVipRecorder.class);
     private static final LinkedBlockingQueue<WelcomeVip> queue = new LinkedBlockingQueue<>(5000);
+    private static final int MAX_RETRIES = 3;
+    private static final long RETRY_DELAY_MS = 500;
 
     static {
         Thread writer = new Thread(() -> {
@@ -28,7 +30,7 @@ public class WelcomeVipRecorder {
                     if (first != null) {
                         batch.add(first);
                         queue.drainTo(batch, 200);
-                        flushBatch(batch);
+                        flushBatchWithRetry(batch);
                         batch.clear();
                     }
                 } catch (InterruptedException e) {
@@ -43,12 +45,30 @@ public class WelcomeVipRecorder {
     private WelcomeVipRecorder() {}
 
     public static void record(WelcomeVip wv) {
-        if (wv == null || wv.getUid() == null) return;
-        queue.offer(wv);
+        if (wv == null || wv.getUid() == null) {
+            LOGGER.warn("WelcomeVipRecorder: dropped null uid");
+            return;
+        }
+        if (!queue.offer(wv)) {
+            LOGGER.warn("WelcomeVipRecorder: queue full, dropping VIP from={}", wv.getUname());
+        }
     }
 
-    private static void flushBatch(List<WelcomeVip> batch) {
-        if (batch.isEmpty()) return;
+    private static void flushBatchWithRetry(List<WelcomeVip> batch) {
+        for (int attempt = 0; attempt < MAX_RETRIES; attempt++) {
+            if (flushBatch(batch)) return;
+            LOGGER.warn("WelcomeVipRecorder: flush failed (attempt {}), retrying", attempt + 1);
+            try { Thread.sleep(RETRY_DELAY_MS); } catch (InterruptedException e) { break; }
+        }
+        int requeued = 0;
+        for (WelcomeVip wv : batch) {
+            if (queue.offer(wv)) requeued++;
+        }
+        LOGGER.warn("WelcomeVipRecorder: requeued {}/{} after all retries", requeued, batch.size());
+    }
+
+    private static boolean flushBatch(List<WelcomeVip> batch) {
+        if (batch.isEmpty()) return true;
         String sql =
             "INSERT INTO welcome_vip(room_id,anchor_name,uid,uname,vip,svip,is_admin,timestamp) " +
             "VALUES (?,?,?,?,?,?,?,?)";
@@ -67,8 +87,10 @@ public class WelcomeVipRecorder {
                 ps.addBatch();
             }
             ps.executeBatch();
+            return true;
         } catch (Exception e) {
             LOGGER.error("WelcomeVipRecorder flush error", e);
+            return false;
         }
     }
 }

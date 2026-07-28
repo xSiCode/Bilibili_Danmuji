@@ -18,6 +18,8 @@ import java.util.concurrent.TimeUnit;
 public class BlockMsgRecorder {
     private static final Logger LOGGER = LogManager.getLogger(BlockMsgRecorder.class);
     private static final LinkedBlockingQueue<BlockMessage> queue = new LinkedBlockingQueue<>(5000);
+    private static final int MAX_RETRIES = 3;
+    private static final long RETRY_DELAY_MS = 500;
 
     static {
         Thread writer = new Thread(() -> {
@@ -28,7 +30,7 @@ public class BlockMsgRecorder {
                     if (first != null) {
                         batch.add(first);
                         queue.drainTo(batch, 200);
-                        flushBatch(batch);
+                        flushBatchWithRetry(batch);
                         batch.clear();
                     }
                 } catch (InterruptedException e) {
@@ -43,12 +45,30 @@ public class BlockMsgRecorder {
     private BlockMsgRecorder() {}
 
     public static void record(BlockMessage bm) {
-        if (bm == null || bm.getUid() == null) return;
-        queue.offer(bm);
+        if (bm == null || bm.getUid() == null) {
+            LOGGER.warn("BlockMsgRecorder: dropped null uid");
+            return;
+        }
+        if (!queue.offer(bm)) {
+            LOGGER.warn("BlockMsgRecorder: queue full, dropping block from={}", bm.getUname());
+        }
     }
 
-    private static void flushBatch(List<BlockMessage> batch) {
-        if (batch.isEmpty()) return;
+    private static void flushBatchWithRetry(List<BlockMessage> batch) {
+        for (int attempt = 0; attempt < MAX_RETRIES; attempt++) {
+            if (flushBatch(batch)) return;
+            LOGGER.warn("BlockMsgRecorder: flush failed (attempt {}), retrying", attempt + 1);
+            try { Thread.sleep(RETRY_DELAY_MS); } catch (InterruptedException e) { break; }
+        }
+        int requeued = 0;
+        for (BlockMessage bm : batch) {
+            if (queue.offer(bm)) requeued++;
+        }
+        LOGGER.warn("BlockMsgRecorder: requeued {}/{} after all retries", requeued, batch.size());
+    }
+
+    private static boolean flushBatch(List<BlockMessage> batch) {
+        if (batch.isEmpty()) return true;
         String sql =
             "INSERT INTO block_msg(room_id,anchor_name,uid,uname,operator,timestamp) " +
             "VALUES (?,?,?,?,?,?)";
@@ -65,8 +85,10 @@ public class BlockMsgRecorder {
                 ps.addBatch();
             }
             ps.executeBatch();
+            return true;
         } catch (Exception e) {
             LOGGER.error("BlockMsgRecorder flush error", e);
+            return false;
         }
     }
 }

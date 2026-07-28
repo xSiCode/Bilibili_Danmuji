@@ -20,6 +20,8 @@ import java.util.concurrent.TimeUnit;
 public class FollowRecorder {
     private static final Logger LOGGER = LogManager.getLogger(FollowRecorder.class);
     private static final LinkedBlockingQueue<Interact> queue = new LinkedBlockingQueue<>(20000);
+    private static final int MAX_RETRIES = 3;
+    private static final long RETRY_DELAY_MS = 500;
 
     static {
         Thread writer = new Thread(() -> {
@@ -30,7 +32,7 @@ public class FollowRecorder {
                     if (first != null) {
                         batch.add(first);
                         queue.drainTo(batch, 500);
-                        flushBatch(batch);
+                        flushBatchWithRetry(batch);
                         batch.clear();
                     }
                 } catch (InterruptedException e) {
@@ -45,12 +47,30 @@ public class FollowRecorder {
     private FollowRecorder() {}
 
     public static void record(Interact interact) {
-        if (interact == null || interact.getUid() == null) return;
-        queue.offer(interact);
+        if (interact == null || interact.getUid() == null) {
+            LOGGER.warn("FollowRecorder: dropped null uid");
+            return;
+        }
+        if (!queue.offer(interact)) {
+            LOGGER.warn("FollowRecorder: queue full, dropping follow from={}", interact.getUname());
+        }
     }
 
-    private static void flushBatch(List<Interact> batch) {
-        if (batch.isEmpty()) return;
+    private static void flushBatchWithRetry(List<Interact> batch) {
+        for (int attempt = 0; attempt < MAX_RETRIES; attempt++) {
+            if (flushBatch(batch)) return;
+            LOGGER.warn("FollowRecorder: flush failed (attempt {}), retrying", attempt + 1);
+            try { Thread.sleep(RETRY_DELAY_MS); } catch (InterruptedException e) { break; }
+        }
+        int requeued = 0;
+        for (Interact it : batch) {
+            if (queue.offer(it)) requeued++;
+        }
+        LOGGER.warn("FollowRecorder: requeued {}/{} after all retries", requeued, batch.size());
+    }
+
+    private static boolean flushBatch(List<Interact> batch) {
+        if (batch.isEmpty()) return true;
         String sql =
             "INSERT INTO follow_events(room_id,anchor_name,uid,uname,uname_color,timestamp," +
             "score,medal_level,medal_name,medal_anchor,medal_room,medal_color,guard_level,is_lighted,identities) " +
@@ -82,8 +102,10 @@ public class FollowRecorder {
                 ps.addBatch();
             }
             ps.executeBatch();
+            return true;
         } catch (Exception e) {
             LOGGER.error("FollowRecorder flush error", e);
+            return false;
         }
     }
 

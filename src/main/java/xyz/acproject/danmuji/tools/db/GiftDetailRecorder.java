@@ -20,7 +20,9 @@ import java.util.concurrent.TimeUnit;
  */
 public class GiftDetailRecorder {
     private static final Logger LOGGER = LogManager.getLogger(GiftDetailRecorder.class);
-    private static final LinkedBlockingQueue<Gift> queue = new LinkedBlockingQueue<>(10000);
+    private static final LinkedBlockingQueue<Gift> queue = new LinkedBlockingQueue<>(20000);
+    private static final int MAX_RETRIES = 3;          // 单批失败最大重试次数
+    private static final long RETRY_DELAY_MS = 500;    // 重试间隔
 
     static {
         Thread writer = new Thread(() -> {
@@ -31,7 +33,7 @@ public class GiftDetailRecorder {
                     if (first != null) {
                         batch.add(first);
                         queue.drainTo(batch, 500);
-                        flushBatch(batch);
+                        flushBatchWithRetry(batch);
                         batch.clear();
                     }
                 } catch (InterruptedException e) {
@@ -46,8 +48,15 @@ public class GiftDetailRecorder {
     private GiftDetailRecorder() {}
 
     public static void record(Gift gift) {
-        if (gift == null || gift.getUid() == null) return;
-        queue.offer(gift);
+        if (gift == null || gift.getUid() == null) {
+            LOGGER.warn("GiftDetailRecorder: dropped gift with null uid name={}",
+                    gift != null ? gift.getGiftName() : "null_gift");
+            return;
+        }
+        if (!queue.offer(gift)) {
+            LOGGER.warn("GiftDetailRecorder: queue full, dropping gift name={} from={}",
+                    gift.getGiftName(), gift.getUname());
+        }
     }
 
     /**
@@ -68,11 +77,31 @@ public class GiftDetailRecorder {
         g.setTotal_coin(rp.getNum() != null && rp.getPrice() != null ?
                 (long) rp.getNum() * rp.getPrice() : null);
         g.setMedal_info(rp.getMedal_info());
-        queue.offer(g);
+        if (!queue.offer(g)) {
+            LOGGER.warn("GiftDetailRecorder: queue full, dropping red package name={} from={}",
+                    g.getGiftName(), g.getUname());
+        }
     }
 
-    private static void flushBatch(List<Gift> batch) {
-        if (batch.isEmpty()) return;
+    private static void flushBatchWithRetry(List<Gift> batch) {
+        for (int attempt = 0; attempt < MAX_RETRIES; attempt++) {
+            if (flushBatch(batch)) return;
+            LOGGER.warn("GiftDetailRecorder: batch flush failed (attempt {}), retrying in {}ms",
+                    attempt + 1, RETRY_DELAY_MS);
+            try { Thread.sleep(RETRY_DELAY_MS); } catch (InterruptedException e) { break; }
+        }
+        // 全部重试失败 → 放回队列，不丢
+        LOGGER.error("GiftDetailRecorder: all {} retries failed, requeuing {} gifts",
+                MAX_RETRIES, batch.size());
+        int requeued = 0;
+        for (Gift g : batch) {
+            if (queue.offer(g)) requeued++;
+        }
+        LOGGER.warn("GiftDetailRecorder: requeued {}/{} gifts for retry", requeued, batch.size());
+    }
+
+    private static boolean flushBatch(List<Gift> batch) {
+        if (batch.isEmpty()) return true;
         String sql =
             "INSERT INTO gift_detail(room_id,anchor_name,uid,uname,face,gift_id,gift_name,gift_type," +
             "num,price,total_coin,coin_type,action,guard_level,medal_level,medal_name,medal_anchor,medal_color,timestamp,source) " +
@@ -81,7 +110,6 @@ public class GiftDetailRecorder {
              PreparedStatement ps = c.prepareStatement(sql)) {
             for (Gift g : batch) {
                 MedalInfo m = g.getMedal_info();
-                // timestamp 在 Gift 中是秒，需转换为毫秒
                 Long ts = g.getTimestamp();
                 if (ts != null && ts < 100000000000L) ts = ts * 1000;
                 int i = 1;
@@ -108,8 +136,10 @@ public class GiftDetailRecorder {
                 ps.addBatch();
             }
             ps.executeBatch();
+            return true;
         } catch (Exception e) {
-            LOGGER.error("GiftDetailRecorder flush error", e);
+            LOGGER.error("GiftDetailRecorder flush error (SQLITE_BUSY?), batch size={}", batch.size(), e);
+            return false;
         }
     }
 }
