@@ -1386,8 +1386,12 @@ public class HttpRoomData {
                     .append("]");
         }
         if(splitDegree != 0 || totalScore!=0){
-            blackWhiteType.append("[dmk ").append(whiteScore).append(" ").append(blackScore).append("] [弹幕数: ").append(msgWhiteScore).append(" ").append(msgBlackScore).append("]");
+            blackWhiteType.append("[dmk ").append(whiteScore).append(" ").append(blackScore).append("]");
         }
+        if (msgWhiteScore !=0 && msgBlackScore != 0){
+            blackWhiteType.append(" (弹幕数: ").append(msgWhiteScore).append(" ").append(msgBlackScore).append(")");
+        }
+
         return Pair.of(totalScore, blackWhiteType.toString());
     }
 
