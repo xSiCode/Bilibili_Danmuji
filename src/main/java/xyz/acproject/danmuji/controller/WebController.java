@@ -2950,12 +2950,9 @@ public class WebController {
                                             HttpServletRequest req) {
         try {
             validateFilePath(filePath);
-            File file = new File(filePath);
-            if (!file.isAbsolute()) {
-                file = new File(getDanmujiLogDir(), filePath);
-            }
             Map<String, Object> stats = new LinkedHashMap<>();
-            if (!file.exists()) {
+            long roomId = parseRoomIdFromPath(filePath);
+            if (roomId == 0) {
                 stats.put("userCount", 0); stats.put("barrageCount", 0); stats.put("totalChars", 0L);
                 stats.put("top5Senders", Collections.emptyList()); stats.put("wordFrequency", Collections.emptyList());
                 stats.put("perIntervalData", Collections.emptyList());
@@ -2964,7 +2961,6 @@ public class WebController {
             }
 
             List<String[]> filteredRows = new ArrayList<>();
-            long roomId = parseRoomIdFromPath(filePath);
             String anchorName = parseAnchorFromPath(filePath);
             if (roomId != 0) {
                 try (java.sql.Connection c = getDbConnection()) {
@@ -3387,10 +3383,9 @@ public class WebController {
                                             HttpServletRequest req) {
         try {
             validateFilePath(filePath);
-            File file = new File(filePath);
-            if (!file.isAbsolute()) file = new File(getDanmujiLogDir(), filePath);
             Map<String, Object> stats = new LinkedHashMap<>();
-            if (!file.exists()) {
+            long roomId = parseRoomIdFromPath(filePath);
+            if (roomId == 0) {
                 stats.put("totalVisits", 0L); stats.put("actualPeople", 0); stats.put("avgPerMin", 0.0);
                 stats.put("scoreSum", 0L); stats.put("scoreAvg", 0.0);
                 stats.put("pnYes", 0); stats.put("pnNo", 0);
@@ -3405,7 +3400,6 @@ public class WebController {
             }
 
             List<String[]> rows = new ArrayList<>();
-            long roomId = parseRoomIdFromPath(filePath);
             String anchorName = parseAnchorFromPath(filePath);
             if (roomId != 0) {
                 try (java.sql.Connection c = getDbConnection()) {
