@@ -3197,6 +3197,7 @@ const method = {
                         return;
                     }
                     $('#lrm-charts-row').show();
+                    $('#lrm-entry-exit-row').show();
 
                     var labels = [];
                     var watcherData = [];
@@ -3209,6 +3210,16 @@ const method = {
                         onlineData.push(parseInt(row['在线数']) || 0);
                         likeData.push(parseInt(row['点赞数']) || 0);
                     });
+                    // 计算进入/退出人数
+                    var entryData = [], exitData = [];
+                    for (var i = 0; i < watcherData.length; i++) {
+                        var entry = (i === 0) ? watcherData[0] : (watcherData[i] - watcherData[i-1]);
+                        if (entry < 0) entry = 0;
+                        var exit = (i === 0) ? 0 : entry - (onlineData[i] - onlineData[i-1]);
+                        if (exit < 0) exit = 0;
+                        entryData.push(entry);
+                        exitData.push(exit);
+                    }
 
                     var chartOptions = {
                         responsive: true,
@@ -3274,6 +3285,26 @@ const method = {
                         },
                         options: chartOptions
                     });
+
+                    var entryCanvas = document.getElementById('lrm-chart-entry');
+                    if (entryCanvas) {
+                        entryCanvas.parentElement.style.height = '200px';
+                        lrmState.chartInstances.entry = new Chart(entryCanvas.getContext('2d'), {
+                            type: 'line',
+                            data: { labels: labels, datasets: [$.extend({ data: entryData, borderColor: '#198754', backgroundColor: 'rgba(25,135,84,0.1)', fill: true }, datasetBase)] },
+                            options: $.extend({}, chartOptions)
+                        });
+                    }
+
+                    var exitCanvas = document.getElementById('lrm-chart-exit');
+                    if (exitCanvas) {
+                        exitCanvas.parentElement.style.height = '200px';
+                        lrmState.chartInstances.exit = new Chart(exitCanvas.getContext('2d'), {
+                            type: 'line',
+                            data: { labels: labels, datasets: [$.extend({ data: exitData, borderColor: '#dc3545', backgroundColor: 'rgba(220,53,69,0.1)', fill: true }, datasetBase)] },
+                            options: $.extend({}, chartOptions)
+                        });
+                    }
 
                 }
             }
@@ -5143,6 +5174,8 @@ $(function() {
 
 // Bootstrap 标签页切换：陌生观众看板自动加载
 $(document).on('shown.bs.tab', function(e) {
+    // 所有 tab 切换后 resize 图表（解决 Bootstrap tab display:none 导致的 Chart.js 尺寸异常）
+    $.each(lrmState.chartInstances, function (k, c) { try { c.resize(); } catch(e) {} });
     var tabId = ($(e.target).attr('data-bs-target') || '').replace('#tab-', '');
     if (tabId === 'stranger-board') {
         if (!$('#sv-csv-select option[value!=""]').length) {

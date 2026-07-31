@@ -40,6 +40,8 @@
         <div class="col-md-4"><div class="card"><div class="card-body p-2"><h6 class="card-title text-center" style="font-size:13px;">观看数趋势</h6><canvas id="lrm-chart-watcher" height="200"></canvas></div></div></div>
         <div class="col-md-4"><div class="card"><div class="card-body p-2"><h6 class="card-title text-center" style="font-size:13px;">在线数趋势</h6><canvas id="lrm-chart-online" height="200"></canvas></div></div></div>
         <div class="col-md-4"><div class="card"><div class="card-body p-2"><h6 class="card-title text-center" style="font-size:13px;">点赞数趋势</h6><canvas id="lrm-chart-like" height="200"></canvas></div></div></div>
+        <div class="col-md-12"><div class="card"><div class="card-body p-2"><h6 class="card-title text-center" style="font-size:13px;">进入人数趋势</h6><canvas id="lrm-chart-entry" height="200"></canvas></div></div></div>
+        <div class="col-md-12"><div class="card"><div class="card-body p-2"><h6 class="card-title text-center" style="font-size:13px;">退出人数趋势</h6><canvas id="lrm-chart-exit" height="200"></canvas></div></div></div>
     </div>
 </div>
 <!-- ==================== 弹幕管理 ==================== -->
@@ -67,10 +69,10 @@
     </div>
     <div class="d-flex align-items-center mt-2" id="dmgr-rank-limit-row" style="display:none;"><span style="font-size:12px;" class="text-muted">发送排行榜 显示数量：</span><input type="number" id="dmgr-rank-limit" class="form-control form-control-sm ms-1" style="width:70px;" min="1" value="15"><button id="dmgr-btn-rank-apply" class="btn btn-sm btn-outline-primary ms-1">应用</button></div>
     <div class="row g-2 mt-3" id="dmgr-charts-row" style="display:none;">
-        <div class="col-md-6"><div class="card"><div class="card-body p-2"><h6 class="card-title text-center" style="font-size:13px;">弹幕数量趋势</h6><canvas id="dmgr-chart-count" height="200"></canvas></div></div></div>
-        <div class="col-md-6"><div class="card"><div class="card-body p-2"><h6 class="card-title text-center" style="font-size:13px;">发送排行榜 (Top 5)</h6><canvas id="dmgr-chart-top5" height="200"></canvas></div></div></div>
-        <div class="col-md-6"><div class="card"><div class="card-body p-2"><h6 class="card-title text-center" style="font-size:13px;">弹幕长度趋势</h6><canvas id="dmgr-chart-quality" height="200"></canvas></div></div></div>
-        <div class="col-md-6"><div class="card"><div class="card-body p-2"><h6 class="card-title text-center" style="font-size:13px;">词频 Top 15</h6><canvas id="dmgr-chart-wordfreq" height="200"></canvas></div></div></div>
+        <div class="col-md-12"><div class="card"><div class="card-body p-2"><h6 class="card-title text-center" style="font-size:13px;">弹幕数量趋势</h6><canvas id="dmgr-chart-count" height="200"></canvas></div></div></div>
+        <div class="col-md-12"><div class="card"><div class="card-body p-2"><h6 class="card-title text-center" style="font-size:13px;">发送排行榜 (Top 5)</h6><canvas id="dmgr-chart-top5" height="200"></canvas></div></div></div>
+        <div class="col-md-12"><div class="card"><div class="card-body p-2"><h6 class="card-title text-center" style="font-size:13px;">弹幕长度趋势</h6><canvas id="dmgr-chart-quality" height="200"></canvas></div></div></div>
+        <div class="col-md-12"><div class="card"><div class="card-body p-2"><h6 class="card-title text-center" style="font-size:13px;">词频 Top 15</h6><canvas id="dmgr-chart-wordfreq" height="200"></canvas></div></div></div>
     </div>
     <div class="row g-2 mt-3" id="dmgr-scatter-row" style="display:none;"><div class="col-12"><div class="card"><div class="card-body p-2"><h6 class="card-title text-center" style="font-size:13px;">弹幕长度散点</h6><canvas id="dmgr-chart-scatter" height="260"></canvas></div></div></div></div>
 </div>
@@ -99,8 +101,8 @@
     <div class="d-flex align-items-center mt-2" id="gft-rank-limit-row" style="display:none;"><span style="font-size:12px;" class="text-muted">礼物金额排行榜 显示数量：</span><input type="number" id="gft-rank-limit" class="form-control form-control-sm ms-1" style="width:70px;" min="1" value="15"><button id="gft-btn-rank-apply" class="btn btn-sm btn-outline-primary ms-1">应用</button></div>
     <div class="row g-2 mt-3" id="gft-charts-row" style="display:none;">
         <div class="col-12"><div class="card"><div class="card-body p-2"><h6 class="card-title text-center" style="font-size:13px;">礼物趋势版</h6><canvas id="gft-chart-trend" height="160"></canvas></div></div></div>
-        <div class="col-md-6"><div class="card"><div class="card-body p-2"><h6 class="card-title text-center" style="font-size:13px;">礼物金额排行榜</h6><canvas id="gft-chart-rank" height="200"></canvas></div></div></div>
-        <div class="col-md-6"><div class="card"><div class="card-body p-2"><h6 class="card-title text-center" style="font-size:13px;">礼物名字频次榜</h6><canvas id="gft-chart-freq" height="200"></canvas></div></div></div>
+        <div class="col-md-12"><div class="card"><div class="card-body p-2"><h6 class="card-title text-center" style="font-size:13px;">礼物金额排行榜</h6><canvas id="gft-chart-rank" height="200"></canvas></div></div></div>
+        <div class="col-md-12"><div class="card"><div class="card-body p-2"><h6 class="card-title text-center" style="font-size:13px;">礼物名字频次榜</h6><canvas id="gft-chart-freq" height="200"></canvas></div></div></div>
     </div>
 </div>
 <!-- ==================== 观众管理 ==================== -->
@@ -130,15 +132,15 @@
     </div>
     <div class="d-flex align-items-center mt-2" id="vst-rank-limit-row" style="display:none;"><span style="font-size:12px;" class="text-muted">进出榜/场次榜 显示数量：</span><input type="number" id="vst-rank-limit" class="form-control form-control-sm ms-1" style="width:70px;" min="1" value="15"><button id="vst-btn-rank-apply" class="btn btn-sm btn-outline-primary ms-1">应用</button></div>
     <div class="row g-2 mt-3" id="vst-charts-row" style="display:none;">
-        <div class="col-md-6"><div class="card"><div class="card-body p-2"><h6 class="card-title text-center" style="font-size:13px;">观众进场趋势</h6><canvas id="vst-chart-count" height="200"></canvas></div></div></div>
-        <div class="col-md-6"><div class="card"><div class="card-body p-2"><h6 class="card-title text-center" style="font-size:13px;">打分人数分布</h6><canvas id="vst-chart-score" height="200"></canvas></div></div></div>
-        <div class="col-md-6"><div class="card"><div class="card-body p-2"><h6 class="card-title text-center" style="font-size:13px;">进出榜 Top 15</h6><canvas id="vst-chart-top5" height="200"></canvas></div></div></div>
-        <div class="col-md-6"><div class="card"><div class="card-body p-2"><h6 class="card-title text-center" style="font-size:13px;">场次榜 Top 15</h6><canvas id="vst-chart-wordfreq" height="200"></canvas></div></div></div>
+        <div class="col-md-12"><div class="card"><div class="card-body p-2"><h6 class="card-title text-center" style="font-size:13px;">观众进场趋势</h6><canvas id="vst-chart-count" height="200"></canvas></div></div></div>
+        <div class="col-md-12"><div class="card"><div class="card-body p-2"><h6 class="card-title text-center" style="font-size:13px;">打分人数分布</h6><canvas id="vst-chart-score" height="200"></canvas></div></div></div>
+        <div class="col-md-12"><div class="card"><div class="card-body p-2"><h6 class="card-title text-center" style="font-size:13px;">进出榜 Top 15</h6><canvas id="vst-chart-top5" height="200"></canvas></div></div></div>
+        <div class="col-md-12"><div class="card"><div class="card-body p-2"><h6 class="card-title text-center" style="font-size:13px;">场次榜 Top 15</h6><canvas id="vst-chart-wordfreq" height="200"></canvas></div></div></div>
     </div>
     <div class="row g-2 mt-3" id="vst-scatter-row" style="display:none;"><div class="col-12"><div class="card"><div class="card-body p-2"><h6 class="card-title text-center" style="font-size:13px;">观众成份</h6><canvas id="vst-chart-scatter" height="220"></canvas></div></div></div></div>
     <div class="row g-2 mt-3" id="vst-freq-charts-row" style="display:none;">
-        <div class="col-md-6"><div class="card"><div class="card-body p-2"><h6 class="card-title text-center" style="font-size:13px;">进出频次分布</h6><canvas id="vst-chart-visitfreq" height="200"></canvas></div></div></div>
-        <div class="col-md-6"><div class="card"><div class="card-body p-2"><h6 class="card-title text-center" style="font-size:13px;">场次频次分布</h6><canvas id="vst-chart-fieldfreq" height="200"></canvas></div></div></div>
+        <div class="col-md-12"><div class="card"><div class="card-body p-2"><h6 class="card-title text-center" style="font-size:13px;">进出频次分布</h6><canvas id="vst-chart-visitfreq" height="200"></canvas></div></div></div>
+        <div class="col-md-12"><div class="card"><div class="card-body p-2"><h6 class="card-title text-center" style="font-size:13px;">场次频次分布</h6><canvas id="vst-chart-fieldfreq" height="200"></canvas></div></div></div>
     </div>
 </div>
 <!-- ==================== 匹配管理 ==================== -->
@@ -184,8 +186,8 @@
     </div>
     <div class="d-flex align-items-center mt-2" id="flw-rank-limit-row" style="display:none;"><span style="font-size:12px;" class="text-muted">关注排行榜 显示数量：</span><input type="number" id="flw-rank-limit" class="form-control form-control-sm ms-1" style="width:70px;" min="1" value="15"><button id="flw-btn-rank-apply" class="btn btn-sm btn-outline-primary ms-1">应用</button></div>
     <div class="row g-2 mt-3" id="flw-charts-row" style="display:none;">
-        <div class="col-md-6"><div class="card"><div class="card-body p-2"><h6 class="card-title text-center" style="font-size:13px;">关注频次分布</h6><canvas id="flw-chart-freq" height="200"></canvas></div></div></div>
-        <div class="col-md-6"><div class="card"><div class="card-body p-2"><h6 class="card-title text-center" style="font-size:13px;">关注次数排行</h6><canvas id="flw-chart-rank" height="200"></canvas></div></div></div>
+        <div class="col-md-12"><div class="card"><div class="card-body p-2"><h6 class="card-title text-center" style="font-size:13px;">关注频次分布</h6><canvas id="flw-chart-freq" height="200"></canvas></div></div></div>
+        <div class="col-md-12"><div class="card"><div class="card-body p-2"><h6 class="card-title text-center" style="font-size:13px;">关注次数排行</h6><canvas id="flw-chart-rank" height="200"></canvas></div></div></div>
     </div>
 </div>
                     </div>
