@@ -911,23 +911,28 @@ public class HttpRoomData {
             //  最终评分
             int totalScore = medalResult.getLeft() + follResult.getLeft() + cardResult.score + sameResult.getLeft() + viewerResult.getLeft() + localActResult.getLeft() + eventsApiResult.getLeft();
 
+            // 非单一阵营的观众：查看具体行为
+            if (totalScore < 0 && viewerResult.getRight() != null && viewerResult.getRight().contains("dmk")){
+                notifyOpenTab("http://localhost:5000/?uid=" + vmid, "dmk:"+uname, totalScore);
+            }
+
             // 可疑倾向（综合分<=0）的观众：在当前浏览器新标签页打开 AICU 查阅页
             if (totalScore < 0 && viewerResult.getRight() != null && viewerResult.getRight().contains("弹幕")) {
-                notifyOpenTab("https://www.aicu.cc/livedanmu?uid=" + vmid);
+                notifyOpenTab("https://www.aicu.cc/livedanmu?uid=" + vmid, "aicu:"+uname, totalScore);
             }
 
             StrangerViewerService.addRecord(
-                    vmid, cardResult.name, cardResult.face, totalScore, combinedType + cardResult.sign);
+                    vmid, uname, cardResult.face, totalScore, combinedType + cardResult.sign);
 
             // Phase 4: 仅当综合分在 -1, 0 时才触发动态API
-            if ((-1 <= totalScore && totalScore <= 0) && !schedulerDynamicColdWait.get()) {
+            if (totalScore < 0  && !schedulerDynamicColdWait.get()) {
                 // logSb.append("[动态|请求中]");
                 return asyncHttpGetUserDynamic(vmid).thenApply(dynData -> {
                     Pair<Integer, String> dynResult = computeDynamicScore(dynData, logSb);
 
                     // 在当前浏览器新标签页打开 B 站动态页, >0 说明有动态
                     if ( dynResult.getLeft() > 0) {
-                        notifyOpenTab("https://space.bilibili.com/" + vmid + "/dynamic");
+                        notifyOpenTab("https://space.bilibili.com/" + vmid + "/dynamic", "BLBL:"+uname, totalScore);
                     }
 
                     int finalScore = totalScore + dynResult.getLeft();
@@ -965,11 +970,15 @@ public class HttpRoomData {
     /**
      * 通过管理页面 WebSocket 推送 "open_tab" 命令，让当前浏览器打开新标签页（而非系统默认浏览器）。
      */
-    private static void notifyOpenTab(String url) {
+    private static void notifyOpenTab(String url, String uname, int score) {
         try {
             DanmuWebsocket ws = SpringUtils.getBean(DanmuWebsocket.class);
             if (ws == null) return;
-            ws.sendMessage(WsPackage.toJson("open_tab", (short) 0, url));
+            JSONObject data = new JSONObject();
+            data.put("url", url);
+            data.put("uname", uname);
+            data.put("score", score);
+            ws.sendMessage(WsPackage.toJson("open_tab", (short) 0, data));
         } catch (Exception e) {
             LOGGER.debug("notifyOpenTab error: {}", e.getMessage());
         }

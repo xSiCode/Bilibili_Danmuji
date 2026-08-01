@@ -29,6 +29,59 @@ a.no-underline {
     z-index: 99999;
 }
 
+/* 陌生观众看板表格下方的"挑选标签"：小标签、一行可排多个 */
+.sv-open-tab-toasts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 8px;
+}
+
+.sv-open-tab-toasts .alert.open-tab-toast {
+    display: inline-block;
+    width: auto;
+    margin: 2px 4px;
+    padding: 4px 12px;
+    font-size: 13px;
+    line-height: 1.7;
+    border-radius: 14px;
+    vertical-align: top;
+    white-space: nowrap;
+}
+
+.sv-open-tab-toasts .alert.open-tab-toast .ot-name {
+    display: inline-block;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
+    font-weight: 600;
+    margin-right: 6px;
+    color: #333;
+}
+
+.sv-open-tab-toasts .alert.open-tab-toast .ot-score {
+    display: inline-block;
+    background-color: #856404;
+    color: #fff;
+    border-radius: 10px;
+    padding: 0 7px;
+    font-size: 12px;
+    margin-right: 6px;
+}
+
+.sv-open-tab-toasts .alert.open-tab-toast .ot-link {
+    font-weight: 600;
+    color: #0d6efd;
+    text-decoration: underline;
+}
+
+.sv-open-tab-toasts .alert.open-tab-toast .ot-countdown {
+    font-size: 11px;
+    color: #856404;
+    margin-left: 4px;
+}
+
 .row .col-auto {
     padding-top: 0.2em;
     padding-bottom: 0.2em;

@@ -139,7 +139,7 @@ let lrmState = {
 let svState = {
     records: [],
     page: 1,
-    pageSize: 20,
+    pageSize: 10,
     search: '',
     totalPages: 1,
     totalRecords: 0,
@@ -2865,11 +2865,8 @@ const method = {
                     method._handleBwlistUpdate(data.result);
                 }
                 if (data.cmd === 'open_tab' && data.result) {
-                    // 服务端请求在当前浏览器打开新标签页；若被弹窗拦截则显示可点击链接
-                    var win = window.open(data.result, '_blank');
-                    if (!win) {
-                        showMessage('浏览器拦截了自动打开标签页，请手动点击：<a href="' + data.result + '" target="_blank" rel="noopener">打开</a>', 'warning', 10);
-                    }
+                    // 浏览器对 WebSocket 触发的自动打开拦截不稳定，统一只显示可点击提示条
+                    method.showOpenTabToast(data.result);
                 }
             };
             self._autoBlockWs.onclose = function () {
@@ -5162,7 +5159,37 @@ const method = {
         if ($('#tab-bwlist-set').hasClass('active')) {
             method.renderBlackWhiteTable(data.type);
         }
-    }
+    },
+
+    // 打开标签页被浏览器拦截时：显示"用户名+打分+打开链接"的紧凑提示条，一行可排多个
+    showOpenTabToast: function (r) {
+        if (!r) return;
+        var $wrap = $('#sv-open-tab-toasts');
+        if (!$wrap.length) return; // 仅陌生观众看板页面（表格下方）显示
+        var esc = function (s) {
+            return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        };
+        var id = 'open-tab-toast-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+        var url = esc(r.url || '');
+        var uname = esc(r.uname || '');
+        var score = (typeof r.score === 'undefined' || r.score === null) ? '' : r.score;
+        var html = '<div id="' + id + '" class="alert alert-warning open-tab-toast" style="position:relative;">'
+            + '<span class="ot-name" title="' + uname + '">' + uname + '</span>'
+            + '<span class="ot-score" title="综合分">' + score + '分</span>'
+            + '<a class="ot-link" href="' + url + '" target="_blank" rel="noopener">打开</a>'
+            + '<span class="ot-countdown"></span>'
+            + '</div>';
+        $wrap.append(html);
+        var $el = $('#' + id);
+        var left = 60;
+        var timer = setInterval(function () {
+            $el.find('.ot-countdown').text(' ' + left + 's');
+            if (--left < 0) {
+                clearInterval(timer);
+                $el.fadeOut().remove();
+            }
+        }, 1000);
+    },
 
 
 };
