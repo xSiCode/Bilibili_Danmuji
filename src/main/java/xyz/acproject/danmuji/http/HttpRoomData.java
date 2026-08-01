@@ -879,45 +879,36 @@ public class HttpRoomData {
 
 
             // Phase 2c: 关注列表（双页合并）
-            Pair<Integer, String> follResult = processFollowingsPages(vmid, logSb, follJson1, follJson2);
+            Pair<Integer, String> follow_100_Result = processFollowingsPages(vmid, logSb, follJson1, follJson2);
 
             // Phase 2d: 共同关注
-            Pair<Integer, String> sameResult = processSameFollowings(vmid, logSb, follJson1);
-
-
-            // Phase 2e: LR录制分析  不再使用，被 Phase 2f 替代
-            //  Pair<Integer, String> localResult = processLocalSummarySync(vmid, logSb);
-
-            // Phase 2f: 用户本地记录分析 弹幕姬多开记录的数据，不再使用，使用 aicu + dmkc 数据替代。
-            // Pair<Integer, String> localActResult = processLocalActivitySync(vmid, logSb);
+            Pair<Integer, String> follow_same_Result = processSameFollowings(vmid, logSb, follJson1);
 
             // Phase 2g: 流媒体(也是LR)Aicu观众分析
-            Pair<Integer, String> viewerResult = processStreamerViewersSync(vmid, logSb);
+            Pair<Integer, String> aicuResult = processStreamerViewersSync(vmid, logSb);
 
             // Phase 2h: 事件API分析 (127.0.0.1:5001) 本地的danmakus-client 记录的最近7天的数据，相比processStreamerViewersSync 多了点赞计数，少了金额计数。
-            Pair<Integer, String> eventsApiResult = processEventsApiSync(vmid, logSb);
+            Pair<Integer, String> dmkcResult = processDmkcEventsApiSync(vmid, logSb);
 
             // Phase 3: 合并
             StringBuilder combinedType = new StringBuilder(160);
-            // appendType(combinedType, cardResult.type);
-            //  appendType(combinedType, medalResult.getRight());
-            // appendType(combinedType, follResult.getRight());
-            appendType(combinedType, sameResult.getRight());
-
-            //   appendType(combinedType, localActResult.getRight());
-            appendType(combinedType, viewerResult.getRight());
-            //   appendType(combinedType, eventsApiResult.getRight());
+            appendType(combinedType, cardResult.type);
+            appendType(combinedType, medalResult.getRight());
+            appendType(combinedType, follow_100_Result.getRight());
+            appendType(combinedType, follow_same_Result.getRight());
+            appendType(combinedType, aicuResult.getRight());
+            appendType(combinedType, dmkcResult.getRight());
 
             //  最终评分
-            int totalScore = medalResult.getLeft() + follResult.getLeft() + cardResult.score + sameResult.getLeft() + viewerResult.getLeft() + eventsApiResult.getLeft();
+            int totalScore = medalResult.getLeft() + follow_100_Result.getLeft() + cardResult.score + follow_same_Result.getLeft() + aicuResult.getLeft() + dmkcResult.getLeft();
 
             // 非单一阵营的观众：查看具体行为
-            if (totalScore < 0 && viewerResult.getRight() != null && viewerResult.getRight().contains("dmk")) {
+            if (totalScore < 0 && aicuResult.getRight() != null && aicuResult.getRight().contains("dmk")) {
                 notifyOpenTab("http://localhost:5000/?uid=" + vmid, "dmk:" + uname, totalScore);
             }
 
             // 可疑倾向（综合分<=0）的观众：在当前浏览器新标签页打开 AICU 查阅页
-            if (totalScore < 0 && viewerResult.getRight() != null && viewerResult.getRight().contains("弹幕")) {
+            if (totalScore < 0 && aicuResult.getRight() != null && aicuResult.getRight().contains("弹幕")) {
                 notifyOpenTab("https://www.aicu.cc/livedanmu?uid=" + vmid, "aicu:" + uname, totalScore);
             }
 
@@ -1453,7 +1444,7 @@ public class HttpRoomData {
 
     // ---- 事件API分析 (127.0.0.1:5001) ----
 
-    public static Pair<Integer, String> processEventsApiSync(long uid, StringBuilder logSb) {
+    public static Pair<Integer, String> processDmkcEventsApiSync(long uid, StringBuilder logSb) {
         try {
             return CompletableFuture
                     .supplyAsync(() -> doEventsApi(uid, logSb))
