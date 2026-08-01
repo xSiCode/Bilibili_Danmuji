@@ -899,20 +899,17 @@ public class HttpRoomData {
 
             //  最终评分
             int totalScore = medalResult.getLeft() + follow_100_Result.getLeft() + cardResult.score + follow_same_Result.getLeft() + aicuResult.getLeft() + dmkcResult.getLeft();
+            StrangerViewerService.addRecord(vmid, uname, cardResult.face, totalScore, combinedType + cardResult.sign);
 
             // 非单一阵营的观众：查看具体行为
             if (aicuResult.getRight() != null && aicuResult.getRight().contains("dmk") || aicuResult.getRight().contains("弹幕")) {
                 notifyOpenTab("http://localhost:5000/?uid=" + vmid, "dmk:" + uname, totalScore);
                 notifyOpenTab("https://www.aicu.cc/livedanmu?uid=" + vmid, "aicu:" + uname, totalScore);
             }
-
             // 当 totalScore 大于0（正常观众）：推送头像到 OBS 头像条，头像：cardResult.face noface.jpg
             if (totalScore > 0 && !cardResult.face.contains("noface")) {
                 notifyObsAvatar(vmid, uname, cardResult.face);
             }
-
-            StrangerViewerService.addRecord(
-                    vmid, uname, cardResult.face, totalScore, combinedType + cardResult.sign);
 
             // Phase 4: 仅当综合分在 -1, 0 时才触发动态API
             if (totalScore < 0 && !schedulerDynamicColdWait.get()) {
