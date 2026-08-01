@@ -5050,6 +5050,15 @@ const method = {
             var $tr = $('<tr></tr>');
             if (i < records.length) {
                 let r = records[i];
+                // 按打分设置行背景色：<0 浅灰，=0 浅白，>0 浅绿
+                var rowScore = (typeof r.score === 'undefined' || r.score === null) ? 0 : Number(r.score);
+                if (rowScore < 0) {
+                    $tr.addClass('sv-row-negative');
+                } else if (rowScore > 0) {
+                    $tr.addClass('sv-row-positive');
+                } else {
+                    $tr.addClass('sv-row-zero');
+                }
                 // 时间 — 显示 HH:mm:ss，hover 完整时间
                 var timeFull = r.time || '';
                 var timeShort = timeFull.indexOf(' ') >= 0 ? timeFull.substring(timeFull.lastIndexOf(' ') + 1) : timeFull;

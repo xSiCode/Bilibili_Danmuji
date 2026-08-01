@@ -1682,6 +1682,9 @@ div .link-popup-panel .popup-content-ctnr p {
 .sv-table-wrap { min-height: 520px; }
 #sv-data-table { table-layout: fixed; }
 #sv-data-table tr { height: 42px; }
+#sv-data-table tbody tr.sv-row-negative td { background-color: #f8d7da; }
+#sv-data-table tbody tr.sv-row-zero td { background-color: #fcfcfc; }
+#sv-data-table tbody tr.sv-row-positive td { background-color: #d4edda; }
 #sv-data-table .sv-td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #sv-data-table .sv-td a { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
 /* 列宽跟随列属性class，不再依赖位置nth-child */
