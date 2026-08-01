@@ -64,13 +64,8 @@ method.renderBlackWhiteTable = function(type, page) {
                         $tr.append($("<td>").addClass("bw-col-count truncate-expandable").text(e.count));
                         $tr.append($("<td>").addClass("bw-col-score truncate-expandable").text(e.score));
                         $tr.append($("<td>").addClass("bw-col-scoreType truncate-expandable").text(e.scoreType || '').attr("title", e.scoreType || ''));
-                        // roomId: 点击跳转直播间
-                        var $roomTd = $("<td>").addClass("bw-col-roomId truncate-expandable");
-                        if (e.roomId && e.roomId > 0) {
-                            $("<a>").attr("href", "https://live.bilibili.com/" + e.roomId).attr("target", "_blank")
-                                .text(e.roomId).appendTo($roomTd);
-                        }
-                        $tr.append($roomTd);
+                        // createTime: 创建时间（仅显示）
+                        $tr.append($("<td>").addClass("bw-col-createTime truncate-expandable").text(e.createTime ? bwlistFmtTs(e.createTime) : '').attr("title", e.createTime ? bwlistFmtTs(e.createTime) : ''));
                         $tr.append($("<td>").addClass("bw-col-updateTime truncate-expandable").text(e.updateTime ? bwlistFmtTs(e.updateTime) : '').attr("title", e.updateTime ? bwlistFmtTs(e.updateTime) : ''));
                         var $delBtn = $("<button>").addClass("btn btn-sm btn-outline-danger bwlist-del-btn").attr("data-uid", e.uid).attr("data-type", type).attr("title", "从名单删除").text("删除");
                         var $moveLabel = type === 'black' ? '→白' : '→黑';
