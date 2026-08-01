@@ -903,12 +903,8 @@ public class HttpRoomData {
             int totalScore = medalResult.getLeft() + follow_100_Result.getLeft() + cardResult.score + follow_same_Result.getLeft() + aicuResult.getLeft() + dmkcResult.getLeft();
 
             // 非单一阵营的观众：查看具体行为
-            if (totalScore < 0 && aicuResult.getRight() != null && aicuResult.getRight().contains("dmk")) {
+            if (aicuResult.getRight() != null && aicuResult.getRight().contains("dmk") || aicuResult.getRight().contains("弹幕")) {
                 notifyOpenTab("http://localhost:5000/?uid=" + vmid, "dmk:" + uname, totalScore);
-            }
-
-            // 可疑倾向（综合分<=0）的观众：在当前浏览器新标签页打开 AICU 查阅页
-            if (totalScore < 0 && aicuResult.getRight() != null && aicuResult.getRight().contains("弹幕")) {
                 notifyOpenTab("https://www.aicu.cc/livedanmu?uid=" + vmid, "aicu:" + uname, totalScore);
             }
 
@@ -1403,21 +1399,29 @@ public class HttpRoomData {
             Integer pnScore = pnScoreMap.get(anchorId);
             if (pnScore == null) continue;
 
-            int total = item.getIntValue("total"); // msg + enter + gift
-            int msg = item.getIntValue("msg");
+            int total = item.getIntValue("total"); // total = msg + enter + gift
+            int msg = item.getIntValue("msg");     // 礼物的数量
 //            int enter = item.getIntValue("enter");
-//            int gift = item.getIntValue("gift");
-            double giftAmount = item.getDoubleValue("gift_amount");
-            int itemScore = (int) (total + giftAmount);
+            int gift = item.getIntValue("gift");
+            int giftAmount = (int) item.getDoubleValue("gift_amount") + 1; // 礼物的金额，相当于向上取整
+            int itemScore = total + gift + giftAmount;  // 这里是再加一次礼物数量，并额外加礼物的金额，以增加礼物的权重
 
             if (pnScore < 0) {
-                itemScore = pnScore - itemScore;
-                blackScore += itemScore;
-                msgBlackScore -= msg;
+                if (total <= 3) {
+                    itemScore = -total;
+                } else {
+                    itemScore = pnScore - itemScore;
+                    blackScore += itemScore;
+                    msgBlackScore -= msg;
+                }
             } else if (pnScore > 0) {
-                itemScore = pnScore + itemScore;
-                whiteScore += itemScore;
-                msgWhiteScore += msg;
+                if (total <= 3) {
+                    itemScore = totalScore;
+                } else {
+                    itemScore = pnScore + itemScore;
+                    whiteScore += itemScore;
+                    msgWhiteScore += msg;
+                }
             }
             totalScore += itemScore;
             matchedList.add(item.getString("name") + ":" + itemScore);
