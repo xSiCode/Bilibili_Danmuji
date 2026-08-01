@@ -31,6 +31,7 @@ import xyz.acproject.danmuji.http.HttpRoomData;
 import xyz.acproject.danmuji.http.HttpUserData;
 import xyz.acproject.danmuji.http.LiveRecordApiClient;
 import xyz.acproject.danmuji.service.LocalBlackWhiteListService;
+import xyz.acproject.danmuji.service.StrangerViewerService;
 import xyz.acproject.danmuji.service.SetService;
 import xyz.acproject.danmuji.tools.CurrencyTools;
 import xyz.acproject.danmuji.tools.ParseIndentityTools;
@@ -68,6 +69,8 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+
+import static xyz.acproject.danmuji.http.HttpRoomData.notifyObsAvatar;
 
 /**
  * @author BanqiJane
@@ -1593,6 +1596,12 @@ public class ParseMessageThread extends Thread {
                 LocalBlackWhiteListService.incrementWhiteCount(_follow_uid);
                 pushBwlistUpdate("white", _follow_uid);
                 VisitorCountTools.recordVisitor(_follow_uid, _follow_uname, 0, null);
+
+                // 推送头像到 OBS 头像条：根据 uid 读取 stranger_viewer 表里 time 最新的 face
+                String faceStr = getFaceStrByUidOrderTimeDesc(_follow_uid);
+                if (faceStr.length() > 47) { // https://i0.hdslb.com/bfs/face/member/noface.jpg 这个长度47
+                    HttpRoomData.notifyObsAvatar(_follow_uid, _follow_uname, faceStr);
+                }
                 return;
             }
             if (LocalBlackWhiteListService.isInBlacklist(_follow_uid)) {
@@ -1616,6 +1625,12 @@ public class ParseMessageThread extends Thread {
                         });
             });
         }
+    }
+
+    /** 根据 uid 读取 stranger_viewer 表里 time 最新的 face；无记录返回空串 */
+    private static String getFaceStrByUidOrderTimeDesc(long uid) {
+        String face = StrangerViewerService.getLatestFaceByUid(uid);
+        return face != null ? face : "";
     }
 
     private static void logNewAudience(long _follow_uid, String _follow_uname) {

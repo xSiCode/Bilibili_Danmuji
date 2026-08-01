@@ -143,6 +143,22 @@ public class StrangerViewerService {
         }
     }
 
+    /** 按 uid 查询 stranger_viewer 表里 time 最新的 face（OBS 头像条白名单快速通道用） */
+    public static String getLatestFaceByUid(long uid) {
+        if (uid <= 0) return null;
+        String sql = "SELECT face FROM stranger_viewer WHERE uid = ? ORDER BY time DESC LIMIT 1";
+        try (java.sql.Connection c = xyz.acproject.danmuji.tools.db.DanmujiDatabase.getConnection();
+             java.sql.PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setLong(1, uid);
+            try (java.sql.ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getString("face");
+            }
+        } catch (Exception e) {
+            LOGGER.debug("getLatestFaceByUid error: {}", e.getMessage());
+        }
+        return null;
+    }
+
     private static void pushToFrontend(StrangerRecord record) {
         try {
             DanmuWebsocket ws = SpringUtils.getBean(DanmuWebsocket.class);

@@ -974,7 +974,7 @@ public class HttpRoomData {
     /**
      * 通过 WebSocket 推送 "obs_enter" 命令，让 OBS 头像条页面显示进入用户头像（仅含 uid/用户名/头像URL）。
      */
-    private static void notifyObsAvatar(long uid, String uname, String face) {
+    public static void notifyObsAvatar(long uid, String uname, String face) {
         try {
             DanmuWebsocket ws = SpringUtils.getBean(DanmuWebsocket.class);
             if (ws == null) return;
