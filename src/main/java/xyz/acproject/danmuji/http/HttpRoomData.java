@@ -683,18 +683,17 @@ public class HttpRoomData {
                 });
     }
 
-    private static Pair<Integer, String> processSameFollowings(long vmid, StringBuilder logSb, JSONObject follJson1) {
-        if (!cookiePool.hasAnySameFollowAccount() || getFollowingsTotal(follJson1) <= 100) {
-            return Pair.of(0, "");
-        }
-        try {
-            JSONObject sameFollowJson = asyncHttpGetSameFollowings(vmid).get(9, TimeUnit.SECONDS);
-            return processSameFollowingsSync(vmid, logSb, sameFollowJson);
-        } catch (Exception e) {
-            LOGGER.warn("共同关注API异常 vmid={}", vmid, e);
-            logSb.append(" [共同关注:异常:").append(e.getMessage()).append("]");
-            return Pair.of(0, "");
-        }
+    /**
+     * 共同关注请求入口：follF1（关注列表第一页）完成后判断是否满足条件（有共同关注账号且关注数 &gt;100），
+     * 满足才异步发起共同关注API请求，与其余 Phase 1 请求并行；不满足返回已完成 null，不浪费API调用。
+     */
+    private static CompletableFuture<JSONObject> asyncHttpGetSameFollowingsIfNeeded(long vmid, CompletableFuture<JSONObject> follF1) {
+        return follF1.thenCompose(j1 -> {
+            if (j1 == null || !cookiePool.hasAnySameFollowAccount() || getFollowingsTotal(j1) <= 100) {
+                return CompletableFuture.completedFuture(null);
+            }
+            return asyncHttpGetSameFollowings(vmid);
+        });
     }
 
     /**
@@ -859,41 +858,40 @@ public class HttpRoomData {
                 .append(" ").append(uname).append(" ");
         SelfTools.appendAt(logSb, 90, "");
 
-        // Phase 1: 四路并发（关注列表双页同步请求）
+        // Phase 1: 并行发起全部独立请求（灯牌墙/卡片/关注列表双页 + 本地观众分析/事件分析）
         CompletableFuture<JSONObject> medalF = asyncHttpGetMedalWall(vmid);
         CompletableFuture<JSONObject> cardF = asyncHttpGetUserCard(vmid);
         CompletableFuture<JSONObject> follF1 = asyncHttpGetFollowings(vmid, 1, 50);
         CompletableFuture<JSONObject> follF2 = asyncHttpGetFollowings(vmid, 2, 50);
+        // 依赖关注总数：follF1 完成后立即判断并异步发起，与其余请求并行
+        CompletableFuture<JSONObject> sameF = asyncHttpGetSameFollowingsIfNeeded(vmid, follF1);
 
-        return CompletableFuture.allOf(medalF, follF1, follF2, cardF).thenCompose(v -> {
+        // 本地http api 调用，有直接的打分结果
+        CompletableFuture<Pair<Integer, String>> aicuF = CompletableFuture.supplyAsync(() -> processStreamerViewersSync(vmid, null));
+        CompletableFuture<Pair<Integer, String>> dmkcF = CompletableFuture.supplyAsync(() -> processDmkcEventsApiSync(vmid, null));
+
+        return CompletableFuture.allOf(medalF, follF1, follF2, cardF, aicuF, dmkcF, sameF).thenCompose(v -> {
             JSONObject medalJson = medalF.join();
+            JSONObject cardJson = cardF.join();
             JSONObject follJson1 = follF1.join();
             JSONObject follJson2 = follF2.join();
-            JSONObject cardJson = cardF.join();
 
-            // Phase 2a: 卡片
-            CardProcessResult cardResult = processCardDataSync(cardJson, logSb);
-
-            // Phase 2b: 灯牌墙
+            // Phase 2a: 灯牌墙
             Pair<Integer, String> medalResult = processMedalWallSync(medalJson, logSb);
-
-
+            // Phase 2b: 卡片
+            CardProcessResult cardResult = processCardDataSync(cardJson, logSb);
             // Phase 2c: 关注列表（双页合并）
             Pair<Integer, String> follow_100_Result = processFollowingsPages(vmid, logSb, follJson1, follJson2);
-
-            // Phase 2d: 共同关注
-            Pair<Integer, String> follow_same_Result = processSameFollowings(vmid, logSb, follJson1);
-
-            // Phase 2g: 流媒体(也是LR)Aicu观众分析
-            Pair<Integer, String> aicuResult = processStreamerViewersSync(vmid, logSb);
-
-            // Phase 2h: 事件API分析 (127.0.0.1:5001) 本地的danmakus-client 记录的最近7天的数据，相比processStreamerViewersSync 多了点赞计数，少了金额计数。
-            Pair<Integer, String> dmkcResult = processDmkcEventsApiSync(vmid, logSb);
+            // Phase 2d: 共同关注（请求已在 Phase 1 并行发起，此处取结果）
+            Pair<Integer, String> follow_same_Result = processSameFollowings(vmid, logSb, sameF);
+            // Phase 2e/2f: 观众分析/事件分析结果（并行完成）
+            Pair<Integer, String> aicuResult = aicuF.join();
+            Pair<Integer, String> dmkcResult = dmkcF.join();
 
             // Phase 3: 合并
             StringBuilder combinedType = new StringBuilder(160);
-            appendType(combinedType, cardResult.type);
             appendType(combinedType, medalResult.getRight());
+            appendType(combinedType, cardResult.type);
             appendType(combinedType, follow_100_Result.getRight());
             appendType(combinedType, follow_same_Result.getRight());
             appendType(combinedType, aicuResult.getRight());
@@ -1128,6 +1126,17 @@ public class HttpRoomData {
      * 共同关注列表评分 — 当目标用户关注数 >1000 时使用。
      * 逐用户匹配 pnScoreMap 计算共同关注黑白分。
      */
+    private static Pair<Integer, String> processSameFollowings(long vmid, StringBuilder logSb, CompletableFuture<JSONObject> sameF) {
+        try {
+            JSONObject sameFollowJson = sameF.join();
+            return processSameFollowingsSync(vmid, logSb, sameFollowJson);
+        } catch (Exception e) {
+            LOGGER.warn("共同关注API异常 vmid={}", vmid, e);
+            logSb.append(" [共同关注:异常:").append(e.getMessage()).append("]");
+            return Pair.of(0, "");
+        }
+    }
+
     private static Pair<Integer, String> processSameFollowingsSync(long vmid, StringBuilder logSb, JSONObject sameFollowJson) {
         if (sameFollowJson == null) {
             logSb.append("  [共同关注:null:0]");
@@ -1343,13 +1352,14 @@ public class HttpRoomData {
      * 结合 pnScoreMap 判断观众黑白属性，计算综合得分与分裂度。
      */
     public static Pair<Integer, String> processStreamerViewersSync(long streamerUid, StringBuilder logSb) {
+        final StringBuilder sb = logSb != null ? logSb : new StringBuilder(64);
         try {
             return CompletableFuture
-                    .supplyAsync(() -> doStreamerViewers(streamerUid, logSb))
+                    .supplyAsync(() -> doStreamerViewers(streamerUid, sb))
                     .get(8, TimeUnit.SECONDS);
         } catch (Exception e) {
             LOGGER.warn("StreamerAPI异常 uid={}", streamerUid, e);
-            logSb.append(" [观众分析:异常:").append(e.getMessage()).append("]");
+            sb.append(" [观众分析:异常:").append(e.getMessage()).append("]");
             return Pair.of(0, "");
         }
     }
@@ -1403,26 +1413,23 @@ public class HttpRoomData {
             int msg = item.getIntValue("msg");     // 礼物的数量
 //            int enter = item.getIntValue("enter");
             int gift = item.getIntValue("gift");
-            int giftAmount = (int) item.getDoubleValue("gift_amount") + 1; // 礼物的金额，相当于向上取整
+            int giftAmount = (int) item.getDoubleValue("gift_amount"); // 礼物的金额，相当于向上取整
             int itemScore = total + gift + giftAmount;  // 这里是再加一次礼物数量，并额外加礼物的金额，以增加礼物的权重
 
-            if (pnScore < 0) {
-                if (total <= 3) {
-                    itemScore = -total;
+            if (pnScore != 0) {
+                // 提取符号：正数得 1，负数得 -1
+                int sign = (pnScore > 0) ? 1 : -1;
+                itemScore = (itemScore > 3) ? (pnScore + sign * itemScore) : (sign * itemScore);
+                // 统一累加
+                if (pnScore > 0) {
+                    whiteScore += itemScore;
+                    msgWhiteScore += msg;
                 } else {
-                    itemScore = pnScore - itemScore;
                     blackScore += itemScore;
                     msgBlackScore -= msg;
                 }
-            } else if (pnScore > 0) {
-                if (total <= 3) {
-                    itemScore = totalScore;
-                } else {
-                    itemScore = pnScore + itemScore;
-                    whiteScore += itemScore;
-                    msgWhiteScore += msg;
-                }
             }
+
             totalScore += itemScore;
             matchedList.add(item.getString("name") + ":" + itemScore);
         }
@@ -1449,13 +1456,14 @@ public class HttpRoomData {
     // ---- 事件API分析 (127.0.0.1:5001) ----
 
     public static Pair<Integer, String> processDmkcEventsApiSync(long uid, StringBuilder logSb) {
+        final StringBuilder sb = logSb != null ? logSb : new StringBuilder(64);
         try {
             return CompletableFuture
-                    .supplyAsync(() -> doEventsApi(uid, logSb))
+                    .supplyAsync(() -> doEventsApi(uid, sb))
                     .get(8, TimeUnit.SECONDS);
         } catch (Exception e) {
             LOGGER.warn("EventsAPI异常 uid={}", uid, e);
-            logSb.append(" [事件分析:异常:").append(e.getMessage()).append("]");
+            sb.append(" [事件分析:异常:").append(e.getMessage()).append("]");
             return Pair.of(0, "");
         }
     }
