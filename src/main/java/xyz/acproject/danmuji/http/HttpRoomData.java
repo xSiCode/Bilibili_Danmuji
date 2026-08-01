@@ -13,6 +13,8 @@ import xyz.acproject.danmuji.conf.PublicDataConf;
 import xyz.acproject.danmuji.conf.set.AccountPoolConf;
 import xyz.acproject.danmuji.conf.set.KeyWordEntry;
 import xyz.acproject.danmuji.conf.set.KeyWordSetConf;
+import xyz.acproject.danmuji.controller.DanmuWebsocket;
+import xyz.acproject.danmuji.entity.base.WsPackage;
 import xyz.acproject.danmuji.entity.room_data.*;
 import xyz.acproject.danmuji.entity.server_data.Conf;
 import xyz.acproject.danmuji.entity.user_data.MedalWallItem;
@@ -884,7 +886,7 @@ public class HttpRoomData {
 
 
             // Phase 2e: LR录制分析  不再使用，被 Phase 2f 替代
-          //  Pair<Integer, String> localResult = processLocalSummarySync(vmid, logSb);
+            //  Pair<Integer, String> localResult = processLocalSummarySync(vmid, logSb);
 
             // Phase 2f: 用户本地记录分析
             Pair<Integer, String> localActResult = processLocalActivitySync(vmid, logSb);
@@ -897,27 +899,37 @@ public class HttpRoomData {
 
             // Phase 3: 合并
             StringBuilder combinedType = new StringBuilder(160);
-           // appendType(combinedType, cardResult.type);
-          //  appendType(combinedType, medalResult.getRight());
-           // appendType(combinedType, follResult.getRight());
+            // appendType(combinedType, cardResult.type);
+            //  appendType(combinedType, medalResult.getRight());
+            // appendType(combinedType, follResult.getRight());
             appendType(combinedType, sameResult.getRight());
 
-         //   appendType(combinedType, localActResult.getRight());
+            //   appendType(combinedType, localActResult.getRight());
             appendType(combinedType, viewerResult.getRight());
-         //   appendType(combinedType, eventsApiResult.getRight());
+            //   appendType(combinedType, eventsApiResult.getRight());
 
             //  最终评分
             int totalScore = medalResult.getLeft() + follResult.getLeft() + cardResult.score + sameResult.getLeft() + viewerResult.getLeft() + localActResult.getLeft() + eventsApiResult.getLeft();
 
+            // 可疑倾向（综合分<=0）的观众：在当前浏览器新标签页打开 AICU 查阅页
+            if (totalScore < 0 && viewerResult.getRight() != null && viewerResult.getRight().contains("弹幕")) {
+                notifyOpenTab("https://www.aicu.cc/livedanmu?uid=" + vmid);
+            }
 
             StrangerViewerService.addRecord(
-                    vmid, cardResult.name, cardResult.face, totalScore,  combinedType + cardResult.sign);
+                    vmid, cardResult.name, cardResult.face, totalScore, combinedType + cardResult.sign);
 
             // Phase 4: 仅当综合分在 -1, 0 时才触发动态API
             if ((-1 <= totalScore && totalScore <= 0) && !schedulerDynamicColdWait.get()) {
                 // logSb.append("[动态|请求中]");
                 return asyncHttpGetUserDynamic(vmid).thenApply(dynData -> {
                     Pair<Integer, String> dynResult = computeDynamicScore(dynData, logSb);
+
+                    // 在当前浏览器新标签页打开 B 站动态页, >0 说明有动态
+                    if ( dynResult.getLeft() > 0) {
+                        notifyOpenTab("https://space.bilibili.com/" + vmid + "/dynamic");
+                    }
+
                     int finalScore = totalScore + dynResult.getLeft();
                     appendType(combinedType, dynResult.getRight());
                     return finalize(logSb, finalScore, combinedType.toString());
@@ -947,6 +959,19 @@ public class HttpRoomData {
     private static void appendType(StringBuilder sb, String type) {
         if (type != null && !type.isEmpty()) {
             sb.append(type).append(" ");
+        }
+    }
+
+    /**
+     * 通过管理页面 WebSocket 推送 "open_tab" 命令，让当前浏览器打开新标签页（而非系统默认浏览器）。
+     */
+    private static void notifyOpenTab(String url) {
+        try {
+            DanmuWebsocket ws = SpringUtils.getBean(DanmuWebsocket.class);
+            if (ws == null) return;
+            ws.sendMessage(WsPackage.toJson("open_tab", (short) 0, url));
+        } catch (Exception e) {
+            LOGGER.debug("notifyOpenTab error: {}", e.getMessage());
         }
     }
 
@@ -1135,7 +1160,7 @@ public class HttpRoomData {
                     .append(" 列表:").append(matchedList).append(" ");
         }
 
-        blackWhiteType.append("[共关分:").append(blackWhiteScore) .append(" ").append(whiteCount).append(" ").append(blackCount).append("]");
+        blackWhiteType.append("[共关分:").append(blackWhiteScore).append(" ").append(whiteCount).append(" ").append(blackCount).append("]");
         logSb.append("共同关注分:").append(blackWhiteScore).append("]");
 
         return Pair.of(blackWhiteScore, blackWhiteType.toString());
@@ -1187,8 +1212,8 @@ public class HttpRoomData {
                     .append(" 列表:").append(matchedList).append(" ");
         }
 
-        if(splitCount != 0 || blackWhiteScore!=0){
-            blackWhiteType.append("[关注分:").append(blackWhiteScore) .append(" ").append(whiteCount).append(" ").append(blackCount).append("]");
+        if (splitCount != 0 || blackWhiteScore != 0) {
+            blackWhiteType.append("[关注分:").append(blackWhiteScore).append(" ").append(whiteCount).append(" ").append(blackCount).append("]");
         }
         logSb.append("关注黑白分:").append(blackWhiteScore).append("]");
 
@@ -1344,7 +1369,7 @@ public class HttpRoomData {
 
         int totalScore = 0;
         int blackScore = 0, whiteScore = 0;
-        int msgBlackScore =0, msgWhiteScore = 0;
+        int msgBlackScore = 0, msgWhiteScore = 0;
         int totalViewers = viewers.size();
         StringBuilder blackWhiteType = new StringBuilder(60);
         JSONArray matchedList = new JSONArray();
@@ -1356,12 +1381,12 @@ public class HttpRoomData {
             Integer pnScore = pnScoreMap.get(anchorId);
             if (pnScore == null) continue;
 
-            int total = item.getIntValue("total");
+            int total = item.getIntValue("total"); // msg + enter + gift
             int msg = item.getIntValue("msg");
 //            int enter = item.getIntValue("enter");
 //            int gift = item.getIntValue("gift");
             double giftAmount = item.getDoubleValue("gift_amount");
-            int itemScore = (int) ( total + giftAmount);
+            int itemScore = (int) (total + giftAmount);
 
             if (pnScore < 0) {
                 itemScore = pnScore - itemScore;
@@ -1385,10 +1410,10 @@ public class HttpRoomData {
                     .append(" 列表:").append(matchedList).append(" ")
                     .append("]");
         }
-        if(splitDegree != 0 || totalScore!=0){
+        if (splitDegree != 0 || totalScore != 0) {
             blackWhiteType.append("[dmk ").append(whiteScore).append(" ").append(blackScore).append("]");
         }
-        if (msgWhiteScore !=0 && msgBlackScore != 0){
+        if (msgWhiteScore != 0 && msgBlackScore != 0) {
             blackWhiteType.append(" (弹幕数: ").append(msgWhiteScore).append(" ").append(msgBlackScore).append(")");
         }
 
@@ -1417,7 +1442,9 @@ public class HttpRoomData {
             if (resp != null && resp.isSuccessful() && resp.body() != null) {
                 body = resp.body().string();
                 resp.close();
-            } else if (resp != null) { resp.close(); }
+            } else if (resp != null) {
+                resp.close();
+            }
         } catch (Exception e) {
             LOGGER.warn("EventsAPI GET failed: {}", e.getMessage());
         }
@@ -1426,7 +1453,9 @@ public class HttpRoomData {
             return Pair.of(0, "");
         }
         JSONArray events;
-        try { events = JSON.parseArray(body); } catch (Exception e) {
+        try {
+            events = JSON.parseArray(body);
+        } catch (Exception e) {
             logSb.append("  [事件分析:解析失败]");
             return Pair.of(0, "");
         }
@@ -1478,7 +1507,8 @@ public class HttpRoomData {
             try (java.sql.ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) return rs.getLong(1);
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         // 2. 调B站API
         try {
             RoomInit roomInit = httpGetRoomInit(roomId);
@@ -1487,11 +1517,12 @@ public class HttpRoomData {
                 // 存入SQLite
                 try (java.sql.Connection c = xyz.acproject.danmuji.tools.db.DanmujiDatabase.getConnection();
                      java.sql.PreparedStatement ps = c.prepareStatement(
-                         "INSERT OR REPLACE INTO room_anchor_map(room_id,anchor_uid) VALUES(?,?)")) {
+                             "INSERT OR REPLACE INTO room_anchor_map(room_id,anchor_uid) VALUES(?,?)")) {
                     ps.setLong(1, roomId);
                     ps.setLong(2, anchorUid);
                     ps.executeUpdate();
-                } catch (Exception ignored) {}
+                } catch (Exception ignored) {
+                }
                 return anchorUid;
             }
         } catch (Exception e) {
@@ -1554,7 +1585,7 @@ public class HttpRoomData {
                     .append(" 本地记录分:").append(totalScore).append("]");
         }
 
-        if(splitDegree != 0 || totalScore!=0){
+        if (splitDegree != 0 || totalScore != 0) {
             sb.append("[dmj ").append(whiteScore).append(" ").append(blackScore).append("]");
         }
 

@@ -2864,6 +2864,13 @@ const method = {
                 if (data.cmd === 'bwlist_update' && data.result) {
                     method._handleBwlistUpdate(data.result);
                 }
+                if (data.cmd === 'open_tab' && data.result) {
+                    // 服务端请求在当前浏览器打开新标签页；若被弹窗拦截则显示可点击链接
+                    var win = window.open(data.result, '_blank');
+                    if (!win) {
+                        showMessage('浏览器拦截了自动打开标签页，请手动点击：<a href="' + data.result + '" target="_blank" rel="noopener">打开</a>', 'warning', 10);
+                    }
+                }
             };
             self._autoBlockWs.onclose = function () {
                 // 断线3秒后重连
