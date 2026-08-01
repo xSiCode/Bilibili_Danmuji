@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="referrer" content="never">
+    <meta name="renderer" content="webkit">
+    <title>OBS进入头像条</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            overflow: hidden;
+            font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+        }
+        #avatar-strip {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        .enter-avatar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            overflow: hidden;
+            will-change: transform;
+            animation: avatarSlide linear forwards;
+        }
+        @keyframes avatarSlide {
+            from { transform: translateX(var(--from-x)); }
+            to   { transform: translateX(var(--to-x)); }
+        }
+        .enter-avatar img {
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: cover;
+        }
+        .enter-avatar .fallback {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            user-select: none;
+        }
+    </style>
+</head>
+<body>
+<div id="avatar-strip"></div>
+<script>
+    (function () {
+        var qs = new URLSearchParams(location.search);
+        var viewW = window.innerWidth || document.documentElement.clientWidth || 800;
+        var viewH = window.innerHeight || document.documentElement.clientHeight || 200;
+        // 优先使用 ?w=&h= 传入的宽高，否则使用 OBS 浏览器源视口尺寸
+        var W = parseInt(qs.get('w'), 10) > 0 ? parseInt(qs.get('w'), 10) : viewW;
+        var H = parseInt(qs.get('h'), 10) > 0 ? parseInt(qs.get('h'), 10) : viewH;
+        // 整屏横穿秒数（速度）：默认 45 秒，可用 ?duration= 调整   移动速度 ~~  根据实际情况设计：840px width . 每帧移动一个像素
+        var duration = 28;
+        var size = H; // 正方形头像，边长 = 传入高度
+        // 头像间距：默认约为边长的 1/4，可用 ?gap= 指定像素值  ~~
+        var gap = 2;
+        var speedPxPerSec = W / duration; // 像素/秒（CSS 动画按此换算时长）
+
+        var strip = document.getElementById('avatar-strip');
+        var avatars = []; // {el, x, uid}
+        var queue = [];   // 待滑入的用户（排队，保证不重叠且有间距）
+        var seen = {};    // uid 去重：会话内只出现一次
+
+        function spawnAvatar(data) {
+            var el = document.createElement('div');
+            el.className = 'enter-avatar';
+            el.style.width = size + 'px';
+            el.style.height = size + 'px';
+
+            var img = document.createElement('img');
+            img.referrerPolicy = 'no-referrer';
+            img.src = data.face || '';
+            img.alt = '';
+            img.onerror = function () {
+                img.remove();
+                var fb = document.createElement('div');
+                fb.className = 'fallback';
+                var name = (data.uname || '?').trim();
+                fb.textContent = name ? name.charAt(0) : '?';
+                el.appendChild(fb);
+            };
+            el.appendChild(img);
+            strip.appendChild(el);
+
+            // 从屏幕右边缘外（x=W）滑入到完全移出左边缘（x=-size），由 CSS 动画匀速驱动（合成器平滑，避免亚像素闪烁）
+            el.style.transform = 'translateX(' + W + 'px)';
+            el.style.setProperty('--from-x', W + 'px');
+            el.style.setProperty('--to-x', (-size) + 'px');
+            el.style.animationDuration = (duration * (W + size) / W) + 's';
+
+            var rec = { el: el, uid: data.uid, start: performance.now() };
+            avatars.push(rec);
+            el.addEventListener('animationend', function () {
+                var idx = avatars.indexOf(rec);
+                if (idx >= 0) avatars.splice(idx, 1);
+                el.remove();
+            });
+        }
+
+        // 新头像从右边缘外侧滑入：所有头像同速，最新生成的就是最右侧
+        function trySpawn() {
+            if (queue.length === 0) return;
+            if (avatars.length === 0) {
+                spawnAvatar(queue.shift());
+                return;
+            }
+            var newest = avatars[avatars.length - 1];
+            var elapsed = performance.now() - newest.start;
+            // 新头像在 x = W 生成，需最右头像已左移 (size + gap)：elapsed >= (size + gap) / 速度
+            if (elapsed >= (size + gap) / speedPxPerSec * 1000) {
+                spawnAvatar(queue.shift());
+            }
+        }
+
+        // 移动由 CSS 动画驱动，这里仅负责排队放行节奏
+        function loop() {
+            trySpawn();
+            requestAnimationFrame(loop);
+        }
+
+        // WebSocket 连接 /danmu/sub，断线自动重连
+        var wsRetryDelay = 3000;
+        function connectWs() {
+            var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            var ws;
+            try {
+                ws = new WebSocket(proto + '//' + location.host + '/danmu/sub');
+            } catch (e) {
+                setTimeout(connectWs, wsRetryDelay);
+                return;
+            }
+            ws.onopen = function () {
+                wsRetryDelay = 3000;
+            };
+            ws.onmessage = function (e) {
+                var data;
+                try { data = JSON.parse(e.data); } catch (err) { return; }
+                if (data.cmd !== 'obs_enter' || !data.result) return;
+                var r = data.result;
+                var uid = r.uid;
+                if (!uid || seen[uid]) return;
+                seen[uid] = true;
+                queue.push(r);
+                trySpawn();
+            };
+            ws.onclose = function () {
+                setTimeout(connectWs, wsRetryDelay);
+                wsRetryDelay = Math.min(wsRetryDelay * 1.5, 30000);
+            };
+            ws.onerror = function () {
+                try { ws.close(); } catch (err) {}
+            };
+        }
+
+        requestAnimationFrame(loop);
+        connectWs();
+    })();
+</script>
+</body>
+</html>

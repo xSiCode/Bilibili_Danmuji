@@ -205,6 +205,11 @@ public class WebController {
         return "obs_danmaku";
     }
 
+    @RequestMapping(value = "/obs_enter")
+    public String obs_enter(Model model) {
+        return "obs_enter";
+    }
+
     // === AICU 用户查阅页面 ===
     @RequestMapping(value = "/aicu")
     public String aicu(HttpServletRequest req, Model model) {

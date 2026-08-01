@@ -888,8 +888,8 @@ public class HttpRoomData {
             // Phase 2e: LR录制分析  不再使用，被 Phase 2f 替代
             //  Pair<Integer, String> localResult = processLocalSummarySync(vmid, logSb);
 
-            // Phase 2f: 用户本地记录分析
-            Pair<Integer, String> localActResult = processLocalActivitySync(vmid, logSb);
+            // Phase 2f: 用户本地记录分析 弹幕姬多开记录的数据，不再使用，使用 aicu + dmkc 数据替代。
+            // Pair<Integer, String> localActResult = processLocalActivitySync(vmid, logSb);
 
             // Phase 2g: 流媒体(也是LR)Aicu观众分析
             Pair<Integer, String> viewerResult = processStreamerViewersSync(vmid, logSb);
@@ -909,30 +909,35 @@ public class HttpRoomData {
             //   appendType(combinedType, eventsApiResult.getRight());
 
             //  最终评分
-            int totalScore = medalResult.getLeft() + follResult.getLeft() + cardResult.score + sameResult.getLeft() + viewerResult.getLeft() + localActResult.getLeft() + eventsApiResult.getLeft();
+            int totalScore = medalResult.getLeft() + follResult.getLeft() + cardResult.score + sameResult.getLeft() + viewerResult.getLeft() + eventsApiResult.getLeft();
 
             // 非单一阵营的观众：查看具体行为
-            if (totalScore < 0 && viewerResult.getRight() != null && viewerResult.getRight().contains("dmk")){
-                notifyOpenTab("http://localhost:5000/?uid=" + vmid, "dmk:"+uname, totalScore);
+            if (totalScore < 0 && viewerResult.getRight() != null && viewerResult.getRight().contains("dmk")) {
+                notifyOpenTab("http://localhost:5000/?uid=" + vmid, "dmk:" + uname, totalScore);
             }
 
             // 可疑倾向（综合分<=0）的观众：在当前浏览器新标签页打开 AICU 查阅页
             if (totalScore < 0 && viewerResult.getRight() != null && viewerResult.getRight().contains("弹幕")) {
-                notifyOpenTab("https://www.aicu.cc/livedanmu?uid=" + vmid, "aicu:"+uname, totalScore);
+                notifyOpenTab("https://www.aicu.cc/livedanmu?uid=" + vmid, "aicu:" + uname, totalScore);
+            }
+
+            // 当 totalScore 大于0（正常观众）：推送头像到 OBS 头像条，头像：cardResult.face noface.jpg
+            if (totalScore > 0 && !cardResult.face.contains("noface")) {
+                notifyObsAvatar(vmid, uname, cardResult.face);
             }
 
             StrangerViewerService.addRecord(
                     vmid, uname, cardResult.face, totalScore, combinedType + cardResult.sign);
 
             // Phase 4: 仅当综合分在 -1, 0 时才触发动态API
-            if (totalScore < 0  && !schedulerDynamicColdWait.get()) {
+            if (totalScore < 0 && !schedulerDynamicColdWait.get()) {
                 // logSb.append("[动态|请求中]");
                 return asyncHttpGetUserDynamic(vmid).thenApply(dynData -> {
                     Pair<Integer, String> dynResult = computeDynamicScore(dynData, logSb);
 
                     // 在当前浏览器新标签页打开 B 站动态页, >0 说明有动态
-                    if ( dynResult.getLeft() > 0) {
-                        notifyOpenTab("https://space.bilibili.com/" + vmid + "/dynamic", "BLBL:"+uname, totalScore);
+                    if (dynResult.getLeft() > 0) {
+                        notifyOpenTab("https://space.bilibili.com/" + vmid + "/dynamic", "BLBL:" + uname, totalScore);
                     }
 
                     int finalScore = totalScore + dynResult.getLeft();
@@ -981,6 +986,23 @@ public class HttpRoomData {
             ws.sendMessage(WsPackage.toJson("open_tab", (short) 0, data));
         } catch (Exception e) {
             LOGGER.debug("notifyOpenTab error: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 通过 WebSocket 推送 "obs_enter" 命令，让 OBS 头像条页面显示进入用户头像（仅含 uid/用户名/头像URL）。
+     */
+    private static void notifyObsAvatar(long uid, String uname, String face) {
+        try {
+            DanmuWebsocket ws = SpringUtils.getBean(DanmuWebsocket.class);
+            if (ws == null) return;
+            JSONObject data = new JSONObject();
+            data.put("uid", uid);
+            data.put("uname", uname);
+            data.put("face", face);
+            ws.sendMessage(WsPackage.toJson("obs_enter", (short) 0, data));
+        } catch (Exception e) {
+            LOGGER.debug("notifyObsAvatar error: {}", e.getMessage());
         }
     }
 
