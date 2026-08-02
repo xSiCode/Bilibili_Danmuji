@@ -26,10 +26,10 @@
         <div class="col-auto ms-auto"><button id="lrm-btn-export" class="btn btn-sm btn-success">导出CSV</button><button class="btn btn-sm btn-outline-warning" onclick="$('#lrm-import-file').click()">导入CSV</button><button class="btn btn-sm btn-outline-info merge-csv-btn" data-merge-type="lrm" data-list-api="../listCsvFiles">合并外部CSV</button><input type="file" id="lrm-import-file" accept=".csv" style="display:none;" class="import-file-input" data-file-type="lrm"></div>
     </div>
     <div id="lrm-stats-row" class="row g-2 mb-2" style="display:none;">
-        <div class="col-md-3"><div class="card border-info"><div class="card-body py-1 px-2" style="font-size:12px;"><span class="text-muted">累计观看数</span><br><strong id="lrm-stat-cum-watcher" class="text-info">--</strong></div></div></div>
-        <div class="col-md-3"><div class="card border-danger"><div class="card-body py-1 px-2" style="font-size:12px;"><span class="text-muted">累计点赞数</span><br><strong id="lrm-stat-cum-like" class="text-danger">--</strong></div></div></div>
-        <div class="col-md-3"><div class="card border-primary"><div class="card-body py-1 px-2" style="font-size:12px;"><span class="text-muted">平均在线 / 最高在线</span><br><strong id="lrm-stat-online" class="text-primary">--</strong></div></div></div>
-        <div class="col-md-3"><div class="card border-warning"><div class="card-body py-1 px-2" style="font-size:12px;"><span class="text-muted">总观看时长 / 人均观看</span><br><strong id="lrm-stat-watch-time" class="text-warning">--</strong></div></div></div>
+        <div class="col-md-3"><div class="card border-info"><div class="card-body py-1 px-2" style="font-size:12px;"><span class="text-muted">累计观看数:</span> <strong id="lrm-stat-cum-watcher" class="text-info">--</strong></div></div></div>
+        <div class="col-md-3"><div class="card border-danger"><div class="card-body py-1 px-2" style="font-size:12px;"><span class="text-muted">累计点赞数:</span> <strong id="lrm-stat-cum-like" class="text-danger">--</strong></div></div></div>
+        <div class="col-md-3"><div class="card border-primary"><div class="card-body py-1 px-2" style="font-size:12px;"><span class="text-muted">平均在线 / 最高在线:</span> <strong id="lrm-stat-online" class="text-primary">--</strong></div></div></div>
+        <div class="col-md-3"><div class="card border-warning"><div class="card-body py-1 px-2" style="font-size:12px;"><span class="text-muted">总观看时长 / 人均观看:</span> <strong id="lrm-stat-watch-time" class="text-warning">--</strong></div></div></div>
     </div>
     <div class="lrm-table-wrap">
         <table id="lrm-data-table" class="table table-sm table-striped" style="display:none;"><thead id="lrm-table-head"><tr><th data-sort="时间">时间</th><th data-sort="观看数">观看数</th><th data-sort="在线数">在线数</th><th data-sort="点赞数">点赞数</th><th data-sortable="false">操作</th></tr></thead><tbody id="lrm-table-body"></tbody></table>
@@ -57,10 +57,10 @@
         <div class="col-auto ms-auto"><button id="dmgr-btn-export" class="btn btn-sm btn-success">导出CSV</button><button class="btn btn-sm btn-outline-warning" onclick="$('#dmgr-import-file').click()">导入CSV</button><button class="btn btn-sm btn-outline-info merge-csv-btn" data-merge-type="dmgr" data-list-api="../listBarrageCsvFiles">合并外部CSV</button><input type="file" id="dmgr-import-file" accept=".csv" style="display:none;" class="import-file-input" data-file-type="dmgr"></div>
     </div>
     <div id="dmgr-stats-row" class="row g-2 mb-2" style="display:none;">
-        <div class="col-md-3"><div class="card border-info"><div class="card-body py-1 px-2" style="font-size:12px;"><span class="text-muted">发弹幕人数</span><br><strong id="dmgr-stat-users" class="text-info">--</strong></div></div></div>
-        <div class="col-md-3"><div class="card border-success"><div class="card-body py-1 px-2" style="font-size:12px;"><span class="text-muted">弹幕数量</span><br><strong id="dmgr-stat-count" class="text-success">--</strong></div></div></div>
-        <div class="col-md-3"><div class="card border-primary"><div class="card-body py-1 px-2" style="font-size:12px;"><span class="text-muted">弹幕总字数</span><br><strong id="dmgr-stat-chars" class="text-primary">--</strong></div></div></div>
-        <div class="col-md-3"><div class="card border-warning"><div class="card-body py-1 px-2" style="font-size:12px;"><span class="text-muted">平均弹幕长度</span><br><strong id="dmgr-stat-avg-len" class="text-warning">--</strong></div></div></div>
+        <div class="col-md-3"><div class="card border-info"><div class="card-body py-1 px-2" style="font-size:12px;"><span class="text-muted">发弹幕人数:</span> <strong id="dmgr-stat-users" class="text-info">--</strong></div></div></div>
+        <div class="col-md-3"><div class="card border-success"><div class="card-body py-1 px-2" style="font-size:12px;"><span class="text-muted">弹幕数量:</span> <strong id="dmgr-stat-count" class="text-success">--</strong></div></div></div>
+        <div class="col-md-3"><div class="card border-primary"><div class="card-body py-1 px-2" style="font-size:12px;"><span class="text-muted">弹幕总字数:</span> <strong id="dmgr-stat-chars" class="text-primary">--</strong></div></div></div>
+        <div class="col-md-3"><div class="card border-warning"><div class="card-body py-1 px-2" style="font-size:12px;"><span class="text-muted">平均弹幕长度:</span> <strong id="dmgr-stat-avg-len" class="text-warning">--</strong></div></div></div>
     </div>
     <div class="dmgr-table-wrap">
         <table id="dmgr-data-table" class="table table-sm table-striped" style="display:none;"><thead id="dmgr-table-head"><tr><th>发送时间</th><th>id</th><th>名字</th><th>弹幕</th></tr></thead><tbody id="dmgr-table-body"></tbody></table>
@@ -89,9 +89,10 @@
         <div class="col-auto ms-auto"><button id="gft-btn-export" class="btn btn-sm btn-success">导出CSV</button><button class="btn btn-sm btn-outline-warning" onclick="$('#gft-import-file').click()">导入CSV</button><button class="btn btn-sm btn-outline-info merge-csv-btn" data-merge-type="gft" data-list-api="../listGiftCsvFiles">合并外部CSV</button><input type="file" id="gft-import-file" accept=".csv" style="display:none;" class="import-file-input" data-file-type="gft"></div>
     </div>
     <div class="row g-2 mt-2" id="gft-stats-row" style="display:none;">
-        <div class="col-auto"><div class="card text-bg-info"><div class="card-body py-1 px-3"><small>总电池数</small><br><strong id="gft-stat-amount">0</strong></div></div></div>
-        <div class="col-auto"><div class="card text-bg-success"><div class="card-body py-1 px-3"><small>送礼人数</small><br><strong id="gft-stat-users">0</strong></div></div></div>
-        <div class="col-auto"><div class="card text-bg-primary"><div class="card-body py-1 px-3"><small>礼物记录数</small><br><strong id="gft-stat-records">0</strong></div></div></div>
+        <div class="col-auto"><div class="card text-bg-info"><div class="card-body py-1 px-3"><small>总电池数:</small> <strong id="gft-stat-amount">0</strong></div></div></div>
+        <div class="col-auto"><div class="card text-bg-success"><div class="card-body py-1 px-3"><small>送礼人数:</small> <strong id="gft-stat-users">0</strong></div></div></div>
+        <div class="col-auto"><div class="card text-bg-primary"><div class="card-body py-1 px-3"><small>礼物记录数:</small> <strong id="gft-stat-records">0</strong></div></div></div>
+        <div class="col-auto"><div class="card text-bg-warning"><div class="card-body py-1 px-3"><small>人气票:</small> <strong id="gft-stat-vote">0</strong></div></div></div>
     </div>
     <div class="gft-table-wrap">
         <table id="gft-data-table" class="table table-sm table-striped" style="display:none;"><thead id="gft-table-head"><tr><th data-sort="最新时间">最新时间</th><th data-sort="id">id</th><th data-sort="名字">名字</th><th data-sort="赠送礼物名字">赠送礼物名字</th><th data-sort="电池">电池</th><th data-sort="赠礼次数">赠礼次数</th></tr></thead><tbody id="gft-table-body"></tbody></table>
@@ -118,12 +119,12 @@
         <div class="col-auto ms-auto"><button id="vst-btn-export" class="btn btn-sm btn-success">导出CSV</button><button class="btn btn-sm btn-outline-warning" onclick="$('#vst-import-file').click()">导入CSV</button><button class="btn btn-sm btn-outline-info merge-csv-btn" data-merge-type="vst" data-list-api="../listVisitorCsvFiles">合并外部CSV</button><input type="file" id="vst-import-file" accept=".csv" style="display:none;" class="import-file-input" data-file-type="vst"></div>
     </div>
     <div id="vst-stats-row" class="row g-2 mb-2" style="display:none;">
-        <div class="col-md-2"><div class="card border-info"><div class="card-body py-1 px-2" style="font-size:11px;"><span class="text-muted">进场人数</span><br><strong id="vst-stat-visits" class="text-info">--</strong></div></div></div>
-        <div class="col-md-2"><div class="card border-success"><div class="card-body py-1 px-2" style="font-size:11px;"><span class="text-muted">实际人数</span><br><strong id="vst-stat-actual" class="text-success">--</strong></div></div></div>
-        <div class="col-md-2"><div class="card border-primary"><div class="card-body py-1 px-2" style="font-size:11px;"><span class="text-muted">平均/分钟</span><br><strong id="vst-stat-avgpm" class="text-primary">--</strong></div></div></div>
-        <div class="col-md-2"><div class="card border-warning"><div class="card-body py-1 px-2" style="font-size:11px;"><span class="text-muted">打分 总和 / 均</span><br><strong id="vst-stat-score" class="text-warning">--</strong></div></div></div>
-        <div class="col-md-2"><div class="card border-danger"><div class="card-body py-1 px-2" style="font-size:11px;"><span class="text-muted">判定表 是/否</span><br><strong id="vst-stat-pn" class="text-danger">--</strong></div></div></div>
-        <div class="col-md-2"><div class="card border-secondary"><div class="card-body py-1 px-2" style="font-size:11px;"><span class="text-muted">当前排序</span><br><strong id="vst-stat-sort" class="text-secondary" style="font-size:10px;">次数↓</strong></div></div></div>
+        <div class="col-md-2"><div class="card border-info"><div class="card-body py-1 px-2" style="font-size:11px;"><span class="text-muted">进场人数:</span> <strong id="vst-stat-visits" class="text-info">--</strong></div></div></div>
+        <div class="col-md-2"><div class="card border-success"><div class="card-body py-1 px-2" style="font-size:11px;"><span class="text-muted">实际人数:</span> <strong id="vst-stat-actual" class="text-success">--</strong></div></div></div>
+        <div class="col-md-2"><div class="card border-primary"><div class="card-body py-1 px-2" style="font-size:11px;"><span class="text-muted">平均/分钟:</span> <strong id="vst-stat-avgpm" class="text-primary">--</strong></div></div></div>
+        <div class="col-md-2"><div class="card border-warning"><div class="card-body py-1 px-2" style="font-size:11px;"><span class="text-muted">打分 总和 / 均:</span> <strong id="vst-stat-score" class="text-warning">--</strong></div></div></div>
+        <div class="col-md-2"><div class="card border-danger"><div class="card-body py-1 px-2" style="font-size:11px;"><span class="text-muted">判定表 是/否:</span> <strong id="vst-stat-pn" class="text-danger">--</strong></div></div></div>
+        <div class="col-md-2"><div class="card border-secondary"><div class="card-body py-1 px-2" style="font-size:11px;"><span class="text-muted">当前排序:</span> <strong id="vst-stat-sort" class="text-secondary" style="font-size:10px;">次数↓</strong></div></div></div>
     </div>
     <div class="vst-table-wrap">
         <table id="vst-data-table" class="table table-sm table-striped" style="display:none;"><thead id="vst-table-head"><tr><th data-sort="最近" style="width:180px;text-align:left;">最近</th><th data-sort="id" style="width:180px;text-align:left;">id</th><th data-sort="观众" style="width:40%;text-align:left;">观众</th><th data-sort="打分类型" style="width:60%;text-align:left;">打分类型</th><th data-sort="打分" style="width:60px;text-align:right;">打分</th><th data-sort="次数" style="width:60px;text-align:right;">次数 ▼</th><th data-sort="判定表" style="width:60px;text-align:right;">判定表</th><th data-sort="场次" style="width:60px;text-align:right;">场次</th></tr></thead><tbody id="vst-table-body"></tbody></table>

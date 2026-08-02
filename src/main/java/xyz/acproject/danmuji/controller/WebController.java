@@ -3874,6 +3874,29 @@ public class WebController {
             Map<String, Object> stats = new LinkedHashMap<>();
             List<String[]> rows = new ArrayList<>();
             long roomId = parseRoomIdFromPath(filePath);
+
+            // 人气票数量：按礼物名汇总 gift_detail 的 num（票数）
+            long popularTicketCount = 0;
+            if (roomId != 0) {
+                try (java.sql.Connection c = getDbConnection()) {
+                    StringBuilder pw = new StringBuilder("WHERE room_id=? AND gift_name='人气票'");
+                    List<Object> pp = new ArrayList<>(); pp.add(roomId);
+                    Long psm = parseTimeToMillis(startTime); Long pem = parseTimeToMillis(endTime);
+                    if (psm != null) { pw.append(" AND timestamp >= ?"); pp.add(psm); }
+                    if (pem != null) { pw.append(" AND timestamp <= ?"); pp.add(pem); }
+                    String psql = "SELECT COALESCE(SUM(num),0) FROM gift_detail " + pw;
+                    try (java.sql.PreparedStatement ps = c.prepareStatement(psql)) {
+                        for (int i = 0; i < pp.size(); i++) ps.setObject(i + 1, pp.get(i));
+                        try (java.sql.ResultSet rs = ps.executeQuery()) {
+                            if (rs.next()) popularTicketCount = rs.getLong(1);
+                        }
+                    }
+                } catch (Exception ex) {
+                    LOGGER.debug("popularTicketCount query error", ex);
+                }
+            }
+            stats.put("popularTicketCount", popularTicketCount);
+
             if (roomId != 0) {
                 try (java.sql.Connection c = getDbConnection()) {
                     StringBuilder w = new StringBuilder("WHERE room_id=?");

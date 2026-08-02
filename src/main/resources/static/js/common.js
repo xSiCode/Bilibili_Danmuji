@@ -4773,6 +4773,7 @@ const method = {
                     $('#gft-stat-amount').text((s.totalAmount || 0).toLocaleString());
                     $('#gft-stat-users').text((s.uniqueUsers || 0).toLocaleString());
                     $('#gft-stat-records').text((s.totalRecords || 0).toLocaleString());
+                    $('#gft-stat-vote').text((s.popularTicketCount || 0).toLocaleString());
                 }
             }
         });

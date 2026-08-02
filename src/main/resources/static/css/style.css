@@ -1587,9 +1587,6 @@ div .link-popup-panel .popup-content-ctnr p {
 #lrm-data-table th.sortable-chosen {
     background: #e2e3e5;
 }
-#lrm-stats-row .card {
-    min-height: 52px;
-}
 #lrm-charts-row .card {
     min-height: 260px;
 }
@@ -1617,9 +1614,6 @@ div .link-popup-panel .popup-content-ctnr p {
 #dmgr-data-table th.sortable-chosen {
     background: #e2e3e5;
 }
-#dmgr-stats-row .card {
-    min-height: 52px;
-}
 #dmgr-charts-row .card {
     min-height: 260px;
 }
@@ -1637,7 +1631,6 @@ div .link-popup-panel .popup-content-ctnr p {
 #vst-data-table th.sortable-chosen { background: #e2e3e5; }
 #vst-data-table th[data-sort] { cursor: pointer; color: #0d6efd; }
 #vst-data-table th[data-sort]:hover { color: #0a58ca; text-decoration: underline; }
-#vst-stats-row .card { min-height: 52px; }
 #vst-charts-row .card { min-height: 260px; }
 #vst-charts-row canvas { max-height: 200px; }
 #vst-scatter-row .card { min-height: 290px; }
