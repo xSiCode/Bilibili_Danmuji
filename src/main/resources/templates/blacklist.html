@@ -78,9 +78,13 @@
                                 <div class="header-set"><div class="row align-items-center" style="margin-bottom:5px;--bs-gutter-x:5px">
                                     <div class="col-auto"><label class="form-check-label"><input class="form-check-input is_bwlist_open live-save" type="checkbox" title="开启后，优先查询本地黑白名单，命中则跳过后续打分"><span class="_description" data-bs-html="true" data-bs-placement="top" data-bs-toggle="tooltip" title="开启后，优先查询本地黑白名单，命中则跳过后续打分">开关</span></label></div>
                                     <div class="col-auto" style="margin-left:8px;"><label class="form-label mb-0" for="bwlist-search">搜索</label><input id="bwlist-search" class="form-control form-control-sm bwlist-search-input" type="text" placeholder="uid/名字/分数类型..." title="搜索黑名单和白名单" style="width:200px;display:inline-block;"></div>
+                                    <div class="col-auto" style="margin-left:8px;"><label class="form-label mb-0" for="bwlist-date">统计日期</label><input id="bwlist-date" class="form-control form-control-sm" type="date" style="width:160px;display:inline-block;"></div>
                                 </div></div>
                                 <!-- 黑名单表格 -->
-                                <div class="mb-2"><h6>黑名单 <small class="text-muted bwlist-black-total"></small></h6></div>
+                                <div class="mb-2"><h6>黑名单 <small class="text-muted bwlist-black-total"></small>
+                                    <span class="badge bg-secondary bwlist-black-count1">当天: --</span>
+                                    <span class="badge bg-secondary bwlist-black-countOther">跨天: --</span>
+                                </h6></div>
                                 <div class="form-group footer-set mb-3">
                                     <table class="table table-bordered table-sm table-striped bwlist-table bwlist-black-table"><thead><tr>
                                         <th class="bw-sortable bw-col-name" data-col="name" style="cursor:pointer;user-select:none">观众 <span class="bw-sort-icon"></span></th>
@@ -94,7 +98,10 @@
                                     <div class="bwlist-black-pagination d-flex justify-content-center align-items-center mt-2" style="display:none;"><button class="btn btn-sm btn-outline-secondary bw-black-prev">上一页</button><span class="bw-black-page-info mx-2">第1页</span><button class="btn btn-sm btn-outline-secondary bw-black-next">下一页</button></div>
                                 </div>
                                 <!-- 白名单表格 -->
-                                <div class="mb-2"><h6>白名单 <small class="text-muted bwlist-white-total"></small></h6></div>
+                                <div class="mb-2"><h6>白名单 <small class="text-muted bwlist-white-total"></small>
+                                    <span class="badge bg-secondary bwlist-white-count1">当天: --</span>
+                                    <span class="badge bg-secondary bwlist-white-countOther">跨天: --</span>
+                                </h6></div>
                                 <div class="form-group footer-set">
                                     <table class="table table-bordered table-sm table-striped bwlist-table bwlist-white-table"><thead><tr>
                                         <th class="bw-sortable bw-col-name" data-col="name" style="cursor:pointer;user-select:none">观众 <span class="bw-sort-icon"></span></th>

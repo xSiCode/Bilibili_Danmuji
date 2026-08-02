@@ -19,7 +19,8 @@ registerPageSave('blacklist', function(set) {
 // ========== 本地黑白名单姬 ==========
 var bwlistState = {
     black: { page: 1, pageSize: 10, sortField: 'updateTime', sortOrder: 'desc', search: '' },
-    white: { page: 1, pageSize: 10, sortField: 'updateTime', sortOrder: 'desc', search: '' }
+    white: { page: 1, pageSize: 10, sortField: 'updateTime', sortOrder: 'desc', search: '' },
+    date: ''
 };
 
 method.renderBlackWhiteTable = function(type, page) {
@@ -33,6 +34,7 @@ method.renderBlackWhiteTable = function(type, page) {
             page: st.page,
             pageSize: st.pageSize,
             search: st.search || '',
+            date: bwlistState.date || '',
             sortField: st.sortField,
             sortOrder: st.sortOrder
         },
@@ -45,6 +47,8 @@ method.renderBlackWhiteTable = function(type, page) {
                 var $total = $(".bwlist-" + type + "-total");
                 $tbody.empty();
                 $total.text('(共' + (r.total || 0) + '条)');
+                $('.bwlist-' + type + '-count1').text('当天: ' + (r.count1 || 0));
+                $('.bwlist-' + type + '-countOther').text('跨天: ' + (r.countOther || 0));
                 if (!r.rows || r.rows.length === 0) {
                     $pagination.hide();
                     $tbody.append('<tr><td colspan="7" class="text-muted">暂无数据</td></tr>');
@@ -102,6 +106,13 @@ method.refreshBothTables = function() {
 $(function() {
     initPageTabs();
 
+    // 统计日期默认今天
+    var today = new Date();
+    var dd = ('0' + today.getDate()).slice(-2);
+    var mm = ('0' + (today.getMonth() + 1)).slice(-2);
+    bwlistState.date = today.getFullYear() + '-' + mm + '-' + dd;
+    $('#bwlist-date').val(bwlistState.date);
+
     // 初始加载
     method.renderBlackWhiteTable('black');
     method.renderBlackWhiteTable('white');
@@ -122,6 +133,14 @@ $(function() {
             bwlistState.white.page = 1;
             method.refreshBothTables();
         }, 300);
+    });
+
+    // 统计日期切换
+    $(document).on('change', '#bwlist-date', function() {
+        bwlistState.date = $(this).val() || '';
+        bwlistState.black.page = 1;
+        bwlistState.white.page = 1;
+        method.refreshBothTables();
     });
 
     // 排序

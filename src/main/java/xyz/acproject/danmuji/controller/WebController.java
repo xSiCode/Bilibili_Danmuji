@@ -935,6 +935,7 @@ public class WebController {
                                          @RequestParam(defaultValue = "") String search,
                                          @RequestParam(defaultValue = "uid") String sortField,
                                          @RequestParam(defaultValue = "asc") String sortOrder,
+                                         @RequestParam(required = false) String date,
                                          HttpServletRequest req) {
         List<LocalBlackWhiteListService.BlackWhiteEntry> source;
         if ("white".equals(type)) {
@@ -968,6 +969,29 @@ public class WebController {
         int to = Math.min(from + pageSize, total);
         List<LocalBlackWhiteListService.BlackWhiteEntry> pageItems = total > 0 ? source.subList(from, to) : new ArrayList<>();
 
+        // 次数=1 / other 观众数量统计：仅统计“更新时间”为所选日期（默认今天）当天
+        long dayStart = 0, dayEnd = Long.MAX_VALUE;
+        try {
+            java.util.Calendar cal = java.util.Calendar.getInstance();
+            if (date != null && !date.isEmpty()) {
+                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd");
+                java.util.Date d = sdf.parse(date);
+                cal.setTime(d);
+            }
+            cal.set(java.util.Calendar.HOUR_OF_DAY, 0);
+            cal.set(java.util.Calendar.MINUTE, 0);
+            cal.set(java.util.Calendar.SECOND, 0);
+            cal.set(java.util.Calendar.MILLISECOND, 0);
+            dayStart = cal.getTimeInMillis();
+            dayEnd = dayStart + 24L * 3600 * 1000 - 1;
+        } catch (Exception ignored) {}
+        int count1 = 0, countOther = 0;
+        for (LocalBlackWhiteListService.BlackWhiteEntry e : source) {
+            if (e.updateTime < dayStart || e.updateTime > dayEnd) continue;
+            // 规则变更：创建时间与更新时间同一天 → “次数=1”；不同天 → other
+            if (isSameCalendarDay(e.createTime, e.updateTime)) count1++; else countOther++;
+        }
+
         List<JSONObject> rows = new ArrayList<>();
         for (LocalBlackWhiteListService.BlackWhiteEntry e : pageItems) {
             JSONObject row = new JSONObject();
@@ -997,7 +1021,20 @@ public class WebController {
         result.put("total", total);
         result.put("totalPages", totalPages);
         result.put("currentPage", totalPages > 0 ? page : 0);
+        result.put("count1", count1);
+        result.put("countOther", countOther);
         return Response.success(result, req);
+    }
+
+    /** 判断两个毫秒时间戳是否属于同一天（本地时区） */
+    private static boolean isSameCalendarDay(long t1, long t2) {
+        if (t1 <= 0) return true; // 创建时间缺失时视为与更新时间同一天
+        java.util.Calendar c1 = java.util.Calendar.getInstance();
+        c1.setTimeInMillis(t1);
+        java.util.Calendar c2 = java.util.Calendar.getInstance();
+        c2.setTimeInMillis(t2);
+        return c1.get(java.util.Calendar.YEAR) == c2.get(java.util.Calendar.YEAR)
+                && c1.get(java.util.Calendar.DAY_OF_YEAR) == c2.get(java.util.Calendar.DAY_OF_YEAR);
     }
 
     @ResponseBody
