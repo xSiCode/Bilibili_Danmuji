@@ -118,6 +118,14 @@
         <div class="col-auto"><input type="text" id="vst-search-input" class="form-control form-control-sm" style="width:160px;" placeholder="搜索..."></div>
         <div class="col-auto ms-auto"><button id="vst-btn-export" class="btn btn-sm btn-success">导出CSV</button><button class="btn btn-sm btn-outline-warning" onclick="$('#vst-import-file').click()">导入CSV</button><button class="btn btn-sm btn-outline-info merge-csv-btn" data-merge-type="vst" data-list-api="../listVisitorCsvFiles">合并外部CSV</button><input type="file" id="vst-import-file" accept=".csv" style="display:none;" class="import-file-input" data-file-type="vst"></div>
     </div>
+    <!-- 场次人数（仅展示，供拷贝） -->
+    <div class="mb-2 vst-session-tabs">
+        <span class="text-muted" style="font-size:12px;">场次:</span>
+        <span class="badge bg-secondary vst-session-count" data-session="1">场次1: --</span>
+        <span class="badge bg-secondary vst-session-count" data-session="2">场次2: --</span>
+        <span class="badge bg-secondary vst-session-count" data-session="3">场次3: --</span>
+        <span class="badge bg-secondary vst-session-count" data-session="other">other: --</span>
+    </div>
     <div id="vst-stats-row" class="row g-2 mb-2" style="display:none;">
         <div class="col-md-2"><div class="card border-info"><div class="card-body py-1 px-2" style="font-size:11px;"><span class="text-muted">进场人数:</span> <strong id="vst-stat-visits" class="text-info">--</strong></div></div></div>
         <div class="col-md-2"><div class="card border-success"><div class="card-body py-1 px-2" style="font-size:11px;"><span class="text-muted">实际人数:</span> <strong id="vst-stat-actual" class="text-success">--</strong></div></div></div>

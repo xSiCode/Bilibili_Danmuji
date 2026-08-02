@@ -4157,6 +4157,12 @@ const method = {
                     $('#vst-stat-avgpm').text((s.avgPerMin || 0).toLocaleString());
                     $('#vst-stat-score').text((s.scoreSum || 0).toLocaleString() + ' / ' + (s.scoreAvg || 0).toLocaleString());
                     $('#vst-stat-pn').text((s.pnYes || 0) + ' 是 / ' + (s.pnNo || 0) + ' 否');
+                    // 场次人数（仅展示，供拷贝）
+                    var sc = s.sessionCounts || {};
+                    $('.vst-session-count[data-session="1"]').text('场次1: ' + (sc['1'] || 0));
+                    $('.vst-session-count[data-session="2"]').text('场次2: ' + (sc['2'] || 0));
+                    $('.vst-session-count[data-session="3"]').text('场次3: ' + (sc['3'] || 0));
+                    $('.vst-session-count[data-session="other"]').text('other: ' + (sc.other || 0));
                     $('#vst-stats-row').show();
                 }
             }

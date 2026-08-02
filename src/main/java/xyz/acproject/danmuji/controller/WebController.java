@@ -3389,6 +3389,8 @@ public class WebController {
         try {
             validateFilePath(filePath);
             Map<String, Object> stats = new LinkedHashMap<>();
+            Map<String, Long> sessionCounts = new LinkedHashMap<>();
+            sessionCounts.put("1", 0L); sessionCounts.put("2", 0L); sessionCounts.put("3", 0L); sessionCounts.put("other", 0L);
             long roomId = parseRoomIdFromPath(filePath);
             if (roomId == 0) {
                 stats.put("totalVisits", 0L); stats.put("actualPeople", 0); stats.put("avgPerMin", 0.0);
@@ -3401,6 +3403,7 @@ public class WebController {
                 stats.put("scoreDistribution", Collections.emptyList());
                 stats.put("visitCountDist", Collections.emptyList());
                 stats.put("fieldCountDist", Collections.emptyList());
+                stats.put("sessionCounts", sessionCounts);
                 return Response.success(stats, req);
             }
 
@@ -3428,6 +3431,9 @@ public class WebController {
                                     String.valueOf(rs.getInt("count")),
                                     rs.getInt("in_pn_table") == 1 ? "是" : "否",
                                     String.valueOf(rs.getInt("session"))});
+                                int sess = rs.getInt("session");
+                                String sessKey = sess >= 1 && sess <= 3 ? String.valueOf(sess) : "other";
+                                sessionCounts.put(sessKey, sessionCounts.getOrDefault(sessKey, 0L) + 1);
                             }
                         }
                     }
@@ -3445,6 +3451,7 @@ public class WebController {
                 stats.put("scoreDistribution", Collections.emptyList());
                 stats.put("visitCountDist", Collections.emptyList());
                 stats.put("fieldCountDist", Collections.emptyList());
+                stats.put("sessionCounts", sessionCounts);
                 return Response.success(stats, req);
             }
 
@@ -3576,6 +3583,7 @@ public class WebController {
             stats.put("scoreDistribution", scoreDistList);
             stats.put("visitCountDist", visitCountDistList);
             stats.put("fieldCountDist", fieldCountDistList);
+            stats.put("sessionCounts", sessionCounts);
 
             return Response.success(stats, req);
         } catch (Exception e) {
