@@ -1654,9 +1654,9 @@ public class HttpRoomData {
 
                     // 我关注了此人
                     if (following) {
-                        r.score += 5; // 需求如此
-                        r.type += "[已关注+5]";
-                        cardLog.append(" 已关注+5");
+                        r.score += 10; // 需求如此
+                        r.type += "[已关注+10]";
+                        cardLog.append(" 已关注+10");
                     } else {
                         // 人机
                         if ((fans < 50 && attention > 4500) || attention > 4990 || (attention == 0 && fans == 0)) {
@@ -1680,7 +1680,7 @@ public class HttpRoomData {
                         int lv = levelInfo != null ? levelInfo.getIntValue("current_level") : -1;
                         cardLog.append(" Lv").append(lv);
                         if (lv == 0) {
-                            r.score = -10; // 需求如此，不接受lv0的人 。 存在lv0,但关注的全是自己人的情况，不接受这样的观众
+                            r.score += -10; // 需求如此，不接受lv0的人 。 存在lv0,但关注的全是自己人的情况，不接受这样的观众
                             r.type += "[Lv0:-10]";
                             cardLog.append("[Lv0:-10]");
                         } else if (lv <= 2) {

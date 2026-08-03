@@ -5197,7 +5197,7 @@ const method = {
             + '</div>';
         $wrap.append(html);
         var $el = $('#' + id);
-        var left = 60;
+        var left = 180;
         var timer = setInterval(function () {
             $el.find('.ot-countdown').text(' ' + left + 's');
             if (--left < 0) {
