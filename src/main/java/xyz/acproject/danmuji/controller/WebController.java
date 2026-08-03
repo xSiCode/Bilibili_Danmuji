@@ -210,6 +210,12 @@ public class WebController {
         return "obs_enter";
     }
 
+    @RequestMapping(value = "/dailyStats")
+    public String dailyStats(HttpServletRequest req, Model model) {
+        addCommonModelAttributes(req, model);
+        return "daily_stats";
+    }
+
     // === AICU 用户查阅页面 ===
     @RequestMapping(value = "/aicu")
     public String aicu(HttpServletRequest req, Model model) {
@@ -985,12 +991,8 @@ public class WebController {
             dayStart = cal.getTimeInMillis();
             dayEnd = dayStart + 24L * 3600 * 1000 - 1;
         } catch (Exception ignored) {}
-        int count1 = 0, countOther = 0;
-        for (LocalBlackWhiteListService.BlackWhiteEntry e : source) {
-            if (e.updateTime < dayStart || e.updateTime > dayEnd) continue;
-            // 规则变更：创建时间与更新时间同一天 → “次数=1”；不同天 → other
-            if (isSameCalendarDay(e.createTime, e.updateTime)) count1++; else countOther++;
-        }
+        int[] sc = countSameDayCrossDay(source, dayStart, dayEnd);
+        int count1 = sc[0], countOther = sc[1];
 
         List<JSONObject> rows = new ArrayList<>();
         for (LocalBlackWhiteListService.BlackWhiteEntry e : pageItems) {
@@ -1035,6 +1037,90 @@ public class WebController {
         c2.setTimeInMillis(t2);
         return c1.get(java.util.Calendar.YEAR) == c2.get(java.util.Calendar.YEAR)
                 && c1.get(java.util.Calendar.DAY_OF_YEAR) == c2.get(java.util.Calendar.DAY_OF_YEAR);
+    }
+
+    /** 统计列表中“创建/更新时间同天”与“跨天”的条目数（仅限更新时间在 [dayStart, dayEnd] 内） */
+    private static int[] countSameDayCrossDay(java.util.List<LocalBlackWhiteListService.BlackWhiteEntry> list,
+                                              long dayStart, long dayEnd) {
+        int sameDay = 0, crossDay = 0;
+        for (LocalBlackWhiteListService.BlackWhiteEntry e : list) {
+            if (e.updateTime < dayStart || e.updateTime > dayEnd) continue;
+            if (isSameCalendarDay(e.createTime, e.updateTime)) sameDay++; else crossDay++;
+        }
+        return new int[]{sameDay, crossDay};
+    }
+
+    /** 从统计接口响应中取出 result Map */
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> extractStats(Response<?> resp) {
+        if (resp != null && resp.getResult() instanceof Map) {
+            return (Map<String, Object>) resp.getResult();
+        }
+        return new LinkedHashMap<>();
+    }
+
+    /**
+     * 每日统计总览：按所选日期（默认今天）汇总 直播间/弹幕/礼物/观众/黑白名单 各模块统计。
+     */
+    @ResponseBody
+    @GetMapping(value = "/dailyStatsData")
+    public Response<?> dailyStatsData(@RequestParam(required = false) String date, HttpServletRequest req) {
+        try {
+            Map<String, Object> result = new LinkedHashMap<>();
+            Long roomId = PublicDataConf.ROOMID;
+            String anchor = safeFileName(PublicDataConf.ANCHOR_NAME);
+            if (roomId == null || roomId <= 0) {
+                result.put("connected", false);
+                return Response.success(result, req);
+            }
+            result.put("connected", true);
+
+            // 所选日期（默认今天）整天的时间范围
+            java.util.Calendar cal = java.util.Calendar.getInstance();
+            if (date != null && !date.isEmpty()) {
+                try {
+                    java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd");
+                    cal.setTime(sdf.parse(date));
+                } catch (Exception ignored) {}
+            }
+            cal.set(java.util.Calendar.HOUR_OF_DAY, 0);
+            cal.set(java.util.Calendar.MINUTE, 0);
+            cal.set(java.util.Calendar.SECOND, 0);
+            cal.set(java.util.Calendar.MILLISECOND, 0);
+            long dayStart = cal.getTimeInMillis();
+            long dayEnd = dayStart + 24L * 3600 * 1000 - 1;
+            String startTime = millisToTimeStr(dayStart);
+            String endTime = millisToTimeStr(dayEnd);
+
+            // 合成当前房间的统计文件路径（各统计接口仅用它解析房间）
+            String filePath = getDanmujiLogDir() + File.separator + roomId + "_" + anchor + "_0_统计.csv";
+
+            result.put("lrm", extractStats(getCsvStatistics(filePath, startTime, endTime, req)));
+            result.put("dmgr", extractStats(getBarrageStatistics(filePath, startTime, endTime, 5, req)));
+            result.put("gft", extractStats(getGiftStatistics(filePath, startTime, endTime, 10, req)));
+            result.put("vst", extractStats(getVisitorStatistics(filePath, startTime, endTime, 15, req)));
+
+            // 黑白名单：当天/跨天（按更新时间=所选日期，创建/更新同天判定）
+            Map<String, Object> bw = new LinkedHashMap<>();
+            bw.put("black", bwSameDayCrossDay("black", dayStart, dayEnd));
+            bw.put("white", bwSameDayCrossDay("white", dayStart, dayEnd));
+            result.put("bw", bw);
+            return Response.success(result, req);
+        } catch (Exception e) {
+            LOGGER.error("dailyStatsData error", e);
+            return Response.success(null, req);
+        }
+    }
+
+    private static Map<String, Object> bwSameDayCrossDay(String type, long dayStart, long dayEnd) {
+        java.util.List<LocalBlackWhiteListService.BlackWhiteEntry> list = "white".equals(type)
+                ? LocalBlackWhiteListService.getWhitelist()
+                : LocalBlackWhiteListService.getBlacklist();
+        int[] sc = countSameDayCrossDay(list, dayStart, dayEnd);
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("sameDay", sc[0]);
+        m.put("crossDay", sc[1]);
+        return m;
     }
 
     @ResponseBody

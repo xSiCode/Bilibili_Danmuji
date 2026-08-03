@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{fragments/head :: head(pageCss='common.css', pageTitle='弹幕姬-每日统计')}"></th:block>
+</head>
+<body>
+<div class="app">
+    <div class="row align-items-center justify-content-center center-wrapper">
+        <div class="col-md-12 card-outer-wrap">
+            <div class="card border-primary">
+                <div class="card-header"><h2>每日统计总览</h2></div>
+                <div class="card-body p-1 pt-0">
+                    <th:block th:replace="~{fragments/layout :: status-bar}"></th:block>
+                    <th:block th:replace="~{fragments/layout :: sidebar(activePage='dailyStats')}"></th:block>
+                    <div class="settings-content flex-grow-1">
+                        <div class="input-group mb-1"><h5>每日统计</h5></div>
+                        <div class="row g-2 mb-2 align-items-center">
+                            <div class="col-auto"><label class="form-label mb-0" style="font-size:12px;">统计日期</label>
+                                <input type="date" id="ds-date" class="form-control form-control-sm" style="width:160px;"></div>
+                            <div class="col-auto"><label class="form-check-label" style="font-size:12px;">
+                                <input type="checkbox" id="ds-autorefresh" class="form-check-input" checked> 自动刷新(60s)</label></div>
+                            <div class="col-auto"><button id="ds-refresh" class="btn btn-sm btn-primary">刷新</button></div>
+                            <div class="col-auto"><button id="ds-copy" class="btn btn-sm btn-success">复制</button></div>
+                            <div class="col-auto text-muted" id="ds-msg" style="font-size:12px;"></div>
+                        </div>
+                        <div id="ds-notconnected" class="alert alert-warning py-2" style="display:none;">未连接房间，无法统计</div>
+
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <h6 class="mb-1">直播间管理</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-bordered table-striped mb-0">
+                                        <thead><tr>
+                                            <th>累计观看数</th><th>累计点赞数</th><th>平均在线</th><th>最高在线</th><th>总观看时长</th><th>人均观看</th>
+                                        </tr></thead>
+                                        <tbody><tr>
+                                            <td id="ds-lrm-watcher">--</td><td id="ds-lrm-like">--</td>
+                                            <td id="ds-lrm-avg">--</td><td id="ds-lrm-max">--</td>
+                                            <td id="ds-lrm-total">--</td><td id="ds-lrm-avgwatch">--</td>
+                                        </tr></tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <h6 class="mb-1">弹幕管理</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-bordered table-striped mb-0">
+                                        <thead><tr>
+                                            <th>发弹幕人数</th><th>弹幕数量</th><th>弹幕总字数</th><th>平均弹幕长度</th>
+                                        </tr></thead>
+                                        <tbody><tr>
+                                            <td id="ds-dmgr-users">--</td><td id="ds-dmgr-count">--</td>
+                                            <td id="ds-dmgr-chars">--</td><td id="ds-dmgr-avg">--</td>
+                                        </tr></tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <h6 class="mb-1">礼物管理</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-bordered table-striped mb-0">
+                                        <thead><tr>
+                                            <th>总电池数</th><th>送礼人数</th><th>礼物记录数</th><th>人气票</th>
+                                        </tr></thead>
+                                        <tbody><tr>
+                                            <td id="ds-gft-amount">--</td><td id="ds-gft-users">--</td>
+                                            <td id="ds-gft-records">--</td><td id="ds-gft-vote">--</td>
+                                        </tr></tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <h6 class="mb-1">观众管理</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-bordered table-striped mb-0">
+                                        <thead><tr>
+                                            <th>场次1</th><th>场次2</th><th>场次3</th><th>other</th>
+                                        </tr></thead>
+                                        <tbody><tr>
+                                            <td id="ds-vst-s1">--</td><td id="ds-vst-s2">--</td>
+                                            <td id="ds-vst-s3">--</td><td id="ds-vst-other">--</td>
+                                        </tr></tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <h6 class="mb-1">本地黑白名单姬 <small class="text-muted" style="font-size:12px;">（按更新时间统计）</small></h6>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-bordered table-striped mb-0">
+                                        <thead><tr>
+                                            <th>黑名单 当天</th><th>黑名单 跨天</th><th>白名单 当天</th><th>白名单 跨天</th>
+                                        </tr></thead>
+                                        <tbody><tr>
+                                            <td id="ds-bw-black-same">--</td><td id="ds-bw-black-cross">--</td>
+                                            <td id="ds-bw-white-same">--</td><td id="ds-bw-white-cross">--</td>
+                                        </tr></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    $(function () {
+        var d = new Date();
+        var mm = ('0' + (d.getMonth() + 1)).slice(-2);
+        var dd = ('0' + d.getDate()).slice(-2);
+        $('#ds-date').val(d.getFullYear() + '-' + mm + '-' + dd);
+
+        function fmt(n) { return (n == null ? 0 : Number(n)).toLocaleString(); }
+        function fmtHours(sec) { return Math.floor(Number(sec || 0) / 3600) + '小时'; }
+        function fmtDur(sec) {
+            sec = Number(sec || 0);
+            var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = Math.floor(sec % 60);
+            return (h > 0 ? h + '时' : '') + (m > 0 || h > 0 ? m + '分' : '') + s + '秒';
+        }
+
+        // 按页面顺序收集 5 张表的值，Tab 分隔成一行（便于粘贴到 WPS）
+        var COPY_IDS = ['ds-lrm-watcher','ds-lrm-like','ds-lrm-avg','ds-lrm-max','ds-lrm-total','ds-lrm-avgwatch',
+                        'ds-dmgr-users','ds-dmgr-count','ds-dmgr-chars','ds-dmgr-avg',
+                        'ds-gft-amount','ds-gft-users','ds-gft-records','ds-gft-vote',
+                        'ds-vst-s1','ds-vst-s2','ds-vst-s3','ds-vst-other',
+                        'ds-bw-black-same','ds-bw-black-cross','ds-bw-white-same','ds-bw-white-cross'];
+        function buildCopyLine() {
+            return COPY_IDS.map(function (id) { return $('#' + id).text(); }).join('\t');
+        }
+        function doCopy(text) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(function () {
+                    $('#ds-msg').text('已复制 ' + COPY_IDS.length + ' 项，可直接粘贴到 WPS');
+                }).catch(function () { legacyCopy(text); });
+            } else {
+                legacyCopy(text);
+            }
+        }
+        function legacyCopy(text) {
+            var ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            try {
+                document.execCommand('copy');
+                $('#ds-msg').text('已复制 ' + COPY_IDS.length + ' 项，可直接粘贴到 WPS');
+            } catch (e) {
+                $('#ds-msg').text('复制失败，请手动选择');
+            }
+            document.body.removeChild(ta);
+        }
+
+        function load() {
+            $('#ds-msg').text('加载中...');
+            $.get('/dailyStatsData', { date: $('#ds-date').val() || '' }, function (resp) {
+                if (!resp || resp.code != '200' || !resp.result) { $('#ds-msg').text('加载失败'); return; }
+                var r = resp.result;
+                if (!r.connected) { $('#ds-notconnected').show(); $('#ds-msg').text(''); return; }
+                $('#ds-notconnected').hide();
+                $('#ds-msg').text('更新于 ' + new Date().toLocaleTimeString());
+
+                var lrm = r.lrm || {};
+                $('#ds-lrm-watcher').text(fmt(lrm.cumulativeWatcher));
+                $('#ds-lrm-like').text(fmt(lrm.cumulativeLike));
+                $('#ds-lrm-avg').text(fmt(lrm.avgOnlineCount));
+                var maxTxt = fmt(lrm.maxOnlineCount && lrm.maxOnlineCount.count);
+                if (lrm.maxOnlineCount && lrm.maxOnlineCount.time) {
+                    var mt = (lrm.maxOnlineCount.time || '').match(/(\d{2}:\d{2})/);
+                    if (mt) maxTxt += ' (' + mt[1] + ')';
+                }
+                $('#ds-lrm-max').text(maxTxt);
+                $('#ds-lrm-total').text(fmtHours(lrm.totalWatchSeconds));
+                $('#ds-lrm-avgwatch').text(fmtDur(lrm.avgWatchSeconds));
+
+                var dmgr = r.dmgr || {};
+                $('#ds-dmgr-users').text(fmt(dmgr.userCount));
+                $('#ds-dmgr-count').text(fmt(dmgr.barrageCount));
+                $('#ds-dmgr-chars').text(fmt(dmgr.totalChars));
+                var avgLen = dmgr.barrageCount > 0 ? Math.floor(dmgr.totalChars / dmgr.barrageCount) : 0;
+                $('#ds-dmgr-avg').text(avgLen.toLocaleString() + ' 字');
+
+                var gft = r.gft || {};
+                $('#ds-gft-amount').text(fmt(gft.totalAmount));
+                $('#ds-gft-users').text(fmt(gft.uniqueUsers));
+                $('#ds-gft-records').text(fmt(gft.totalRecords));
+                $('#ds-gft-vote').text(fmt(gft.popularTicketCount));
+
+                var vst = r.vst || {};
+                var sc = vst.sessionCounts || {};
+                $('#ds-vst-s1').text(fmt(sc['1']));
+                $('#ds-vst-s2').text(fmt(sc['2']));
+                $('#ds-vst-s3').text(fmt(sc['3']));
+                $('#ds-vst-other').text(fmt(sc.other));
+
+                var bw = r.bw || {};
+                var bb = bw.black || {}, bw2 = bw.white || {};
+                $('#ds-bw-black-same').text(fmt(bb.sameDay));
+                $('#ds-bw-black-cross').text(fmt(bb.crossDay));
+                $('#ds-bw-white-same').text(fmt(bw2.sameDay));
+                $('#ds-bw-white-cross').text(fmt(bw2.crossDay));
+            });
+        }
+
+        $('#ds-date').on('change', load);
+        $('#ds-refresh').on('click', load);
+        $('#ds-copy').on('click', function () { doCopy(buildCopyLine()); });
+        load();
+        setInterval(function () {
+            if ($('#ds-autorefresh').is(':checked')) load();
+        }, 60000);
+    });
+</script>
+</body>
+</html>

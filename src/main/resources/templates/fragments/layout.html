@@ -100,6 +100,7 @@
                     <a th:href="@{/management(tab=audience-mgr)}" class="sidebar-link" th:classappend="${activePage == 'management' && !#arrays.isEmpty(param.tab) && param.tab[0] == 'audience-mgr'} ? 'active' : ''">观众管理</a>
                     <a th:href="@{/management(tab=match-mgr)}" class="sidebar-link" th:classappend="${activePage == 'management' && !#arrays.isEmpty(param.tab) && param.tab[0] == 'match-mgr'} ? 'active' : ''">匹配管理</a>
                     <a th:href="@{/management(tab=follow-mgr)}" class="sidebar-link" th:classappend="${activePage == 'management' && !#arrays.isEmpty(param.tab) && param.tab[0] == 'follow-mgr'} ? 'active' : ''">关注管理</a>
+                    <a th:href="@{/dailyStats}" class="sidebar-link" th:classappend="${activePage == 'dailyStats'} ? 'active' : ''">每日统计</a>
                 </div>
             </div>
 </th:block>
