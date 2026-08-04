@@ -1123,6 +1123,44 @@ public class WebController {
         return m;
     }
 
+    /**
+     * API：根据 vmid 查询观众最终打分。
+     * 请求：/api_get_score?vmid=517365043&amp;vmname=回忆烧了
+     * 响应：{"code":0,"score":1}
+     */
+    @ResponseBody
+    @GetMapping(value = "/api_get_score")
+    public Object apiGetScore(@RequestParam("vmid") long vmid,
+                              @RequestParam("vmname") String vmname,
+                              @RequestParam(defaultValue = "false") boolean detailed,
+                              @RequestParam(required = false, defaultValue = "" ) String reqname) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        try {
+            Pair<Long, String> pair = null;
+            if (PublicDataConf.parseMessageThread != null) {
+                pair = PublicDataConf.parseMessageThread.audienceScoreSync(vmid, vmname+":"+reqname);
+            }
+            long score = pair != null ? pair.getLeft() : 0;
+            result.put("code", 0);
+            result.put("score", score);
+            if (detailed) {
+                result.put("vmid", vmid);
+                result.put("vmname", vmname);
+                result.put("score_type", pair != null ? pair.getRight() : "");
+            }
+        } catch (Exception e) {
+            LOGGER.error("api_get_score error", e);
+            result.put("code", 400);
+            result.put("score", 0);
+            if (detailed) {
+                result.put("vmid", vmid);
+                result.put("vmname", vmname);
+                result.put("score_type","client requset error");
+            }
+        }
+        return result;
+    }
+
     @ResponseBody
     @PostMapping(value = "/deleteBlackWhiteEntry")
     public Response<?> deleteBlackWhiteEntry(@RequestParam("type") String type,

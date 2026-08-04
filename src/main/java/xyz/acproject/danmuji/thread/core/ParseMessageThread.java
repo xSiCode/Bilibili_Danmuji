@@ -3,6 +3,7 @@ package xyz.acproject.danmuji.thread.core;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.util.CollectionUtils;
@@ -1586,7 +1587,7 @@ public class ParseMessageThread extends Thread {
         }
     }
 
-    private void audienceProcessing( long _follow_uid, String _follow_uname ) {
+    private void audienceProcessing(long _follow_uid, String _follow_uname) {
         logNewAudience(_follow_uid, _follow_uname);
 
         final CenterSetConf conf = getCenterSetConf();
@@ -1624,6 +1625,21 @@ public class ParseMessageThread extends Thread {
                             handleAutoBlock(conf, _follow_uid, _follow_uname, score, type);
                         });
             });
+        }
+    }
+
+    /**
+     * API 用：同步查询某观众最终打分与打分类型（与 audienceProcessing 的打分逻辑一致，无拉黑等副作用）。
+     * 3 秒超时或失败时，left 返回所查询的 uid，right 返回空串。
+     */
+    public Pair<Long, String> audienceScoreSync(long uid, String uname) {
+        try {
+            Pair<Integer, String> r = HttpRoomData.processFollowings(uid, uname).get(3, TimeUnit.SECONDS);
+            return r != null ? Pair.of((long) r.getLeft(), r.getRight() != null ? r.getRight() : "")
+                             : Pair.of(uid, "");
+        } catch (Exception e) {
+            LOGGER.warn("audienceScoreSync timeout/error uid={}", uid, e);
+            return Pair.of(0L, "server error");
         }
     }
 
