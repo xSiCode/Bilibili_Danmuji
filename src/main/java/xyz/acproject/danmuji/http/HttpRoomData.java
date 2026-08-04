@@ -1654,9 +1654,9 @@ public class HttpRoomData {
 
                     // 我关注了此人
                     if (following) {
-                        r.score += 10; // 需求如此
-                        r.type += "[已关注+10]";
-                        cardLog.append(" 已关注+10");
+                        r.score += 50; // 需求如此
+                        r.type += "[已关注+50]";
+                        cardLog.append(" 已关注+50");
                     } else {
                         // 人机
                         if ((fans < 50 && attention > 4500) || attention > 4990 || (attention == 0 && fans == 0)) {
