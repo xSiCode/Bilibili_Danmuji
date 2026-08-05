@@ -35,6 +35,7 @@ import xyz.acproject.danmuji.service.LocalBlackWhiteListService;
 import xyz.acproject.danmuji.service.StrangerViewerService;
 import xyz.acproject.danmuji.service.SetService;
 import xyz.acproject.danmuji.tools.CurrencyTools;
+import xyz.acproject.danmuji.tools.GazeWelcomeStatTools;
 import xyz.acproject.danmuji.tools.ParseIndentityTools;
 import xyz.acproject.danmuji.tools.BarrageLogTools;
 import xyz.acproject.danmuji.tools.GiftLogTools;
@@ -2133,6 +2134,8 @@ public class ParseMessageThread extends Thread {
                     if (PublicDataConf.sendBarrageThread != null && !PublicDataConf.sendBarrageThread.FLAG) {
                         PublicDataConf.barrageString.offer(text);
                     }
+                    // 触发统计：按 (uid, 欢迎词模板原文) 计数
+                    GazeWelcomeStatTools.record(interact.getUid(), uname, item.getText());
                     triggered = true;
                 }
             }

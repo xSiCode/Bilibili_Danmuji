@@ -1161,6 +1161,100 @@ public class WebController {
         return result;
     }
 
+    /**
+     * 欢迎凝视姬触发统计：支持按 用户名/欢迎词内容/次数 排序、搜索、分页。
+     */
+    @ResponseBody
+    @GetMapping(value = "/getGazeWelcomeStats")
+    public Response<?> getGazeWelcomeStats(@RequestParam(defaultValue = "") String search,
+                                           @RequestParam(defaultValue = "count") String sortField,
+                                           @RequestParam(defaultValue = "desc") String sortOrder,
+                                           @RequestParam(defaultValue = "1") int page,
+                                           @RequestParam(defaultValue = "20") int pageSize,
+                                           HttpServletRequest req) {
+        try {
+            // 统计按欢迎词聚合
+            Map<String, Integer> countByText = new HashMap<>();
+            Map<String, Long> latestByText = new HashMap<>();
+            for (xyz.acproject.danmuji.tools.GazeWelcomeStatTools.StatEntry e :
+                    xyz.acproject.danmuji.tools.GazeWelcomeStatTools.getStats()) {
+                countByText.merge(e.welcomeText, e.count, Integer::sum);
+                latestByText.merge(e.welcomeText, e.latestTime, Math::max);
+            }
+
+            // 以配置的欢迎词列表为基准：未触发过的也显示（次数 0）
+            List<Map<String, Object>> list = new ArrayList<>();
+            if (PublicDataConf.centerSetConf != null
+                    && PublicDataConf.centerSetConf.getGaze_welcome() != null
+                    && PublicDataConf.centerSetConf.getGaze_welcome().getGazeWelcomeSets() != null) {
+                for (xyz.acproject.danmuji.conf.set.GazeWelcomeSet item :
+                        PublicDataConf.centerSetConf.getGaze_welcome().getGazeWelcomeSets()) {
+                    if (item == null) continue;
+                    String text = item.getText() != null ? item.getText() : "";
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("rule", item.getUsername() != null ? item.getUsername() : "");
+                    row.put("welcome", text);
+                    row.put("count", countByText.getOrDefault(text, 0));
+                    row.put("open", item.is_open() ? 1 : 0);
+                    row.put("latestTime", latestByText.containsKey(text) && latestByText.get(text) > 0
+                            ? millisToTimeStr(latestByText.get(text)) : "");
+                    list.add(row);
+                }
+            }
+
+            if (search != null && !search.isEmpty()) {
+                final String q = search;
+                list = list.stream()
+                        .filter(e -> String.valueOf(e.get("welcome")).contains(q)
+                                || String.valueOf(e.get("rule")).contains(q))
+                        .collect(java.util.stream.Collectors.toList());
+            }
+
+            java.util.Comparator<Map<String, Object>> cmp;
+            if ("rule".equals(sortField)) {
+                cmp = java.util.Comparator.comparing(e -> String.valueOf(e.get("rule")));
+            } else if ("welcome".equals(sortField)) {
+                cmp = java.util.Comparator.comparing(e -> String.valueOf(e.get("welcome")));
+            } else {
+                cmp = java.util.Comparator.comparingInt(e -> (Integer) e.get("count"));
+            }
+            boolean asc = "asc".equalsIgnoreCase(sortOrder);
+            list.sort(asc ? cmp : cmp.reversed());
+
+            int total = list.size();
+            int grandTotal = list.stream().mapToInt(e -> (Integer) e.get("count")).sum();
+            int totalPages = total == 0 ? 0 : (int) Math.ceil((double) total / pageSize);
+            if (page < 1) page = 1;
+            if (totalPages > 0 && page > totalPages) page = totalPages;
+            int from = (page - 1) * pageSize;
+            int to = Math.min(from + pageSize, total);
+
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("rows", list.subList(from, to));
+            result.put("total", total);
+            result.put("totalPages", totalPages);
+            result.put("currentPage", page);
+            result.put("grandTotal", grandTotal);
+            return Response.success(result, req);
+        } catch (Exception e) {
+            LOGGER.error("getGazeWelcomeStats error", e);
+            return Response.success(null, req);
+        }
+    }
+
+    /** 清空欢迎凝视姬触发统计 */
+    @ResponseBody
+    @PostMapping(value = "/clearGazeWelcomeStats")
+    public Response<?> clearGazeWelcomeStats(HttpServletRequest req) {
+        try {
+            xyz.acproject.danmuji.tools.GazeWelcomeStatTools.clear();
+            return Response.success(0, req);
+        } catch (Exception e) {
+            LOGGER.error("clearGazeWelcomeStats error", e);
+            return Response.success(null, req);
+        }
+    }
+
     @ResponseBody
     @PostMapping(value = "/deleteBlackWhiteEntry")
     public Response<?> deleteBlackWhiteEntry(@RequestParam("type") String type,

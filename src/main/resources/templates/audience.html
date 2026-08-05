@@ -26,6 +26,29 @@
                                     <div class="gazeWelcome-list"><ul class="gazeWelcome-ul list-unstyled mb-0" id="gazeWelcome-ul"></ul></div>
                                 </div>
                             </div>
+                            <!-- 欢迎凝视姬触发统计 -->
+                            <div class="input-group mb-1 mt-3"><h6>触发统计</h6></div>
+                            <div class="row g-2 mb-2 align-items-center">
+                                <div class="col-auto"><input id="gzstat-search" class="form-control form-control-sm" placeholder="搜索欢迎词/匹配规则" style="width:220px;"></div>
+                                <div class="col-auto"><button id="gzstat-copy" class="btn btn-sm btn-success">复制</button></div>
+                                <div class="col-auto"><button id="gzstat-clear" class="btn btn-sm btn-outline-danger">清空</button></div>
+                                <div class="col-auto text-muted" style="font-size:12px;" id="gzstat-total"></div>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered table-striped gzstat-table">
+                                    <thead><tr>
+                                        <th data-sort="rule" style="cursor:pointer;width:140px;">匹配规则 <span class="gzstat-sort-icon"></span></th>
+                                        <th data-sort="welcome" style="cursor:pointer;">欢迎词内容 <span class="gzstat-sort-icon"></span></th>
+                                        <th data-sort="count" style="cursor:pointer;width:80px;text-align:right;">次数 <span class="gzstat-sort-icon"></span></th>
+                                    </tr></thead>
+                                    <tbody id="gzstat-tbody"></tbody>
+                                </table>
+                            </div>
+                            <div id="gzstat-pagination" class="d-flex justify-content-center align-items-center mt-2" style="display:none;">
+                                <button id="gzstat-prev" class="btn btn-sm btn-outline-secondary">上一页</button>
+                                <span id="gzstat-page-info" class="mx-2">第1页</span>
+                                <button id="gzstat-next" class="btn btn-sm btn-outline-secondary">下一页</button>
+                            </div>
                         </div>
                         <!-- 互动姬（欢迎姬 + 关注姬 + 礼物姬 + 自动回复姬） -->
                         <div class="tab-pane" th:classappend="${! #arrays.isEmpty(param.tab) && (param.tab[0] == 'welcome-set' || param.tab[0] == 'thankFollow-set' || param.tab[0] == 'thankGift-set')} ? 'active' : ''" id="tab-welcome-set">

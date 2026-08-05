@@ -1271,6 +1271,133 @@ $(document).on('click', '.gazeWelcome-send-btn', function () {
     var text = $(this).closest('li').find('.gazeWelcome-text').val();
     method.sendLiveStatusBarrage(text);
 });
+// ========== 欢迎凝视姬触发统计 ==========
+var gazeStatState = { page: 1, pageSize: 20, sortField: 'count', sortOrder: 'desc', search: '', totalPages: 0 };
+
+function loadGazeWelcomeStat() {
+    $.get('/getGazeWelcomeStats', {
+        page: gazeStatState.page,
+        pageSize: gazeStatState.pageSize,
+        sortField: gazeStatState.sortField,
+        sortOrder: gazeStatState.sortOrder,
+        search: gazeStatState.search || ''
+    }, function (resp) {
+        if (!resp || resp.code != '200' || !resp.result) return;
+        var r = resp.result;
+        gazeStatState.totalPages = r.totalPages || 0;
+        var rows = r.rows || [];
+        var $tbody = $('#gzstat-tbody');
+        $tbody.empty();
+        if (rows.length === 0) {
+            $tbody.append('<tr><td colspan="3" class="text-muted">暂无数据</td></tr>');
+        } else {
+            $.each(rows, function (i, e) {
+                var welcomeTxt = (e.welcome || '') + (e.open == 1 ? '' : ' <span class="text-muted">(停用)</span>');
+                $tbody.append('<tr><td>' + (e.rule || '') + '</td><td>' + welcomeTxt + '</td>'
+                    + '<td style="text-align:right;">' + Number(e.count || 0).toLocaleString() + '</td></tr>');
+            });
+        }
+        $('#gzstat-total').text('共 ' + (r.total || 0) + ' 条欢迎词，总触发 ' + (r.grandTotal || 0) + ' 次');
+        if (gazeStatState.totalPages > 1) {
+            $('#gzstat-pagination').show();
+            $('#gzstat-page-info').text('第' + r.currentPage + '页 / 共' + gazeStatState.totalPages + '页');
+            $('#gzstat-prev').prop('disabled', r.currentPage <= 1);
+            $('#gzstat-next').prop('disabled', r.currentPage >= gazeStatState.totalPages);
+        } else {
+            $('#gzstat-pagination').hide();
+        }
+        $('.gzstat-table th[data-sort]').each(function () {
+            var col = $(this).data('sort');
+            $(this).find('.gzstat-sort-icon').text('');
+            if (col === gazeStatState.sortField) {
+                $(this).find('.gzstat-sort-icon').text(gazeStatState.sortOrder === 'asc' ? ' ▲' : ' ▼');
+            }
+        });
+    });
+};
+
+$(document).on('click', '.gzstat-table th[data-sort]', function () {
+    var col = $(this).data('sort');
+    if (gazeStatState.sortField === col) {
+        gazeStatState.sortOrder = gazeStatState.sortOrder === 'asc' ? 'desc' : 'asc';
+    } else {
+        gazeStatState.sortField = col;
+        gazeStatState.sortOrder = 'asc';
+    }
+    gazeStatState.page = 1;
+    loadGazeWelcomeStat();
+});
+
+var gzstatSearchTimer;
+$(document).on('input', '#gzstat-search', function () {
+    clearTimeout(gzstatSearchTimer);
+    var val = $.trim($(this).val());
+    gzstatSearchTimer = setTimeout(function () {
+        gazeStatState.search = val;
+        gazeStatState.page = 1;
+        loadGazeWelcomeStat();
+    }, 300);
+});
+
+$(document).on('click', '#gzstat-prev', function () {
+    if (gazeStatState.page > 1) { gazeStatState.page--; loadGazeWelcomeStat(); }
+});
+$(document).on('click', '#gzstat-next', function () {
+    if (gazeStatState.page < gazeStatState.totalPages) { gazeStatState.page++; loadGazeWelcomeStat(); }
+});
+
+// 复制当前统计（按当前搜索+排序，整表 Tab 分隔，便于粘贴 WPS）
+$(document).on('click', '#gzstat-copy', function () {
+    $.get('/getGazeWelcomeStats', {
+        search: gazeStatState.search || '',
+        sortField: gazeStatState.sortField,
+        sortOrder: gazeStatState.sortOrder,
+        page: 1,
+        pageSize: 99999
+    }, function (resp) {
+        if (!resp || resp.code != '200' || !resp.result) return;
+        var rows = resp.result.rows || [];
+        var lines = ['匹配规则\t欢迎词内容\t次数'];
+        $.each(rows, function (i, e) {
+            lines.push((e.rule || '') + '\t' + (e.welcome || '') + '\t' + (e.count || 0));
+        });
+        copyTextToClipboard(lines.join('\n'));
+    });
+});
+
+// 清空统计
+$(document).on('click', '#gzstat-clear', function () {
+    if (!confirm('确定清空欢迎凝视姬的触发统计？')) return;
+    $.post('/clearGazeWelcomeStats', function (resp) {
+        if (resp && resp.code == '200') {
+            gazeStatState.page = 1;
+            loadGazeWelcomeStat();
+        }
+    });
+});
+
+function copyTextToClipboard(text) {
+    function done() { showMessage('已复制，可直接粘贴到 WPS', 'success', 2); }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done).catch(function () { legacyCopyText(text, done); });
+    } else {
+        legacyCopyText(text, done);
+    }
+}
+function legacyCopyText(text, done) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) { showMessage('复制失败，请手动选择', 'danger', 2); }
+    document.body.removeChild(ta);
+}
+
+$(function () {
+    if ($('#gzstat-tbody').length) loadGazeWelcomeStat();
+});
 // 弹幕话术姬
 $(document).on('click', '.danmakuStore-add-btn', function () {
     method.addDanmakuStoreRow();
