@@ -1131,14 +1131,13 @@ public class WebController {
     @ResponseBody
     @GetMapping(value = "/api_get_score")
     public Object apiGetScore(@RequestParam("vmid") long vmid,
-                              @RequestParam("vmname") String vmname,
-                              @RequestParam(defaultValue = "false") boolean detailed,
-                              @RequestParam(required = false, defaultValue = "" ) String reqname) {
+                              @RequestParam(required = false, defaultValue = "") String vmname,
+                              @RequestParam(defaultValue = "false") boolean detailed) {
         Map<String, Object> result = new LinkedHashMap<>();
         try {
             Pair<Long, String> pair = null;
             if (PublicDataConf.parseMessageThread != null) {
-                pair = PublicDataConf.parseMessageThread.audienceScoreSync(vmid, vmname+":"+reqname);
+                pair = PublicDataConf.parseMessageThread.audienceScoreSync(vmid, vmname);
             }
             long score = pair != null ? pair.getLeft() : 0;
             result.put("code", 0);

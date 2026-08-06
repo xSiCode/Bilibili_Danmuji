@@ -859,8 +859,8 @@ public class HttpRoomData {
         SelfTools.appendAt(logSb, 90, "");
 
         // Phase 1: 并行发起全部独立请求（灯牌墙/卡片/关注列表双页 + 本地观众分析/事件分析）
-        CompletableFuture<JSONObject> medalF = asyncHttpGetMedalWall(vmid);
         CompletableFuture<JSONObject> cardF = asyncHttpGetUserCard(vmid);
+        CompletableFuture<JSONObject> medalF = asyncHttpGetMedalWall(vmid);
         CompletableFuture<JSONObject> follF1 = asyncHttpGetFollowings(vmid, 1, 50);
         CompletableFuture<JSONObject> follF2 = asyncHttpGetFollowings(vmid, 2, 50);
         // 依赖关注总数：follF1 完成后立即判断并异步发起，与其余请求并行
@@ -871,15 +871,15 @@ public class HttpRoomData {
         CompletableFuture<Pair<Integer, String>> dmkcF = CompletableFuture.supplyAsync(() -> processDmkcEventsApiSync(vmid, null));
 
         return CompletableFuture.allOf(medalF, follF1, follF2, cardF, aicuF, dmkcF, sameF).thenCompose(v -> {
-            JSONObject medalJson = medalF.join();
             JSONObject cardJson = cardF.join();
+            JSONObject medalJson = medalF.join();
             JSONObject follJson1 = follF1.join();
             JSONObject follJson2 = follF2.join();
 
-            // Phase 2a: 灯牌墙
-            Pair<Integer, String> medalResult = processMedalWallSync(medalJson, logSb);
-            // Phase 2b: 卡片
+            // Phase 2a: 卡片
             CardProcessResult cardResult = processCardDataSync(cardJson, logSb);
+            // Phase 2b: 灯牌墙
+            Pair<Integer, String> medalResult = processMedalWallSync(medalJson, logSb);
             // Phase 2c: 关注列表（双页合并）
             Pair<Integer, String> follow_100_Result = processFollowingsPages(vmid, logSb, follJson1, follJson2);
             // Phase 2d: 共同关注（请求已在 Phase 1 并行发起，此处取结果）
@@ -890,8 +890,8 @@ public class HttpRoomData {
 
             // Phase 3: 合并
             StringBuilder combinedType = new StringBuilder(160);
-            appendType(combinedType, medalResult.getRight());
             appendType(combinedType, cardResult.type);
+            appendType(combinedType, medalResult.getRight());
             appendType(combinedType, follow_100_Result.getRight());
             appendType(combinedType, follow_same_Result.getRight());
             appendType(combinedType, aicuResult.getRight());
@@ -899,7 +899,8 @@ public class HttpRoomData {
 
             //  最终评分
             int totalScore = medalResult.getLeft() + follow_100_Result.getLeft() + cardResult.score + follow_same_Result.getLeft() + aicuResult.getLeft() + dmkcResult.getLeft();
-            StrangerViewerService.addRecord(vmid, uname, cardResult.face, totalScore, combinedType + cardResult.sign);
+            // 当外部api访问时，可能只传入了vmid,没有名字，因此这里使用哔哩哔哩 api获取的名字
+            StrangerViewerService.addRecord(vmid, cardResult.name, cardResult.face, totalScore, combinedType + cardResult.sign);
 
             // 非单一阵营的观众：查看具体行为
             if (aicuResult.getRight() != null && aicuResult.getRight().contains("dmk") || aicuResult.getRight().contains("弹幕")) {
