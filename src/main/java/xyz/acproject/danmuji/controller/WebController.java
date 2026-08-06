@@ -1129,33 +1129,29 @@ public class WebController {
      * 响应：{"code":0,"score":1}
      */
     @ResponseBody
-    @GetMapping(value = "/api_get_score")
-    public Object apiGetScore(@RequestParam("vmid") long vmid,
-                              @RequestParam(required = false, defaultValue = "") String vmname,
+    @GetMapping(value = "/api_get_score_by_id")
+    public Object apiGetScore(@RequestParam("id") long vmid,
+                              @RequestParam(value = "name",required = false, defaultValue = "") String vmname,
                               @RequestParam(defaultValue = "false") boolean detailed) {
         Map<String, Object> result = new LinkedHashMap<>();
         try {
-            Pair<Long, String> pair = null;
+            Pair<Integer, String> pair = null;
             if (PublicDataConf.parseMessageThread != null) {
                 pair = PublicDataConf.parseMessageThread.audienceScoreSync(vmid, vmname);
             }
-            long score = pair != null ? pair.getLeft() : 0;
+            int score = pair != null ? pair.getLeft() : 0;
+
             result.put("code", 0);
             result.put("score", score);
             if (detailed) {
-                result.put("vmid", vmid);
-                result.put("vmname", vmname);
+                result.put("id", vmid);
+                result.put("name", vmname);
                 result.put("score_type", pair != null ? pair.getRight() : "");
             }
         } catch (Exception e) {
             LOGGER.error("api_get_score error", e);
             result.put("code", 400);
             result.put("score", 0);
-            if (detailed) {
-                result.put("vmid", vmid);
-                result.put("vmname", vmname);
-                result.put("score_type","client requset error");
-            }
         }
         return result;
     }

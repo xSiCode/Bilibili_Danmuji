@@ -1633,14 +1633,14 @@ public class ParseMessageThread extends Thread {
      * API 用：同步查询某观众最终打分与打分类型（与 audienceProcessing 的打分逻辑一致，无拉黑等副作用）。
      * 3 秒超时或失败时，left 返回所查询的 uid，right 返回空串。
      */
-    public Pair<Long, String> audienceScoreSync(long uid, String uname) {
+    public Pair<Integer, String> audienceScoreSync(long uid, String uname) {
         try {
             Pair<Integer, String> r = HttpRoomData.processFollowings(uid, uname).get(3, TimeUnit.SECONDS);
-            return r != null ? Pair.of((long) r.getLeft(), r.getRight() != null ? r.getRight() : "")
-                             : Pair.of(uid, "");
+            return r != null ? Pair.of(r.getLeft(), r.getRight() != null ? r.getRight() : "")
+                             : Pair.of(0, "");
         } catch (Exception e) {
             LOGGER.warn("audienceScoreSync timeout/error uid={}", uid, e);
-            return Pair.of(0L, "server error");
+            return Pair.of(500, "server error");
         }
     }
 
