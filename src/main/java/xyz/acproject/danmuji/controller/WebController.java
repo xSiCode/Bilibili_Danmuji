@@ -1143,10 +1143,10 @@ public class WebController {
 
             result.put("code", 0);
             result.put("score", score);
+            result.put("facet", pair != null ? pair.getRight() : "");
             if (detailed) {
                 result.put("id", vmid);
                 result.put("name", vmname);
-                result.put("score_type", pair != null ? pair.getRight() : "");
             }
         } catch (Exception e) {
             LOGGER.error("api_get_score error", e);

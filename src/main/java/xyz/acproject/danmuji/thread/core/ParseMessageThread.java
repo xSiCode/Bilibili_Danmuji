@@ -1634,13 +1634,25 @@ public class ParseMessageThread extends Thread {
      * 3 秒超时或失败时，left 返回所查询的 uid，right 返回空串。
      */
     public Pair<Integer, String> audienceScoreSync(long uid, String uname) {
+        if (LocalBlackWhiteListService.isInWhitelist(uid)) {
+            LocalBlackWhiteListService.incrementWhiteCount(uid);
+            return Pair.of(1, "in white list");
+        }
+        if (LocalBlackWhiteListService.isInBlacklist(uid)) {
+            LocalBlackWhiteListService.incrementBlackCount(uid);
+            return Pair.of(-1, "in black list");
+        }
+
         try {
             Pair<Integer, String> r = HttpRoomData.processFollowings(uid, uname).get(3, TimeUnit.SECONDS);
-            return r != null ? Pair.of(r.getLeft(), r.getRight() != null ? r.getRight() : "")
-                             : Pair.of(0, "");
+            if(r != null){
+                String level = String.valueOf(Math.abs( r.getLeft()) / 10); // 可信任等级
+                return Pair.of(r.getLeft(), level);
+            } else
+                return Pair.of(0, "error");
         } catch (Exception e) {
             LOGGER.warn("audienceScoreSync timeout/error uid={}", uid, e);
-            return Pair.of(500, "server error");
+            return Pair.of(0, "server error");
         }
     }
 
