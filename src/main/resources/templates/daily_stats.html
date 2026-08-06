@@ -123,6 +123,13 @@
             return (h > 0 ? h + '时' : '') + (m > 0 || h > 0 ? m + '分' : '') + s + '秒';
         }
 
+        // 复制时间：2026年8月6日9时30分
+        function fmtCopyTime() {
+            var d = new Date();
+            return d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日'
+                + d.getHours() + '时' + d.getMinutes() + '分';
+        }
+
         // 按页面顺序收集 5 张表的值，Tab 分隔成一行（便于粘贴到 WPS）
         var COPY_IDS = ['ds-lrm-watcher','ds-lrm-like','ds-lrm-avg','ds-lrm-max','ds-lrm-total','ds-lrm-avgwatch',
                         'ds-dmgr-users','ds-dmgr-count','ds-dmgr-chars','ds-dmgr-avg',
@@ -130,12 +137,17 @@
                         'ds-vst-s1','ds-vst-s2','ds-vst-s3','ds-vst-other',
                         'ds-bw-black-same','ds-bw-black-cross','ds-bw-white-same','ds-bw-white-cross'];
         function buildCopyLine() {
-            return COPY_IDS.map(function (id) { return $('#' + id).text(); }).join('\t');
+            // 复制时去掉千分位逗号，页面显示不变
+            var vals = COPY_IDS.map(function (id) {
+                return $('#' + id).text().replace(/,/g, '');
+            });
+            vals.unshift(fmtCopyTime()); // 复制时间放在最前面
+            return vals.join('\t');
         }
         function doCopy(text) {
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(text).then(function () {
-                    $('#ds-msg').text('已复制 ' + COPY_IDS.length + ' 项，可直接粘贴到 WPS');
+                    $('#ds-msg').text('已复制 ' + (COPY_IDS.length + 1) + ' 项（含复制时间），可直接粘贴到 WPS');
                 }).catch(function () { legacyCopy(text); });
             } else {
                 legacyCopy(text);
@@ -150,7 +162,7 @@
             ta.select();
             try {
                 document.execCommand('copy');
-                $('#ds-msg').text('已复制 ' + COPY_IDS.length + ' 项，可直接粘贴到 WPS');
+                $('#ds-msg').text('已复制 ' + (COPY_IDS.length + 1) + ' 项（含复制时间），可直接粘贴到 WPS');
             } catch (e) {
                 $('#ds-msg').text('复制失败，请手动选择');
             }
@@ -184,7 +196,7 @@
                 $('#ds-dmgr-count').text(fmt(dmgr.barrageCount));
                 $('#ds-dmgr-chars').text(fmt(dmgr.totalChars));
                 var avgLen = dmgr.barrageCount > 0 ? Math.floor(dmgr.totalChars / dmgr.barrageCount) : 0;
-                $('#ds-dmgr-avg').text(avgLen.toLocaleString() + ' 字');
+                $('#ds-dmgr-avg').text(avgLen.toLocaleString());
 
                 var gft = r.gft || {};
                 $('#ds-gft-amount').text(fmt(gft.totalAmount));
