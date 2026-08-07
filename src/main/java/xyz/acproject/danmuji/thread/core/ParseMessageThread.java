@@ -806,6 +806,7 @@ public class ParseMessageThread extends Thread {
                         // 直播开启------------
                         case "LIVE":
                             PublicDataConf.lIVE_STATUS = 1;
+                            PublicDataConf.lIVE_START_MS = System.currentTimeMillis();
                             //					room_id = jsonObject.getLong("roomid");
                             //					if (room_id == PublicDataConf.ROOMID) {
                             // 仅在直播有效 广告线程 改为配置文件
@@ -828,6 +829,12 @@ public class ParseMessageThread extends Thread {
                         // 直播准备中(或者是关闭直播)   直播关闭
                         case "PREPARING":
                             PublicDataConf.lIVE_STATUS = 0;
+                            // 直播时长 = 下播时间 - 开播时间
+                            if (PublicDataConf.lIVE_START_MS > 0) {
+                                PublicDataConf.lIVE_DURATION_MIN = Math.max(0,
+                                        (System.currentTimeMillis() - PublicDataConf.lIVE_START_MS) / 60000L);
+                                PublicDataConf.lIVE_START_MS = 0;
+                            }
                             setService.holdSet(getCenterSetConf());
                             PublicDataConf.IS_ROOM_POPULARITY = false;
                             LOGGER.info("直播准备中(或者是关闭直播):::" + message);
@@ -877,6 +884,17 @@ public class ParseMessageThread extends Thread {
                                     EnterRecorder.record(interact);
                                 } else if (msg_type == 2) {
                                     FollowRecorder.record(interact);
+                                } else {
+                                    StringBuilder sb = new StringBuilder(100);
+                                    sb.append(TIME_FORMAT.get().format(System.currentTimeMillis()))
+                                            .append(" [INTERACT_WORD_V2] ")
+                                            .append("https://space.bilibili.com/")
+                                            .append(_follow_uid)
+                                            .append(" ")
+                                            .append(_follow_uname)
+                                            .append(" ")
+                                            .append(msg_type);
+                                    LogFileTools.getlogFileTools().logTestFile(String.valueOf(sb));
                                 }
 
                                 // 足迹留印：记录所有 INTERACT_WORD_V2 事件（进入+关注），跳过所有后续处理和 API 调用
@@ -1635,19 +1653,17 @@ public class ParseMessageThread extends Thread {
      */
     public Pair<Integer, String> audienceScoreSync(long uid, String uname) {
         if (LocalBlackWhiteListService.isInWhitelist(uid)) {
-            LocalBlackWhiteListService.incrementWhiteCount(uid);
             return Pair.of(1, "in white list");
         }
         if (LocalBlackWhiteListService.isInBlacklist(uid)) {
-            LocalBlackWhiteListService.incrementBlackCount(uid);
             return Pair.of(-1, "in black list");
         }
 
         try {
             Pair<Integer, String> r = HttpRoomData.processFollowings(uid, uname).get(3, TimeUnit.SECONDS);
             if(r != null){
-                String level = String.valueOf(Math.abs( r.getLeft()) / 10); // 可信任等级
-                return Pair.of(r.getLeft(), level);
+                long facet = r.getRight()== null ? 0L : r.getRight().chars().filter(c -> c == '[').count() ; // 可信任等级
+                return Pair.of(r.getLeft(), ""+facet);
             } else
                 return Pair.of(0, "error");
         } catch (Exception e) {

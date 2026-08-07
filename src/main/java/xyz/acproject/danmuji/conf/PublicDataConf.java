@@ -60,6 +60,10 @@ public class PublicDataConf {
 	public static volatile Long ROOM_LIKE = 0L;
 	//直播状态 0不直播 1直播 2轮播
 	public static volatile Short lIVE_STATUS = 0;
+	//开播时间戳（毫秒），LIVE 事件时记录
+	public static volatile long lIVE_START_MS = 0L;
+	//最近一次直播时长（分钟），PREPARING(下播)时按 下播时间-开播时间 计算
+	public static volatile long lIVE_DURATION_MIN = 0L;
 	//cookie String串
 	public static volatile String USERCOOKIE = null;
 	//user信息

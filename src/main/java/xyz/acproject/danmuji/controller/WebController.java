@@ -1075,6 +1075,9 @@ public class WebController {
             }
             result.put("connected", true);
 
+            // 直播时长（分钟）：由 PREPARING(下播) 事件按 下播时间-开播时间 计算
+            result.put("liveDurationMin", PublicDataConf.lIVE_DURATION_MIN);
+
             // 所选日期（默认今天）整天的时间范围
             java.util.Calendar cal = java.util.Calendar.getInstance();
             if (date != null && !date.isEmpty()) {
