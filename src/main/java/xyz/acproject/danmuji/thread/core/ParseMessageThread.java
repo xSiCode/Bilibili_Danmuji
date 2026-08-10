@@ -1652,11 +1652,13 @@ public class ParseMessageThread extends Thread {
      * 3 秒超时或失败时，left 返回所查询的 uid，right 返回空串。
      */
     public Pair<Integer, String> audienceScoreSync(long uid, String uname) {
-        if (LocalBlackWhiteListService.isInWhitelist(uid)) {
-            return Pair.of(1, "in white list");
-        }
-        if (LocalBlackWhiteListService.isInBlacklist(uid)) {
-            return Pair.of(-1, "in black list");
+        if (uname != null){
+            if (LocalBlackWhiteListService.isInWhitelist(uid)) {
+                return Pair.of(1, "in white list");
+            }
+            if (LocalBlackWhiteListService.isInBlacklist(uid)) {
+                return Pair.of(-1, "in black list");
+            }
         }
 
         try {

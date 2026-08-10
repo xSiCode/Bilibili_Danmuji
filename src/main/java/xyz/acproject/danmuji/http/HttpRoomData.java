@@ -851,11 +851,11 @@ public class HttpRoomData {
      * 灯牌墙、关注列表、卡片信息三个HTTP请求并行发出，全部返回后顺序处理，
      * 仅当综合分为0时才触发限制最严的动态API。
      */
-    public static CompletableFuture<Pair<Integer, String>> processFollowings(long vmid, String uname) {
+    public static CompletableFuture<Pair<Integer, String>> processFollowings(long vmid, String name) {
         StringBuilder logSb = new StringBuilder(200);
         logSb.append(TIME_FORMAT.get().format(System.currentTimeMillis()))
                 .append(" https://space.bilibili.com/").append(vmid)
-                .append(" ").append(uname).append(" ");
+                .append(" ").append(name).append(" ");
         SelfTools.appendAt(logSb, 90, "");
 
         // Phase 1: 并行发起全部独立请求（灯牌墙/卡片/关注列表双页 + 本地观众分析/事件分析）
@@ -897,10 +897,12 @@ public class HttpRoomData {
             appendType(combinedType, aicuResult.getRight());
             appendType(combinedType, dmkcResult.getRight());
 
+            String uname = (cardResult.name == null || cardResult.name.isEmpty()) ? name : cardResult.name;
+
             //  最终评分
             int totalScore = medalResult.getLeft() + follow_100_Result.getLeft() + cardResult.score + follow_same_Result.getLeft() + aicuResult.getLeft() + dmkcResult.getLeft();
             // 当外部api访问时，可能只传入了vmid,没有名字，因此这里使用哔哩哔哩 api获取的名字
-            StrangerViewerService.addRecord(vmid, cardResult.name, cardResult.face, totalScore, combinedType + cardResult.sign);
+            StrangerViewerService.addRecord(vmid, uname, cardResult.face, totalScore, combinedType + cardResult.sign);
 
             // 非单一阵营的观众：查看具体行为
             if (aicuResult.getRight() != null && aicuResult.getRight().contains("dmk") || aicuResult.getRight().contains("弹幕")) {

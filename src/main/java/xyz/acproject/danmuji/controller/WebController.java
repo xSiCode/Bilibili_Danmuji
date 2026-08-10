@@ -1135,12 +1135,13 @@ public class WebController {
     @GetMapping(value = "/api_get_score_by_id")
     public Object apiGetScore(@RequestParam("id") long vmid,
                               @RequestParam(value = "name",required = false, defaultValue = "") String vmname,
+                              @RequestParam(defaultValue = "false") boolean living,
                               @RequestParam(defaultValue = "false") boolean detailed) {
         Map<String, Object> result = new LinkedHashMap<>();
         try {
             Pair<Integer, String> pair = null;
             if (PublicDataConf.parseMessageThread != null) {
-                pair = PublicDataConf.parseMessageThread.audienceScoreSync(vmid, vmname);
+                pair = PublicDataConf.parseMessageThread.audienceScoreSync(vmid, living ? null : vmname);
             }
             int score = pair != null ? pair.getLeft() : 0;
 
@@ -5066,6 +5067,8 @@ public class WebController {
                             row.put("count", rs.getInt("count"));
                             row.put("session", rs.getInt("session"));
                             row.put("blocked", rs.getInt("blocked") == 1);
+                            Boolean followed = xyz.acproject.danmuji.http.HttpUserData.isFollowing(rs.getLong("uid"));
+                            row.put("followed", followed == null ? 0 : (followed ? 1 : 0));
                             rows.add(row);
                         }
                     }
@@ -5091,6 +5094,26 @@ public class WebController {
         } catch (Exception e) {
             LOGGER.error("strangerViewerBlock error", e);
             return Response.success(-1, req);
+        }
+    }
+
+    /** 关注/取消关注观众（act=1 关注，act=2 取消关注） */
+    @ResponseBody
+    @PostMapping(value = "/strangerViewerFollow")
+    public Response<?> strangerViewerFollow(@RequestParam("uid") long uid,
+                                            @RequestParam("act") int act,
+                                            HttpServletRequest req) {
+        try {
+            Short code = act == 2
+                    ? xyz.acproject.danmuji.http.HttpUserData.httpPostUnfollowUser(uid)
+                    : xyz.acproject.danmuji.http.HttpUserData.httpPostFollowUser(uid);
+            if (code != null && code == 0) {
+                xyz.acproject.danmuji.http.HttpUserData.invalidateFollowCache(uid);
+            }
+            return Response.success(code != null && code == 0 ? 1 : 0, req);
+        } catch (Exception e) {
+            LOGGER.error("strangerViewerFollow error", e);
+            return Response.success(0, req);
         }
     }
 

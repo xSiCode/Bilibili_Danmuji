@@ -5241,8 +5241,20 @@ const method = {
                 });
                 $blockTd.append($blockBtn);
                 $tr.append($blockTd);
+                // 关注（切换关注/取消关注）
+                var $followTd = $('<td class="sv-td sv-col-follow truncate-expandable"></td>');
+                var isFollowed = r.followed === true || r.followed === 1 || r.followed === '1';
+                var $followBtn = $('<button class="btn btn-sm sv-follow-btn"></button>')
+                    .text(isFollowed ? '取消关注' : '关注')
+                    .addClass(isFollowed ? 'btn-danger' : 'btn-outline-success')
+                    .attr('data-uid', r.uid)
+                    .on('click', function () {
+                        method._svToggleFollow($(this));
+                    });
+                $followTd.append($followBtn);
+                $tr.append($followTd);
             } else {
-                $tr.append($('<td colspan="8" style="height:42px;">&nbsp;</td>'));
+                $tr.append($('<td colspan="9" style="height:42px;">&nbsp;</td>'));
             }
             $tbody.append($tr);
         }
@@ -5272,6 +5284,26 @@ const method = {
                     }
                 }
                 method._renderSvTable();
+            }
+        });
+    },
+
+    // 关注/取消关注观众（按钮文字即当前状态）
+    _svToggleFollow: function ($btn) {
+        var uid = $btn.attr('data-uid');
+        var following = $btn.text().indexOf('取消关注') >= 0;
+        var act = following ? 2 : 1;
+        $btn.prop('disabled', true);
+        $.post('/strangerViewerFollow', { uid: uid, act: act }, function (resp) {
+            $btn.prop('disabled', false);
+            if (resp && resp.code == "200" && (resp.result === 1 || resp.result == '1' || resp.result === true)) {
+                if (act === 1) {
+                    $btn.text('取消关注').removeClass('btn-outline-success').addClass('btn-danger');
+                } else {
+                    $btn.text('关注').removeClass('btn-danger').addClass('btn-outline-success');
+                }
+            } else {
+                showMessage((act === 1 ? '关注' : '取消关注') + '失败，请确认已登录', 'danger', 2);
             }
         });
     },

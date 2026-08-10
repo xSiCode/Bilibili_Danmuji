@@ -1196,6 +1196,105 @@ public class HttpUserData {
     }
 
     /**
+     * 关注用户（act=1）
+     */
+    public static Short httpPostFollowUser(long fid) {
+        return httpPostRelationModify(fid, "1");
+    }
+
+    /**
+     * 取消关注用户（act=2）
+     */
+    public static Short httpPostUnfollowUser(long fid) {
+        return httpPostRelationModify(fid, "2");
+    }
+
+    /** 通用关注关系修改（x/relation/modify） */
+    private static Short httpPostRelationModify(long fid, String act) {
+        String data = null;
+        short code = -1;
+        if (PublicDataConf.COOKIE == null)
+            return code;
+        Map<String, String> headers = new HashMap<>(4);
+        headers.put("user-agent",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36");
+        headers.put("referer", "https://space.bilibili.com/");
+        if (StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
+            headers.put("cookie", PublicDataConf.USERCOOKIE);
+        }
+        Map<String, String> params = new HashMap<>(5);
+        params.put("fid", String.valueOf(fid));
+        params.put("act", act);
+        params.put("re_src", "11");
+        params.put("csrf_token", PublicDataConf.COOKIE.getBili_jct());
+        params.put("csrf", PublicDataConf.COOKIE.getBili_jct());
+        try {
+            data = OkHttp3Utils.getHttp3Utils()
+                    .httpPostForm("https://api.bilibili.com/x/relation/modify", headers, params)
+                    .body().string();
+        } catch (Exception e) {
+            LOGGER.error(e);
+            data = null;
+        }
+        if (data == null)
+            return code;
+        try {
+            JSONObject jsonObject = JSONObject.parseObject(data);
+            code = jsonObject.getShort("code");
+            if (code == 0) {
+                LOGGER.info("关注操作成功 fid={} act={}", fid, act);
+            } else {
+                LOGGER.error("关注操作失败 fid={} act={},原因:{}", fid, act, jsonObject.getString("message"));
+            }
+        } catch (Exception e) {
+            LOGGER.error(e);
+        }
+        return code;
+    }
+
+    // 关注状态缓存：uid -> [following(0/1), 时间戳]，5分钟有效
+    private static final java.util.concurrent.ConcurrentHashMap<Long, long[]> FOLLOW_CACHE =
+            new java.util.concurrent.ConcurrentHashMap<>();
+    private static final long FOLLOW_CACHE_TTL = 5 * 60 * 1000L;
+
+    /** 查询主账号是否已关注该用户；失败返回 null */
+    public static Boolean isFollowing(long fid) {
+        long[] cached = FOLLOW_CACHE.get(fid);
+        if (cached != null && System.currentTimeMillis() - cached[1] < FOLLOW_CACHE_TTL) {
+            return cached[0] == 1;
+        }
+        if (PublicDataConf.COOKIE == null) return null;
+        try {
+            Map<String, String> headers = new HashMap<>(3);
+            headers.put("user-agent",
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36");
+            headers.put("referer", "https://space.bilibili.com/" + fid + "/");
+            if (StringUtils.isNotBlank(PublicDataConf.USERCOOKIE)) {
+                headers.put("cookie", PublicDataConf.USERCOOKIE);
+            }
+            Map<String, String> params = new HashMap<>(1);
+            params.put("fid", String.valueOf(fid));
+            String data = OkHttp3Utils.getHttp3Utils()
+                    .httpGet("https://api.bilibili.com/x/relation", headers, params).body().string();
+            JSONObject json = JSONObject.parseObject(data);
+            if (json != null && json.getIntValue("code") == 0 && json.getJSONObject("data") != null) {
+                JSONObject relation = json.getJSONObject("data").getJSONObject("relation");
+                int following = relation != null ? relation.getIntValue("following") : 0;
+                FOLLOW_CACHE.put(fid, new long[]{following, System.currentTimeMillis()});
+                return following == 1;
+            }
+        } catch (Exception e) {
+            LOGGER.error(e);
+        }
+        return null;
+    }
+
+    /** 关注/取关成功后清除缓存，避免状态滞后 */
+    public static void invalidateFollowCache(long fid) {
+        FOLLOW_CACHE.remove(fid);
+    }
+
+    /**
      * 获取B站拉黑列表(小黑屋)
      *
      * @param pn 页码

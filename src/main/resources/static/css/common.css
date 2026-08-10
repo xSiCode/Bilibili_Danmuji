@@ -1661,6 +1661,7 @@ div .link-popup-panel .popup-content-ctnr p {
 #sv-data-table .sv-col-score, #sv-data-table th.sv-col-score, #sv-data-table td.sv-col-score { width: 50px; }
 #sv-data-table .sv-col-scoreTypes, #sv-data-table th.sv-col-scoreTypes, #sv-data-table td.sv-col-scoreTypes { text-align: left; }
 #sv-data-table .sv-col-block, #sv-data-table th.sv-col-block, #sv-data-table td.sv-col-block { width: 90px; }
+#sv-data-table .sv-col-follow, #sv-data-table th.sv-col-follow, #sv-data-table td.sv-col-follow { width: 80px; }
 #sv-data-table th.sv-sort { cursor: pointer; user-select: none; }
 #sv-data-table th.sv-sort:hover { color: #0d6efd; }
 
