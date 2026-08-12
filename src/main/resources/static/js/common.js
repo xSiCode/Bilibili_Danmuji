@@ -150,6 +150,8 @@ let svState = {
     endTime: '',
     currentFile: ''
 };
+// UID未命中时实时查询去重：{uid, ts}，10秒内同一uid不重复调用
+let svLastUidQuery = null;
 
 $(function () {
     "use strict";
@@ -5146,8 +5148,20 @@ const method = {
                     return;
                 }
                 method._renderSvTable();
+                method._maybeQueryMissingUid();
             }
         });
+    },
+
+    // 搜索框为纯UID且看板无结果时，触发实时打分查询（渲染由后续流程处理）
+    _maybeQueryMissingUid: function () {
+        var q = (svState.search || '').trim();
+        if (!/^\d+$/.test(q) || svState.totalRecords > 0) return;
+        var uid = parseInt(q, 10);
+        var now = Date.now();
+        if (svLastUidQuery && svLastUidQuery.uid === uid && now - svLastUidQuery.ts < 10000) return; // 10秒内不重复
+        svLastUidQuery = { uid: uid, ts: now };
+        $.get('/api_get_score_by_id', { id: uid, living: true });
     },
 
     _renderSvTable: function () {
